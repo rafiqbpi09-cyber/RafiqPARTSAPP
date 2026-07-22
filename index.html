@@ -199,20 +199,48 @@ let nextPartId = 14423, nextUserId = 3;
 
 /* ================= LOCAL STORAGE PERSISTENCE ================= */
 const LS_KEY = 'partsAppDB_v1';
-function saveDB(){
+
+/* ================= FIREBASE REALTIME DATABASE ================= */
+const FB_URL = 'https://metal-parts-default-rtdb.firebaseio.com';
+
+async function saveDB(){
   try{
-    const payload = JSON.stringify({
+    const payload = {
       users: DB.users,
-      history: DB.history.slice(0,50), // শুধু শেষ ৫০টা হিস্টরি রাখি — সাইজ ছোট রাখতে
+      history: DB.history.slice(0,50),
       settings: { companyName: DB.settings.companyName, adminPassword: DB.settings.adminPassword, logo: DB.settings.logo }
+    };
+    // Firebase এ সেভ
+    await fetch(`${FB_URL}/appdata.json`, {
+      method: 'PUT',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload)
     });
-    localStorage.setItem(LS_KEY, payload);
+    // localStorage এও সেভ (অফলাইন ব্যাকআপ)
+    try{ localStorage.setItem(LS_KEY, JSON.stringify(payload)); }catch(e){}
   }catch(e){
-    console.error('localStorage save failed:', e);
-    alert('ডেটা সেভ করা যায়নি: ' + e.message);
+    console.error('Firebase save failed:', e);
+    // Firebase না হলে localStorage এ সেভ
+    try{ localStorage.setItem(LS_KEY, JSON.stringify({users:DB.users,history:DB.history.slice(0,50),settings:DB.settings})); }catch(e2){}
   }
 }
-function loadDB(){
+async function loadDB(){
+  try{
+    const res = await fetch(`${FB_URL}/appdata.json`);
+    const saved = await res.json();
+    if(saved && saved.users){
+      if(Array.isArray(saved.users)) DB.users = saved.users;
+      if(Array.isArray(saved.history)) DB.history = saved.history;
+      if(saved.settings){
+        if(saved.settings.companyName) DB.settings.companyName = saved.settings.companyName;
+        if(saved.settings.adminPassword) DB.settings.adminPassword = saved.settings.adminPassword;
+        if(saved.settings.logo) DB.settings.logo = saved.settings.logo;
+      }
+      if(DB.users.length) nextUserId = Math.max(...DB.users.map(u=>Number(u.id)||0))+1;
+      return;
+    }
+  }catch(e){ console.warn('Firebase load failed, trying localStorage:', e); }
+  // Firebase না হলে localStorage থেকে লোড
   try{
     const raw = localStorage.getItem(LS_KEY);
     if(!raw) return;
@@ -225,9 +253,7 @@ function loadDB(){
       if(saved.settings.logo) DB.settings.logo = saved.settings.logo;
     }
     if(DB.users.length) nextUserId = Math.max(...DB.users.map(u=>Number(u.id)||0))+1;
-  }catch(e){
-    console.error('localStorage load failed:', e);
-  }
+  }catch(e){ console.error('localStorage load failed:', e); }
 }
 // পুরনো ডেমো পার্টসগুলোর একটি "ব্যাকআপ কপি" — কারণ Sheet সংযুক্ত থাকলে নিচের loadFromSheet()
 // DB.parts কে Sheet-এর ডেটা দিয়ে ওভাররাইট করে দেয় (Sheet খালি হলে DB.parts খালি হয়ে যাবে)।
@@ -577,7 +603,7 @@ function dashboardTabHTML(){
   const lastUpdate = DB.history[0] ? DB.history[0].date : '—';
   return `
     <div style="display:flex;justify-content:flex-end;margin-bottom:12px;">
-      <button class="btn btn-ghost btn-sm" onclick="loadDB();ensureCores();go('adminDashboard')">🔄 রিফ্রেশ</button>
+      <button class="btn btn-ghost btn-sm" onclick="loadDB().then(()=>{ensureCores();go('adminDashboard')})">🔄 রিফ্রেশ</button>
     </div>
     <div class="stat-grid">
       <div class="stat"><div class="ic">📦</div><div class="num">${DB.parts.length}</div><div class="lbl">মোট পার্টস সংখ্যা</div></div>
@@ -956,9 +982,8 @@ if(SYNC_ON){
   document.getElementById('app').innerHTML = `<div class="center-screen"><div style="text-align:center;color:var(--muted)">🔄 Google Sheet থেকে ডেটা লোড হচ্ছে...</div></div>`;
   loadFromSheet().then(render);
 } else {
-  loadDB();   // ← localStorage থেকে আগের ডেটা লোড করে নাও
-  ensureCores();
-  render();
+  document.getElementById('app').innerHTML = `<div class="center-screen"><div style="text-align:center;color:var(--muted)">🔄 ডেটা লোড হচ্ছে...</div></div>`;
+  loadDB().then(()=>{ ensureCores(); render(); });
 }
 </script>
 </body>
