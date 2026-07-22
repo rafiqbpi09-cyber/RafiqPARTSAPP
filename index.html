@@ -201,29 +201,33 @@ let nextPartId = 14423, nextUserId = 3;
 const LS_KEY = 'partsAppDB_v1';
 function saveDB(){
   try{
-    // পার্টস ডেটা ফাইলে বিল্ট-ইন আছে, তাই সেভ করার দরকার নেই
-    // শুধু users, history, settings সেভ করি
-    localStorage.setItem(LS_KEY, JSON.stringify({
+    const payload = JSON.stringify({
       users: DB.users,
-      history: DB.history,
+      history: DB.history.slice(0,50), // শুধু শেষ ৫০টা হিস্টরি রাখি — সাইজ ছোট রাখতে
       settings: { companyName: DB.settings.companyName, adminPassword: DB.settings.adminPassword, logo: DB.settings.logo }
-    }));
-  }catch(e){ console.warn('localStorage save failed:', e); }
+    });
+    localStorage.setItem(LS_KEY, payload);
+  }catch(e){
+    console.error('localStorage save failed:', e);
+    alert('ডেটা সেভ করা যায়নি: ' + e.message);
+  }
 }
 function loadDB(){
   try{
     const raw = localStorage.getItem(LS_KEY);
     if(!raw) return;
     const saved = JSON.parse(raw);
-    if(saved.users) DB.users = saved.users;
-    if(saved.history) DB.history = saved.history;
+    if(Array.isArray(saved.users)) DB.users = saved.users;
+    if(Array.isArray(saved.history)) DB.history = saved.history;
     if(saved.settings){
-      DB.settings.companyName = saved.settings.companyName || DB.settings.companyName;
-      DB.settings.adminPassword = saved.settings.adminPassword || DB.settings.adminPassword;
-      DB.settings.logo = saved.settings.logo || DB.settings.logo;
+      if(saved.settings.companyName) DB.settings.companyName = saved.settings.companyName;
+      if(saved.settings.adminPassword) DB.settings.adminPassword = saved.settings.adminPassword;
+      if(saved.settings.logo) DB.settings.logo = saved.settings.logo;
     }
-    if(DB.users.length) nextUserId = Math.max(...DB.users.map(u=>u.id))+1;
-  }catch(e){ console.warn('localStorage load failed:', e); }
+    if(DB.users.length) nextUserId = Math.max(...DB.users.map(u=>Number(u.id)||0))+1;
+  }catch(e){
+    console.error('localStorage load failed:', e);
+  }
 }
 // পুরনো ডেমো পার্টসগুলোর একটি "ব্যাকআপ কপি" — কারণ Sheet সংযুক্ত থাকলে নিচের loadFromSheet()
 // DB.parts কে Sheet-এর ডেটা দিয়ে ওভাররাইট করে দেয় (Sheet খালি হলে DB.parts খালি হয়ে যাবে)।
@@ -572,6 +576,9 @@ ROUTES.adminDashboard = function(){
 function dashboardTabHTML(){
   const lastUpdate = DB.history[0] ? DB.history[0].date : '—';
   return `
+    <div style="display:flex;justify-content:flex-end;margin-bottom:12px;">
+      <button class="btn btn-ghost btn-sm" onclick="loadDB();ensureCores();go('adminDashboard')">🔄 রিফ্রেশ</button>
+    </div>
     <div class="stat-grid">
       <div class="stat"><div class="ic">📦</div><div class="num">${DB.parts.length}</div><div class="lbl">মোট পার্টস সংখ্যা</div></div>
       <div class="stat"><div class="ic">👥</div><div class="num">${DB.users.length}</div><div class="lbl">মোট ইউজার সংখ্যা</div></div>
@@ -826,7 +833,18 @@ function historyTabHTML(){
 function settingsTabHTML(){
   return `
     <div class="card">
-      <h3>🔗 Google Sheet সংযোগ</h3>
+      <h3>💾 ডেটা স্টোরেজ যাচাই</h3>
+      <p class="hint">রিফ্রেশ করার পরেও ডিলার/মেকানিক ডেটা থাকছে কিনা যাচাই করুন।</p>
+      <button class="btn btn-navy btn-sm" onclick="
+        const saved = localStorage.getItem('partsAppDB_v1');
+        if(saved){
+          const d = JSON.parse(saved);
+          alert('✅ ডেটা সেভ আছে!\nইউজার: ' + (d.users||[]).length + 'জন\nহিস্টরি: ' + (d.history||[]).length + 'টি');
+        } else {
+          alert('❌ কোনো ডেটা সেভ নেই। ইউজার যোগ করে আবার চেক করুন।');
+        }
+      ">💾 স্টোরেজ চেক করুন</button>
+    </div>
       <p style="font-size:13.5px;color:var(--muted);margin:0 0 4px">
         স্ট্যাটাস: ${SYNC_ON
           ? '<span class="badge active">সংযুক্ত ✅</span>'
