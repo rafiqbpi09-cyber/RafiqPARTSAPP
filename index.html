@@ -3,7 +3,47 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>পার্টস ম্যানেজমেন্ট সিস্টেম</title>
+<title>RafiqPARTS - পার্টস ম্যানেজমেন্ট</title>
+<meta name="theme-color" content="#12233d">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="RafiqPARTS">
+<script>
+// Inline manifest via Blob so no separate manifest.json file needed
+const manifestData = {
+  name: "RafiqPARTS",
+  short_name: "RafiqPARTS",
+  description: "পার্টস মূল্য ও তথ্য ব্যবস্থাপনা",
+  start_url: "./",
+  scope: "./",
+  display: "standalone",
+  background_color: "#12233d",
+  theme_color: "#12233d",
+  orientation: "portrait",
+  icons: [
+    { src: "icon-192.png", sizes: "192x192", type: "image/png", purpose: "any maskable" },
+    { src: "icon-512.png", sizes: "512x512", type: "image/png", purpose: "any maskable" }
+  ]
+};
+const manifestBlob = new Blob([JSON.stringify(manifestData)], {type:'application/json'});
+const manifestURL = URL.createObjectURL(manifestBlob);
+const manifestLink = document.createElement('link');
+manifestLink.rel = 'manifest';
+manifestLink.href = manifestURL;
+document.currentScript.parentNode.insertBefore(manifestLink, document.currentScript);
+
+// Inline service worker via Blob
+if('serviceWorker' in navigator){
+  const swCode = `
+    const CACHE='rafiqparts-v2';
+    self.addEventListener('install',e=>{ self.skipWaiting(); });
+    self.addEventListener('fetch',e=>{ e.respondWith(fetch(e.request).catch(()=>caches.match(e.request))); });
+  `;
+  const swBlob = new Blob([swCode], {type:'application/javascript'});
+  const swURL = URL.createObjectURL(swBlob);
+  navigator.serviceWorker.register(swURL, {scope:'./'}).catch(e=>console.log('SW:',e));
+}
+</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
