@@ -754,9 +754,19 @@ function usersTable(){
       <td><div class="row-actions">
         <button class="btn btn-ghost btn-sm" onclick="editUser(${u.id})">✏️</button>
         <button class="btn ${u.active?'btn-danger':'btn-navy'} btn-sm" onclick="toggleUser(${u.id})">${u.active?'🔒 বন্ধ':'🔓 চালু'}</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteUser(${u.id})">🗑️</button>
       </div></td>
     </tr>`).join('')}
     </tbody></table></div>`;
+}
+function deleteUser(id){
+  const u = DB.users.find(x=>x.id===id);
+  if(!u) return;
+  if(confirm(`"${u.name}" (${u.phone}) ডিলিট করতে চান?`)){
+    DB.users = DB.users.filter(x=>x.id!==id);
+    saveDB();
+    go('adminDashboard');
+  }
 }
 function wireUsersTab(){
   document.getElementById('usersTableWrap').innerHTML = usersTable();
