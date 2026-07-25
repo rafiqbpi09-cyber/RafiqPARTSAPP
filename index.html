@@ -523,15 +523,14 @@ ROUTES.dealerSearch = function(){
       return;
     }
     let html='';
+    // পুরো নম্বর মিললে শুধু সেটাই দেখাবে — কাছাকাছি দেখাবে না
     if(exact.length){
-      html += `<div class="group-label">সরাসরি মিল</div>`;
       exact.forEach(p=> html += partCardHTML(p, true));
-    }
-    if(near.length){
+    } else if(near.length){
       html += `<div class="group-label">কাছাকাছি আইটেম</div>`;
       near.slice(0, MAX_NEAR).forEach(p=> html += partCardHTML(p));
       if(near.length > MAX_NEAR){
-        html += `<div class="hint" style="text-align:center;margin-top:8px">মোট ${near.length}টি কাছাকাছি আইটেম মিলেছে — আরও নির্দিষ্ট করে লিখুন</div>`;
+        html += `<div class="hint" style="text-align:center;margin-top:8px">মোট ${near.length}টি মিলেছে — আরও নির্দিষ্ট করে লিখুন</div>`;
       }
     }
     results.innerHTML = html;
@@ -540,9 +539,17 @@ ROUTES.dealerSearch = function(){
   input.addEventListener('input', ()=>{ clearTimeout(searchTimer); searchTimer = setTimeout(runSearch, 180); });
   document.getElementById('go').onclick = runSearch;
 };
+// display-friendly part number — strips SPAR.XXXX.IMPT. prefix
+function displayPartNo(partNo){
+  const idx = partNo.toUpperCase().lastIndexOf('IMPT.');
+  return idx >= 0 ? partNo.slice(idx + 5) : partNo;
+}
 function partCardHTML(p, isExact){
   return `<div class="part-card${isExact ? ' exact' : ''}">
-    <div><div class="pn">${p.partNo}</div><div class="nm">${p.name} · ${p.category}</div></div>
+    <div>
+      <div class="pn" style="font-weight:700">Part No. ${displayPartNo(p.partNo)}</div>
+      <div class="nm" style="font-weight:700;color:var(--text);margin-top:3px">${p.name}</div>
+    </div>
     <div class="pr">৳${p.price}</div>
   </div>`;
 }
