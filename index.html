@@ -68,6 +68,26 @@ if('serviceWorker' in navigator){
     font-family:'Hind Siliguri',sans-serif;
     background:var(--paper);
     color:var(--text);
+    font-size:15px;
+    line-height:1.6;
+  }
+  input, select, button, .gate-body, .tab, .field label {
+    font-size:16px;
+  }
+  .gate-top h1 { font-size:24px; }
+  .gate-top p { font-size:15px; }
+  h2 { font-size:22px; }
+  h3 { font-size:18px; }
+  table { font-size:15px; }
+  .tab { padding:14px 18px; }
+  .btn { font-size:15px; padding:12px 18px; }
+  @media(max-width:600px){
+    body { font-size:14px; }
+    input, select, button { font-size:16px; }
+    .gate { max-width:95vw; }
+    .gate-top h1 { font-size:22px; }
+    h2 { font-size:20px; }
+    #app { overflow-x:hidden; }
   }
   ::selection{background:var(--amber);color:#fff;}
   .mono{font-family:'JetBrains Mono',monospace;}
@@ -557,7 +577,7 @@ ROUTES.dealerSearch = function(){
           <h2>পার্ট নম্বর সার্চ করুন</h2>
           <p>শুধু মূল সংখ্যাটি লিখুন — কোড বা সাফিক্স (m01, m91 ইত্যাদি) লেখার দরকার নেই</p>
           <div class="big-search">
-            <input type="text" id="q" placeholder="যেমনঃ 97200754" inputmode="numeric">
+            <input type="text" id="q" placeholder="যেমনঃ 97200754 বা ইঞ্জিন" inputmode="text">
             <button class="btn btn-primary" id="go">সার্চ</button>
           </div>
         </div>
@@ -673,7 +693,7 @@ function dashboardTabHTML(){
   const lastUpdate = DB.history[0] ? DB.history[0].date : '—';
   return `
     <div style="display:flex;justify-content:flex-end;margin-bottom:12px;">
-      <button class="btn btn-ghost btn-sm" onclick="loadDB().then(()=>{ensureCores();go('adminDashboard')})">🔄 রিফ্রেশ</button>
+      <button class="btn btn-ghost btn-sm" onclick="(()=>{const t=document.createElement('div');t.innerHTML='🔄 রিফ্রেশ হচ্ছে...';t.style.cssText='position:fixed;top:20px;left:20px;background:#1f8a4c;color:#fff;padding:12px 16px;border-radius:8px;font-weight:600;z-index:9999';document.body.appendChild(t);loadDB().then(()=>{ensureCores();t.remove();go('adminDashboard')})})()">🔄 রিফ্রেশ</button>
     </div>
     <div class="stat-grid">
       <div class="stat"><div class="ic">📦</div><div class="num">${DB.parts.length}</div><div class="lbl">মোট পার্টস সংখ্যা</div></div>
