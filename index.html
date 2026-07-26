@@ -13,7 +13,7 @@
 const manifestData = {
   name: "RafiqPARTS",
   short_name: "RafiqPARTS",
-  description: "Powared by ইঞ্জিনিয়ার রফিকুল ইসলাম",
+  description: "পার্টস মূল্য ও তথ্য ব্যবস্থাপনা",
   start_url: "./",
   scope: "./",
   display: "standalone",
@@ -370,8 +370,11 @@ ROUTES.landing = function(){
 ROUTES.adminLogin = function(){
   const app = document.getElementById('app');
   app.appendChild(el(`
-    <div class="center-screen">
-      <div class="gate">
+    <div class="center-screen" style="position:relative;">
+      <div style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:0;">
+        <div style="transform:rotate(-30deg);font-size:22px;font-weight:700;color:rgba(18,35,61,0.07);white-space:nowrap;user-select:none;letter-spacing:2px;">ইঞ্জিনিয়ার রফিকুল ইসলাম</div>
+      </div>
+      <div class="gate" style="position:relative;z-index:1;">
         <div class="gate-top">
           <div class="cog">🔑</div>
           <h1>অ্যাডমিন লগইন</h1>
@@ -392,6 +395,7 @@ ROUTES.adminLogin = function(){
     if(pw === DB.settings.adminPassword){
       DB.session = {role:'admin', user:{name:'Admin'}};
       go('adminDashboard');
+      notifyPendingUsers();
     } else {
       const e = document.getElementById('err'); e.style.display='block'; e.textContent='পাসওয়ার্ড সঠিক নয়';
     }
@@ -597,13 +601,16 @@ function adminShell(innerHTML){
     </div>
     <div class="wrap">
       <div class="tabs" id="tabs">
-        ${[
+        ${(()=>{
+          const pendingCount = DB.users.filter(u=>u.pending).length;
+          return [
           ['dashboard','📊 ড্যাশবোর্ড'],
           ['parts','⚙️ পার্টস ম্যানেজমেন্ট'],
           ['users','👥 ইউজার ম্যানেজমেন্ট'],
           ['history','📅 আপডেট হিস্টরি'],
           ['settings','🔧 সেটিংস'],
-        ].map(([key,label])=>`<button class="tab ${adminTab===key?'active':''}" data-tab="${key}">${label}</button>`).join('')}
+        ].map(([key,label])=>`<button class="tab ${adminTab===key?'active':''}" data-tab="${key}" style="position:relative;">${label}${key==='users' && pendingCount ? `<span style="position:absolute;top:-6px;right:-6px;background:#e5484d;color:#fff;font-size:11px;font-weight:700;min-width:18px;height:18px;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;padding:0 4px;">${pendingCount}</span>` : ''}</button>`).join('');
+        })()}
       </div>
       <div id="tabBody">${innerHTML}</div>
     </div>
@@ -620,6 +627,26 @@ function openModal(html){
   document.getElementById('modalBg').classList.add('show');
 }
 function closeModal(){ document.getElementById('modalBg').classList.remove('show'); }
+function notifyPendingUsers(){
+  const pending = DB.users.filter(u=>u.pending);
+  if(!pending.length) return;
+  openModal(`
+    <h3>🔔 নতুন রেজিস্ট্রেশন অনুমোদনের অপেক্ষায় (${pending.length}জন)</h3>
+    <div style="max-height:260px;overflow:auto;margin:10px 0;">
+      ${pending.map(u=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--line);gap:10px;">
+        <div><div style="font-weight:600">${u.name}</div><div style="font-size:12.5px;color:var(--muted)">${u.phone} · ${u.role==='dealer'?'ডিলার':'মেকানিক'}</div></div>
+        <div style="display:flex;gap:6px;">
+          <button class="btn btn-primary btn-sm" onclick="approveUser(${u.id});notifyPendingUsers();">✅ অনুমোদন</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteUser(${u.id});notifyPendingUsers();">❌ বাতিল</button>
+        </div>
+      </div>`).join('')}
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">পরে দেখব</button>
+      <button class="btn btn-primary" onclick="closeModal();adminTab='users';go('adminDashboard');">তালিকায় যান</button>
+    </div>
+  `);
+}
 
 ROUTES.adminDashboard = function(){
   if(adminTab==='dashboard') adminShell(dashboardTabHTML());
