@@ -68,32 +68,12 @@ if('serviceWorker' in navigator){
     font-family:'Hind Siliguri',sans-serif;
     background:var(--paper);
     color:var(--text);
-    position:relative;
-  }
-  body::before{
-    content:'ইঞ্জিনিয়ার রফিকুল ইসলাম     ইঞ্জিনিয়ার রফিকুল ইসলাম     ইঞ্জিনিয়ার রফিকুল ইসলাম\Aইঞ্জিনিয়ার রফিকুল ইসলাম     ইঞ্জিনিয়ার রফিকুল ইসলাম     ইঞ্জিনিয়ার রফিকুল ইসলাম\Aইঞ্জিনিয়ার রফিকুল ইসলাম     ইঞ্জিনিয়ার রফিকুল ইসলাম     ইঞ্জিনিয়ার রফিকুল ইসলাম\Aইঞ্জিনিয়ার রফিকুল ইসলাম     ইঞ্জিনিয়ার রফিকুল ইসলাম     ইঞ্জিনিয়ার রফিকুল ইসলাম';
-    position:fixed;
-    top:0;
-    left:0;
-    width:100%;
-    height:100%;
-    font-size:16px;
-    font-weight:700;
-    color:rgba(18,35,61,0.06);
-    white-space:pre-wrap;
-    user-select:none;
-    pointer-events:none;
-    z-index:1;
-    line-height:2;
-    padding:30px;
-    overflow:hidden;
-    letter-spacing:0.5px;
   }
   ::selection{background:var(--amber);color:#fff;}
   .mono{font-family:'JetBrains Mono',monospace;}
 
   /* ---------- Layout shells ---------- */
-  #app{min-height:100vh;position:relative;z-index:2;}
+  #app{min-height:100vh;position:relative;}
   .center-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;}
 
   .gate{width:100%;max-width:380px;background:var(--card);border-radius:18px;box-shadow:0 20px 50px -20px rgba(18,35,61,.35);overflow:hidden;border:1px solid var(--line);}
