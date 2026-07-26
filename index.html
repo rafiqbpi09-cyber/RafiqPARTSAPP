@@ -68,8 +68,26 @@ if('serviceWorker' in navigator){
   .mono{font-family:'JetBrains Mono',monospace;}
 
   /* ---------- Layout shells ---------- */
-  #app{min-height:100vh;}
-  .center-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;}
+  #app{min-height:100vh;position:relative;}
+  #app::before{
+    content:'ইঞ্জিনিয়ার রফিকুল ইসলাম\Aইঞ্জিনিয়ার রফিকুল ইসলাম\Aইঞ্জিনিয়ার রফিকুল ইসলাম\Aইঞ্জিনিয়ার রফিকুল ইসলাম\Aইঞ্জিনিয়ার রফিকুল ইসলাম\Aইঞ্জিনিয়ার রফিকুল ইসলাম\Aইঞ্জিনিয়ার রফিকুল ইসলাম\Aইঞ্জিনিয়ার রফিকুল ইসলাম';
+    position:fixed;
+    top:0;
+    left:0;
+    width:100%;
+    height:100%;
+    font-size:18px;
+    font-weight:700;
+    color:rgba(18,35,61,0.08);
+    white-space:pre;
+    user-select:none;
+    pointer-events:none;
+    z-index:-1;
+    line-height:1.8;
+    padding:40px;
+    overflow:hidden;
+    letter-spacing:1px;
+  }
 
   .gate{width:100%;max-width:380px;background:var(--card);border-radius:18px;box-shadow:0 20px 50px -20px rgba(18,35,61,.35);overflow:hidden;border:1px solid var(--line);}
   .gate-top{background:linear-gradient(135deg,var(--navy),var(--navy-2));padding:34px 28px 26px;position:relative;}
@@ -337,7 +355,39 @@ function ensureCores(){
 
 function render(){ document.getElementById('app').innerHTML = ''; ROUTES[currentRoute](); }
 let currentRoute = 'landing';
-function go(route){ currentRoute = route; render(); }
+let splashShown = false;
+
+function showSplash(callback){
+  const splash = document.createElement('div');
+  splash.id = 'splash-screen';
+  splash.innerHTML = `
+    <div style="position:fixed;inset:0;background:linear-gradient(135deg,var(--navy),var(--navy-2));display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;font-family:'Hind Siliguri',sans-serif;">
+      <div style="text-align:center;">
+        <div style="font-size:48px;font-weight:700;color:#fff;margin-bottom:20px;letter-spacing:2px;">Welcome to</div>
+        <div style="font-size:42px;font-weight:700;color:var(--amber);margin-bottom:40px;">Metal Parts</div>
+        <div style="font-size:14px;color:rgba(255,255,255,0.7);margin-top:60px;">Powered by</div>
+        <div style="font-size:16px;color:#fff;font-weight:600;margin-top:8px;letter-spacing:0.5px;">প্রোকৌশলী মোঃ রফিকুল ইসলাম</div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(splash);
+  setTimeout(()=>{
+    splash.style.opacity = '0';
+    splash.style.transition = 'opacity 0.5s ease-out';
+    setTimeout(()=>{ splash.remove(); callback(); }, 500);
+  }, 5000);
+}
+
+function go(route){ 
+  currentRoute = route; 
+  const entryRoutes = ['landing', 'adminLogin', 'dealerLogin', 'dealerRegister'];
+  if(entryRoutes.includes(route) && !splashShown){
+    splashShown = true;
+    showSplash(render);
+  } else {
+    render();
+  }
+}
 
 function el(html){ const t=document.createElement('template'); t.innerHTML=html.trim(); return t.content; }
 
@@ -370,11 +420,8 @@ ROUTES.landing = function(){
 ROUTES.adminLogin = function(){
   const app = document.getElementById('app');
   app.appendChild(el(`
-    <div class="center-screen" style="position:relative;">
-      <div style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:0;">
-        <div style="transform:rotate(-30deg);font-size:22px;font-weight:700;color:rgba(18,35,61,0.07);white-space:nowrap;user-select:none;letter-spacing:2px;">ইঞ্জিনিয়ার রফিকুল ইসলাম</div>
-      </div>
-      <div class="gate" style="position:relative;z-index:1;">
+    <div class="center-screen">
+      <div class="gate">
         <div class="gate-top">
           <div class="cog">🔑</div>
           <h1>অ্যাডমিন লগইন</h1>
@@ -395,7 +442,6 @@ ROUTES.adminLogin = function(){
     if(pw === DB.settings.adminPassword){
       DB.session = {role:'admin', user:{name:'Admin'}};
       go('adminDashboard');
-      notifyPendingUsers();
     } else {
       const e = document.getElementById('err'); e.style.display='block'; e.textContent='পাসওয়ার্ড সঠিক নয়';
     }
@@ -508,26 +554,28 @@ ROUTES.dealerLogin = function(){
 ROUTES.dealerSearch = function(){
   const app = document.getElementById('app');
   app.appendChild(el(`
-    <div class="topbar">
-      <div class="topbar-brand">
-        <div class="brand-logo">${DB.settings.logo ? `<img src="${DB.settings.logo}" style="width:100%;height:100%;object-fit:cover;border-radius:9px">` : '🔧'}</div>
-        <div><div class="brand-name">${DB.settings.companyName}</div><div class="brand-sub">ডিলার পোর্টাল</div></div>
-      </div>
-      <div class="topbar-right">
-        <span class="pill">${DB.session.user.name}</span>
-        <button class="btn btn-ghost btn-sm" style="color:#fff;border-color:rgba(255,255,255,.3)" id="logout">লগআউট</button>
-      </div>
-    </div>
-    <div class="wrap">
-      <div class="search-hero">
-        <h2>পার্ট নম্বর সার্চ করুন</h2>
-        <p>শুধু মূল সংখ্যাটি লিখুন — কোড বা সাফিক্স (m01, m91 ইত্যাদি) লেখার দরকার নেই</p>
-        <div class="big-search">
-          <input type="text" id="q" placeholder="যেমনঃ 97200754" inputmode="numeric">
-          <button class="btn btn-primary" id="go">সার্চ</button>
+    <div>
+      <div class="topbar">
+        <div class="topbar-brand">
+          <div class="brand-logo">${DB.settings.logo ? `<img src="${DB.settings.logo}" style="width:100%;height:100%;object-fit:cover;border-radius:9px">` : '🔧'}</div>
+          <div><div class="brand-name">${DB.settings.companyName}</div><div class="brand-sub">ডিলার পোর্টাল</div></div>
+        </div>
+        <div class="topbar-right">
+          <span class="pill">${DB.session.user.name}</span>
+          <button class="btn btn-ghost btn-sm" style="color:#fff;border-color:rgba(255,255,255,.3)" id="logout">লগআউট</button>
         </div>
       </div>
-      <div id="results"></div>
+      <div class="wrap">
+        <div class="search-hero">
+          <h2>পার্ট নম্বর সার্চ করুন</h2>
+          <p>শুধু মূল সংখ্যাটি লিখুন — কোড বা সাফিক্স (m01, m91 ইত্যাদি) লেখার দরকার নেই</p>
+          <div class="big-search">
+            <input type="text" id="q" placeholder="যেমনঃ 97200754" inputmode="numeric">
+            <button class="btn btn-primary" id="go">সার্চ</button>
+          </div>
+        </div>
+        <div id="results"></div>
+      </div>
     </div>
   `));
   document.getElementById('logout').onclick = ()=>{ DB.session={role:null,user:null}; go('landing'); };
@@ -601,16 +649,13 @@ function adminShell(innerHTML){
     </div>
     <div class="wrap">
       <div class="tabs" id="tabs">
-        ${(()=>{
-          const pendingCount = DB.users.filter(u=>u.pending).length;
-          return [
+        ${[
           ['dashboard','📊 ড্যাশবোর্ড'],
           ['parts','⚙️ পার্টস ম্যানেজমেন্ট'],
           ['users','👥 ইউজার ম্যানেজমেন্ট'],
           ['history','📅 আপডেট হিস্টরি'],
           ['settings','🔧 সেটিংস'],
-        ].map(([key,label])=>`<button class="tab ${adminTab===key?'active':''}" data-tab="${key}" style="position:relative;">${label}${key==='users' && pendingCount ? `<span style="position:absolute;top:-6px;right:-6px;background:#e5484d;color:#fff;font-size:11px;font-weight:700;min-width:18px;height:18px;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;padding:0 4px;">${pendingCount}</span>` : ''}</button>`).join('');
-        })()}
+        ].map(([key,label])=>`<button class="tab ${adminTab===key?'active':''}" data-tab="${key}">${label}</button>`).join('')}
       </div>
       <div id="tabBody">${innerHTML}</div>
     </div>
@@ -627,26 +672,6 @@ function openModal(html){
   document.getElementById('modalBg').classList.add('show');
 }
 function closeModal(){ document.getElementById('modalBg').classList.remove('show'); }
-function notifyPendingUsers(){
-  const pending = DB.users.filter(u=>u.pending);
-  if(!pending.length) return;
-  openModal(`
-    <h3>🔔 নতুন রেজিস্ট্রেশন অনুমোদনের অপেক্ষায় (${pending.length}জন)</h3>
-    <div style="max-height:260px;overflow:auto;margin:10px 0;">
-      ${pending.map(u=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--line);gap:10px;">
-        <div><div style="font-weight:600">${u.name}</div><div style="font-size:12.5px;color:var(--muted)">${u.phone} · ${u.role==='dealer'?'ডিলার':'মেকানিক'}</div></div>
-        <div style="display:flex;gap:6px;">
-          <button class="btn btn-primary btn-sm" onclick="approveUser(${u.id});notifyPendingUsers();">✅ অনুমোদন</button>
-          <button class="btn btn-danger btn-sm" onclick="deleteUser(${u.id});notifyPendingUsers();">❌ বাতিল</button>
-        </div>
-      </div>`).join('')}
-    </div>
-    <div class="modal-actions">
-      <button class="btn btn-ghost" onclick="closeModal()">পরে দেখব</button>
-      <button class="btn btn-primary" onclick="closeModal();adminTab='users';go('adminDashboard');">তালিকায় যান</button>
-    </div>
-  `);
-}
 
 ROUTES.adminDashboard = function(){
   if(adminTab==='dashboard') adminShell(dashboardTabHTML());
