@@ -640,38 +640,29 @@ function partCardHTML(p, isExact){
 /* ============================================================= */
 /* ======================= ADMIN PANEL ========================== */
 /* ============================================================= */
-let adminTab = 'dashboard';
+let adminTab = null;
 
 function adminShell(innerHTML){
   const app = document.getElementById('app');
   app.appendChild(el(`
-    <div class="topbar">
-      <div class="topbar-brand">
-        <div class="brand-logo">${DB.settings.logo ? `<img src="${DB.settings.logo}" style="width:100%;height:100%;object-fit:cover;border-radius:9px">` : '🔧'}</div>
-        <div><div class="brand-name">${DB.settings.companyName}</div><div class="brand-sub">অ্যাডমিন প্যানেল</div></div>
+    <div style="background:linear-gradient(135deg,#1a3a52 0%,#0d5a7a 100%);min-height:100vh;padding:20px;">
+      <div style="max-width:1200px;margin:0 auto;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;padding:16px;background:rgba(255,255,255,0.08);border-radius:12px;border:1px solid rgba(255,255,255,0.15);">
+          <button class="btn btn-ghost btn-sm" onclick="adminTab=null;go('adminDashboard')" style="color:#fff;border-color:rgba(255,255,255,0.3);font-size:15px;">⬅️ মেনু</button>
+          <div style="color:#fff;font-weight:600;font-size:16px;">${DB.settings.companyName}</div>
+          <div style="display:flex;gap:8px;">
+            <button class="btn btn-ghost btn-sm" onclick="(()=>{const t=document.createElement('div');t.innerHTML='🔄 রিফ্রেশ হচ্ছে...';t.style.cssText='position:fixed;top:20px;left:20px;background:#1f8a4c;color:#fff;padding:12px 16px;border-radius:8px;font-weight:600;z-index:9999';document.body.appendChild(t);loadDB().then(()=>{ensureCores();t.remove();go('adminDashboard')})})();" style="color:#fff;border-color:rgba(255,255,255,0.3);font-size:15px;">🔄</button>
+            <button class="btn btn-ghost btn-sm" id="logout" style="color:#fff;border-color:rgba(255,255,255,0.3);font-size:15px;">🚪</button>
+          </div>
+        </div>
+        <div style="background:rgba(255,255,255,0.05);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.15);padding:24px;border-radius:14px;color:#fff;">
+          ${innerHTML}
+        </div>
       </div>
-      <div class="topbar-right">
-        <button class="btn btn-ghost btn-sm" style="color:#fff;border-color:rgba(255,255,255,.3)" id="logout">লগআউট</button>
-      </div>
-    </div>
-    <div class="wrap">
-      <div class="tabs" id="tabs">
-        ${[
-          ['dashboard','📊 ড্যাশবোর্ড'],
-          ['parts','⚙️ পার্টস ম্যানেজমেন্ট'],
-          ['users','👥 ইউজার ম্যানেজমেন্ট'],
-          ['history','📅 আপডেট হিস্টরি'],
-          ['settings','🔧 সেটিংস'],
-        ].map(([key,label])=>`<button class="tab ${adminTab===key?'active':''}" data-tab="${key}">${label}</button>`).join('')}
-      </div>
-      <div id="tabBody">${innerHTML}</div>
     </div>
     <div class="modal-bg" id="modalBg"><div class="modal" id="modalBody"></div></div>
   `));
   document.getElementById('logout').onclick = ()=>{ DB.session={role:null,user:null}; go('landing'); };
-  document.querySelectorAll('#tabs .tab').forEach(btn=>{
-    btn.onclick = ()=>{ adminTab = btn.dataset.tab; go('adminDashboard'); };
-  });
   document.getElementById('modalBg').addEventListener('click', (ev)=>{ if(ev.target.id==='modalBg') closeModal(); });
 }
 function openModal(html){
@@ -681,6 +672,55 @@ function openModal(html){
 function closeModal(){ document.getElementById('modalBg').classList.remove('show'); }
 
 ROUTES.adminDashboard = function(){
+  // যদি adminTab সেট না থাকে তাহলে menu grid দেখাই
+  if(!adminTab || adminTab === 'menu'){
+    const app = document.getElementById('app');
+    app.appendChild(el(`
+      <div style="background:linear-gradient(135deg,#1a3a52 0%,#0d5a7a 100%);min-height:100vh;padding:20px;border-radius:12px;margin:-20px -20px -20px -20px;">
+        <div style="max-width:1200px;margin:0 auto;">
+          <div style="text-align:center;color:#fff;margin-bottom:40px;">
+            <h2 style="font-size:28px;margin:0 0 8px 0;">Admin Panel</h2>
+            <p style="margin:0;color:rgba(255,255,255,0.8);font-size:14px;">Metal Parts Management System</p>
+          </div>
+          
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:20px;">
+            <div style="background:linear-gradient(135deg,rgba(59,130,246,0.3),rgba(59,130,246,0.1));backdrop-filter:blur(10px);border:1px solid rgba(59,130,246,0.4);padding:24px;border-radius:14px;text-align:center;color:#fff;cursor:pointer;transition:all 0.3s;min-height:160px;display:flex;flex-direction:column;justify-content:center;align-items:center;" onclick="adminTab='dashboard';go('adminDashboard');" onmouseover="this.style.transform='translateY(-8px)';this.style.boxShadow='0 12px 24px rgba(59,130,246,0.3)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='none'">
+              <div style="font-size:48px;margin-bottom:12px;">📊</div>
+              <div style="font-size:16px;font-weight:700;">ড্যাশবোর্ড</div>
+              <div style="font-size:12px;opacity:0.8;margin-top:4px;">পরিসংখ্যান ও সারাংশ</div>
+            </div>
+            
+            <div style="background:linear-gradient(135deg,rgba(226,134,31,0.3),rgba(226,134,31,0.1));backdrop-filter:blur(10px);border:1px solid rgba(226,134,31,0.4);padding:24px;border-radius:14px;text-align:center;color:#fff;cursor:pointer;transition:all 0.3s;min-height:160px;display:flex;flex-direction:column;justify-content:center;align-items:center;" onclick="adminTab='parts';go('adminDashboard');" onmouseover="this.style.transform='translateY(-8px)';this.style.boxShadow='0 12px 24px rgba(226,134,31,0.3)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='none'">
+              <div style="font-size:48px;margin-bottom:12px;">⚙️</div>
+              <div style="font-size:16px;font-weight:700;">পার্টস ম্যানেজমেন্ট</div>
+              <div style="font-size:12px;opacity:0.8;margin-top:4px;">পার্টস যোগ ও সম্পাদন</div>
+            </div>
+            
+            <div style="background:linear-gradient(135deg,rgba(31,138,76,0.3),rgba(31,138,76,0.1));backdrop-filter:blur(10px);border:1px solid rgba(31,138,76,0.4);padding:24px;border-radius:14px;text-align:center;color:#fff;cursor:pointer;transition:all 0.3s;min-height:160px;display:flex;flex-direction:column;justify-content:center;align-items:center;" onclick="adminTab='users';go('adminDashboard');" onmouseover="this.style.transform='translateY(-8px)';this.style.boxShadow='0 12px 24px rgba(31,138,76,0.3)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='none'">
+              <div style="font-size:48px;margin-bottom:12px;">👥</div>
+              <div style="font-size:16px;font-weight:700;">ইউজার ম্যানেজমেন্ট</div>
+              <div style="font-size:12px;opacity:0.8;margin-top:4px;">ডিলার ও মেকানিক পরিচালনা</div>
+            </div>
+            
+            <div style="background:linear-gradient(135deg,rgba(168,85,247,0.3),rgba(168,85,247,0.1));backdrop-filter:blur(10px);border:1px solid rgba(168,85,247,0.4);padding:24px;border-radius:14px;text-align:center;color:#fff;cursor:pointer;transition:all 0.3s;min-height:160px;display:flex;flex-direction:column;justify-content:center;align-items:center;" onclick="adminTab='history';go('adminDashboard');" onmouseover="this.style.transform='translateY(-8px)';this.style.boxShadow='0 12px 24px rgba(168,85,247,0.3)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='none'">
+              <div style="font-size:48px;margin-bottom:12px;">📅</div>
+              <div style="font-size:16px;font-weight:700;">আপডেট হিস্টরি</div>
+              <div style="font-size:12px;opacity:0.8;margin-top:4px;">সকল পরিবর্তনের তালিকা</div>
+            </div>
+            
+            <div style="background:linear-gradient(135deg,rgba(194,59,59,0.3),rgba(194,59,59,0.1));backdrop-filter:blur(10px);border:1px solid rgba(194,59,59,0.4);padding:24px;border-radius:14px;text-align:center;color:#fff;cursor:pointer;transition:all 0.3s;min-height:160px;display:flex;flex-direction:column;justify-content:center;align-items:center;" onclick="adminTab='settings';go('adminDashboard');" onmouseover="this.style.transform='translateY(-8px)';this.style.boxShadow='0 12px 24px rgba(194,59,59,0.3)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='none'">
+              <div style="font-size:48px;margin-bottom:12px;">🔧</div>
+              <div style="font-size:16px;font-weight:700;">সেটিংস</div>
+              <div style="font-size:12px;opacity:0.8;margin-top:4px;">অ্যাপ কনফিগারেশন</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `));
+    return;
+  }
+  
+  // adminTab সিলেক্ট থাকলে সাধারণ tab content দেখাই (tab buttons লুকানো)
   if(adminTab==='dashboard') adminShell(dashboardTabHTML());
   else if(adminTab==='parts') { adminShell(partsTabHTML()); wirePartsTab(); }
   else if(adminTab==='users') { adminShell(usersTabHTML()); wireUsersTab(); }
