@@ -206,7 +206,6 @@ const FB_URL = 'https://metal-parts-default-rtdb.firebaseio.com';
 async function saveDB(){
   try{
     const payload = {
-      parts: DB.parts,
       users: DB.users,
       history: DB.history.slice(0,50),
       settings: { companyName: DB.settings.companyName, adminPassword: DB.settings.adminPassword, logo: DB.settings.logo }
@@ -222,7 +221,7 @@ async function saveDB(){
   }catch(e){
     console.error('Firebase save failed:', e);
     // Firebase না হলে localStorage এ সেভ
-    try{ localStorage.setItem(LS_KEY, JSON.stringify({parts:DB.parts,users:DB.users,history:DB.history.slice(0,50),settings:DB.settings})); }catch(e2){}
+    try{ localStorage.setItem(LS_KEY, JSON.stringify({users:DB.users,history:DB.history.slice(0,50),settings:DB.settings})); }catch(e2){}
   }
 }
 async function loadDB(){
@@ -230,7 +229,6 @@ async function loadDB(){
     const res = await fetch(`${FB_URL}/appdata.json`);
     const saved = await res.json();
     if(saved && saved.users){
-      if(Array.isArray(saved.parts) && saved.parts.length) DB.parts = saved.parts;
       if(Array.isArray(saved.users)) DB.users = saved.users;
       if(Array.isArray(saved.history)) DB.history = saved.history;
       if(saved.settings){
@@ -239,7 +237,6 @@ async function loadDB(){
         if(saved.settings.logo) DB.settings.logo = saved.settings.logo;
       }
       if(DB.users.length) nextUserId = Math.max(...DB.users.map(u=>Number(u.id)||0))+1;
-      if(DB.parts.length) nextPartId = Math.max(...DB.parts.map(p=>Number(p.id)||0))+1;
       return;
     }
   }catch(e){ console.warn('Firebase load failed, trying localStorage:', e); }
@@ -248,7 +245,6 @@ async function loadDB(){
     const raw = localStorage.getItem(LS_KEY);
     if(!raw) return;
     const saved = JSON.parse(raw);
-    if(Array.isArray(saved.parts) && saved.parts.length) DB.parts = saved.parts;
     if(Array.isArray(saved.users)) DB.users = saved.users;
     if(Array.isArray(saved.history)) DB.history = saved.history;
     if(saved.settings){
@@ -257,7 +253,6 @@ async function loadDB(){
       if(saved.settings.logo) DB.settings.logo = saved.settings.logo;
     }
     if(DB.users.length) nextUserId = Math.max(...DB.users.map(u=>Number(u.id)||0))+1;
-    if(DB.parts.length) nextPartId = Math.max(...DB.parts.map(p=>Number(p.id)||0))+1;
   }catch(e){ console.error('localStorage load failed:', e); }
 }
 // পুরনো ডেমো পার্টসগুলোর একটি "ব্যাকআপ কপি" — কারণ Sheet সংযুক্ত থাকলে নিচের loadFromSheet()
@@ -769,7 +764,6 @@ function openPartModal(part){
       syncPush('addPart', newPart);
       logHistory(`নতুন পার্টস যোগ: ${name} (${partNo})`);
     }
-    saveDB();
     closeModal(); go('adminDashboard');
   };
 }
@@ -781,7 +775,6 @@ function deletePart(id){
     DB.parts = DB.parts.filter(x=>x.id!==id);
     syncPush('deletePart', {id});
     logHistory(`পার্টস ডিলিট: ${p.name} (${p.partNo})`);
-    saveDB();
     go('adminDashboard');
   }
 }
