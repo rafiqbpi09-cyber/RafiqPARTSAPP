@@ -1084,7 +1084,12 @@ function settingsTabHTML(){
       <button class="btn btn-navy" id="changePw">পাসওয়ার্ড পরিবর্তন করুন</button>
     </div>
     <div class="card">
-      <h3>🏢 কোম্পানির নাম ও লোগো</h3>
+      <h3>🗑️ সব পার্টস ডেটা রিসেট করুন</h3>
+      <p style="color:var(--muted);font-size:14px;">এই বাটন চাপলে সব পুরনো পার্টস ডিলিট হবে এবং Firebase থেকে লেটেস্ট ডেটা লোড হবে। Excel upload করার পর এটি ব্যবহার করুন।</p>
+      <button class="btn btn-danger" id="clearAllParts" style="margin-top:12px;">❌ সব পার্টস ডিলিট করুন</button>
+      <div class="ok-msg" id="clearOk">সব পার্টস সফলভাবে ডিলিট হয়েছে</div>
+      
+      <h3 style="margin-top:20px;">🏢 কোম্পানির নাম ও লোগো</h3>
       <div class="field"><label>কোম্পানির নাম</label><input type="text" id="compName" value="${DB.settings.companyName}"></div>
       <div class="field">
         <label>লোগো</label>
@@ -1096,6 +1101,19 @@ function settingsTabHTML(){
   `;
 }
 function wireSettingsTab(){
+  // Clear all parts button
+  const clearBtn = document.getElementById('clearAllParts');
+  if(clearBtn){
+    clearBtn.onclick = ()=>{
+      if(!confirm('সব পুরনো পার্টস ডিলিট করবেন? এটি undo করা যাবে না। তারপর Admin panel থেকে নতুন Excel upload করুন।')) return;
+      DB.parts = [];
+      saveDB();
+      document.getElementById('clearOk').style.display = 'block';
+      alert('✅ সব পার্টস ডিলিট হয়েছে। এখন Admin Panel → পার্টস ম্যানেজমেন্ট থেকে নতুন Excel upload করুন।');
+      setTimeout(()=>{ go('adminDashboard'); }, 1500);
+    };
+  }
+  
   const pushBtn = document.getElementById('pushDemoParts');
   if(pushBtn){
     pushBtn.onclick = async ()=>{
