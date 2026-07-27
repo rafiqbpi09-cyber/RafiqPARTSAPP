@@ -1086,8 +1086,14 @@ function settingsTabHTML(){
     <div class="card">
       <h3>🗑️ সব পার্টস ডেটা রিসেট করুন</h3>
       <p style="color:var(--muted);font-size:14px;">এই বাটন চাপলে সব পুরনো পার্টস ডিলিট হবে এবং Firebase থেকে লেটেস্ট ডেটা লোড হবে। Excel upload করার পর এটি ব্যবহার করুন।</p>
-      <button class="btn btn-danger" id="clearAllParts" style="margin-top:12px;">❌ সব পার্টস ডিলিট করুন</button>
+      <button class="btn btn-danger" id="clearAllParts" style="margin-top:12px;">❌ সব পার্টস ডিলিট করুন (Local)</button>
       <div class="ok-msg" id="clearOk">সব পার্টস সফলভাবে ডিলিট হয়েছে</div>
+      
+      <h3 style="margin-top:24px;">☁️ Firebase ডেটা পরিষ্কার করুন</h3>
+      <p style="color:var(--muted);font-size:14px;">Firebase থেকে সব সংরক্ষিত ডেটা (users, orders, history) delete করুন। নতুন data upload করার আগে এটি করুন।</p>
+      <button class="btn btn-danger" id="clearFirebase" style="margin-top:12px;">🔥 Firebase ডেটা সব ডিলিট করুন</button>
+      <div class="ok-msg" id="fbClearOk">Firebase থেকে সব ডেটা ডিলিট হয়েছে</div>
+      <div class="err" id="fbClearErr">Firebase ডেটা ডিলিট করতে সমস্যা হয়েছে</div>
       
       <h3 style="margin-top:20px;">🏢 কোম্পানির নাম ও লোগো</h3>
       <div class="field"><label>কোম্পানির নাম</label><input type="text" id="compName" value="${DB.settings.companyName}"></div>
@@ -1101,7 +1107,49 @@ function settingsTabHTML(){
   `;
 }
 function wireSettingsTab(){
-  // Clear all parts button
+  // Clear Firebase button
+  const fbClearBtn = document.getElementById('clearFirebase');
+  if(fbClearBtn){
+    fbClearBtn.onclick = async ()=>{
+      if(!confirm('Firebase থেকে ALL ডেটা (users, orders, history) delete হবে। এটি permanent! এগিয়ে যাবেন?')) return;
+      
+      try{
+        fbClearBtn.disabled = true;
+        fbClearBtn.textContent = '⏳ ডিলিট হচ্ছে...';
+        
+        // Clear Firebase data
+        const response = await fetch(FB_URL + '/appdata.json', {
+          method: 'PUT',
+          body: JSON.stringify(null)
+        });
+        
+        if(response.ok){
+          // Also clear local DB
+          DB.users = [];
+          DB.orders = [];
+          DB.history = [];
+          DB.session = {role: null, user: null};
+          saveDB();
+          
+          document.getElementById('fbClearOk').style.display = 'block';
+          document.getElementById('fbClearErr').style.display = 'none';
+          alert('✅ Firebase থেকে সব ডেটা ডিলিট হয়েছে। এখন নতুন Excel upload করুন।');
+          setTimeout(()=>{ go('adminDashboard'); }, 1500);
+        } else {
+          throw new Error('Firebase response not ok');
+        }
+      }catch(err){
+        console.error('Firebase clear error:', err);
+        document.getElementById('fbClearErr').style.display = 'block';
+        alert('❌ Firebase ডেটা ডিলিট করতে সমস্যা হয়েছে। ইন্টারনেট চেক করুন।');
+      }finally{
+        fbClearBtn.disabled = false;
+        fbClearBtn.textContent = '🔥 Firebase ডেটা সব ডিলিট করুন';
+      }
+    };
+  }
+  
+  // Clear local parts button
   const clearBtn = document.getElementById('clearAllParts');
   if(clearBtn){
     clearBtn.onclick = ()=>{
