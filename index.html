@@ -825,7 +825,7 @@ function partsTabHTML(){
     </div>
   `;
 }
-function partsTable(list, totalCount){
+function partsTable(list, totalCount, exactMatchId){
   if(list.length===0) return `<div class="empty">কোনো পার্টস পাওয়া যায়নি</div>`;
   const note = totalCount > list.length
     ? `<div class="hint" style="margin-bottom:8px;font-weight:600;font-size:15px;">মোট ${totalCount}টি মিলেছে — প্রথম ${list.length}টি দেখানো হচ্ছে, আরও নির্দিষ্ট করে সার্চ করুন</div>`
@@ -834,7 +834,7 @@ function partsTable(list, totalCount){
   return note + `<div style="overflow:auto;${isSearchResult ? 'background:rgba(31,138,76,0.1);border:2px solid rgba(31,138,76,0.3);border-radius:10px;padding:12px;' : ''}"><table class="parts-table">
     <thead><tr style="background:${isSearchResult ? 'rgba(31,138,76,0.3)' : 'var(--line)'};"><th style="text-align:center;font-size:16px;font-weight:700;">পার্ট নম্বর</th><th style="text-align:center;font-size:16px;font-weight:700;">পার্টস নাম</th><th style="font-size:16px;font-weight:700;">ক্যাটাগরি</th><th style="font-size:16px;font-weight:700;">মূল্য</th><th style="text-align:center;font-size:16px;font-weight:700;">সংশোধন</th><th style="text-align:center;font-size:16px;font-weight:700;">ডিলিট</th></tr></thead>
     <tbody>
-    ${list.map(p=>`<tr style="background:${isSearchResult ? 'rgba(31,138,76,0.15)' : 'transparent'};border-left:${isSearchResult ? '4px solid #1f8a4c' : 'none'};font-size:16px;font-weight:600;">
+    ${list.map(p=>`<tr style="background:${p.id === exactMatchId ? 'rgba(59,130,246,0.2)' : isSearchResult ? 'rgba(31,138,76,0.15)' : 'transparent'};border:${p.id === exactMatchId ? '3px solid #3b82f6' : isSearchResult ? '4px solid #1f8a4c' : 'none'};border-left:${isSearchResult && p.id !== exactMatchId ? '4px solid #1f8a4c' : 'none'};font-size:16px;font-weight:600;">
       <td class="mono" data-label="পার্ট নম্বর">${p.partNo}</td>
       <td data-label="পার্টস নাম">${p.name}</td>
       <td data-label="ক্যাটাগরি">${p.category||'-'}</td>
@@ -846,15 +846,22 @@ function partsTable(list, totalCount){
 }
 function wirePartsTab(){
   const PAGE = 100;
+  let exactMatchId = null;
   const renderTable = (q='')=>{
     let matched;
+    exactMatchId = null;
     if(q){
       const qd = digitsOnly(q), qt = q.toLowerCase();
       matched = DB.parts.filter(p=> p.nameLower.includes(qt) || (qd && (p.core.includes(qd) || qd.includes(p.core))));
+      // Find exact match (core exactly matches search digits)
+      if(qd){
+        const exactMatch = DB.parts.find(p=> p.core === qd);
+        if(exactMatch) exactMatchId = exactMatch.id;
+      }
     } else {
       matched = DB.parts;
     }
-    document.getElementById('partsTableWrap').innerHTML = partsTable(matched.slice(0, PAGE), matched.length);
+    document.getElementById('partsTableWrap').innerHTML = partsTable(matched.slice(0, PAGE), matched.length, exactMatchId);
   };
   renderTable();
   let searchTimer;
