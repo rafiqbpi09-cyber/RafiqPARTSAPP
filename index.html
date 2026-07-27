@@ -158,8 +158,7 @@ if('serviceWorker' in navigator){
   table{width:100%;border-collapse:collapse;font-size:13.5px;}
   th{text-align:left;font-size:12px;color:var(--muted);font-weight:600;padding:9px 10px;border-bottom:2px solid var(--line);white-space:nowrap;}
   td{padding:10px 10px;border-bottom:1px solid var(--line);vertical-align:middle;text-align:left;}
-  .parts-table th:nth-child(1), .parts-table td:nth-child(1){padding-right:6px;}
-  .parts-table th:nth-child(2), .parts-table td:nth-child(2){padding-left:28px;}
+  .parts-table td:nth-child(1), .parts-table td:nth-child(2){text-align:center;}
   .users-table th:nth-child(2), .users-table td:nth-child(2){padding-left:28px;}
   .users-table th{font-weight:700;font-size:16px;color:var(--text);border:1.5px solid var(--line);border-radius:8px;background:var(--paper);padding:10px 12px;white-space:nowrap;}
   th:first-child,td:first-child{text-align:right;}
@@ -805,17 +804,15 @@ function partsTable(list, totalCount){
     ? `<div class="hint" style="margin-bottom:8px">মোট ${totalCount}টি মিলেছে — প্রথম ${list.length}টি দেখানো হচ্ছে, আরও নির্দিষ্ট করে সার্চ করুন</div>`
     : '';
   return note + `<div style="overflow:auto"><table class="parts-table">
-    <thead><tr><th>পার্ট নম্বর</th><th>নাম</th><th>ক্যাটাগরি</th><th>মূল্য</th><th></th></tr></thead>
+    <thead><tr><th style="text-align:center">Part Number</th><th style="text-align:center">Parts Name</th><th>ক্যাটাগরি</th><th>মূল্য</th><th style="text-align:center">সংশোধন</th><th style="text-align:center">ডিলিট</th></tr></thead>
     <tbody>
     ${list.map(p=>`<tr>
       <td class="mono">${p.partNo}</td>
       <td>${p.name}</td>
       <td>${p.category||'-'}</td>
       <td>৳${p.price}</td>
-      <td><div class="row-actions">
-        <button class="btn btn-ghost btn-sm" onclick="editPart(${p.id})">✏️</button>
-        <button class="btn btn-danger btn-sm" onclick="deletePart(${p.id})">❌</button>
-      </div></td>
+      <td style="text-align:center"><button class="btn btn-ghost btn-sm" onclick="editPart(${p.id})">✏️</button></td>
+      <td style="text-align:center"><button class="btn btn-danger btn-sm" onclick="deletePart(${p.id})">❌</button></td>
     </tr>`).join('')}
     </tbody></table></div>`;
 }
