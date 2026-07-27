@@ -883,22 +883,28 @@ function handleExcelUpload(e){
       const rows = XLSX.utils.sheet_to_json(sheet, {defval:''});
       let added = 0; const newItems = [];
       rows.forEach(r=>{
-        const partNo = String(r.PartNo || r['পার্ট নম্বর'] || r.partno || r['Part No'] || '').trim();
-        const name = String(r.Name || r['নাম'] || r.name || '').trim();
+        const partNo = String(r['Part Number'] || r.PartNo || r['পার্ট নম্বর'] || r.partno || r['Part No'] || '').trim();
+        const name = String(r['Parts Name'] || r.Name || r['পার্টস নাম'] || r.name || '').trim();
         if(!partNo || !name) return;
-        const price = parseFloat(r.Price || r['মূল্য'] || r.price || 0) || 0;
+        const price = parseFloat(r.Price || r.price || r['মূল্য'] || 0) || 0;
         const category = String(r.Category || r['ক্যাটাগরি'] || r.category || '').trim();
         const item = {id: nextPartId++, partNo, name, category, price, core: coreOf(partNo), nameLower: name.toLowerCase()};
         DB.parts.push(item);
         newItems.push(item);
         added++;
       });
+      if(added === 0){
+        alert('কোনো পার্টস যোগ হয়নি। Excel ফাইলে "Part Number", "Parts Name", "Price" কলাম আছে কিনা চেক করুন।');
+        return;
+      }
       if(newItems.length) syncPush('bulkAddParts', {items:newItems});
       logHistory(`এক্সেল আপলোড: ${added}টি পার্টস যোগ হয়েছে`);
       saveDB();
+      alert(`✅ ${added}টি পার্টস সফলভাবে যোগ হয়েছে। Admin Dashboard এ যাচ্ছি...`);
       go('adminDashboard');
     }catch(err){
-      alert('ফাইল পড়া যায়নি। এক্সেল ফাইলে PartNo, Name, Price, Category কলাম আছে কিনা দেখুন।');
+      console.error('Excel upload error:', err);
+      alert('❌ ফাইল পড়া যায়নি। Excel ফাইল ঠিক কিনা চেক করুন। Console এ error দেখুন।');
     }
   };
   reader.readAsBinaryString(file);
