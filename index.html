@@ -1100,7 +1100,10 @@ function settingsTabHTML(){
       <button class="btn btn-danger" id="clearAllParts" style="margin-top:12px;">❌ সব পার্টস ডিলিট করুন (Local)</button>
       <div class="ok-msg" id="clearOk">সব পার্টস সফলভাবে ডিলিট হয়েছে</div>
       
-      <h3 style="margin-top:24px;">☁️ Firebase ডেটা পরিষ্কার করুন</h3>
+      <h3 style="color:#c2041d;margin-top:24px;">🔴 সম্পূর্ণ হার্ড রিসেট</h3>
+      <p style="color:var(--muted);font-size:14px;">এটি সব ডেটা সম্পূর্ণভাবে delete করে দেবে। Excel upload এর পর এটি ব্যবহার করুন যাতে পুরনো data আর না আসে।</p>
+      <button class="btn btn-danger" id="hardReset" style="margin-top:12px;background:#c2041d;border-color:#c2041d;">🔴 সম্পূর্ণ রিসেট (Hard Reset)</button>
+      <div class="ok-msg" id="resetOk">সম্পূর্ণ রিসেট সফল! Page reload হচ্ছে...</div>
       <p style="color:var(--muted);font-size:14px;">Firebase থেকে সব সংরক্ষিত ডেটা (users, orders, history) delete করুন। নতুন data upload করার আগে এটি করুন।</p>
       <button class="btn btn-danger" id="clearFirebase" style="margin-top:12px;">🔥 Firebase ডেটা সব ডিলিট করুন</button>
       <div class="ok-msg" id="fbClearOk">Firebase থেকে সব ডেটা ডিলিট হয়েছে</div>
@@ -1132,6 +1135,47 @@ function wireSettingsTab(){
         setTimeout(()=>{ location.reload(); }, 1000);
       }catch(err){
         alert('❌ localStorage clear করতে সমস্যা হয়েছে');
+      }
+    };
+  }
+  
+  // Hard reset button
+  const hardResetBtn = document.getElementById('hardReset');
+  if(hardResetBtn){
+    hardResetBtn.onclick = async ()=>{
+      if(!confirm('⚠️ ALL ডেটা সম্পূর্ণভাবে delete হবে - Parts, Users, Orders সব কিছু! এটি undo করা যাবে না। চালিয়ে যাবেন?')) return;
+      if(!confirm('সত্যিই সম্পূর্ণ রিসেট করবেন? এই action টি পরে undo করা যাবে না।')) return;
+      
+      try{
+        hardResetBtn.disabled = true;
+        hardResetBtn.textContent = '⏳ রিসেট হচ্ছে...';
+        
+        // Clear everything
+        DB.parts = [];
+        DB.users = [];
+        DB.orders = [];
+        DB.history = [];
+        DB.session = {role: null, user: null};
+        
+        // Clear localStorage
+        localStorage.clear();
+        
+        // Clear Firebase
+        try{
+          await fetch(FB_URL + '/appdata.json', {
+            method: 'PUT',
+            body: JSON.stringify(null)
+          });
+        }catch(e){}
+        
+        document.getElementById('resetOk').style.display = 'block';
+        alert('✅ সম্পূর্ণ রিসেট সফল! Page এখন reload হবে...');
+        setTimeout(()=>{ location.reload(); }, 1000);
+      }catch(err){
+        console.error('Hard reset error:', err);
+        alert('❌ রিসেট করতে সমস্যা হয়েছে');
+        hardResetBtn.disabled = false;
+        hardResetBtn.textContent = '🔴 সম্পূর্ণ রিসেট (Hard Reset)';
       }
     };
   }
