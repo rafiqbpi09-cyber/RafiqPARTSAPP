@@ -819,6 +819,7 @@ function partsTabHTML(){
       </div>
       <div class="toolbar">
         <input type="text" id="partSearch" placeholder="🔍 পার্ট নম্বর বা নাম দিয়ে সার্চ করুন...">
+        <button class="btn btn-primary btn-sm" id="searchPartBtn">🔍 সার্চ</button>
       </div>
       <div id="partsTableWrap"></div>
     </div>
@@ -861,6 +862,10 @@ function wirePartsTab(){
     clearTimeout(searchTimer);
     searchTimer = setTimeout(()=> renderTable(q), 180);
   });
+  document.getElementById('searchPartBtn').onclick = ()=>{
+    const q = document.getElementById('partSearch').value.trim();
+    renderTable(q);
+  };
   document.getElementById('addPart').onclick = ()=> openPartModal();
   document.getElementById('excelFile').addEventListener('change', handleExcelUpload);
 }
