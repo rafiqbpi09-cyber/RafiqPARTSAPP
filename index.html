@@ -1084,7 +1084,12 @@ function settingsTabHTML(){
       <button class="btn btn-navy" id="changePw">পাসওয়ার্ড পরিবর্তন করুন</button>
     </div>
     <div class="card">
-      <h3>🗑️ সব পার্টস ডেটা রিসেট করুন</h3>
+      <h3>💾 ব্রাউজার ক্যাশ পরিষ্কার করুন</h3>
+      <p style="color:var(--muted);font-size:14px;">ব্রাউজারের localStorage থেকে সব সংরক্ষিত ডেটা delete করুন। পুরনো data refresh এ আসছে তাহলে এটি ব্যবহার করুন।</p>
+      <button class="btn btn-danger" id="clearStorage" style="margin-top:12px;">🗑️ localStorage সব ডিলিট করুন</button>
+      <div class="ok-msg" id="storageClearOk">localStorage সফলভাবে ক্লিয়ার হয়েছে</div>
+      
+      <h3 style="margin-top:24px;">🗑️ সব পার্টস ডেটা রিসেট করুন</h3>
       <p style="color:var(--muted);font-size:14px;">এই বাটন চাপলে সব পুরনো পার্টস ডিলিট হবে এবং Firebase থেকে লেটেস্ট ডেটা লোড হবে। Excel upload করার পর এটি ব্যবহার করুন।</p>
       <button class="btn btn-danger" id="clearAllParts" style="margin-top:12px;">❌ সব পার্টস ডিলিট করুন (Local)</button>
       <div class="ok-msg" id="clearOk">সব পার্টস সফলভাবে ডিলিট হয়েছে</div>
@@ -1107,6 +1112,24 @@ function settingsTabHTML(){
   `;
 }
 function wireSettingsTab(){
+  // Clear localStorage button
+  const storageClearBtn = document.getElementById('clearStorage');
+  if(storageClearBtn){
+    storageClearBtn.onclick = ()=>{
+      if(!confirm('Browser এর localStorage সব delete হবে। তারপর page refresh হবে।')) return;
+      
+      try{
+        localStorage.removeItem('partsAppDB_v1');
+        localStorage.clear();
+        document.getElementById('storageClearOk').style.display = 'block';
+        alert('✅ localStorage সফলভাবে clear হয়েছে। এখন page refresh হবে...');
+        setTimeout(()=>{ location.reload(); }, 1000);
+      }catch(err){
+        alert('❌ localStorage clear করতে সমস্যা হয়েছে');
+      }
+    };
+  }
+  
   // Clear Firebase button
   const fbClearBtn = document.getElementById('clearFirebase');
   if(fbClearBtn){
