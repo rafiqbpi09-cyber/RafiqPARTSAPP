@@ -204,6 +204,32 @@ if('serviceWorker' in navigator){
     .wrap{padding:16px 12px 50px;}
     th,td{font-size:12.5px;padding:8px 6px;}
   }
+
+  /* ---------- Mobile: card-style tables (no left-right scroll) ---------- */
+  html, body{overflow-x:hidden;}
+  @media(max-width:768px){
+    .parts-table, .users-table, .history-table{border:none;}
+    .parts-table thead, .users-table thead, .history-table thead{display:none;}
+    .parts-table, .parts-table tbody, .parts-table tr, .parts-table td,
+    .users-table, .users-table tbody, .users-table tr, .users-table td,
+    .history-table, .history-table tbody, .history-table tr, .history-table td{
+      display:block; width:100%;
+    }
+    .parts-table tr, .users-table tr, .history-table tr{
+      margin-bottom:14px; border:1px solid var(--line); border-radius:12px;
+      padding:10px 12px; box-shadow:0 1px 4px -1px rgba(18,35,61,.08);
+    }
+    .parts-table td, .users-table td, .history-table td{
+      border:none; border-bottom:1px solid var(--paper);
+      padding:9px 2px; display:flex; justify-content:space-between; align-items:center;
+      text-align:right !important; gap:10px;
+    }
+    .parts-table td:last-child, .users-table td:last-child, .history-table td:last-child{border-bottom:none;}
+    .parts-table td::before, .users-table td::before, .history-table td::before{
+      content:attr(data-label); font-weight:600; color:var(--muted); font-size:12px;
+      text-align:left; white-space:nowrap;
+    }
+  }
 </style>
 </head>
 <body>
@@ -807,12 +833,12 @@ function partsTable(list, totalCount){
     <thead><tr><th style="text-align:center">Part Number</th><th style="text-align:center">Parts Name</th><th>ক্যাটাগরি</th><th>মূল্য</th><th style="text-align:center">সংশোধন</th><th style="text-align:center">ডিলিট</th></tr></thead>
     <tbody>
     ${list.map(p=>`<tr>
-      <td class="mono">${p.partNo}</td>
-      <td>${p.name}</td>
-      <td>${p.category||'-'}</td>
-      <td>৳${p.price}</td>
-      <td style="text-align:center"><button class="btn btn-ghost btn-sm" onclick="editPart(${p.id})">✏️</button></td>
-      <td style="text-align:center"><button class="btn btn-danger btn-sm" onclick="deletePart(${p.id})">❌</button></td>
+      <td class="mono" data-label="Part Number">${p.partNo}</td>
+      <td data-label="Parts Name">${p.name}</td>
+      <td data-label="ক্যাটাগরি">${p.category||'-'}</td>
+      <td data-label="মূল্য">৳${p.price}</td>
+      <td data-label="সংশোধন" style="text-align:center"><button class="btn btn-ghost btn-sm" onclick="editPart(${p.id})">✏️</button></td>
+      <td data-label="ডিলিট" style="text-align:center"><button class="btn btn-danger btn-sm" onclick="deletePart(${p.id})">❌</button></td>
     </tr>`).join('')}
     </tbody></table></div>`;
 }
@@ -950,13 +976,13 @@ function usersTable(){
       <thead><tr><th style="text-align:center">ডিলার বা মেকানিক নাম</th><th style="text-align:center">ডিলার বা মেকানিক মোবাইল নম্বর</th><th style="text-align:center">ধরন</th><th style="text-align:center">স্ট্যাটাস</th><th style="text-align:center">সংশোধন</th><th style="text-align:center">চালু/বন্ধ</th><th style="text-align:center">ডিলিট</th></tr></thead>
       <tbody>
       ${approved.map(u=>`<tr>
-        <td>${u.name}</td>
-        <td class="mono">${u.phone}</td>
-        <td>${u.role==='dealer'?'ডিলার':'মেকানিক'}</td>
-        <td><span class="badge ${u.active?'active':'inactive'}">${u.active?'সক্রিয়':'নিষ্ক্রিয়'}</span></td>
-        <td style="text-align:center"><button class="btn btn-ghost btn-sm" onclick="editUser(${u.id})">✏️</button></td>
-        <td style="text-align:center"><button class="btn ${u.active?'btn-danger':'btn-navy'} btn-sm" onclick="toggleUser(${u.id})">${u.active?'🔒 বন্ধ':'🔓 চালু'}</button></td>
-        <td style="text-align:center"><button class="btn btn-danger btn-sm" onclick="deleteUser(${u.id})">🗑️</button></td>
+        <td data-label="ডিলার বা মেকানিক নাম">${u.name}</td>
+        <td class="mono" data-label="মোবাইল নম্বর">${u.phone}</td>
+        <td data-label="ধরন">${u.role==='dealer'?'ডিলার':'মেকানিক'}</td>
+        <td data-label="স্ট্যাটাস"><span class="badge ${u.active?'active':'inactive'}">${u.active?'সক্রিয়':'নিষ্ক্রিয়'}</span></td>
+        <td data-label="সংশোধন" style="text-align:center"><button class="btn btn-ghost btn-sm" onclick="editUser(${u.id})">✏️</button></td>
+        <td data-label="চালু/বন্ধ" style="text-align:center"><button class="btn ${u.active?'btn-danger':'btn-navy'} btn-sm" onclick="toggleUser(${u.id})">${u.active?'🔒 বন্ধ':'🔓 চালু'}</button></td>
+        <td data-label="ডিলিট" style="text-align:center"><button class="btn btn-danger btn-sm" onclick="deleteUser(${u.id})">🗑️</button></td>
       </tr>`).join('')}
       </tbody></table></div>`;
   }
@@ -1042,9 +1068,9 @@ function historyTabHTML(){
     <div class="card">
       <h3>আপডেট হিস্টরি</h3>
       ${DB.history.length===0 ? '<div class="empty">কোনো হিস্টরি নেই</div>' : `
-      <div style="overflow:auto"><table>
+      <div style="overflow:auto"><table class="history-table">
         <thead><tr><th>তারিখ ও সময়</th><th>কে আপডেট করেছে</th><th>বিবরণ</th></tr></thead>
-        <tbody>${DB.history.map(h=>`<tr><td class="mono">${h.date}</td><td>${h.by}</td><td>${h.action}</td></tr>`).join('')}</tbody>
+        <tbody>${DB.history.map(h=>`<tr><td class="mono" data-label="তারিখ ও সময়">${h.date}</td><td data-label="কে আপডেট করেছে">${h.by}</td><td data-label="বিবরণ">${h.action}</td></tr>`).join('')}</tbody>
       </table></div>`}
     </div>
   `;
