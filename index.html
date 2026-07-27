@@ -828,14 +828,15 @@ function partsTabHTML(){
 function partsTable(list, totalCount){
   if(list.length===0) return `<div class="empty">কোনো পার্টস পাওয়া যায়নি</div>`;
   const note = totalCount > list.length
-    ? `<div class="hint" style="margin-bottom:8px">মোট ${totalCount}টি মিলেছে — প্রথম ${list.length}টি দেখানো হচ্ছে, আরও নির্দিষ্ট করে সার্চ করুন</div>`
+    ? `<div class="hint" style="margin-bottom:8px;font-weight:600;font-size:15px;">মোট ${totalCount}টি মিলেছে — প্রথম ${list.length}টি দেখানো হচ্ছে, আরও নির্দিষ্ট করে সার্চ করুন</div>`
     : '';
-  return note + `<div style="overflow:auto"><table class="parts-table">
-    <thead><tr><th style="text-align:center">Part Number</th><th style="text-align:center">Parts Name</th><th>ক্যাটাগরি</th><th>মূল্য</th><th style="text-align:center">সংশোধন</th><th style="text-align:center">ডিলিট</th></tr></thead>
+  const isSearchResult = list.length < DB.parts.length;
+  return note + `<div style="overflow:auto;${isSearchResult ? 'background:rgba(31,138,76,0.1);border:2px solid rgba(31,138,76,0.3);border-radius:10px;padding:12px;' : ''}"><table class="parts-table">
+    <thead><tr style="background:${isSearchResult ? 'rgba(31,138,76,0.3)' : 'var(--line)'};"><th style="text-align:center;font-size:16px;font-weight:700;">পার্ট নম্বর</th><th style="text-align:center;font-size:16px;font-weight:700;">পার্টস নাম</th><th style="font-size:16px;font-weight:700;">ক্যাটাগরি</th><th style="font-size:16px;font-weight:700;">মূল্য</th><th style="text-align:center;font-size:16px;font-weight:700;">সংশোধন</th><th style="text-align:center;font-size:16px;font-weight:700;">ডিলিট</th></tr></thead>
     <tbody>
-    ${list.map(p=>`<tr style="background:${list.length < DB.parts.length ? 'rgba(31,138,76,0.2)' : 'transparent'};border-left:4px solid ${list.length < DB.parts.length ? '#1f8a4c' : 'transparent'};">
-      <td class="mono" data-label="Part Number">${p.partNo}</td>
-      <td data-label="Parts Name">${p.name}</td>
+    ${list.map(p=>`<tr style="background:${isSearchResult ? 'rgba(31,138,76,0.15)' : 'transparent'};border-left:${isSearchResult ? '4px solid #1f8a4c' : 'none'};font-size:16px;font-weight:600;">
+      <td class="mono" data-label="পার্ট নম্বর">${p.partNo}</td>
+      <td data-label="পার্টস নাম">${p.name}</td>
       <td data-label="ক্যাটাগরি">${p.category||'-'}</td>
       <td data-label="মূল্য">৳${p.price}</td>
       <td data-label="সংশোধন" style="text-align:center"><button class="btn btn-ghost btn-sm" onclick="editPart(${p.id})">✏️</button></td>
