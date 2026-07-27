@@ -833,7 +833,7 @@ function partsTable(list, totalCount){
   return note + `<div style="overflow:auto"><table class="parts-table">
     <thead><tr><th style="text-align:center">Part Number</th><th style="text-align:center">Parts Name</th><th>ক্যাটাগরি</th><th>মূল্য</th><th style="text-align:center">সংশোধন</th><th style="text-align:center">ডিলিট</th></tr></thead>
     <tbody>
-    ${list.map(p=>`<tr>
+    ${list.map(p=>`<tr style="background:${list.length < DB.parts.length ? 'rgba(226,134,31,0.2)' : 'transparent'};border-left:4px solid ${list.length < DB.parts.length ? 'var(--amber)' : 'transparent'};">
       <td class="mono" data-label="Part Number">${p.partNo}</td>
       <td data-label="Parts Name">${p.name}</td>
       <td data-label="ক্যাটাগরি">${p.category||'-'}</td>
