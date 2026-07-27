@@ -158,6 +158,8 @@ if('serviceWorker' in navigator){
   table{width:100%;border-collapse:collapse;font-size:13.5px;}
   th{text-align:left;font-size:12px;color:var(--muted);font-weight:600;padding:9px 10px;border-bottom:2px solid var(--line);white-space:nowrap;}
   td{padding:10px 10px;border-bottom:1px solid var(--line);vertical-align:middle;text-align:left;}
+  .parts-table th:nth-child(1), .parts-table td:nth-child(1){padding-right:6px;}
+  .parts-table th:nth-child(2), .parts-table td:nth-child(2){padding-left:28px;}
   th:first-child,td:first-child{text-align:right;}
   tr:hover td{background:#f9fafc;}
   .row-actions{display:flex;gap:6px;justify-content:flex-end;}
@@ -800,7 +802,7 @@ function partsTable(list, totalCount){
   const note = totalCount > list.length
     ? `<div class="hint" style="margin-bottom:8px">মোট ${totalCount}টি মিলেছে — প্রথম ${list.length}টি দেখানো হচ্ছে, আরও নির্দিষ্ট করে সার্চ করুন</div>`
     : '';
-  return note + `<div style="overflow:auto"><table>
+  return note + `<div style="overflow:auto"><table class="parts-table">
     <thead><tr><th>পার্ট নম্বর</th><th>নাম</th><th>ক্যাটাগরি</th><th>মূল্য</th><th></th></tr></thead>
     <tbody>
     ${list.map(p=>`<tr>
