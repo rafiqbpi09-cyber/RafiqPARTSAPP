@@ -232,7 +232,6 @@ async function saveDB(){
   try{
     const payload = {
       users: DB.users,
-      orders: DB.orders || [],
       history: DB.history.slice(0,50),
       settings: { companyName: DB.settings.companyName, adminPassword: DB.settings.adminPassword, logo: DB.settings.logo }
     };
@@ -256,7 +255,6 @@ async function loadDB(){
     const saved = await res.json();
     if(saved && saved.users){
       if(Array.isArray(saved.users)) DB.users = saved.users;
-      if(Array.isArray(saved.orders)) DB.orders = saved.orders;
       if(Array.isArray(saved.history)) DB.history = saved.history;
       if(saved.settings){
         if(saved.settings.companyName) DB.settings.companyName = saved.settings.companyName;
@@ -400,50 +398,8 @@ function go(route){
 
 function el(html){ const t=document.createElement('template'); t.innerHTML=html.trim(); return t.content; }
 
-// Order notification sound
-function playOrderNotification(){
-  const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  const osc = audioCtx.createOscillator();
-  const gain = audioCtx.createGain();
-  osc.connect(gain);
-  gain.connect(audioCtx.destination);
-  osc.frequency.value = 800;
-  gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
-  gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
-  osc.start(audioCtx.currentTime);
-  osc.stop(audioCtx.currentTime + 0.3);
-}
-
-// Add order function
-function addOrder(partNo, partName, model, qty){
-  const order = {
-    id: Date.now(),
-    partNo, partName, model, qty,
-    dealerName: DB.session.user.name,
-    dealerPhone: DB.session.user.phone,
-    date: new Date().toLocaleString('bn-BD'),
-    status: 'pending'
-  };
-  if(!DB.orders) DB.orders = [];
-  DB.orders.push(order);
-  saveDB();
-  
-  // Admin notification
-  showAdminNotification(`নতুন অর্ডার এসেছে!\n${DB.session.user.name}\nপার্টস: ${partName}\nQty: ${qty}`);
-  playOrderNotification();
-  
-  // Dealer success message
-  alert('অর্ডার সফলভাবে পাঠানো হয়েছে! অ্যাডমিন শীঘ্রই নিশ্চিতকরণ দেবেন।');
-}
-
-function showAdminNotification(msg){
-  const notif = document.createElement('div');
-  notif.innerHTML = msg;
-  notif.style.cssText = 'position:fixed;top:20px;right:20px;background:#ff4444;color:#fff;padding:16px 20px;border-radius:10px;font-weight:600;z-index:9999;box-shadow:0 4px 12px rgba(255,68,68,0.3);animation:slideIn 0.3s ease-out;font-size:14px;line-height:1.5;';
-  document.body.appendChild(notif);
-  setTimeout(()=>notif.remove(), 5000);
-}
-
+/* ================= ROUTES ================= */
+const ROUTES = {};
 
 /* ---- Landing ---- */
 ROUTES.landing = function(){
@@ -622,9 +578,7 @@ ROUTES.dealerSearch = function(){
           <p>শুধু মূল সংখ্যাটি লিখুন — কোড বা সাফিক্স (m01, m91 ইত্যাদি) লেখার দরকার নেই</p>
           <div class="big-search">
             <input type="text" id="q" placeholder="যেমনঃ 97200754 বা ইঞ্জিন" inputmode="text">
-            
-<button class="btn btn-navy" onclick="go('dealerOrders')" style="flex:1">📦 আমার অর্ডার</button>
-          <button class="btn btn-primary" id="go" style="flex:1">সার্চ</button>
+            <button class="btn btn-primary" id="go">সার্চ</button>
           </div>
         </div>
         <div id="results"></div>
@@ -686,7 +640,7 @@ function partCardHTML(p, isExact){
 /* ============================================================= */
 /* ======================= ADMIN PANEL ========================== */
 /* ============================================================= */
-let adminTab = null; setTimeout(displayPendingOrders, 500);
+let adminTab = null;
 
 function adminShell(innerHTML){
   const app = document.getElementById('app');
@@ -1088,14 +1042,7 @@ function historyTabHTML(){
   return `
     <div class="card">
       <h3>আপডেট হিস্টরি</h3>
-      ${DB.history.length===0 ? '<div class="empty">কোনো হিস্টরি নেই</div>
-        
-<div style="background:rgba(255,255,255,0.08);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.2);padding:20px;border-radius:14px;color:#fff;margin-top:20px;">
-          <h3 style="margin:0 0 16px 0;font-size:18px;color:#fff;">📦 নতুন অর্ডারগুলো</h3>
-          <div id="pendingOrders" style="max-height:300px;overflow-y:auto;">
-            <div style="text-align:center;color:rgba(255,255,255,0.6)">চেক করছে...</div>
-          </div>
-        </div>' : `
+      ${DB.history.length===0 ? '<div class="empty">কোনো হিস্টরি নেই</div>' : `
       <div style="overflow:auto"><table>
         <thead><tr><th>তারিখ ও সময়</th><th>কে আপডেট করেছে</th><th>বিবরণ</th></tr></thead>
         <tbody>${DB.history.map(h=>`<tr><td class="mono">${h.date}</td><td>${h.by}</td><td>${h.action}</td></tr>`).join('')}</tbody>
