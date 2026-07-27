@@ -160,6 +160,7 @@ if('serviceWorker' in navigator){
   td{padding:10px 10px;border-bottom:1px solid var(--line);vertical-align:middle;text-align:left;}
   .parts-table th:nth-child(1), .parts-table td:nth-child(1){padding-right:6px;}
   .parts-table th:nth-child(2), .parts-table td:nth-child(2){padding-left:28px;}
+  .users-table th:nth-child(2), .users-table td:nth-child(2){padding-left:28px;}
   th:first-child,td:first-child{text-align:right;}
   tr:hover td{background:#f9fafc;}
   .row-actions{display:flex;gap:6px;justify-content:flex-end;}
@@ -947,8 +948,8 @@ function usersTable(){
     </div>`;
   }
   if(approved.length){
-    html += `<div style="overflow:auto"><table>
-      <thead><tr><th>নাম</th><th>মোবাইল</th><th>ধরন</th><th>স্ট্যাটাস</th><th></th></tr></thead>
+    html += `<div style="overflow:auto"><table class="users-table">
+      <thead><tr><th>ডিলার বা মেকানিক নাম</th><th>ডিলার বা মেকানিক মোবাইল নম্বর</th><th>ধরন</th><th>স্ট্যাটাস</th><th></th></tr></thead>
       <tbody>
       ${approved.map(u=>`<tr>
         <td>${u.name}</td>
