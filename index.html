@@ -395,10 +395,17 @@ function coreOf(partNo){
 function digitsOnly(s){ return (s||'').replace(/\D/g,''); }
 // pre-compute and cache core/nameLower once per part so repeated searches over
 // thousands of parts don't re-run regex work on every keystroke
+function deriveCategory(partNo){
+  const segs = String(partNo||'').split('.');
+  return segs.length >= 2 ? segs[1] : '';
+}
 function ensureCores(){
+  let categoryFixed = false;
   DB.parts.forEach(p=>{
     if(p.core === undefined){ p.core = coreOf(p.partNo); p.nameLower = p.name.toLowerCase(); }
+    if(!p.category){ const cat = deriveCategory(p.partNo); if(cat){ p.category = cat; categoryFixed = true; } }
   });
+  if(categoryFixed) saveDB();
 }
 
 function render(){ document.getElementById('app').innerHTML = ''; ROUTES[currentRoute](); }
