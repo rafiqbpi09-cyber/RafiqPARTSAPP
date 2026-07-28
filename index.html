@@ -262,9 +262,7 @@ async function saveDB(){
     const payload = {
       users: DB.users,
       history: DB.history.slice(0,50),
-      settings: { companyName: DB.settings.companyName, adminPassword: DB.settings.adminPassword, logo: DB.settings.logo },
-      parts: DB.parts,
-      nextPartId: nextPartId
+      settings: { companyName: DB.settings.companyName, adminPassword: DB.settings.adminPassword, logo: DB.settings.logo }
     };
     // Firebase এ সেভ
     await fetch(`${FB_URL}/appdata.json`, {
@@ -277,7 +275,7 @@ async function saveDB(){
   }catch(e){
     console.error('Firebase save failed:', e);
     // Firebase না হলে localStorage এ সেভ
-    try{ localStorage.setItem(LS_KEY, JSON.stringify({users:DB.users,history:DB.history.slice(0,50),settings:DB.settings,parts:DB.parts,nextPartId})); }catch(e2){}
+    try{ localStorage.setItem(LS_KEY, JSON.stringify({users:DB.users,history:DB.history.slice(0,50),settings:DB.settings})); }catch(e2){}
   }
 }
 async function loadDB(){
@@ -292,8 +290,6 @@ async function loadDB(){
         if(saved.settings.adminPassword) DB.settings.adminPassword = saved.settings.adminPassword;
         if(saved.settings.logo) DB.settings.logo = saved.settings.logo;
       }
-      if(Array.isArray(saved.parts) && saved.parts.length) DB.parts = saved.parts;
-      if(saved.nextPartId) nextPartId = saved.nextPartId;
       if(DB.users.length) nextUserId = Math.max(...DB.users.map(u=>Number(u.id)||0))+1;
       return;
     }
@@ -310,8 +306,6 @@ async function loadDB(){
       if(saved.settings.adminPassword) DB.settings.adminPassword = saved.settings.adminPassword;
       if(saved.settings.logo) DB.settings.logo = saved.settings.logo;
     }
-    if(Array.isArray(saved.parts) && saved.parts.length) DB.parts = saved.parts;
-    if(saved.nextPartId) nextPartId = saved.nextPartId;
     if(DB.users.length) nextUserId = Math.max(...DB.users.map(u=>Number(u.id)||0))+1;
   }catch(e){ console.error('localStorage load failed:', e); }
 }
@@ -825,32 +819,59 @@ function partsTabHTML(){
       </div>
       <div class="toolbar">
         <input type="text" id="partSearch" placeholder="🔍 পার্ট নম্বর বা নাম দিয়ে সার্চ করুন...">
+        <button id="searchPartBtn" class="btn btn-primary" style="margin-left:8px;">🔍 সার্চ করুন</button>
       </div>
       <div id="partsTableWrap"></div>
     </div>
   `;
 }
-function partsTable(list, totalCount){
+function partsTable(list, totalCount, searchQuery=''){
   if(list.length===0) return `<div class="empty">কোনো পার্টস পাওয়া যায়নি</div>`;
   const note = totalCount > list.length
-    ? `<div class="hint" style="margin-bottom:8px">মোট ${totalCount}টি মিলেছে — প্রথম ${list.length}টি দেখানো হচ্ছে, আরও নির্দিষ্ট করে সার্চ করুন</div>`
+    ? `<div class="hint" style="margin-bottom:12px;font-size:14px;color:#666;">মোট ${totalCount}টি মিলেছে — প্রথম ${list.length}টি দেখানো হচ্ছে</div>`
     : '';
-  return note + `<div style="overflow:auto"><table class="parts-table">
-    <thead><tr><th style="text-align:center">Part Number</th><th style="text-align:center">Parts Name</th><th>ক্যাটাগরি</th><th>মূল্য</th><th style="text-align:center">সংশোধন</th><th style="text-align:center">ডিলিট</th></tr></thead>
-    <tbody>
-    ${list.map(p=>`<tr>
-      <td class="mono" data-label="Part Number">${p.partNo}</td>
-      <td data-label="Parts Name">${p.name}</td>
-      <td data-label="ক্যাটাগরি">${p.category||'-'}</td>
-      <td data-label="মূল্য">৳${p.price}</td>
-      <td data-label="সংশোধন" style="text-align:center"><button class="btn btn-ghost btn-sm" onclick="editPart(${p.id})">✏️</button></td>
-      <td data-label="ডিলিট" style="text-align:center"><button class="btn btn-danger btn-sm" onclick="deletePart(${p.id})">❌</button></td>
-    </tr>`).join('')}
-    </tbody></table></div>`;
+  
+  const isSearching = searchQuery && searchQuery.trim().length > 0;
+  
+  return note + `<div style="overflow:auto;background:#f8f9fa;border-radius:8px;padding:12px;">
+    <table class="parts-table" style="width:100%;border-collapse:separate;border-spacing:0 8px;">
+      <thead>
+        <tr style="background:#1f8a4c;color:white;font-weight:700;font-size:16px;border-radius:6px;box-shadow:0 2px 4px rgba(0,0,0,0.1);">
+          <th style="text-align:center;padding:14px 10px;border-radius:6px 0 0 6px;">পার্ট নম্বর</th>
+          <th style="text-align:center;padding:14px 10px;">পার্টস নাম</th>
+          <th style="padding:14px 10px;">ক্যাটাগরি</th>
+          <th style="padding:14px 10px;">মূল্য</th>
+          <th style="text-align:center;padding:14px 10px;">সংশোধন</th>
+          <th style="text-align:center;padding:14px 10px;border-radius:0 6px 6px 0;">ডিলিট</th>
+        </tr>
+      </thead>
+      <tbody>
+      ${list.map(p=>{
+        const isSearchMatch = isSearching && (
+          p.partNo.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          p.name.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+        const bgColor = isSearchMatch ? '#d4edda' : 'white';
+        const borderColor = isSearchMatch ? '#1f8a4c' : '#ddd';
+        
+        return `<tr style="background:${bgColor};border:2px solid ${borderColor};border-radius:6px;box-shadow:0 1px 3px rgba(0,0,0,0.05);transition:all 0.2s ease;">
+          <td class="mono" data-label="পার্ট নম্বর" style="padding:12px;font-weight:600;${isSearchMatch?'color:#1f8a4c;':''}">${p.partNo}</td>
+          <td data-label="পার্টস নাম" style="padding:12px;${isSearchMatch?'color:#1f8a4c;font-weight:600;':''}">${p.name}</td>
+          <td data-label="ক্যাটাগরি" style="padding:12px;">${p.category||'-'}</td>
+          <td data-label="মূল্য" style="padding:12px;font-weight:600;">৳${p.price}</td>
+          <td data-label="সংশোধন" style="text-align:center;padding:12px;"><button class="btn btn-ghost btn-sm" onclick="editPart(${p.id})">✏️</button></td>
+          <td data-label="ডিলিট" style="text-align:center;padding:12px;"><button class="btn btn-danger btn-sm" onclick="deletePart(${p.id})">❌</button></td>
+        </tr>`
+      }).join('')}
+      </tbody>
+    </table>
+  </div>`;
 }
 function wirePartsTab(){
   const PAGE = 100;
+  let currentQuery = '';
   const renderTable = (q='')=>{
+    currentQuery = q;
     let matched;
     if(q){
       const qd = digitsOnly(q), qt = q.toLowerCase();
@@ -858,7 +879,7 @@ function wirePartsTab(){
     } else {
       matched = DB.parts;
     }
-    document.getElementById('partsTableWrap').innerHTML = partsTable(matched.slice(0, PAGE), matched.length);
+    document.getElementById('partsTableWrap').innerHTML = partsTable(matched.slice(0, PAGE), matched.length, q);
   };
   renderTable();
   let searchTimer;
@@ -867,6 +888,10 @@ function wirePartsTab(){
     clearTimeout(searchTimer);
     searchTimer = setTimeout(()=> renderTable(q), 180);
   });
+  document.getElementById('searchPartBtn').onclick = ()=>{
+    const q = document.getElementById('partSearch').value.trim();
+    renderTable(q);
+  };
   document.getElementById('addPart').onclick = ()=> openPartModal();
   document.getElementById('excelFile').addEventListener('change', handleExcelUpload);
 }
@@ -920,78 +945,54 @@ function handleExcelUpload(e){
   reader.onload = (evt)=>{
     try{
       const wb = XLSX.read(evt.target.result, {type:'binary'});
-
-      const normKey = s => String(s).toLowerCase().replace(/[^a-z0-9\u0980-\u09FF]/g,'');
-      const partNoAliases = ['partnumber','partno','partnum','partcode','part','পার্টনম্বর','পার্ট'];
-      const nameAliases = ['partsname','name','partname','description','desc','নাম','পার্টসনাম'];
-      const priceAliases = ['price','rate','mrp','unitprice','মূল্য','দাম','newsalesprice','currentprice','newprice','value'];
-      const categoryAliases = ['category','cat','group','ক্যাটাগরি'];
-      const findKey = (keys, aliases) => keys.find(k => aliases.includes(normKey(k)));
-
-      // Score every sheet: does it have recognizable Part-No/Name/Price columns, and how many rows?
-      let bestSheetName = wb.SheetNames[0], bestRows = [], bestScore = -1;
-      wb.SheetNames.forEach(sn=>{
-        const rws = XLSX.utils.sheet_to_json(wb.Sheets[sn], {defval:''});
-        if(!rws.length) return;
-        const keys = Object.keys(rws[0]);
-        const hasPartNo = !!findKey(keys, partNoAliases);
-        const hasName = !!findKey(keys, nameAliases);
-        const hasPrice = !!findKey(keys, priceAliases);
-        const score = (hasPartNo?1:0) + (hasName?1:0) + (hasPrice?1:0);
-        // Prefer sheets that match all 3 headers; among those, prefer the most rows.
-        if(score > bestScore || (score === bestScore && rws.length > bestRows.length)){
-          bestScore = score; bestSheetName = sn; bestRows = rws;
+      const sheet = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(sheet, {defval:''});
+      
+      console.log('=== EXCEL UPLOAD DEBUG ===');
+      console.log('File name:', file.name);
+      console.log('Total rows parsed:', rows.length);
+      console.log('Headers:', Object.keys(rows[0] || {}));
+      console.log('First 3 rows:');
+      for(let i = 0; i < Math.min(3, rows.length); i++){
+        console.log(`  Row ${i}:`, rows[i]);
+      }
+      
+      let added = 0; 
+      const newItems = [];
+      
+      rows.forEach((r, idx)=>{
+        const partNo = String(r['Part Number'] || r.PartNo || r['পার্ট নম্বর'] || r.partno || r['Part No'] || '').trim();
+        const name = String(r['Parts Name'] || r.Name || r['নাম'] || r.name || '').trim();
+        
+        if(!partNo || !name){
+          if(idx < 5) console.log(`Row ${idx} skipped - partNo: "${partNo}", name: "${name}"`);
+          return;
         }
+        
+        const price = parseFloat(r.Price || r['মূল্য'] || r.price || 0) || 0;
+        const category = String(r.Category || r['ক্যাটাগরি'] || r.category || '').trim();
+        const item = {id: nextPartId++, partNo, name, category, price, core: coreOf(partNo), nameLower: name.toLowerCase()};
+        DB.parts.push(item);
+        newItems.push(item);
+        added++;
       });
-      const rows = bestRows;
-      const existingByPartNo = {};
-      DB.parts.forEach(p=>{ existingByPartNo[p.partNo.trim().toUpperCase()] = p; });
-
-      // Build a normalized (lowercase, no spaces/underscores) lookup of each row's keys,
-      // so headers like "Part No.", "part_no", "PARTNO" etc. all match.
-      const columnKeys = rows.length ? Object.keys(rows[0]) : [];
-      const partNoKey = findKey(columnKeys, partNoAliases);
-      const nameKey = findKey(columnKeys, nameAliases);
-      const priceKey = findKey(columnKeys, priceAliases);
-      const categoryKey = findKey(columnKeys, categoryAliases);
-      // Positional fallback: if headers didn't match by name, assume column order
-      // Part Number, Parts Name, Category, Price (or Part Number, Parts Name, Price).
-      const posPartNo = partNoKey || columnKeys[0];
-      const posName = nameKey || columnKeys[1];
-      const posCategory = categoryKey || columnKeys[2];
-      const posPrice = priceKey || columnKeys[3] || columnKeys[2];
-
-      let added = 0, updated = 0; const newItems = [];
-      rows.forEach(r=>{
-        const partNo = String(r[posPartNo] ?? '').trim();
-        const name = String(r[posName] ?? '').trim();
-        if(!partNo || !name) return;
-        const price = parseFloat(r[posPrice]) || 0;
-        const category = String(r[posCategory] ?? '').trim();
-        const key = partNo.toUpperCase();
-        const existing = existingByPartNo[key];
-        if(existing){
-          existing.name = name;
-          existing.price = price;
-          existing.category = category;
-          existing.nameLower = name.toLowerCase();
-          syncPush('editPart', {id:existing.id, partNo, name, category, price});
-          updated++;
-        } else {
-          const item = {id: nextPartId++, partNo, name, category, price, core: coreOf(partNo), nameLower: name.toLowerCase()};
-          DB.parts.push(item);
-          existingByPartNo[key] = item;
-          newItems.push(item);
-          added++;
-        }
-      });
+      
+      console.log(`✓ Successfully added ${added} parts`);
+      console.log('Total parts in DB now:', DB.parts.length);
+      
+      if(added === 0){
+        alert('❌ কোনো পার্টস যোগ হয়নি। Excel file check করুন। Console এ বিস্তারিত দেখুন (F12)।');
+        return;
+      }
+      
       if(newItems.length) syncPush('bulkAddParts', {items:newItems});
-      logHistory(`এক্সেল আপলোড: ${added}টি নতুন, ${updated}টি প্রাইস আপডেট`);
+      logHistory(`এক্সেল আপলোড: ${added}টি পার্টস যোগ হয়েছে`);
       saveDB();
-      alert(`✅ আপলোড সম্পন্ন!\n\nনতুন পার্টস: ${added}টি\nপ্রাইস আপডেট হয়েছে: ${updated}টি\nটোটাল পার্টস: ${DB.parts.length}টি`);
+      alert(`✅ সফলভাবে ${added}টি পার্টস যোগ হয়েছে!\n\nটোটাল পার্টস: ${DB.parts.length}টি`);
       go('adminDashboard');
     }catch(err){
-      alert('ফাইল পড়া যায়নি। এক্সেল ফাইলে PartNo, Name, Price, Category কলাম আছে কিনা দেখুন।');
+      console.error('Excel upload error:', err);
+      alert('❌ ফাইল পড়া যায়নি: ' + err.message);
     }
   };
   reader.readAsBinaryString(file);
