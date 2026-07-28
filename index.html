@@ -1138,6 +1138,26 @@ function historyTabHTML(){
 /* ---- Settings tab ---- */
 function settingsTabHTML(){
   return `
+    <div class="card" style="background:#ff6b6b;border:3px solid red;padding:20px;margin-bottom:20px;">
+      <h2 style="color:white;margin:0 0 12px 0;font-size:24px;">🔴 ONE CLICK - সব Delete</h2>
+      <p style="font-size:16px;color:white;font-weight:600;margin:0 0 16px 0;">এই বাটন চাপলে সব পুরনো data instantly delete হবে!</p>
+      <button id="oneClickClear" class="btn" style="padding:18px 28px;font-size:20px;font-weight:700;background:#fff;color:red;border:none;cursor:pointer;">
+        🗑️ এখনই সব Delete করুন
+      </button>
+      <div id="clearMsg" style="margin-top:16px;font-size:16px;color:white;font-weight:600;display:none;">
+        ✅ সব delete হয়েছে! Page reload হচ্ছে...
+      </div>
+    </div>
+    <div class="card" style="background:#fffacd;border:2px solid orange;margin-bottom:20px;">
+      <h3 style="color:orange;margin-top:0;">📝 তারপর যা করবেন:</h3>
+      <div style="font-size:15px;color:#333;line-height:1.8;">
+        ✅ <strong>Page automatically reload হবে</strong> (খালি থাকবে)<br>
+        ✅ Admin Login করুন (password: admin123)<br>
+        ✅ পার্টস ম্যানেজমেন্ত → 📥 এক্সেল আপলোড<br>
+        ✅ নতুন Excel file select করুন<br>
+        ✅ সফল! 14,383 parts add হবে ✅
+      </div>
+    </div>
     <div class="card" style="background:#ffebee;border:2px solid #c2041d;">
       <h3 style="color:#c2041d;">🔴 Complete Clear (সব ডেটা Delete)</h3>
       <p class="hint">Browser cache, localStorage, sessionStorage - সবকিছু delete করবে। পরে নতুন upload করুন।</p>
@@ -1215,6 +1235,34 @@ function settingsTabHTML(){
   `;
 }
 function wireSettingsTab(){
+  // ONE CLICK CLEAR - Super Simple
+  const oneClickBtn = document.getElementById('oneClickClear');
+  if(oneClickBtn){
+    oneClickBtn.onclick = ()=>{
+      if(!confirm('সব data delete হবে - OK?')) return;
+      
+      try{
+        // Clear everything
+        DB.parts = [];
+        DB.users = [];
+        DB.orders = [];
+        DB.history = [];
+        DB.session = {role: null, user: null};
+        
+        localStorage.clear();
+        sessionStorage.clear();
+        
+        document.getElementById('clearMsg').style.display = 'block';
+        
+        setTimeout(()=>{
+          location.reload();
+        }, 1500);
+      }catch(err){
+        alert('Error: ' + err.message);
+      }
+    };
+  }
+  
   // Complete clear button
   const cleanBtn = document.getElementById('completeClean');
   if(cleanBtn){
