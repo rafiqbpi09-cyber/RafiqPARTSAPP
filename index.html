@@ -910,14 +910,24 @@ function handleExcelUpload(e){
         return;
       }
       
-      let added = 0; const newItems = [];
+      let added = 0; 
+      let oldCount = 0; // For replace mode tracking
+      const newItems = [];
+      
+      // If replace mode, clear old parts first
+      if(REPLACE_MODE){
+        oldCount = DB.parts.length;
+        DB.parts = []; // Clear all old parts
+        REPLACE_MODE = false; // Reset flag
+      }
+      
       rows.forEach((r, idx)=>{
         const partNo = String(r[partCodeCol] || '').trim();
         const name = String(r[codeCol] || '').trim();
-        const price = parseFloat(r[priceCol] || 0) || 0;
+        const price = parseFloat(r[priceCol] || 0) || 0; // Allow 0 price
         
-        if(!partNo || !name || price <= 0){
-          console.log(`Row ${idx} skipped: partNo="${partNo}", name="${name}", price=${price}`);
+        if(!partNo || !name){
+          if(idx <= 5) console.log(`Row ${idx} skipped: partNo="${partNo}", name="${name}"`);
           return;
         }
         
@@ -933,12 +943,18 @@ function handleExcelUpload(e){
         return;
       }
       
-      console.log(`✓ Added ${added} parts`);
+      console.log(`✓ Added ${added} parts. Old: ${oldCount}, New: ${DB.parts.length}`);
+      
+      if(oldCount > 0){
+        alert(`✅ ${oldCount}টি পুরনো পার্টস delete হয়েছে এবং ${added}টি নতুন পার্টস যোগ হয়েছে। Total: ${DB.parts.length}টি পার্টস।`);
+      } else {
+        alert(`✅ ${added}টি পার্টস যোগ হয়েছে। Total: ${DB.parts.length}টি পার্টস।`);
+      }
+      
       if(newItems.length) syncPush('bulkAddParts', {items:newItems});
-      logHistory(`এক্সেল আপলোড: ${added}টি পার্টস যোগ হয়েছে (${fileName})`);
+      logHistory(`এক্সেল আপলোড: ${added}টি পার্টস ${oldCount > 0 ? 'replace' : 'যোগ'} হয়েছে (${fileName})`);
       saveDB();
-      alert(`✅ ${added}টি পার্টস সফলভাবে যোগ হয়েছে। Dashboard এ যাচ্ছি...`);
-      go('adminDashboard');
+      setTimeout(()=> go('adminDashboard'), 1000);
     }catch(err){
       console.error('Excel upload error:', err);
       alert('❌ ফাইল পড়া যায়নি।\n\nError: ' + err.message);
@@ -1137,7 +1153,10 @@ function settingsTabHTML(){
       <button class="btn btn-danger" id="clearStorage" style="margin-top:12px;">🗑️ localStorage সব ডিলিট করুন</button>
       <div class="ok-msg" id="storageClearOk">localStorage সফলভাবে ক্লিয়ার হয়েছে</div>
       
-      <h3 style="margin-top:24px;">🗑️ সব পার্টস ডেটা রিসেট করুন</h3>
+      <h3 style="margin-top:24px;">🔄 সব পার্টস Replace করুন</h3>
+      <p style="color:var(--muted);font-size:14px;">পুরনো সব পার্টস delete করে নতুন পার্টস দিয়ে সম্পূর্ণভাবে replace করুন। Excel upload এর আগে এটি click করুন।</p>
+      <button class="btn btn-warning" id="replaceMode" style="margin-top:12px;">🔄 Replace Mode চালু করুন</button>
+      <div class="ok-msg" id="replaceModeOk">✅ Replace Mode চালু হয়েছে। এখন Excel upload করলে সব পার্টস replace হবে।</div>
       <p style="color:var(--muted);font-size:14px;">এই বাটন চাপলে সব পুরনো পার্টস ডিলিট হবে এবং Firebase থেকে লেটেস্ট ডেটা লোড হবে। Excel upload করার পর এটি ব্যবহার করুন।</p>
       <button class="btn btn-danger" id="clearAllParts" style="margin-top:12px;">❌ সব পার্টস ডিলিট করুন (Local)</button>
       <div class="ok-msg" id="clearOk">সব পার্টস সফলভাবে ডিলিট হয়েছে</div>
@@ -1162,7 +1181,22 @@ function settingsTabHTML(){
     </div>
   `;
 }
+let REPLACE_MODE = false; // Global flag for replace vs add mode
+
 function wireSettingsTab(){
+  // Replace mode button
+  const replaceModeBtn = document.getElementById('replaceMode');
+  if(replaceModeBtn){
+    replaceModeBtn.onclick = ()=>{
+      if(!confirm('সব পুরনো পার্টস delete করে নতুন পার্টস দিয়ে replace করবেন?')) return;
+      REPLACE_MODE = true;
+      replaceModeBtn.style.background = '#10b981';
+      replaceModeBtn.textContent = '✅ Replace Mode চালু আছে - এখন Excel upload করুন';
+      document.getElementById('replaceModeOk').style.display = 'block';
+      alert('✅ Replace Mode চালু হয়েছে। এখন Admin Panel → পার্টস ম্যানেজমেন্ট → এক্সেল আপলোড করুন।');
+    };
+  }
+  
   // Clear history button
   const clearHistoryBtn = document.getElementById('clearHistory');
   if(clearHistoryBtn){
