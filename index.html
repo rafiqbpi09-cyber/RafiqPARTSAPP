@@ -262,7 +262,10 @@ async function saveDB(){
     const payload = {
       users: DB.users,
       history: DB.history.slice(0,50),
-      settings: { companyName: DB.settings.companyName, adminPassword: DB.settings.adminPassword, logo: DB.settings.logo }
+      settings: { companyName: DB.settings.companyName, adminPassword: DB.settings.adminPassword, logo: DB.settings.logo },
+      parts: DB.parts,
+      nextPartId: nextPartId,
+      partsSaved: true
     };
     // Firebase এ সেভ
     await fetch(`${FB_URL}/appdata.json`, {
@@ -275,7 +278,7 @@ async function saveDB(){
   }catch(e){
     console.error('Firebase save failed:', e);
     // Firebase না হলে localStorage এ সেভ
-    try{ localStorage.setItem(LS_KEY, JSON.stringify({users:DB.users,history:DB.history.slice(0,50),settings:DB.settings})); }catch(e2){}
+    try{ localStorage.setItem(LS_KEY, JSON.stringify({users:DB.users,history:DB.history.slice(0,50),settings:DB.settings,parts:DB.parts,nextPartId,partsSaved:true})); }catch(e2){}
   }
 }
 async function loadDB(){
@@ -289,6 +292,12 @@ async function loadDB(){
         if(saved.settings.companyName) DB.settings.companyName = saved.settings.companyName;
         if(saved.settings.adminPassword) DB.settings.adminPassword = saved.settings.adminPassword;
         if(saved.settings.logo) DB.settings.logo = saved.settings.logo;
+      }
+      // partsSaved মার্কার থাকলে বুঝি এটা একটা আসল সেভ (parts খালি হলেও সেটা মেনে নিতে হবে —
+      // Firebase খালি array/undefined কে "কী নেই" হিসেবে দেখায়, তাই .length চেক করা যাবে না)
+      if(saved.partsSaved){
+        DB.parts = Array.isArray(saved.parts) ? saved.parts : [];
+        if(saved.nextPartId) nextPartId = saved.nextPartId;
       }
       if(DB.users.length) nextUserId = Math.max(...DB.users.map(u=>Number(u.id)||0))+1;
       return;
@@ -305,6 +314,10 @@ async function loadDB(){
       if(saved.settings.companyName) DB.settings.companyName = saved.settings.companyName;
       if(saved.settings.adminPassword) DB.settings.adminPassword = saved.settings.adminPassword;
       if(saved.settings.logo) DB.settings.logo = saved.settings.logo;
+    }
+    if(saved.partsSaved){
+      DB.parts = Array.isArray(saved.parts) ? saved.parts : [];
+      if(saved.nextPartId) nextPartId = saved.nextPartId;
     }
     if(DB.users.length) nextUserId = Math.max(...DB.users.map(u=>Number(u.id)||0))+1;
   }catch(e){ console.error('localStorage load failed:', e); }
