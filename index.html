@@ -914,24 +914,40 @@ function handleExcelUpload(e){
   reader.onload = (evt)=>{
     try{
       const wb = XLSX.read(evt.target.result, {type:'binary'});
-      const sheet = wb.Sheets[wb.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json(sheet, {defval:''});
+
+      const normKey = s => String(s).toLowerCase().replace(/[^a-z0-9\u0980-\u09FF]/g,'');
+      const partNoAliases = ['partnumber','partno','partnum','partcode','part','পার্টনম্বর','পার্ট'];
+      const nameAliases = ['partsname','name','partname','description','desc','নাম','পার্টসনাম'];
+      const priceAliases = ['price','rate','mrp','unitprice','মূল্য','দাম','newsalesprice','currentprice','newprice','value'];
+      const categoryAliases = ['category','cat','group','ক্যাটাগরি'];
+      const findKey = (keys, aliases) => keys.find(k => aliases.includes(normKey(k)));
+
+      // Score every sheet: does it have recognizable Part-No/Name/Price columns, and how many rows?
+      let bestSheetName = wb.SheetNames[0], bestRows = [], bestScore = -1;
+      wb.SheetNames.forEach(sn=>{
+        const rws = XLSX.utils.sheet_to_json(wb.Sheets[sn], {defval:''});
+        if(!rws.length) return;
+        const keys = Object.keys(rws[0]);
+        const hasPartNo = !!findKey(keys, partNoAliases);
+        const hasName = !!findKey(keys, nameAliases);
+        const hasPrice = !!findKey(keys, priceAliases);
+        const score = (hasPartNo?1:0) + (hasName?1:0) + (hasPrice?1:0);
+        // Prefer sheets that match all 3 headers; among those, prefer the most rows.
+        if(score > bestScore || (score === bestScore && rws.length > bestRows.length)){
+          bestScore = score; bestSheetName = sn; bestRows = rws;
+        }
+      });
+      const rows = bestRows;
       const existingByPartNo = {};
       DB.parts.forEach(p=>{ existingByPartNo[p.partNo.trim().toUpperCase()] = p; });
 
       // Build a normalized (lowercase, no spaces/underscores) lookup of each row's keys,
       // so headers like "Part No.", "part_no", "PARTNO" etc. all match.
-      const normKey = s => String(s).toLowerCase().replace(/[^a-z0-9\u0980-\u09FF]/g,'');
-      const partNoAliases = ['partnumber','partno','partnum','partcode','part','পার্টনম্বর','পার্ট'];
-      const nameAliases = ['partsname','name','partname','description','desc','নাম','পার্টসনাম'];
-      const priceAliases = ['price','rate','mrp','unitprice','মূল্য','দাম'];
-      const categoryAliases = ['category','cat','group','ক্যাটাগরি'];
       const columnKeys = rows.length ? Object.keys(rows[0]) : [];
-      const findKey = aliases => columnKeys.find(k => aliases.includes(normKey(k)));
-      const partNoKey = findKey(partNoAliases);
-      const nameKey = findKey(nameAliases);
-      const priceKey = findKey(priceAliases);
-      const categoryKey = findKey(categoryAliases);
+      const partNoKey = findKey(columnKeys, partNoAliases);
+      const nameKey = findKey(columnKeys, nameAliases);
+      const priceKey = findKey(columnKeys, priceAliases);
+      const categoryKey = findKey(columnKeys, categoryAliases);
       // Positional fallback: if headers didn't match by name, assume column order
       // Part Number, Parts Name, Category, Price (or Part Number, Parts Name, Price).
       const posPartNo = partNoKey || columnKeys[0];
