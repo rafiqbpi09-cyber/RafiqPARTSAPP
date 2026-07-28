@@ -1140,86 +1140,14 @@ function historyTabHTML(){
 /* ---- Settings tab ---- */
 function settingsTabHTML(){
   return `
-    <div class="card" style="background:#ffe0e0;border:3px solid #d32f2f;padding:16px;margin-bottom:20px;">
-      <h3 style="color:#d32f2f;">☁️ Firebase থেকে সরাসরি DELETE করুন</h3>
-      <p style="font-size:14px;color:#333;">Firebase database এর সব data delete করবে। এটা করার পর নতুন Excel upload করতে হবে।</p>
-      <button id="firebaseDirectDelete" class="btn" style="background:#d32f2f;color:white;padding:14px 20px;font-size:16px;font-weight:600;margin-top:12px;">
-        ☁️ Firebase Delete করুন (Direct)
-      </button>
-      <div id="fbDeleteMsg" style="margin-top:12px;font-size:14px;color:green;font-weight:600;display:none;">
-        ✅ Firebase delete সফল! App reload হচ্ছে...
-      </div>
-      <div id="fbDeleteErr" style="margin-top:12px;font-size:14px;color:red;font-weight:600;display:none;">
-        ❌ Firebase delete fail হয়েছে। retry করুন।
-      </div>
-    </div>
-      <h2 style="color:white;margin:0 0 12px 0;font-size:24px;">🔥 NUCLEAR CLEAR</h2>
-      <p style="font-size:15px;color:white;font-weight:600;margin:0 0 16px 0;">সবচেয়ে aggressive clear - 14,422 definitively delete!</p>
-      <button id="nuclearClear" class="btn" style="padding:18px 28px;font-size:18px;font-weight:700;background:white;color:#c41c3b;border:none;cursor:pointer;width:100%;">
-        🔥 NUCLEAR CLEAR - Now
-      </button>
-      <div id="nuclearMsg" style="margin-top:12px;font-size:14px;color:white;font-weight:600;display:none;">
-        ✅ All cleared! Reloading...
-      </div>
-    </div>
-    <div class="card" style="background:#ff6b6b;border:3px solid red;padding:20px;margin-bottom:20px;">
-      <h2 style="color:white;margin:0 0 12px 0;font-size:24px;">🔴 ONE CLICK - সব Delete</h2>
-      <p style="font-size:16px;color:white;font-weight:600;margin:0 0 16px 0;">এই বাটন চাপলে সব পুরনো data instantly delete হবে!</p>
-      <button id="oneClickClear" class="btn" style="padding:18px 28px;font-size:20px;font-weight:700;background:#fff;color:red;border:none;cursor:pointer;">
-        🗑️ এখনই সব Delete করুন
-      </button>
-      <div id="clearMsg" style="margin-top:16px;font-size:16px;color:white;font-weight:600;display:none;">
-        ✅ সব delete হয়েছে! Page reload হচ্ছে...
-      </div>
-    </div>
-    <div class="card" style="background:#fffacd;border:2px solid orange;margin-bottom:20px;">
-      <h3 style="color:orange;margin-top:0;">📝 তারপর যা করবেন:</h3>
-      <div style="font-size:15px;color:#333;line-height:1.8;">
-        ✅ <strong>Page automatically reload হবে</strong> (খালি থাকবে)<br>
-        ✅ Admin Login করুন (password: admin123)<br>
-        ✅ পার্টস ম্যানেজমেন্ত → 📥 এক্সেল আপলোড<br>
-        ✅ নতুন Excel file select করুন<br>
-        ✅ সফল! 14,383 parts add হবে ✅
-      </div>
-    </div>
     <div class="card" style="background:#ffebee;border:2px solid #c2041d;">
-      <h3 style="color:#c2041d;">🔴 Complete Clear (সব ডেটা Delete)</h3>
-      <p class="hint">Browser cache, localStorage, sessionStorage - সবকিছু delete করবে। পরে নতুন upload করুন।</p>
-      <button class="btn btn-danger" id="completeClean" style="margin-top:12px;background:#c2041d;">🔴 Complete Clear করুন</button>
-      <div class="ok-msg" id="cleanOk">✅ সম্পূর্ণ clear হয়েছে। Page reload হচ্ছে...</div>
+      <h3 style="color:#c2041d;">🔴 সব পুরনো পার্টস ডিলিট করে নতুন লিস্ট আপলোড</h3>
+      <p class="hint">এটি চাপলে আপনার বর্তমান সব পার্টস (${DB.parts.length}টি) স্থায়ীভাবে ডিলিট হয়ে যাবে এবং Firebase-এ সেভ হয়ে যাবে — এরপর সরাসরি নতুন এক্সেল ফাইল সিলেক্ট করার অপশন আসবে।</p>
+      <button class="btn btn-danger" id="deleteAllParts" style="margin-top:12px;">🗑️ সব পার্টস ডিলিট করুন (${DB.parts.length}টি)</button>
+      <div class="ok-msg" id="deleteAllOk">✅ সব পার্টস ডিলিট হয়েছে এবং সেভ হয়েছে। এখন নতুন এক্সেল ফাইল সিলেক্ট করুন।</div>
     </div>
     <div class="card">
-      <h3>☁️ Firebase Database Clear করুন</h3>
-      <p class="hint">Firebase থেকে সব পুরনো ডেটা delete করবে। Fresh Upload এর আগে এটি করুন।</p>
-      <button class="btn btn-danger" id="clearFirebaseDB" style="margin-top:12px;">☁️ Firebase Clear করুন</button>
-      <div class="ok-msg" id="fbClearOk">✅ Firebase সফলভাবে clear হয়েছে</div>
-      <div class="err" id="fbClearErr">❌ Firebase clear করতে সমস্যা হয়েছে</div>
-    </div>
-    <div class="card">
-      <h3>🔄 Fresh Upload (সব Delete + নতুন Upload)</h3>
-      <p class="hint">সব পুরনো ডেটা delete করে সাথে সাথে নতুন Excel file upload করতে পারবেন।</p>
-      <button class="btn btn-success" id="freshUpload" style="margin-top:12px;">🔄 Fresh Upload শুরু করুন</button>
-      <div class="ok-msg" id="freshUploadOk">✅ সব ডেটা delete হয়েছে। এখন Excel file select করুন।</div>
-    </div>
-    <div class="card">
-      <h3>⚠️ Duplicate পার্টস Remove করুন</h3>
-      <p class="hint">একই পার্ট নম্বর থাকলে একটি রেখে বাকিগুলো delete করবে। নতুন price সহ পার্টস থাকবে।</p>
-      <button class="btn btn-warning" id="removeDuplicates">⚠️ Duplicates Remove করুন</button>
-      <div class="ok-msg" id="dupRemoveOk">✅ Duplicates সফলভাবে remove হয়েছে</div>
-    </div>
-    <div class="card">
-      <h3>💾 ডেটা স্টোরেজ যাচাই</h3>
-      <p class="hint">রিফ্রেশ করার পরেও ডিলার/মেকানিক ডেটা থাকছে কিনা যাচাই করুন।</p>
-      <button class="btn btn-navy btn-sm" onclick="
-        const saved = localStorage.getItem('partsAppDB_v1');
-        if(saved){
-          const d = JSON.parse(saved);
-          alert('✅ ডেটা সেভ আছে!\nইউজার: ' + (d.users||[]).length + 'জন\nহিস্টরি: ' + (d.history||[]).length + 'টি');
-        } else {
-          alert('❌ কোনো ডেটা সেভ নেই। ইউজার যোগ করে আবার চেক করুন।');
-        }
-      ">💾 স্টোরেজ চেক করুন</button>
-    </div>
+      <h3>☁️ Google Sheet connection</h3>
       <p style="font-size:13.5px;color:var(--muted);margin:0 0 4px">
         স্ট্যাটাস: ${SYNC_ON
           ? '<span class="badge active">সংযুক্ত ✅</span>'
@@ -1259,263 +1187,25 @@ function settingsTabHTML(){
   `;
 }
 function wireSettingsTab(){
-  // NUCLEAR CLEAR - Most aggressive
-  const nuclearBtn = document.getElementById('nuclearClear');
-  if(nuclearBtn){
-    nuclearBtn.onclick = ()=>{
-      if(!confirm('🔥 NUCLEAR CLEAR - সব delete? (No undo!)')) return;
-      if(!confirm('Last warning - সব data gone হবে। CONFIRM?')) return;
-      
-      try{
-        console.log('🔥 NUCLEAR CLEAR START');
-        
-        // Clear app data
-        DB.parts = [];
-        DB.users = [];
-        DB.orders = [];
-        DB.history = [];
-        DB.session = {role: null, user: null};
-        console.log('✓ DB cleared');
-        
-        // Clear localStorage ALL
-        localStorage.clear();
-        console.log('✓ localStorage cleared');
-        
-        // Clear sessionStorage
-        sessionStorage.clear();
-        console.log('✓ sessionStorage cleared');
-        
-        // Clear all possible cache keys
-        for(let key in localStorage) {
-          localStorage.removeItem(key);
-        }
-        for(let key in sessionStorage) {
-          sessionStorage.removeItem(key);
-        }
-        console.log('✓ All cache keys removed');
-        
-        // IndexedDB clear
-        if(window.indexedDB){
-          indexedDB.databases?.().then(dbs => {
-            dbs.forEach(db => {
-              try{ indexedDB.deleteDatabase(db.name); }catch(e){}
-            });
-          });
-        }
-        console.log('✓ IndexedDB cleared');
-        
-        document.getElementById('nuclearMsg').style.display = 'block';
-        console.log('✅ NUCLEAR CLEAR COMPLETE - Reloading...');
-        
-        setTimeout(()=>{
-          // Hard navigate to fresh page
-          window.location.href = window.location.href.split('?')[0] + '?cleared=' + Date.now();
-        }, 1000);
-      }catch(err){
-        console.error('🔥 NUCLEAR CLEAR ERROR:', err);
-        alert('Error: ' + err.message);
-      }
+  const delAllBtn = document.getElementById('deleteAllParts');
+  if(delAllBtn){
+    delAllBtn.onclick = async ()=>{
+      const count = DB.parts.length;
+      if(count === 0){ alert('পার্টস লিস্ট ইতিমধ্যে খালি।'); return; }
+      if(!confirm(`সত্যিই সব ${count}টি পার্টস স্থায়ীভাবে ডিলিট করতে চান? এটি Firebase থেকেও মুছে যাবে, ফিরে পাওয়া যাবে না।`)) return;
+      if(!confirm(`নিশ্চিত করুন — ${count}টি পার্টস ডিলিট হয়ে যাবে। এগিয়ে যাবেন?`)) return;
+      delAllBtn.disabled = true;
+      delAllBtn.textContent = '⏳ ডিলিট হচ্ছে...';
+      DB.parts = [];
+      logHistory(`সব পার্টস ডিলিট করা হয়েছে (${count}টি)`);
+      await saveDB();
+      document.getElementById('deleteAllOk').style.display = 'block';
+      setTimeout(()=>{
+        adminTab = 'parts';
+        go('adminDashboard');
+      }, 900);
     };
   }
-  
-  // Firebase direct delete
-  const fbDelBtn = document.getElementById('firebaseDirectDelete');
-  if(fbDelBtn){
-    fbDelBtn.onclick = async ()=>{
-      if(!confirm('Firebase database থেকে সব data DELETE হবে। OK?')) return;
-      
-      try{
-        fbDelBtn.disabled = true;
-        fbDelBtn.textContent = '⏳ Firebase delete হচ্ছে...';
-        
-        const FB_URL = 'https://metal-parts-default-rtdb.firebaseio.com';
-        
-        const response = await fetch(FB_URL + '.json', {
-          method: 'PUT',
-          body: JSON.stringify(null)
-        });
-        
-        if(response.ok){
-          document.getElementById('fbDeleteMsg').style.display = 'block';
-          document.getElementById('fbDeleteErr').style.display = 'none';
-          alert('✅ Firebase delete সফল!\n\nএখন ONE CLICK CLEAR করুন, তারপর নতুন Excel upload করুন।');
-        } else {
-          throw new Error('Delete failed');
-        }
-      }catch(err){
-        console.error(err);
-        document.getElementById('fbDeleteErr').style.display = 'block';
-        document.getElementById('fbDeleteMsg').style.display = 'none';
-        alert('❌ Firebase delete fail: ' + err.message + '\n\nURI permission issue থাকতে পারে।');
-      }finally{
-        fbDelBtn.disabled = false;
-        fbDelBtn.textContent = '☁️ Firebase Delete করুন (Direct)';
-      }
-    };
-  }
-  
-  // ONE CLICK CLEAR - Super Simple
-  const oneClickBtn = document.getElementById('oneClickClear');
-  if(oneClickBtn){
-    oneClickBtn.onclick = ()=>{
-      if(!confirm('সব data delete হবে - OK?')) return;
-      
-      try{
-        // Clear everything
-        DB.parts = [];
-        DB.users = [];
-        DB.orders = [];
-        DB.history = [];
-        DB.session = {role: null, user: null};
-        
-        localStorage.clear();
-        sessionStorage.clear();
-        
-        document.getElementById('clearMsg').style.display = 'block';
-        
-        setTimeout(()=>{
-          location.reload();
-        }, 1500);
-      }catch(err){
-        alert('Error: ' + err.message);
-      }
-    };
-  }
-  
-  // Complete clear button
-  const cleanBtn = document.getElementById('completeClean');
-  if(cleanBtn){
-    cleanBtn.onclick = ()=>{
-      if(!confirm('🔴 সবকিছু COMPLETELY delete হবে - ডাটা, cache, storage সব। এটি undo করা যাবে না। এগিয়ে যাবেন?')) return;
-      if(!confirm('সত্যিই complete clear করবেন? Confirm করুন।')) return;
-      
-      try{
-        // Clear everything
-        DB.parts = [];
-        DB.users = [];
-        DB.orders = [];
-        DB.history = [];
-        DB.session = {role: null, user: null};
-        
-        // Clear all storage
-        localStorage.clear();
-        sessionStorage.clear();
-        
-        // Clear indexed DB if exists
-        if(window.indexedDB){
-          indexedDB.databases().then(dbs => {
-            dbs.forEach(db => indexedDB.deleteDatabase(db.name));
-          });
-        }
-        
-        document.getElementById('cleanOk').style.display = 'block';
-        alert('✅ Complete clear সফল!\n\nPage reload হচ্ছে...');
-        
-        setTimeout(()=>{
-          // Hard refresh
-          location.href = location.href.split('?')[0];
-          location.reload(true);
-        }, 1000);
-      }catch(err){
-        alert('❌ Error: ' + err.message);
-      }
-    };
-  }
-  
-  // Firebase clear button
-  const fbClearBtn = document.getElementById('clearFirebaseDB');
-  if(fbClearBtn){
-    fbClearBtn.onclick = async ()=>{
-      if(!confirm('Firebase থেকে ALL পুরনো ডেটা delete হবে। এগিয়ে যাবেন?')) return;
-      
-      try{
-        fbClearBtn.disabled = true;
-        fbClearBtn.textContent = '⏳ Clear হচ্ছে...';
-        
-        // Get Firebase URL
-        const FB_URL = 'https://metal-parts-default-rtdb.firebaseio.com';
-        
-        // Delete all Firebase data
-        const response = await fetch(FB_URL + '/appdata.json', {
-          method: 'PUT',
-          body: JSON.stringify(null)
-        });
-        
-        if(response.ok){
-          document.getElementById('fbClearOk').style.display = 'block';
-          document.getElementById('fbClearErr').style.display = 'none';
-          alert('✅ Firebase সফলভাবে clear হয়েছে!\n\nএখন Fresh Upload করুন।');
-        } else {
-          throw new Error('Response not ok');
-        }
-      }catch(err){
-        console.error('Firebase clear error:', err);
-        document.getElementById('fbClearErr').style.display = 'block';
-        document.getElementById('fbClearOk').style.display = 'none';
-        alert('❌ Firebase clear করতে সমস্যা হয়েছে। Console দেখুন।');
-      }finally{
-        fbClearBtn.disabled = false;
-        fbClearBtn.textContent = '☁️ Firebase Clear করুন';
-      }
-    };
-  }
-  
-  // Fresh upload button
-  const freshUploadBtn = document.getElementById('freshUpload');
-  if(freshUploadBtn){
-    freshUploadBtn.onclick = ()=>{
-      if(!confirm('সব পুরনো ডেটা DELETE হবে। এগিয়ে যাবেন?')) return;
-      
-      try{
-        const oldCount = DB.parts.length;
-        DB.parts = []; // Clear all parts
-        localStorage.clear(); // Clear browser cache
-        saveDB();
-        
-        document.getElementById('freshUploadOk').style.display = 'block';
-        alert(`✅ ${oldCount}টি পার্টস delete হয়েছে!\n\nএখন Excel file select করুন।`);
-        
-        // Automatically open file picker
-        setTimeout(()=>{
-          document.getElementById('excelFile').click();
-        }, 500);
-      }catch(err){
-        alert('❌ Error: ' + err.message);
-      }
-    };
-  }
-  
-  // Remove duplicates button
-  const removeDupBtn = document.getElementById('removeDuplicates');
-  if(removeDupBtn){
-    removeDupBtn.onclick = ()=>{
-      if(!confirm('একই পার্ট নম্বর থাকলে একটি রেখে বাকিগুলো delete হবে। এগিয়ে যাবেন?')) return;
-      
-      try{
-        const originalCount = DB.parts.length;
-        const seenParts = new Set();
-        const uniqueParts = [];
-        
-        DB.parts.forEach(part => {
-          if(!seenParts.has(part.partNo)){
-            seenParts.add(part.partNo);
-            uniqueParts.push(part);
-          }
-        });
-        
-        const duplicatesRemoved = originalCount - uniqueParts.length;
-        DB.parts = uniqueParts;
-        saveDB();
-        
-        document.getElementById('dupRemoveOk').style.display = 'block';
-        alert(`✅ ${duplicatesRemoved}টি duplicate remove হয়েছে!\n\nআগে: ${originalCount}টি\nএখন: ${uniqueParts.length}টি`);
-        setTimeout(()=>{ location.reload(); }, 1500);
-      }catch(err){
-        alert('❌ Error: ' + err.message);
-      }
-    };
-  }
-  
   const pushBtn = document.getElementById('pushDemoParts');
   if(pushBtn){
     pushBtn.onclick = async ()=>{
