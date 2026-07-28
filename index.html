@@ -875,38 +875,73 @@ function deletePart(id){
 function handleExcelUpload(e){
   const file = e.target.files[0];
   if(!file) return;
-  const fileName = file.name; // Get actual file name
+  const fileName = file.name;
   const reader = new FileReader();
   reader.onload = (evt)=>{
     try{
       const wb = XLSX.read(evt.target.result, {type:'binary'});
       const sheet = wb.Sheets[wb.SheetNames[0]];
       const rows = XLSX.utils.sheet_to_json(sheet, {defval:''});
+      
+      if(!rows || rows.length === 0){
+        alert('❌ Excel ফাইল খালি আছে বা পড়া যায়নি।');
+        return;
+      }
+      
+      // Debug: Show first row headers
+      const firstRow = rows[0];
+      const headers = Object.keys(firstRow);
+      console.log('Excel Headers found:', headers);
+      console.log('First row data:', firstRow);
+      
       let added = 0; const newItems = [];
-      rows.forEach(r=>{
-        const partNo = String(r['Part Number'] || r.PartNo || r['পার্ট নম্বর'] || r.partno || r['Part No'] || '').trim();
-        const name = String(r['Parts Name'] || r.Name || r['পার্টস নাম'] || r.name || '').trim();
-        if(!partNo || !name) return;
-        const price = parseFloat(r.Price || r.price || r['মূল্য'] || 0) || 0;
-        const category = String(r.Category || r['ক্যাটাগরি'] || r.category || '').trim();
+      rows.forEach((r, idx)=>{
+        // Try all possible column name variations
+        const partNo = String(
+          r['Part Number'] || r['part number'] || r['PartNo'] || r['partno'] || 
+          r['Part No'] || r['part no'] || r['পার্ট নম্বর'] || r['PART NUMBER'] || ''
+        ).trim();
+        
+        const name = String(
+          r['Parts Name'] || r['parts name'] || r['Name'] || r['name'] || 
+          r['Parts name'] || r['পার্টস নাম'] || r['PARTS NAME'] || ''
+        ).trim();
+        
+        if(!partNo || !name){
+          if(idx === 0) console.log('Row 0 - partNo:', partNo, 'name:', name);
+          return;
+        }
+        
+        const price = parseFloat(
+          r['Price'] || r['price'] || r['PRICE'] || r['মূল্য'] || 0
+        ) || 0;
+        
+        const category = String(
+          r['Category'] || r['category'] || r['CATEGORY'] || r['ক্যাটাগরি'] || ''
+        ).trim();
+        
         const item = {id: nextPartId++, partNo, name, category, price, core: coreOf(partNo), nameLower: name.toLowerCase()};
         DB.parts.push(item);
         newItems.push(item);
         added++;
       });
+      
       if(added === 0){
-        alert('কোনো পার্টস যোগ হয়নি। Excel ফাইলে "Part Number", "Parts Name", "Price" কলাম আছে কিনা চেক করুন।');
+        const headerMsg = 'আপনার Excel ফাইলের headers: ' + headers.join(', ');
+        alert('❌ কোনো পার্টস যোগ হয়নি।\n\n' + headerMsg + '\n\nExcel ফাইলে এই কলাম গুলো থাকা দরকার:\n"Part Number", "Parts Name", "Price"\n\nConsole এ বিস্তারিত দেখুন।');
+        console.log('Expected columns: Part Number, Parts Name, Price');
+        console.log('Found columns:', headers);
         return;
       }
+      
       if(newItems.length) syncPush('bulkAddParts', {items:newItems});
-      const now = new Date().toLocaleString('bn-BD');
       logHistory(`এক্সেল আপলোড: ${added}টি পার্টস যোগ হয়েছে (${fileName})`);
       saveDB();
       alert(`✅ ${added}টি পার্টস সফলভাবে যোগ হয়েছে। Admin Dashboard এ যাচ্ছি...`);
       go('adminDashboard');
     }catch(err){
       console.error('Excel upload error:', err);
-      alert('❌ ফাইল পড়া যায়নি। Excel ফাইল ঠিক কিনা চেক করুন। Console এ error দেখুন।');
+      alert('❌ ফাইল পড়া যায়নি।\n\nError: ' + err.message + '\n\nএক্সেল ফাইল ঠিক কিনা চেক করুন। Console এ বিস্তারিত error দেখুন।');
     }
   };
   reader.readAsBinaryString(file);
