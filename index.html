@@ -1139,6 +1139,13 @@ function historyTabHTML(){
 function settingsTabHTML(){
   return `
     <div class="card">
+      <h3>☁️ Firebase Database Clear করুন</h3>
+      <p class="hint">Firebase থেকে সব পুরনো ডেটা delete করবে। Fresh Upload এর আগে এটি করুন।</p>
+      <button class="btn btn-danger" id="clearFirebaseDB" style="margin-top:12px;">☁️ Firebase Clear করুন</button>
+      <div class="ok-msg" id="fbClearOk">✅ Firebase সফলভাবে clear হয়েছে</div>
+      <div class="err" id="fbClearErr">❌ Firebase clear করতে সমস্যা হয়েছে</div>
+    </div>
+    <div class="card">
       <h3>🔄 Fresh Upload (সব Delete + নতুন Upload)</h3>
       <p class="hint">সব পুরনো ডেটা delete করে সাথে সাথে নতুন Excel file upload করতে পারবেন।</p>
       <button class="btn btn-success" id="freshUpload" style="margin-top:12px;">🔄 Fresh Upload শুরু করুন</button>
@@ -1202,6 +1209,44 @@ function settingsTabHTML(){
   `;
 }
 function wireSettingsTab(){
+  // Firebase clear button
+  const fbClearBtn = document.getElementById('clearFirebaseDB');
+  if(fbClearBtn){
+    fbClearBtn.onclick = async ()=>{
+      if(!confirm('Firebase থেকে ALL পুরনো ডেটা delete হবে। এগিয়ে যাবেন?')) return;
+      
+      try{
+        fbClearBtn.disabled = true;
+        fbClearBtn.textContent = '⏳ Clear হচ্ছে...';
+        
+        // Get Firebase URL
+        const FB_URL = 'https://metal-parts-default-rtdb.firebaseio.com';
+        
+        // Delete all Firebase data
+        const response = await fetch(FB_URL + '/appdata.json', {
+          method: 'PUT',
+          body: JSON.stringify(null)
+        });
+        
+        if(response.ok){
+          document.getElementById('fbClearOk').style.display = 'block';
+          document.getElementById('fbClearErr').style.display = 'none';
+          alert('✅ Firebase সফলভাবে clear হয়েছে!\n\nএখন Fresh Upload করুন।');
+        } else {
+          throw new Error('Response not ok');
+        }
+      }catch(err){
+        console.error('Firebase clear error:', err);
+        document.getElementById('fbClearErr').style.display = 'block';
+        document.getElementById('fbClearOk').style.display = 'none';
+        alert('❌ Firebase clear করতে সমস্যা হয়েছে। Console দেখুন।');
+      }finally{
+        fbClearBtn.disabled = false;
+        fbClearBtn.textContent = '☁️ Firebase Clear করুন';
+      }
+    };
+  }
+  
   // Fresh upload button
   const freshUploadBtn = document.getElementById('freshUpload');
   if(freshUploadBtn){
