@@ -1139,6 +1139,12 @@ function historyTabHTML(){
 function settingsTabHTML(){
   return `
     <div class="card">
+      <h3>⚠️ Duplicate পার্টস Remove করুন</h3>
+      <p class="hint">একই পার্ট নম্বর থাকলে একটি রেখে বাকিগুলো delete করবে। নতুন price সহ পার্টস থাকবে।</p>
+      <button class="btn btn-warning" id="removeDuplicates">⚠️ Duplicates Remove করুন</button>
+      <div class="ok-msg" id="dupRemoveOk">✅ Duplicates সফলভাবে remove হয়েছে</div>
+    </div>
+    <div class="card">
       <h3>💾 ডেটা স্টোরেজ যাচাই</h3>
       <p class="hint">রিফ্রেশ করার পরেও ডিলার/মেকানিক ডেটা থাকছে কিনা যাচাই করুন।</p>
       <button class="btn btn-navy btn-sm" onclick="
@@ -1190,6 +1196,37 @@ function settingsTabHTML(){
   `;
 }
 function wireSettingsTab(){
+  // Remove duplicates button
+  const removeDupBtn = document.getElementById('removeDuplicates');
+  if(removeDupBtn){
+    removeDupBtn.onclick = ()=>{
+      if(!confirm('একই পার্ট নম্বর থাকলে একটি রেখে বাকিগুলো delete হবে। এগিয়ে যাবেন?')) return;
+      
+      try{
+        const originalCount = DB.parts.length;
+        const seenParts = new Set();
+        const uniqueParts = [];
+        
+        DB.parts.forEach(part => {
+          if(!seenParts.has(part.partNo)){
+            seenParts.add(part.partNo);
+            uniqueParts.push(part);
+          }
+        });
+        
+        const duplicatesRemoved = originalCount - uniqueParts.length;
+        DB.parts = uniqueParts;
+        saveDB();
+        
+        document.getElementById('dupRemoveOk').style.display = 'block';
+        alert(`✅ ${duplicatesRemoved}টি duplicate remove হয়েছে!\n\nআগে: ${originalCount}টি\nএখন: ${uniqueParts.length}টি`);
+        setTimeout(()=>{ location.reload(); }, 1500);
+      }catch(err){
+        alert('❌ Error: ' + err.message);
+      }
+    };
+  }
+  
   const pushBtn = document.getElementById('pushDemoParts');
   if(pushBtn){
     pushBtn.onclick = async ()=>{
