@@ -873,7 +873,7 @@ function partsTable(list, totalCount, searchQuery=''){
         const bgColor = isSearchMatch ? '#d4edda' : 'white';
         const borderColor = isSearchMatch ? '#1f8a4c' : '#ddd';
         
-        return `<tr style="background:${bgColor};border:2px solid ${borderColor};border-radius:6px;box-shadow:0 1px 3px rgba(0,0,0,0.05);transition:all 0.2s ease;">
+        return `<tr style="background:${bgColor};border:2px solid ${borderColor};border-radius:6px;box-shadow:0 1px 3px rgba(0,0,0,0.05);transition:all 0.2s ease;font-size:20px;">
           <td class="mono" data-label="পার্ট নম্বর" style="text-align:left;padding:12px 6px 12px 14px;font-weight:600;${isSearchMatch?'color:#1f8a4c;':''}">${p.partNo}</td>
           <td data-label="পার্টস নাম" style="text-align:left;padding:12px 10px 12px 6px;${isSearchMatch?'color:#1f8a4c;font-weight:600;':''}">${p.name}</td>
           <td data-label="ক্যাটাগরি" style="padding:12px;">${p.category||'-'}</td>
@@ -895,6 +895,11 @@ function wirePartsTab(){
     if(q){
       const qd = digitsOnly(q), qt = q.toLowerCase();
       matched = DB.parts.filter(p=> p.nameLower.includes(qt) || (qd && (p.core.includes(qd) || qd.includes(p.core))));
+      matched = matched.slice().sort((a,b)=>{
+        const aExact = a.partNo.toLowerCase().includes(qt) || a.nameLower.includes(qt);
+        const bExact = b.partNo.toLowerCase().includes(qt) || b.nameLower.includes(qt);
+        return (bExact?1:0) - (aExact?1:0);
+      });
     } else {
       matched = DB.parts;
     }
