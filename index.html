@@ -1138,7 +1138,19 @@ function historyTabHTML(){
 /* ---- Settings tab ---- */
 function settingsTabHTML(){
   return `
-    <div class="card" style="background:#ff6b6b;border:3px solid red;padding:20px;margin-bottom:20px;">
+    <div class="card" style="background:#ffe0e0;border:3px solid #d32f2f;padding:16px;margin-bottom:20px;">
+      <h3 style="color:#d32f2f;">☁️ Firebase থেকে সরাসরি DELETE করুন</h3>
+      <p style="font-size:14px;color:#333;">Firebase database এর সব data delete করবে। এটা করার পর নতুন Excel upload করতে হবে।</p>
+      <button id="firebaseDirectDelete" class="btn" style="background:#d32f2f;color:white;padding:14px 20px;font-size:16px;font-weight:600;margin-top:12px;">
+        ☁️ Firebase Delete করুন (Direct)
+      </button>
+      <div id="fbDeleteMsg" style="margin-top:12px;font-size:14px;color:green;font-weight:600;display:none;">
+        ✅ Firebase delete সফল! App reload হচ্ছে...
+      </div>
+      <div id="fbDeleteErr" style="margin-top:12px;font-size:14px;color:red;font-weight:600;display:none;">
+        ❌ Firebase delete fail হয়েছে। retry করুন।
+      </div>
+    </div>
       <h2 style="color:white;margin:0 0 12px 0;font-size:24px;">🔴 ONE CLICK - সব Delete</h2>
       <p style="font-size:16px;color:white;font-weight:600;margin:0 0 16px 0;">এই বাটন চাপলে সব পুরনো data instantly delete হবে!</p>
       <button id="oneClickClear" class="btn" style="padding:18px 28px;font-size:20px;font-weight:700;background:#fff;color:red;border:none;cursor:pointer;">
@@ -1235,6 +1247,42 @@ function settingsTabHTML(){
   `;
 }
 function wireSettingsTab(){
+  // Firebase direct delete
+  const fbDelBtn = document.getElementById('firebaseDirectDelete');
+  if(fbDelBtn){
+    fbDelBtn.onclick = async ()=>{
+      if(!confirm('Firebase database থেকে সব data DELETE হবে। OK?')) return;
+      
+      try{
+        fbDelBtn.disabled = true;
+        fbDelBtn.textContent = '⏳ Firebase delete হচ্ছে...';
+        
+        const FB_URL = 'https://metal-parts-default-rtdb.firebaseio.com';
+        
+        const response = await fetch(FB_URL + '.json', {
+          method: 'PUT',
+          body: JSON.stringify(null)
+        });
+        
+        if(response.ok){
+          document.getElementById('fbDeleteMsg').style.display = 'block';
+          document.getElementById('fbDeleteErr').style.display = 'none';
+          alert('✅ Firebase delete সফল!\n\nএখন ONE CLICK CLEAR করুন, তারপর নতুন Excel upload করুন।');
+        } else {
+          throw new Error('Delete failed');
+        }
+      }catch(err){
+        console.error(err);
+        document.getElementById('fbDeleteErr').style.display = 'block';
+        document.getElementById('fbDeleteMsg').style.display = 'none';
+        alert('❌ Firebase delete fail: ' + err.message + '\n\nURI permission issue থাকতে পারে।');
+      }finally{
+        fbDelBtn.disabled = false;
+        fbDelBtn.textContent = '☁️ Firebase Delete করুন (Direct)';
+      }
+    };
+  }
+  
   // ONE CLICK CLEAR - Super Simple
   const oneClickBtn = document.getElementById('oneClickClear');
   if(oneClickBtn){
