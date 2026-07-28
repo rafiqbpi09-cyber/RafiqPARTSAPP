@@ -8,7 +8,42 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Metal Parts Price List">
+<script>
+// Inline manifest via Blob so no separate manifest.json file needed
+const manifestData = {
+  name: "RafiqPARTS",
+  short_name: "RafiqPARTS",
+  description: "পার্টস মূল্য ও তথ্য ব্যবস্থাপনা",
+  start_url: "./",
+  scope: "./",
+  display: "standalone",
+  background_color: "#12233d",
+  theme_color: "#12233d",
+  orientation: "portrait",
+  icons: [
+    { src: "icon-192.png", sizes: "192x192", type: "image/png", purpose: "any maskable" },
+    { src: "icon-512.png", sizes: "512x512", type: "image/png", purpose: "any maskable" }
+  ]
+};
+const manifestBlob = new Blob([JSON.stringify(manifestData)], {type:'application/json'});
+const manifestURL = URL.createObjectURL(manifestBlob);
+const manifestLink = document.createElement('link');
+manifestLink.rel = 'manifest';
+manifestLink.href = manifestURL;
+document.currentScript.parentNode.insertBefore(manifestLink, document.currentScript);
 
+// Inline service worker via Blob
+if('serviceWorker' in navigator){
+  const swCode = `
+    const CACHE='rafiqparts-v2';
+    self.addEventListener('install',e=>{ self.skipWaiting(); });
+    self.addEventListener('fetch',e=>{ e.respondWith(fetch(e.request).catch(()=>caches.match(e.request))); });
+  `;
+  const swBlob = new Blob([swCode], {type:'application/javascript'});
+  const swURL = URL.createObjectURL(swBlob);
+  navigator.serviceWorker.register(swURL, {scope:'./'}).catch(e=>console.log('SW:',e));
+}
+</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
@@ -875,112 +910,30 @@ function deletePart(id){
 function handleExcelUpload(e){
   const file = e.target.files[0];
   if(!file) return;
-  const fileName = file.name;
   const reader = new FileReader();
   reader.onload = (evt)=>{
     try{
       const wb = XLSX.read(evt.target.result, {type:'binary'});
       const sheet = wb.Sheets[wb.SheetNames[0]];
       const rows = XLSX.utils.sheet_to_json(sheet, {defval:''});
-      
-      if(!rows || rows.length === 0){
-        alert('❌ Excel ফাইল খালি আছে বা পড়া যায়নি।');
-        return;
-      }
-      
-      // Normalize column names
-      const normalize = (s) => s.toLowerCase().trim().replace(/[.\s]/g, '');
-      const firstRow = rows[0];
-      const headers = Object.keys(firstRow);
-      console.log('Excel Headers:', headers);
-      
-      // Auto-detect columns
-      let partCodeCol = null, nameCol = null, priceCol = null;
-      
-      for(let h of headers){
-        const norm = normalize(h);
-        
-        // Try to match Part Number columns (exact match preferred)
-        if(norm === 'partnumber' || norm.includes('partnumber')) {
-          partCodeCol = h;
-        }
-        // Try to match Parts Name columns
-        else if(norm === 'partsname' || norm.includes('partsname')) {
-          nameCol = h;
-        }
-        // Try to match Price columns
-        else if(norm === 'price' || (norm.includes('price') && !norm.includes('old'))) {
-          priceCol = h;
-        }
-      }
-      
-      // If still not found, use position-based fallback
-      if(!partCodeCol) partCodeCol = headers[0]; // 1st column = Part Number
-      if(!nameCol) nameCol = headers[1]; // 2nd column = Parts Name
-      if(!priceCol) priceCol = headers[2]; // 3rd column = Price
-      
-      console.log('Mapped columns:', {partCodeCol, nameCol, priceCol});
-      console.log('First row sample:', {
-        partCode: rows[0][partCodeCol],
-        name: rows[0][nameCol],
-        price: rows[0][priceCol]
-      });
-      
-      if(!partCodeCol || !nameCol || !priceCol){
-        alert('❌ Excel columns match হচ্ছে না।\n\nআপনার columns: ' + headers.join(', '));
-        return;
-      }
-      
-      let added = 0; 
-      let oldCount = 0;
-      const newItems = [];
-      
-      // If fresh load mode, completely clear everything first
-      if(FRESH_LOAD_MODE){
-        oldCount = DB.parts.length;
-        DB.parts = [];
-        localStorage.clear(); // Clear browser cache too
-        FRESH_LOAD_MODE = false; // Reset flag
-        console.log(`✓ Fresh Load: Cleared ${oldCount} old parts, cleared localStorage`);
-      }
-      
-      rows.forEach((r, idx)=>{
-        const partNo = String(r[partCodeCol] || '').trim();
-        const name = String(r[nameCol] || '').trim();
-        const price = parseFloat(r[priceCol] || 0) || 0; // Allow 0 price
-        
-        if(!partNo || !name){
-          if(idx <= 5) console.log(`Row ${idx} skipped: partNo="${partNo}", name="${name}"`);
-          return;
-        }
-        
-        const category = '';
+      let added = 0; const newItems = [];
+      rows.forEach(r=>{
+        const partNo = String(r['Part Number'] || r.PartNo || r['পার্ট নম্বর'] || r.partno || r['Part No'] || '').trim();
+        const name = String(r['Parts Name'] || r.Name || r['নাম'] || r.name || '').trim();
+        if(!partNo || !name) return;
+        const price = parseFloat(r.Price || r['মূল্য'] || r.price || 0) || 0;
+        const category = String(r.Category || r['ক্যাটাগরি'] || r.category || '').trim();
         const item = {id: nextPartId++, partNo, name, category, price, core: coreOf(partNo), nameLower: name.toLowerCase()};
         DB.parts.push(item);
         newItems.push(item);
         added++;
       });
-      
-      if(added === 0){
-        alert('❌ কোনো valid পার্টস পাওয়া যায়নি। Data check করুন। Console এ details দেখুন।');
-        return;
-      }
-      
-      console.log(`✓ Added ${added} parts. Old: ${oldCount}, New: ${DB.parts.length}`);
-      
-      if(oldCount > 0){
-        alert(`✅ ${oldCount}টি পুরনো পার্টস delete হয়েছে এবং ${added}টি নতুন পার্টস যোগ হয়েছে। Total: ${DB.parts.length}টি পার্টস।`);
-      } else {
-        alert(`✅ ${added}টি পার্টস যোগ হয়েছে। Total: ${DB.parts.length}টি পার্টস।`);
-      }
-      
       if(newItems.length) syncPush('bulkAddParts', {items:newItems});
-      logHistory(`এক্সেল আপলোড: ${added}টি পার্টস ${oldCount > 0 ? 'replace' : 'যোগ'} হয়েছে (${fileName})`);
+      logHistory(`এক্সেল আপলোড: ${added}টি পার্টস যোগ হয়েছে`);
       saveDB();
-      setTimeout(()=> go('adminDashboard'), 1000);
+      go('adminDashboard');
     }catch(err){
-      console.error('Excel upload error:', err);
-      alert('❌ ফাইল পড়া যায়নি।\n\nError: ' + err.message);
+      alert('ফাইল পড়া যায়নি। এক্সেল ফাইলে PartNo, Name, Price, Category কলাম আছে কিনা দেখুন।');
     }
   };
   reader.readAsBinaryString(file);
@@ -1166,34 +1119,7 @@ function settingsTabHTML(){
       <button class="btn btn-navy" id="changePw">পাসওয়ার্ড পরিবর্তন করুন</button>
     </div>
     <div class="card">
-      <h3>📅 আপডেট হিস্টরি পরিষ্কার করুন</h3>
-      <p style="color:var(--muted);font-size:14px;">সব পুরনো history logs delete করুন। নতুন file upload এর সঠিক log দেখতে এটি ব্যবহার করুন।</p>
-      <button class="btn btn-danger" id="clearHistory" style="margin-top:12px;">🗑️ সব History ডিলিট করুন</button>
-      <div class="ok-msg" id="historyClearOk">History সফলভাবে ক্লিয়ার হয়েছে</div>
-      
-      <h3 style="margin-top:24px;">💾 ব্রাউজার ক্যাশ পরিষ্কার করুন</h3>
-      <p style="color:var(--muted);font-size:14px;">ব্রাউজারের localStorage থেকে সব সংরক্ষিত ডেটা delete করুন। পুরনো data refresh এ আসছে তাহলে এটি ব্যবহার করুন।</p>
-      <button class="btn btn-danger" id="clearStorage" style="margin-top:12px;">🗑️ localStorage সব ডিলিট করুন</button>
-      <div class="ok-msg" id="storageClearOk">localStorage সফলভাবে ক্লিয়ার হয়েছে</div>
-      
-      <h3 style="margin-top:24px;">💾 এক্সেল থেকে Fresh Load করুন</h3>
-      <p style="color:var(--muted);font-size:14px;">এটি সব পুরনো ডেটা delete করে Excel থেকে সম্পূর্ণ নতুন ডেটা load করবে। এটি সবচেয়ে নিরাপদ উপায়।</p>
-      <button class="btn btn-success" id="loadExcelFresh" style="margin-top:12px;">💾 এক্সেল Fresh Load করুন</button>
-      <div class="ok-msg" id="loadFreshOk">✅ Fresh Load mode চালু হয়েছে</div>
-      <p style="color:var(--muted);font-size:14px;">এই বাটন চাপলে সব পুরনো পার্টস ডিলিট হবে এবং Firebase থেকে লেটেস্ট ডেটা লোড হবে। Excel upload করার পর এটি ব্যবহার করুন।</p>
-      <button class="btn btn-danger" id="clearAllParts" style="margin-top:12px;">❌ সব পার্টস ডিলিট করুন (Local)</button>
-      <div class="ok-msg" id="clearOk">সব পার্টস সফলভাবে ডিলিট হয়েছে</div>
-      
-      <h3 style="color:#c2041d;margin-top:24px;">🔴 সম্পূর্ণ হার্ড রিসেট</h3>
-      <p style="color:var(--muted);font-size:14px;">এটি সব ডেটা সম্পূর্ণভাবে delete করে দেবে। Excel upload এর পর এটি ব্যবহার করুন যাতে পুরনো data আর না আসে।</p>
-      <button class="btn btn-danger" id="hardReset" style="margin-top:12px;background:#c2041d;border-color:#c2041d;">🔴 সম্পূর্ণ রিসেট (Hard Reset)</button>
-      <div class="ok-msg" id="resetOk">সম্পূর্ণ রিসেট সফল! Page reload হচ্ছে...</div>
-      <p style="color:var(--muted);font-size:14px;">Firebase থেকে সব সংরক্ষিত ডেটা (users, orders, history) delete করুন। নতুন data upload করার আগে এটি করুন।</p>
-      <button class="btn btn-danger" id="clearFirebase" style="margin-top:12px;">🔥 Firebase ডেটা সব ডিলিট করুন</button>
-      <div class="ok-msg" id="fbClearOk">Firebase থেকে সব ডেটা ডিলিট হয়েছে</div>
-      <div class="err" id="fbClearErr">Firebase ডেটা ডিলিট করতে সমস্যা হয়েছে</div>
-      
-      <h3 style="margin-top:20px;">🏢 কোম্পানির নাম ও লোগো</h3>
+      <h3>🏢 কোম্পানির নাম ও লোগো</h3>
       <div class="field"><label>কোম্পানির নাম</label><input type="text" id="compName" value="${DB.settings.companyName}"></div>
       <div class="field">
         <label>লোগো</label>
@@ -1204,162 +1130,7 @@ function settingsTabHTML(){
     </div>
   `;
 }
-let FRESH_LOAD_MODE = false;
-
 function wireSettingsTab(){
-  // Fresh load Excel button
-  const loadFreshBtn = document.getElementById('loadExcelFresh');
-  if(loadFreshBtn){
-    loadFreshBtn.onclick = ()=>{
-      if(!confirm('এটি সব পুরনো ডেটা delete করে Excel থেকে নতুন ডেটা load করবে। এগিয়ে যাবেন?')) return;
-      FRESH_LOAD_MODE = true;
-      loadFreshBtn.style.background = '#10b981';
-      loadFreshBtn.textContent = '⏳ Excel file select করুন...';
-      // Trigger file input
-      document.getElementById('excelFile').click();
-      document.getElementById('loadFreshOk').style.display = 'block';
-    };
-  }
-  
-  // Replace mode button
-  const replaceModeBtn = document.getElementById('replaceMode');
-  if(replaceModeBtn){
-    replaceModeBtn.onclick = ()=>{
-      if(!confirm('সব পুরনো পার্টস delete করে নতুন পার্টস দিয়ে replace করবেন?')) return;
-      REPLACE_MODE = true;
-      replaceModeBtn.style.background = '#10b981';
-      replaceModeBtn.textContent = '✅ Replace Mode চালু আছে - এখন Excel upload করুন';
-      document.getElementById('replaceModeOk').style.display = 'block';
-      alert('✅ Replace Mode চালু হয়েছে। এখন Admin Panel → পার্টস ম্যানেজমেন্ট → এক্সেল আপলোড করুন।');
-    };
-  }
-  
-  // Clear history button
-  const clearHistoryBtn = document.getElementById('clearHistory');
-  if(clearHistoryBtn){
-    clearHistoryBtn.onclick = ()=>{
-      if(!confirm('সব পুরনো history logs delete হবে। এটি undo করা যাবে না। এগিয়ে যাবেন?')) return;
-      DB.history = [];
-      saveDB();
-      document.getElementById('historyClearOk').style.display = 'block';
-      alert('✅ History সফলভাবে ক্লিয়ার হয়েছে।');
-    };
-  }
-  
-  // Clear localStorage button
-  const storageClearBtn = document.getElementById('clearStorage');
-  if(storageClearBtn){
-    storageClearBtn.onclick = ()=>{
-      if(!confirm('Browser এর localStorage সব delete হবে। তারপর page refresh হবে।')) return;
-      
-      try{
-        localStorage.removeItem('partsAppDB_v1');
-        localStorage.clear();
-        document.getElementById('storageClearOk').style.display = 'block';
-        alert('✅ localStorage সফলভাবে clear হয়েছে। এখন page refresh হবে...');
-        setTimeout(()=>{ location.reload(); }, 1000);
-      }catch(err){
-        alert('❌ localStorage clear করতে সমস্যা হয়েছে');
-      }
-    };
-  }
-  
-  // Hard reset button
-  const hardResetBtn = document.getElementById('hardReset');
-  if(hardResetBtn){
-    hardResetBtn.onclick = async ()=>{
-      if(!confirm('⚠️ ALL ডেটা সম্পূর্ণভাবে delete হবে - Parts, Users, Orders সব কিছু! এটি undo করা যাবে না। চালিয়ে যাবেন?')) return;
-      if(!confirm('সত্যিই সম্পূর্ণ রিসেট করবেন? এই action টি পরে undo করা যাবে না।')) return;
-      
-      try{
-        hardResetBtn.disabled = true;
-        hardResetBtn.textContent = '⏳ রিসেট হচ্ছে...';
-        
-        // Clear everything
-        DB.parts = [];
-        DB.users = [];
-        DB.orders = [];
-        DB.history = [];
-        DB.session = {role: null, user: null};
-        
-        // Clear localStorage
-        localStorage.clear();
-        
-        // Clear Firebase
-        try{
-          await fetch(FB_URL + '/appdata.json', {
-            method: 'PUT',
-            body: JSON.stringify(null)
-          });
-        }catch(e){}
-        
-        document.getElementById('resetOk').style.display = 'block';
-        alert('✅ সম্পূর্ণ রিসেট সফল! Page এখন reload হবে...');
-        setTimeout(()=>{ location.reload(); }, 1000);
-      }catch(err){
-        console.error('Hard reset error:', err);
-        alert('❌ রিসেট করতে সমস্যা হয়েছে');
-        hardResetBtn.disabled = false;
-        hardResetBtn.textContent = '🔴 সম্পূর্ণ রিসেট (Hard Reset)';
-      }
-    };
-  }
-  
-  // Clear Firebase button
-  const fbClearBtn = document.getElementById('clearFirebase');
-  if(fbClearBtn){
-    fbClearBtn.onclick = async ()=>{
-      if(!confirm('Firebase থেকে ALL ডেটা (users, orders, history) delete হবে। এটি permanent! এগিয়ে যাবেন?')) return;
-      
-      try{
-        fbClearBtn.disabled = true;
-        fbClearBtn.textContent = '⏳ ডিলিট হচ্ছে...';
-        
-        // Clear Firebase data
-        const response = await fetch(FB_URL + '/appdata.json', {
-          method: 'PUT',
-          body: JSON.stringify(null)
-        });
-        
-        if(response.ok){
-          // Also clear local DB
-          DB.users = [];
-          DB.orders = [];
-          DB.history = [];
-          DB.session = {role: null, user: null};
-          saveDB();
-          
-          document.getElementById('fbClearOk').style.display = 'block';
-          document.getElementById('fbClearErr').style.display = 'none';
-          alert('✅ Firebase থেকে সব ডেটা ডিলিট হয়েছে। এখন নতুন Excel upload করুন।');
-          setTimeout(()=>{ go('adminDashboard'); }, 1500);
-        } else {
-          throw new Error('Firebase response not ok');
-        }
-      }catch(err){
-        console.error('Firebase clear error:', err);
-        document.getElementById('fbClearErr').style.display = 'block';
-        alert('❌ Firebase ডেটা ডিলিট করতে সমস্যা হয়েছে। ইন্টারনেট চেক করুন।');
-      }finally{
-        fbClearBtn.disabled = false;
-        fbClearBtn.textContent = '🔥 Firebase ডেটা সব ডিলিট করুন';
-      }
-    };
-  }
-  
-  // Clear local parts button
-  const clearBtn = document.getElementById('clearAllParts');
-  if(clearBtn){
-    clearBtn.onclick = ()=>{
-      if(!confirm('সব পুরনো পার্টস ডিলিট করবেন? এটি undo করা যাবে না। তারপর Admin panel থেকে নতুন Excel upload করুন।')) return;
-      DB.parts = [];
-      saveDB();
-      document.getElementById('clearOk').style.display = 'block';
-      alert('✅ সব পার্টস ডিলিট হয়েছে। এখন Admin Panel → পার্টস ম্যানেজমেন্ট থেকে নতুন Excel upload করুন।');
-      setTimeout(()=>{ go('adminDashboard'); }, 1500);
-    };
-  }
-  
   const pushBtn = document.getElementById('pushDemoParts');
   if(pushBtn){
     pushBtn.onclick = async ()=>{
