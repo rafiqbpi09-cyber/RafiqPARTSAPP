@@ -1139,6 +1139,12 @@ function historyTabHTML(){
 function settingsTabHTML(){
   return `
     <div class="card">
+      <h3>🔄 Fresh Upload (সব Delete + নতুন Upload)</h3>
+      <p class="hint">সব পুরনো ডেটা delete করে সাথে সাথে নতুন Excel file upload করতে পারবেন।</p>
+      <button class="btn btn-success" id="freshUpload" style="margin-top:12px;">🔄 Fresh Upload শুরু করুন</button>
+      <div class="ok-msg" id="freshUploadOk">✅ সব ডেটা delete হয়েছে। এখন Excel file select করুন।</div>
+    </div>
+    <div class="card">
       <h3>⚠️ Duplicate পার্টস Remove করুন</h3>
       <p class="hint">একই পার্ট নম্বর থাকলে একটি রেখে বাকিগুলো delete করবে। নতুন price সহ পার্টস থাকবে।</p>
       <button class="btn btn-warning" id="removeDuplicates">⚠️ Duplicates Remove করুন</button>
@@ -1196,6 +1202,31 @@ function settingsTabHTML(){
   `;
 }
 function wireSettingsTab(){
+  // Fresh upload button
+  const freshUploadBtn = document.getElementById('freshUpload');
+  if(freshUploadBtn){
+    freshUploadBtn.onclick = ()=>{
+      if(!confirm('সব পুরনো ডেটা DELETE হবে। এগিয়ে যাবেন?')) return;
+      
+      try{
+        const oldCount = DB.parts.length;
+        DB.parts = []; // Clear all parts
+        localStorage.clear(); // Clear browser cache
+        saveDB();
+        
+        document.getElementById('freshUploadOk').style.display = 'block';
+        alert(`✅ ${oldCount}টি পার্টস delete হয়েছে!\n\nএখন Excel file select করুন।`);
+        
+        // Automatically open file picker
+        setTimeout(()=>{
+          document.getElementById('excelFile').click();
+        }, 500);
+      }catch(err){
+        alert('❌ Error: ' + err.message);
+      }
+    };
+  }
+  
   // Remove duplicates button
   const removeDupBtn = document.getElementById('removeDuplicates');
   if(removeDupBtn){
