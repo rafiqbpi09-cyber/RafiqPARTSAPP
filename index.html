@@ -875,6 +875,7 @@ function deletePart(id){
 function handleExcelUpload(e){
   const file = e.target.files[0];
   if(!file) return;
+  const fileName = file.name; // Get actual file name
   const reader = new FileReader();
   reader.onload = (evt)=>{
     try{
@@ -898,7 +899,8 @@ function handleExcelUpload(e){
         return;
       }
       if(newItems.length) syncPush('bulkAddParts', {items:newItems});
-      logHistory(`এক্সেল আপলোড: ${added}টি পার্টস যোগ হয়েছে`);
+      const now = new Date().toLocaleString('bn-BD');
+      logHistory(`এক্সেল আপলোড: ${added}টি পার্টস যোগ হয়েছে (${fileName})`);
       saveDB();
       alert(`✅ ${added}টি পার্টস সফলভাবে যোগ হয়েছে। Admin Dashboard এ যাচ্ছি...`);
       go('adminDashboard');
@@ -1090,7 +1092,12 @@ function settingsTabHTML(){
       <button class="btn btn-navy" id="changePw">পাসওয়ার্ড পরিবর্তন করুন</button>
     </div>
     <div class="card">
-      <h3>💾 ব্রাউজার ক্যাশ পরিষ্কার করুন</h3>
+      <h3>📅 আপডেট হিস্টরি পরিষ্কার করুন</h3>
+      <p style="color:var(--muted);font-size:14px;">সব পুরনো history logs delete করুন। নতুন file upload এর সঠিক log দেখতে এটি ব্যবহার করুন।</p>
+      <button class="btn btn-danger" id="clearHistory" style="margin-top:12px;">🗑️ সব History ডিলিট করুন</button>
+      <div class="ok-msg" id="historyClearOk">History সফলভাবে ক্লিয়ার হয়েছে</div>
+      
+      <h3 style="margin-top:24px;">💾 ব্রাউজার ক্যাশ পরিষ্কার করুন</h3>
       <p style="color:var(--muted);font-size:14px;">ব্রাউজারের localStorage থেকে সব সংরক্ষিত ডেটা delete করুন। পুরনো data refresh এ আসছে তাহলে এটি ব্যবহার করুন।</p>
       <button class="btn btn-danger" id="clearStorage" style="margin-top:12px;">🗑️ localStorage সব ডিলিট করুন</button>
       <div class="ok-msg" id="storageClearOk">localStorage সফলভাবে ক্লিয়ার হয়েছে</div>
@@ -1121,6 +1128,18 @@ function settingsTabHTML(){
   `;
 }
 function wireSettingsTab(){
+  // Clear history button
+  const clearHistoryBtn = document.getElementById('clearHistory');
+  if(clearHistoryBtn){
+    clearHistoryBtn.onclick = ()=>{
+      if(!confirm('সব পুরনো history logs delete হবে। এটি undo করা যাবে না। এগিয়ে যাবেন?')) return;
+      DB.history = [];
+      saveDB();
+      document.getElementById('historyClearOk').style.display = 'block';
+      alert('✅ History সফলভাবে ক্লিয়ার হয়েছে।');
+    };
+  }
+  
   // Clear localStorage button
   const storageClearBtn = document.getElementById('clearStorage');
   if(storageClearBtn){
