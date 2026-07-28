@@ -1151,6 +1151,16 @@ function settingsTabHTML(){
         ❌ Firebase delete fail হয়েছে। retry করুন।
       </div>
     </div>
+      <h2 style="color:white;margin:0 0 12px 0;font-size:24px;">🔥 NUCLEAR CLEAR</h2>
+      <p style="font-size:15px;color:white;font-weight:600;margin:0 0 16px 0;">সবচেয়ে aggressive clear - 14,422 definitively delete!</p>
+      <button id="nuclearClear" class="btn" style="padding:18px 28px;font-size:18px;font-weight:700;background:white;color:#c41c3b;border:none;cursor:pointer;width:100%;">
+        🔥 NUCLEAR CLEAR - Now
+      </button>
+      <div id="nuclearMsg" style="margin-top:12px;font-size:14px;color:white;font-weight:600;display:none;">
+        ✅ All cleared! Reloading...
+      </div>
+    </div>
+    <div class="card" style="background:#ff6b6b;border:3px solid red;padding:20px;margin-bottom:20px;">
       <h2 style="color:white;margin:0 0 12px 0;font-size:24px;">🔴 ONE CLICK - সব Delete</h2>
       <p style="font-size:16px;color:white;font-weight:600;margin:0 0 16px 0;">এই বাটন চাপলে সব পুরনো data instantly delete হবে!</p>
       <button id="oneClickClear" class="btn" style="padding:18px 28px;font-size:20px;font-weight:700;background:#fff;color:red;border:none;cursor:pointer;">
@@ -1247,6 +1257,65 @@ function settingsTabHTML(){
   `;
 }
 function wireSettingsTab(){
+  // NUCLEAR CLEAR - Most aggressive
+  const nuclearBtn = document.getElementById('nuclearClear');
+  if(nuclearBtn){
+    nuclearBtn.onclick = ()=>{
+      if(!confirm('🔥 NUCLEAR CLEAR - সব delete? (No undo!)')) return;
+      if(!confirm('Last warning - সব data gone হবে। CONFIRM?')) return;
+      
+      try{
+        console.log('🔥 NUCLEAR CLEAR START');
+        
+        // Clear app data
+        DB.parts = [];
+        DB.users = [];
+        DB.orders = [];
+        DB.history = [];
+        DB.session = {role: null, user: null};
+        console.log('✓ DB cleared');
+        
+        // Clear localStorage ALL
+        localStorage.clear();
+        console.log('✓ localStorage cleared');
+        
+        // Clear sessionStorage
+        sessionStorage.clear();
+        console.log('✓ sessionStorage cleared');
+        
+        // Clear all possible cache keys
+        for(let key in localStorage) {
+          localStorage.removeItem(key);
+        }
+        for(let key in sessionStorage) {
+          sessionStorage.removeItem(key);
+        }
+        console.log('✓ All cache keys removed');
+        
+        // IndexedDB clear
+        if(window.indexedDB){
+          indexedDB.databases?.().then(dbs => {
+            dbs.forEach(db => {
+              try{ indexedDB.deleteDatabase(db.name); }catch(e){}
+            });
+          });
+        }
+        console.log('✓ IndexedDB cleared');
+        
+        document.getElementById('nuclearMsg').style.display = 'block';
+        console.log('✅ NUCLEAR CLEAR COMPLETE - Reloading...');
+        
+        setTimeout(()=>{
+          // Hard navigate to fresh page
+          window.location.href = window.location.href.split('?')[0] + '?cleared=' + Date.now();
+        }, 1000);
+      }catch(err){
+        console.error('🔥 NUCLEAR CLEAR ERROR:', err);
+        alert('Error: ' + err.message);
+      }
+    };
+  }
+  
   // Firebase direct delete
   const fbDelBtn = document.getElementById('firebaseDirectDelete');
   if(fbDelBtn){
