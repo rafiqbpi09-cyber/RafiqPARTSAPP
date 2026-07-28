@@ -900,24 +900,24 @@ function handleExcelUpload(e){
       for(let h of headers){
         const norm = normalize(h);
         
-        // Try to match Part Number / Part code columns
-        if(norm.includes('partnumber') || norm.includes('partcode')) {
+        // Try to match Part Number columns (exact match preferred)
+        if(norm === 'partnumber' || norm.includes('partnumber')) {
           partCodeCol = h;
         }
-        // Try to match Parts Name / Code columns
-        if(norm.includes('partsname') || (h.trim() === 'Code') || norm.includes('code')) {
-          if(!nameCol) nameCol = h; // First match
+        // Try to match Parts Name columns
+        else if(norm === 'partsname' || norm.includes('partsname')) {
+          nameCol = h;
         }
         // Try to match Price columns
-        if(norm.includes('price')) {
+        else if(norm === 'price' || (norm.includes('price') && !norm.includes('old'))) {
           priceCol = h;
         }
       }
       
-      // If still not found, try by position (1st, 2nd, 3rd columns)
-      if(!partCodeCol && headers.length > 0) partCodeCol = headers[0];
-      if(!nameCol && headers.length > 1) nameCol = headers[1];
-      if(!priceCol && headers.length > 2) priceCol = headers[2];
+      // If still not found, use position-based fallback
+      if(!partCodeCol) partCodeCol = headers[0]; // 1st column = Part Number
+      if(!nameCol) nameCol = headers[1]; // 2nd column = Parts Name
+      if(!priceCol) priceCol = headers[2]; // 3rd column = Price
       
       console.log('Mapped columns:', {partCodeCol, nameCol, priceCol});
       console.log('First row sample:', {
@@ -926,7 +926,7 @@ function handleExcelUpload(e){
         price: rows[0][priceCol]
       });
       
-      if(!partCodeCol || !nameCol){
+      if(!partCodeCol || !nameCol || !priceCol){
         alert('❌ Excel columns match হচ্ছে না।\n\nআপনার columns: ' + headers.join(', '));
         return;
       }
