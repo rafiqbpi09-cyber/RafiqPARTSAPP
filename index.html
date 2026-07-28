@@ -924,6 +924,7 @@ function openPartModal(part){
       syncPush('addPart', newPart);
       logHistory(`নতুন পার্টস যোগ: ${name} (${partNo})`);
     }
+    saveDB();
     closeModal(); go('adminDashboard');
   };
 }
@@ -935,6 +936,7 @@ function deletePart(id){
     DB.parts = DB.parts.filter(x=>x.id!==id);
     syncPush('deletePart', {id});
     logHistory(`পার্টস ডিলিট: ${p.name} (${p.partNo})`);
+    saveDB();
     go('adminDashboard');
   }
 }
