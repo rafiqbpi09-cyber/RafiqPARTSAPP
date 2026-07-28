@@ -931,6 +931,7 @@ function handleExcelUpload(e){
       if(newItems.length) syncPush('bulkAddParts', {items:newItems});
       logHistory(`এক্সেল আপলোড: ${added}টি পার্টস যোগ হয়েছে`);
       saveDB();
+      alert(`✅ সফলভাবে ${added}টি পার্টস যোগ হয়েছে!\n\nটোটাল পার্টস: ${DB.parts.length}টি`);
       go('adminDashboard');
     }catch(err){
       alert('ফাইল পড়া যায়নি। এক্সেল ফাইলে PartNo, Name, Price, Category কলাম আছে কিনা দেখুন।');
