@@ -158,7 +158,6 @@ if('serviceWorker' in navigator){
   table{width:100%;border-collapse:collapse;font-size:13.5px;}
   th{text-align:left;font-size:12px;color:var(--muted);font-weight:600;padding:9px 10px;border-bottom:2px solid var(--line);white-space:nowrap;}
   td{padding:10px 10px;border-bottom:1px solid var(--line);vertical-align:middle;text-align:left;}
-  .parts-table td:nth-child(1), .parts-table td:nth-child(2){text-align:center;}
   .users-table td:nth-child(1), .users-table td:nth-child(2), .users-table td:nth-child(3), .users-table td:nth-child(4){text-align:center;}
   .users-table th{font-weight:700;font-size:16px;color:var(--text);border:1.5px solid var(--line);border-radius:8px;background:var(--paper);padding:10px 12px;white-space:nowrap;}
   th:first-child,td:first-child{text-align:right;}
@@ -849,9 +848,9 @@ function partsTable(list, totalCount, searchQuery=''){
   return note + `<div style="overflow:auto;background:#f8f9fa;border-radius:8px;padding:12px;">
     <table class="parts-table" style="width:100%;border-collapse:separate;border-spacing:0 8px;">
       <thead>
-        <tr style="background:#1f8a4c;color:white;font-weight:700;font-size:16px;border-radius:6px;box-shadow:0 2px 4px rgba(0,0,0,0.1);">
-          <th style="text-align:center;padding:14px 10px;border-radius:6px 0 0 6px;">পার্ট নম্বর</th>
-          <th style="text-align:center;padding:14px 10px;">পার্টস নাম</th>
+        <tr style="background:#1f8a4c;color:white;font-weight:700;font-size:20px;border-radius:6px;box-shadow:0 2px 4px rgba(0,0,0,0.1);">
+          <th style="text-align:left;padding:14px 6px 14px 14px;border-radius:6px 0 0 6px;">পার্ট নম্বর</th>
+          <th style="text-align:left;padding:14px 10px 14px 6px;">পার্টস নাম</th>
           <th style="padding:14px 10px;">ক্যাটাগরি</th>
           <th style="padding:14px 10px;">মূল্য</th>
           <th style="text-align:center;padding:14px 10px;">সংশোধন</th>
@@ -868,8 +867,8 @@ function partsTable(list, totalCount, searchQuery=''){
         const borderColor = isSearchMatch ? '#1f8a4c' : '#ddd';
         
         return `<tr style="background:${bgColor};border:2px solid ${borderColor};border-radius:6px;box-shadow:0 1px 3px rgba(0,0,0,0.05);transition:all 0.2s ease;">
-          <td class="mono" data-label="পার্ট নম্বর" style="padding:12px;font-weight:600;${isSearchMatch?'color:#1f8a4c;':''}">${p.partNo}</td>
-          <td data-label="পার্টস নাম" style="padding:12px;${isSearchMatch?'color:#1f8a4c;font-weight:600;':''}">${p.name}</td>
+          <td class="mono" data-label="পার্ট নম্বর" style="text-align:left;padding:12px 6px 12px 14px;font-weight:600;${isSearchMatch?'color:#1f8a4c;':''}">${p.partNo}</td>
+          <td data-label="পার্টস নাম" style="text-align:left;padding:12px 10px 12px 6px;${isSearchMatch?'color:#1f8a4c;font-weight:600;':''}">${p.name}</td>
           <td data-label="ক্যাটাগরি" style="padding:12px;">${p.category||'-'}</td>
           <td data-label="মূল্য" style="padding:12px;font-weight:600;">৳${p.price}</td>
           <td data-label="সংশোধন" style="text-align:center;padding:12px;"><button class="btn btn-ghost btn-sm" onclick="editPart(${p.id})">✏️</button></td>
