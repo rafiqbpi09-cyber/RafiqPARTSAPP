@@ -918,13 +918,34 @@ function handleExcelUpload(e){
       const rows = XLSX.utils.sheet_to_json(sheet, {defval:''});
       const existingByPartNo = {};
       DB.parts.forEach(p=>{ existingByPartNo[p.partNo.trim().toUpperCase()] = p; });
+
+      // Build a normalized (lowercase, no spaces/underscores) lookup of each row's keys,
+      // so headers like "Part No.", "part_no", "PARTNO" etc. all match.
+      const normKey = s => String(s).toLowerCase().replace(/[^a-z0-9\u0980-\u09FF]/g,'');
+      const partNoAliases = ['partnumber','partno','partnum','partcode','part','পার্টনম্বর','পার্ট'];
+      const nameAliases = ['partsname','name','partname','description','desc','নাম','পার্টসনাম'];
+      const priceAliases = ['price','rate','mrp','unitprice','মূল্য','দাম'];
+      const categoryAliases = ['category','cat','group','ক্যাটাগরি'];
+      const columnKeys = rows.length ? Object.keys(rows[0]) : [];
+      const findKey = aliases => columnKeys.find(k => aliases.includes(normKey(k)));
+      const partNoKey = findKey(partNoAliases);
+      const nameKey = findKey(nameAliases);
+      const priceKey = findKey(priceAliases);
+      const categoryKey = findKey(categoryAliases);
+      // Positional fallback: if headers didn't match by name, assume column order
+      // Part Number, Parts Name, Category, Price (or Part Number, Parts Name, Price).
+      const posPartNo = partNoKey || columnKeys[0];
+      const posName = nameKey || columnKeys[1];
+      const posCategory = categoryKey || columnKeys[2];
+      const posPrice = priceKey || columnKeys[3] || columnKeys[2];
+
       let added = 0, updated = 0; const newItems = [];
       rows.forEach(r=>{
-        const partNo = String(r['Part Number'] || r.PartNo || r['পার্ট নম্বর'] || r.partno || r['Part No'] || '').trim();
-        const name = String(r['Parts Name'] || r.Name || r['নাম'] || r.name || '').trim();
+        const partNo = String(r[posPartNo] ?? '').trim();
+        const name = String(r[posName] ?? '').trim();
         if(!partNo || !name) return;
-        const price = parseFloat(r.Price || r['মূল্য'] || r.price || 0) || 0;
-        const category = String(r.Category || r['ক্যাটাগরি'] || r.category || '').trim();
+        const price = parseFloat(r[posPrice]) || 0;
+        const category = String(r[posCategory] ?? '').trim();
         const key = partNo.toUpperCase();
         const existing = existingByPartNo[key];
         if(existing){
