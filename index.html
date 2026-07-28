@@ -1138,6 +1138,12 @@ function historyTabHTML(){
 /* ---- Settings tab ---- */
 function settingsTabHTML(){
   return `
+    <div class="card" style="background:#ffebee;border:2px solid #c2041d;">
+      <h3 style="color:#c2041d;">🔴 Complete Clear (সব ডেটা Delete)</h3>
+      <p class="hint">Browser cache, localStorage, sessionStorage - সবকিছু delete করবে। পরে নতুন upload করুন।</p>
+      <button class="btn btn-danger" id="completeClean" style="margin-top:12px;background:#c2041d;">🔴 Complete Clear করুন</button>
+      <div class="ok-msg" id="cleanOk">✅ সম্পূর্ণ clear হয়েছে। Page reload হচ্ছে...</div>
+    </div>
     <div class="card">
       <h3>☁️ Firebase Database Clear করুন</h3>
       <p class="hint">Firebase থেকে সব পুরনো ডেটা delete করবে। Fresh Upload এর আগে এটি করুন।</p>
@@ -1209,6 +1215,46 @@ function settingsTabHTML(){
   `;
 }
 function wireSettingsTab(){
+  // Complete clear button
+  const cleanBtn = document.getElementById('completeClean');
+  if(cleanBtn){
+    cleanBtn.onclick = ()=>{
+      if(!confirm('🔴 সবকিছু COMPLETELY delete হবে - ডাটা, cache, storage সব। এটি undo করা যাবে না। এগিয়ে যাবেন?')) return;
+      if(!confirm('সত্যিই complete clear করবেন? Confirm করুন।')) return;
+      
+      try{
+        // Clear everything
+        DB.parts = [];
+        DB.users = [];
+        DB.orders = [];
+        DB.history = [];
+        DB.session = {role: null, user: null};
+        
+        // Clear all storage
+        localStorage.clear();
+        sessionStorage.clear();
+        
+        // Clear indexed DB if exists
+        if(window.indexedDB){
+          indexedDB.databases().then(dbs => {
+            dbs.forEach(db => indexedDB.deleteDatabase(db.name));
+          });
+        }
+        
+        document.getElementById('cleanOk').style.display = 'block';
+        alert('✅ Complete clear সফল!\n\nPage reload হচ্ছে...');
+        
+        setTimeout(()=>{
+          // Hard refresh
+          location.href = location.href.split('?')[0];
+          location.reload(true);
+        }, 1000);
+      }catch(err){
+        alert('❌ Error: ' + err.message);
+      }
+    };
+  }
+  
   // Firebase clear button
   const fbClearBtn = document.getElementById('clearFirebaseDB');
   if(fbClearBtn){
