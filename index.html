@@ -932,14 +932,16 @@ function handleExcelUpload(e){
       }
       
       let added = 0; 
-      let oldCount = 0; // For replace mode tracking
+      let oldCount = 0;
       const newItems = [];
       
-      // If replace mode, clear old parts first
-      if(REPLACE_MODE){
+      // If fresh load mode, completely clear everything first
+      if(FRESH_LOAD_MODE){
         oldCount = DB.parts.length;
-        DB.parts = []; // Clear all old parts
-        REPLACE_MODE = false; // Reset flag
+        DB.parts = [];
+        localStorage.clear(); // Clear browser cache too
+        FRESH_LOAD_MODE = false; // Reset flag
+        console.log(`✓ Fresh Load: Cleared ${oldCount} old parts, cleared localStorage`);
       }
       
       rows.forEach((r, idx)=>{
@@ -1174,10 +1176,10 @@ function settingsTabHTML(){
       <button class="btn btn-danger" id="clearStorage" style="margin-top:12px;">🗑️ localStorage সব ডিলিট করুন</button>
       <div class="ok-msg" id="storageClearOk">localStorage সফলভাবে ক্লিয়ার হয়েছে</div>
       
-      <h3 style="margin-top:24px;">🔄 সব পার্টস Replace করুন</h3>
-      <p style="color:var(--muted);font-size:14px;">পুরনো সব পার্টস delete করে নতুন পার্টস দিয়ে সম্পূর্ণভাবে replace করুন। Excel upload এর আগে এটি click করুন।</p>
-      <button class="btn btn-warning" id="replaceMode" style="margin-top:12px;">🔄 Replace Mode চালু করুন</button>
-      <div class="ok-msg" id="replaceModeOk">✅ Replace Mode চালু হয়েছে। এখন Excel upload করলে সব পার্টস replace হবে।</div>
+      <h3 style="margin-top:24px;">💾 এক্সেল থেকে Fresh Load করুন</h3>
+      <p style="color:var(--muted);font-size:14px;">এটি সব পুরনো ডেটা delete করে Excel থেকে সম্পূর্ণ নতুন ডেটা load করবে। এটি সবচেয়ে নিরাপদ উপায়।</p>
+      <button class="btn btn-success" id="loadExcelFresh" style="margin-top:12px;">💾 এক্সেল Fresh Load করুন</button>
+      <div class="ok-msg" id="loadFreshOk">✅ Fresh Load mode চালু হয়েছে</div>
       <p style="color:var(--muted);font-size:14px;">এই বাটন চাপলে সব পুরনো পার্টস ডিলিট হবে এবং Firebase থেকে লেটেস্ট ডেটা লোড হবে। Excel upload করার পর এটি ব্যবহার করুন।</p>
       <button class="btn btn-danger" id="clearAllParts" style="margin-top:12px;">❌ সব পার্টস ডিলিট করুন (Local)</button>
       <div class="ok-msg" id="clearOk">সব পার্টস সফলভাবে ডিলিট হয়েছে</div>
@@ -1202,9 +1204,23 @@ function settingsTabHTML(){
     </div>
   `;
 }
-let REPLACE_MODE = false; // Global flag for replace vs add mode
+let FRESH_LOAD_MODE = false;
 
 function wireSettingsTab(){
+  // Fresh load Excel button
+  const loadFreshBtn = document.getElementById('loadExcelFresh');
+  if(loadFreshBtn){
+    loadFreshBtn.onclick = ()=>{
+      if(!confirm('এটি সব পুরনো ডেটা delete করে Excel থেকে নতুন ডেটা load করবে। এগিয়ে যাবেন?')) return;
+      FRESH_LOAD_MODE = true;
+      loadFreshBtn.style.background = '#10b981';
+      loadFreshBtn.textContent = '⏳ Excel file select করুন...';
+      // Trigger file input
+      document.getElementById('excelFile').click();
+      document.getElementById('loadFreshOk').style.display = 'block';
+    };
+  }
+  
   // Replace mode button
   const replaceModeBtn = document.getElementById('replaceMode');
   if(replaceModeBtn){
