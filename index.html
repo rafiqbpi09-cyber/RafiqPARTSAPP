@@ -916,22 +916,36 @@ function handleExcelUpload(e){
       const wb = XLSX.read(evt.target.result, {type:'binary'});
       const sheet = wb.Sheets[wb.SheetNames[0]];
       const rows = XLSX.utils.sheet_to_json(sheet, {defval:''});
-      let added = 0; const newItems = [];
+      const existingByPartNo = {};
+      DB.parts.forEach(p=>{ existingByPartNo[p.partNo.trim().toUpperCase()] = p; });
+      let added = 0, updated = 0; const newItems = [];
       rows.forEach(r=>{
         const partNo = String(r['Part Number'] || r.PartNo || r['পার্ট নম্বর'] || r.partno || r['Part No'] || '').trim();
         const name = String(r['Parts Name'] || r.Name || r['নাম'] || r.name || '').trim();
         if(!partNo || !name) return;
         const price = parseFloat(r.Price || r['মূল্য'] || r.price || 0) || 0;
         const category = String(r.Category || r['ক্যাটাগরি'] || r.category || '').trim();
-        const item = {id: nextPartId++, partNo, name, category, price, core: coreOf(partNo), nameLower: name.toLowerCase()};
-        DB.parts.push(item);
-        newItems.push(item);
-        added++;
+        const key = partNo.toUpperCase();
+        const existing = existingByPartNo[key];
+        if(existing){
+          existing.name = name;
+          existing.price = price;
+          existing.category = category;
+          existing.nameLower = name.toLowerCase();
+          syncPush('editPart', {id:existing.id, partNo, name, category, price});
+          updated++;
+        } else {
+          const item = {id: nextPartId++, partNo, name, category, price, core: coreOf(partNo), nameLower: name.toLowerCase()};
+          DB.parts.push(item);
+          existingByPartNo[key] = item;
+          newItems.push(item);
+          added++;
+        }
       });
       if(newItems.length) syncPush('bulkAddParts', {items:newItems});
-      logHistory(`এক্সেল আপলোড: ${added}টি পার্টস যোগ হয়েছে`);
+      logHistory(`এক্সেল আপলোড: ${added}টি নতুন, ${updated}টি প্রাইস আপডেট`);
       saveDB();
-      alert(`✅ সফলভাবে ${added}টি পার্টস যোগ হয়েছে!\n\nটোটাল পার্টস: ${DB.parts.length}টি`);
+      alert(`✅ আপলোড সম্পন্ন!\n\nনতুন পার্টস: ${added}টি\nপ্রাইস আপডেট হয়েছে: ${updated}টি\nটোটাল পার্টস: ${DB.parts.length}টি`);
       go('adminDashboard');
     }catch(err){
       alert('ফাইল পড়া যায়নি। এক্সেল ফাইলে PartNo, Name, Price, Category কলাম আছে কিনা দেখুন।');
