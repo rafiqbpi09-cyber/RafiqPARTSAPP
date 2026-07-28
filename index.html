@@ -888,42 +888,40 @@ function handleExcelUpload(e){
         return;
       }
       
+      // Normalize column names
+      const normalize = (s) => s.toLowerCase().trim().replace(/[.\s]/g, '');
       const firstRow = rows[0];
       const headers = Object.keys(firstRow);
       console.log('Excel Headers:', headers);
       
+      // Map columns by normalized names
+      let partCodeCol = null, codeCol = null, priceCol = null;
+      for(let h of headers){
+        const norm = normalize(h);
+        if(norm.includes('partcode')) partCodeCol = h;
+        if(h.toLowerCase().trim() === 'code') codeCol = h;
+        if(norm.includes('newsales') && norm.includes('price')) priceCol = h;
+      }
+      
+      console.log('Mapped columns:', {partCodeCol, codeCol, priceCol});
+      
+      if(!partCodeCol || !codeCol || !priceCol){
+        alert('❌ Excel columns match হচ্ছে না।\n\nআপনার columns: ' + headers.join(', ') + '\n\nNeed: "Part code", "Code", "New Sales Price (Tk)."');
+        return;
+      }
+      
       let added = 0; const newItems = [];
       rows.forEach((r, idx)=>{
-        // Map actual Excel columns
-        const partNo = String(
-          r['Part code'] || r['part code'] || r['Part Number'] || r['PartNo'] || 
-          r['পার্ট নম্বর'] || r['PART CODE'] || ''
-        ).trim();
+        const partNo = String(r[partCodeCol] || '').trim();
+        const name = String(r[codeCol] || '').trim();
+        const price = parseFloat(r[priceCol] || 0) || 0;
         
-        const name = String(
-          r['Code'] || r['code'] || r['Parts Name'] || r['পার্টস নাম'] || 
-          r['Description'] || r['description'] || r['CODE'] || ''
-        ).trim();
-        
-        if(!partNo || !name){
-          if(idx === 0) console.log('Row 0 - partNo:', partNo, 'name:', name);
+        if(!partNo || !name || price <= 0){
+          console.log(`Row ${idx} skipped: partNo="${partNo}", name="${name}", price=${price}`);
           return;
         }
         
-        // Try to get New Sales Price (Tk).
-        let price = 0;
-        for(let key of Object.keys(r)){
-          if(key.toLowerCase().includes('price') && key.toLowerCase().includes('new')){
-            price = parseFloat(r[key]) || 0;
-            break;
-          }
-        }
-        if(!price){
-          price = parseFloat(r['Price'] || r['price'] || r['New Sales Price (Tk).'] || r['মূল্য'] || 0) || 0;
-        }
-        
-        const category = String(r['Category'] || r['category'] || '').trim();
-        
+        const category = '';
         const item = {id: nextPartId++, partNo, name, category, price, core: coreOf(partNo), nameLower: name.toLowerCase()};
         DB.parts.push(item);
         newItems.push(item);
@@ -931,19 +929,19 @@ function handleExcelUpload(e){
       });
       
       if(added === 0){
-        const headerMsg = 'আপনার Excel এর headers: ' + headers.join(', ');
-        alert('❌ কোনো পার্টস যোগ হয়নি।\n\n' + headerMsg + '\n\nMapping ব্যবহার করা হচ্ছে:\n"Part code" → Part Number\n"Code" → Parts Name\n"New Sales Price (Tk)." → Price');
+        alert('❌ কোনো valid পার্টস পাওয়া যায়নি। Data check করুন। Console এ details দেখুন।');
         return;
       }
       
+      console.log(`✓ Added ${added} parts`);
       if(newItems.length) syncPush('bulkAddParts', {items:newItems});
       logHistory(`এক্সেল আপলোড: ${added}টি পার্টস যোগ হয়েছে (${fileName})`);
       saveDB();
-      alert(`✅ ${added}টি পার্টস সফলভাবে যোগ হয়েছে। Admin Dashboard এ যাচ্ছি...`);
+      alert(`✅ ${added}টি পার্টস সফলভাবে যোগ হয়েছে। Dashboard এ যাচ্ছি...`);
       go('adminDashboard');
     }catch(err){
       console.error('Excel upload error:', err);
-      alert('❌ ফাইল পড়া যায়নি।\n\nError: ' + err.message + '\n\nConsole এ বিস্তারিত দেখুন।');
+      alert('❌ ফাইল পড়া যায়নি।\n\nError: ' + err.message);
     }
   };
   reader.readAsBinaryString(file);
