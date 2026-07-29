@@ -727,7 +727,10 @@ ROUTES.dealerRequisition = function(){
     rowsHTML += `
       <tr>
         <td style="text-align:center;font-weight:600;color:var(--muted)">${i}</td>
-        <td><input type="text" class="req-partno" data-row="${i}" placeholder="পার্ট নং" style="width:100%;border:1px solid var(--line);border-radius:8px;padding:7px 6px;font-size:16px;" inputmode="text"></td>
+        <td style="position:relative">
+          <input type="text" class="req-partno" data-row="${i}" placeholder="সম্পূর্ণ পার্ট নাম্বার লিখুন" style="width:100%;border:1px solid var(--line);border-radius:8px;padding:7px 6px;font-size:16px;" inputmode="text" autocomplete="off">
+          <div class="req-suggest" data-row="${i}" style="display:none;position:absolute;left:0;right:0;top:100%;z-index:30;background:var(--card);border:1px solid var(--line);border-radius:8px;max-height:200px;overflow-y:auto;box-shadow:0 10px 24px -10px rgba(0,0,0,.35);margin-top:2px;"></div>
+        </td>
         <td><input type="text" class="req-name" data-row="${i}" readonly placeholder="স্বয়ংক্রিয়ভাবে আসবে" style="width:100%;border:1px solid var(--line);border-radius:8px;padding:7px 6px;font-size:16px;background:var(--bg-2,#f4f4f4);color:var(--text)"></td>
         <td><input type="number" min="0" class="req-qty" data-row="${i}" placeholder="০" style="width:100%;border:1px solid var(--line);border-radius:8px;padding:7px 4px;font-size:16px;text-align:center;"></td>
       </tr>`;
@@ -748,16 +751,16 @@ ROUTES.dealerRequisition = function(){
       <div class="wrap">
         <div class="card" style="margin-bottom:16px">
           <h3 style="margin:0 0 6px">📝 আজকের পার্টস রিকুইজিশন</h3>
-          <p class="hint" style="margin:0">পার্ট নং লিখুন — নাম নিজে থেকেই বসে যাবে। পরিমাণ লিখে নিচের বাটনে চাপুন।</p>
+          <p class="hint" style="margin:0">পার্ট নাম্বারের শেষের ৩-৫টি সংখ্যা লিখলেই মিলে যাওয়া পার্টসগুলো তালিকায় দেখাবে — সেখান থেকে সঠিকটা বেছে নিন। পুরো নম্বর জানা থাকলে সরাসরি লিখুন।</p>
         </div>
-        <div class="card" style="overflow-x:auto">
+        <div class="card" style="overflow-x:auto;overflow-y:visible">
           <table style="width:100%;border-collapse:collapse;min-width:420px">
             <thead>
-              <tr style="background:var(--navy);color:#fff">
-                <th style="padding:8px;text-align:center;width:36px">নং</th>
-                <th style="padding:8px;text-align:center">পার্ট নং</th>
-                <th style="padding:8px;text-align:center">পার্টের নাম</th>
-                <th style="padding:8px;text-align:center;width:70px">পরিমাণ</th>
+              <tr style="background:var(--navy)">
+                <th style="padding:8px;text-align:center;width:36px;font-size:16px;font-weight:700;color:#fff">নং</th>
+                <th style="padding:8px;text-align:center;font-size:16px;font-weight:700;color:#fff">পার্ট নং</th>
+                <th style="padding:8px;text-align:center;font-size:16px;font-weight:700;color:#fff">পার্টের নাম</th>
+                <th style="padding:8px;text-align:center;width:70px;font-size:16px;font-weight:700;color:#fff">পরিমাণ</th>
               </tr>
             </thead>
             <tbody id="reqBody">${rowsHTML}</tbody>
@@ -774,24 +777,74 @@ ROUTES.dealerRequisition = function(){
   document.getElementById('logout').onclick = ()=>{ DB.session={role:null,user:null}; go('landing'); };
 
   const body = document.getElementById('reqBody');
+  const MAX_SUGGEST = 8;
+
+  function hideAllSuggestions(){
+    body.querySelectorAll('.req-suggest').forEach(box=>{ box.style.display='none'; box.innerHTML=''; });
+  }
+
+  function selectMatch(row, part){
+    body.querySelector(`.req-partno[data-row="${row}"]`).value = displayPartNo(part.partNo);
+    body.querySelector(`.req-name[data-row="${row}"]`).value = part.name;
+    hideAllSuggestions();
+  }
+
   body.addEventListener('input', (e)=>{
     if(!e.target.classList.contains('req-partno')) return;
     const row = e.target.dataset.row;
     const nameField = body.querySelector(`.req-name[data-row="${row}"]`);
+    const suggestBox = body.querySelector(`.req-suggest[data-row="${row}"]`);
     const raw = e.target.value.trim();
+    hideAllSuggestions();
     if(!raw){ nameField.value=''; return; }
     const qDigits = digitsOnly(raw);
     const qText = raw.toLowerCase();
-    let found = null;
-    if(qDigits) found = DB.parts.find(p=>p.core===qDigits);
-    if(!found && qDigits) found = DB.parts.find(p=>p.core.includes(qDigits) || qDigits.includes(p.core));
-    if(!found) found = DB.parts.find(p=>p.nameLower.includes(qText));
-    nameField.value = found ? found.name : '❓ পাওয়া যায়নি';
+    if(qDigits.length < 3 && qText.length < 3){ nameField.value=''; return; }
+
+    let matches = [];
+    if(qDigits){
+      matches = DB.parts.filter(p=> p.core===qDigits || p.core.includes(qDigits) || qDigits.includes(p.core));
+    }
+    if(!matches.length){
+      matches = DB.parts.filter(p=> p.nameLower.includes(qText));
+    }
+
+    if(matches.length === 0){
+      nameField.value = '❓ পাওয়া যায়নি';
+      return;
+    }
+    if(matches.length === 1 || matches.some(p=>p.core===qDigits)){
+      const exact = matches.find(p=>p.core===qDigits) || matches[0];
+      nameField.value = exact.name;
+      if(matches.length === 1) return;
+    } else {
+      nameField.value = '';
+    }
+    // একাধিক মিললে বেছে নেওয়ার তালিকা দেখাবে
+    suggestBox.innerHTML = matches.slice(0, MAX_SUGGEST).map(p => `
+      <div class="req-suggest-item" data-row="${row}" data-id="${p.id}" style="padding:9px 10px;cursor:pointer;border-bottom:1px solid var(--line);font-size:14px;">
+        <div style="font-weight:700">${displayPartNo(p.partNo)}</div>
+        <div style="color:var(--muted);font-size:13px">${p.name}</div>
+      </div>`).join('') + (matches.length > MAX_SUGGEST ? `<div style="padding:7px 10px;font-size:12.5px;color:var(--muted)">মোট ${matches.length}টি মিলেছে — আরও নির্দিষ্ট করে লিখুন</div>` : '');
+    suggestBox.style.display = 'block';
+  });
+
+  body.addEventListener('click', (e)=>{
+    const item = e.target.closest('.req-suggest-item');
+    if(!item) return;
+    const row = item.dataset.row;
+    const part = DB.parts.find(p=> String(p.id) === item.dataset.id);
+    if(part) selectMatch(row, part);
+  });
+
+  document.addEventListener('click', (e)=>{
+    if(!e.target.closest('.req-partno') && !e.target.closest('.req-suggest')) hideAllSuggestions();
   });
 
   document.getElementById('reqReset').onclick = ()=>{
     if(!confirm('পুরো ফর্মটি খালি করতে চান?')) return;
     body.querySelectorAll('input').forEach(inp=> inp.value='');
+    hideAllSuggestions();
   };
 
   document.getElementById('reqSend').onclick = ()=>{
