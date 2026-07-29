@@ -727,9 +727,9 @@ ROUTES.dealerRequisition = function(){
     rowsHTML += `
       <tr>
         <td style="text-align:center;font-weight:600;color:var(--muted)">${i}</td>
-        <td><input type="text" class="req-partno" data-row="${i}" placeholder="পার্ট নং" style="width:100%;border:1px solid var(--line);border-radius:8px;padding:8px;font-size:14px;" inputmode="text"></td>
-        <td><input type="text" class="req-name" data-row="${i}" readonly placeholder="স্বয়ংক্রিয়ভাবে আসবে" style="width:100%;border:1px solid var(--line);border-radius:8px;padding:8px;font-size:14px;background:var(--bg-2,#f4f4f4);color:var(--text)"></td>
-        <td><input type="number" min="0" class="req-qty" data-row="${i}" placeholder="০" style="width:100%;border:1px solid var(--line);border-radius:8px;padding:8px;font-size:14px;text-align:center;"></td>
+        <td><input type="text" class="req-partno" data-row="${i}" placeholder="পার্ট নং" style="width:100%;border:1px solid var(--line);border-radius:8px;padding:7px 6px;font-size:16px;" inputmode="text"></td>
+        <td><input type="text" class="req-name" data-row="${i}" readonly placeholder="স্বয়ংক্রিয়ভাবে আসবে" style="width:100%;border:1px solid var(--line);border-radius:8px;padding:7px 6px;font-size:16px;background:var(--bg-2,#f4f4f4);color:var(--text)"></td>
+        <td><input type="number" min="0" class="req-qty" data-row="${i}" placeholder="০" style="width:100%;border:1px solid var(--line);border-radius:8px;padding:7px 4px;font-size:16px;text-align:center;"></td>
       </tr>`;
   }
   app.appendChild(el(`
@@ -751,13 +751,13 @@ ROUTES.dealerRequisition = function(){
           <p class="hint" style="margin:0">পার্ট নং লিখুন — নাম নিজে থেকেই বসে যাবে। পরিমাণ লিখে নিচের বাটনে চাপুন।</p>
         </div>
         <div class="card" style="overflow-x:auto">
-          <table style="width:100%;border-collapse:collapse;min-width:520px">
+          <table style="width:100%;border-collapse:collapse;min-width:420px">
             <thead>
-              <tr>
-                <th style="padding:8px;text-align:center;width:44px">নং</th>
-                <th style="padding:8px;text-align:left">পার্ট নং</th>
-                <th style="padding:8px;text-align:left">পার্টের নাম</th>
-                <th style="padding:8px;text-align:center;width:90px">পরিমাণ</th>
+              <tr style="background:var(--navy);color:#fff">
+                <th style="padding:8px;text-align:center;width:36px">নং</th>
+                <th style="padding:8px;text-align:center">পার্ট নং</th>
+                <th style="padding:8px;text-align:center">পার্টের নাম</th>
+                <th style="padding:8px;text-align:center;width:70px">পরিমাণ</th>
               </tr>
             </thead>
             <tbody id="reqBody">${rowsHTML}</tbody>
