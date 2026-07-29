@@ -237,8 +237,8 @@ if('serviceWorker' in navigator){
     .admin-content{border-radius:8px;padding:12px;}
     .admin-content .card{padding:12px;border-radius:10px;}
     .tractor-banner img{width:1.5in;height:1.13in;}
-    .metal-logo-img{width:1.5in !important;height:0.96in !important;}
-    .metal-logo-badge{top:8px !important;left:8px !important;padding:5px !important;}
+    .metal-logo-img{width:1.4in !important;height:1.05in !important;}
+    .metal-logo-badge{top:8px !important;left:8px !important;}
   }
 </style>
 </head>
@@ -468,8 +468,8 @@ ROUTES.landing = function(){
   const app = document.getElementById('app');
   app.appendChild(el(`
     <div class="center-screen">
-      <div class="metal-logo-badge" style="position:fixed;top:16px;left:16px;background:#fff;border-radius:14px;box-shadow:0 6px 18px rgba(18,35,61,.18);padding:8px;z-index:10;">
-        <img src="${METAL_LOGO_IMG}" alt="Metal" class="metal-logo-img" style="width:2.8in;height:1.8in;object-fit:contain;display:block;">
+      <div class="metal-logo-badge" style="position:fixed;top:16px;left:16px;z-index:10;">
+        <img src="${METAL_LOGO_IMG}" alt="Metal" class="metal-logo-img" style="width:2in;height:1.5in;object-fit:contain;display:block;">
       </div>
       <div class="gate">
         <div class="gate-top">
