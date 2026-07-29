@@ -739,35 +739,35 @@ ROUTES.adminDashboard = function(){
             <p style="margin:0;color:rgba(255,255,255,0.8);font-size:14px;">Metal Parts Management System</p>
           </div>
           
-          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:20px;">
-            <div style="background:linear-gradient(135deg,rgba(59,130,246,0.3),rgba(59,130,246,0.1));backdrop-filter:blur(10px);border:1px solid rgba(59,130,246,0.4);padding:24px;border-radius:14px;text-align:center;color:#fff;cursor:pointer;transition:all 0.3s;min-height:160px;display:flex;flex-direction:column;justify-content:center;align-items:center;" onclick="adminTab='dashboard';go('adminDashboard');" onmouseover="this.style.transform='translateY(-8px)';this.style.boxShadow='0 12px 24px rgba(59,130,246,0.3)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='none'">
-              <div style="font-size:48px;margin-bottom:12px;">📊</div>
-              <div style="font-size:16px;font-weight:700;">ড্যাশবোর্ড</div>
-              <div style="font-size:12px;opacity:0.8;margin-top:4px;">পরিসংখ্যান ও সারাংশ</div>
+          <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:16px;">
+            <div style="background:#fff;border-radius:18px;padding:28px 14px;text-align:center;cursor:pointer;transition:all 0.25s;box-shadow:0 4px 14px rgba(0,0,0,0.16);" onclick="adminTab='dashboard';go('adminDashboard');" onmouseover="this.style.transform='translateY(-6px)'" onmouseout="this.style.transform='translateY(0)'">
+              <div style="width:60px;height:60px;border-radius:16px;background:#e3ddc4;display:flex;align-items:center;justify-content:center;font-size:30px;margin:0 auto 14px;">📊</div>
+              <div style="font-size:16px;font-weight:700;color:#1a2233;">ড্যাশবোর্ড</div>
+              <div style="font-size:12px;color:#6b7280;margin-top:4px;">পরিসংখ্যান ও সারাংশ</div>
             </div>
-            
-            <div style="background:linear-gradient(135deg,rgba(226,134,31,0.3),rgba(226,134,31,0.1));backdrop-filter:blur(10px);border:1px solid rgba(226,134,31,0.4);padding:24px;border-radius:14px;text-align:center;color:#fff;cursor:pointer;transition:all 0.3s;min-height:160px;display:flex;flex-direction:column;justify-content:center;align-items:center;" onclick="adminTab='parts';go('adminDashboard');" onmouseover="this.style.transform='translateY(-8px)';this.style.boxShadow='0 12px 24px rgba(226,134,31,0.3)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='none'">
-              <div style="font-size:48px;margin-bottom:12px;">⚙️</div>
-              <div style="font-size:16px;font-weight:700;">পার্টস ম্যানেজমেন্ট</div>
-              <div style="font-size:12px;opacity:0.8;margin-top:4px;">পার্টস যোগ ও সম্পাদন</div>
+
+            <div style="background:#fff;border-radius:18px;padding:28px 14px;text-align:center;cursor:pointer;transition:all 0.25s;box-shadow:0 4px 14px rgba(0,0,0,0.16);" onclick="adminTab='parts';go('adminDashboard');" onmouseover="this.style.transform='translateY(-6px)'" onmouseout="this.style.transform='translateY(0)'">
+              <div style="width:60px;height:60px;border-radius:16px;background:#e3ddc4;display:flex;align-items:center;justify-content:center;font-size:30px;margin:0 auto 14px;">⚙️</div>
+              <div style="font-size:16px;font-weight:700;color:#1a2233;">পার্টস ম্যানেজমেন্ট</div>
+              <div style="font-size:12px;color:#6b7280;margin-top:4px;">পার্টস যোগ ও সম্পাদন</div>
             </div>
-            
-            <div style="background:linear-gradient(135deg,rgba(31,138,76,0.3),rgba(31,138,76,0.1));backdrop-filter:blur(10px);border:1px solid rgba(31,138,76,0.4);padding:24px;border-radius:14px;text-align:center;color:#fff;cursor:pointer;transition:all 0.3s;min-height:160px;display:flex;flex-direction:column;justify-content:center;align-items:center;" onclick="adminTab='users';go('adminDashboard');" onmouseover="this.style.transform='translateY(-8px)';this.style.boxShadow='0 12px 24px rgba(31,138,76,0.3)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='none'">
-              <div style="font-size:48px;margin-bottom:12px;">👥</div>
-              <div style="font-size:16px;font-weight:700;">ইউজার ম্যানেজমেন্ট</div>
-              <div style="font-size:12px;opacity:0.8;margin-top:4px;">ডিলার ও মেকানিক পরিচালনা</div>
+
+            <div style="background:#fff;border-radius:18px;padding:28px 14px;text-align:center;cursor:pointer;transition:all 0.25s;box-shadow:0 4px 14px rgba(0,0,0,0.16);" onclick="adminTab='users';go('adminDashboard');" onmouseover="this.style.transform='translateY(-6px)'" onmouseout="this.style.transform='translateY(0)'">
+              <div style="width:60px;height:60px;border-radius:16px;background:#e3ddc4;display:flex;align-items:center;justify-content:center;font-size:30px;margin:0 auto 14px;">👥</div>
+              <div style="font-size:16px;font-weight:700;color:#1a2233;">ইউজার ম্যানেজমেন্ট</div>
+              <div style="font-size:12px;color:#6b7280;margin-top:4px;">ডিলার ও মেকানিক পরিচালনা</div>
             </div>
-            
-            <div style="background:linear-gradient(135deg,rgba(168,85,247,0.3),rgba(168,85,247,0.1));backdrop-filter:blur(10px);border:1px solid rgba(168,85,247,0.4);padding:24px;border-radius:14px;text-align:center;color:#fff;cursor:pointer;transition:all 0.3s;min-height:160px;display:flex;flex-direction:column;justify-content:center;align-items:center;" onclick="adminTab='history';go('adminDashboard');" onmouseover="this.style.transform='translateY(-8px)';this.style.boxShadow='0 12px 24px rgba(168,85,247,0.3)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='none'">
-              <div style="font-size:48px;margin-bottom:12px;">📅</div>
-              <div style="font-size:16px;font-weight:700;">আপডেট হিস্টরি</div>
-              <div style="font-size:12px;opacity:0.8;margin-top:4px;">সকল পরিবর্তনের তালিকা</div>
+
+            <div style="background:#fff;border-radius:18px;padding:28px 14px;text-align:center;cursor:pointer;transition:all 0.25s;box-shadow:0 4px 14px rgba(0,0,0,0.16);" onclick="adminTab='history';go('adminDashboard');" onmouseover="this.style.transform='translateY(-6px)'" onmouseout="this.style.transform='translateY(0)'">
+              <div style="width:60px;height:60px;border-radius:16px;background:#e3ddc4;display:flex;align-items:center;justify-content:center;font-size:30px;margin:0 auto 14px;">📅</div>
+              <div style="font-size:16px;font-weight:700;color:#1a2233;">আপডেট হিস্টরি</div>
+              <div style="font-size:12px;color:#6b7280;margin-top:4px;">সকল পরিবর্তনের তালিকা</div>
             </div>
-            
-            <div style="background:linear-gradient(135deg,rgba(194,59,59,0.3),rgba(194,59,59,0.1));backdrop-filter:blur(10px);border:1px solid rgba(194,59,59,0.4);padding:24px;border-radius:14px;text-align:center;color:#fff;cursor:pointer;transition:all 0.3s;min-height:160px;display:flex;flex-direction:column;justify-content:center;align-items:center;" onclick="adminTab='settings';go('adminDashboard');" onmouseover="this.style.transform='translateY(-8px)';this.style.boxShadow='0 12px 24px rgba(194,59,59,0.3)'" onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='none'">
-              <div style="font-size:48px;margin-bottom:12px;">🔧</div>
-              <div style="font-size:16px;font-weight:700;">সেটিংস</div>
-              <div style="font-size:12px;opacity:0.8;margin-top:4px;">অ্যাপ কনফিগারেশন</div>
+
+            <div style="background:#fff;border-radius:18px;padding:28px 14px;text-align:center;cursor:pointer;transition:all 0.25s;box-shadow:0 4px 14px rgba(0,0,0,0.16);grid-column:1 / -1;max-width:calc(50% - 8px);margin:0 auto;" onclick="adminTab='settings';go('adminDashboard');" onmouseover="this.style.transform='translateY(-6px)'" onmouseout="this.style.transform='translateY(0)'">
+              <div style="width:60px;height:60px;border-radius:16px;background:#e3ddc4;display:flex;align-items:center;justify-content:center;font-size:30px;margin:0 auto 14px;">🔧</div>
+              <div style="font-size:16px;font-weight:700;color:#1a2233;">সেটিংস</div>
+              <div style="font-size:12px;color:#6b7280;margin-top:4px;">অ্যাপ কনফিগারেশন</div>
             </div>
           </div>
         </div>
