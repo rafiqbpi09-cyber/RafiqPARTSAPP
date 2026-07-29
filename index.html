@@ -62,6 +62,21 @@ if('serviceWorker' in navigator){
     --text:#152238;
     --muted:#5c6b82;
   }
+  [data-theme="dark"]{
+    --paper:#0f1720;
+    --card:#182430;
+    --line:#2a3948;
+    --text:#e8edf4;
+    --muted:#93a2b8;
+  }
+  [data-theme="dark"] .field input,[data-theme="dark"] .field select{background:#0f1720;color:var(--text);}
+  [data-theme="dark"] .part-card{background:var(--card);}
+  [data-theme="dark"] .brand-logo{background:var(--amber);}
+  @media print{
+    .topbar,.big-search,.theme-toggle,.btn{display:none !important;}
+    body{background:#fff;}
+    .part-card{break-inside:avoid;border:1px solid #ccc !important;}
+  }
   *{box-sizing:border-box;}
   body{
     margin:0;
@@ -422,6 +437,18 @@ function ensureCores(){
   if(categoryFixed) saveDB();
 }
 
+function applyTheme(){
+  const saved = localStorage.getItem('mp_theme');
+  if(saved === 'dark') document.documentElement.setAttribute('data-theme','dark');
+  else document.documentElement.removeAttribute('data-theme');
+}
+function toggleTheme(){
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  if(isDark){ document.documentElement.removeAttribute('data-theme'); localStorage.setItem('mp_theme','light'); }
+  else{ document.documentElement.setAttribute('data-theme','dark'); localStorage.setItem('mp_theme','dark'); }
+}
+applyTheme();
+
 function render(){ document.getElementById('app').innerHTML = ''; ROUTES[currentRoute](); }
 let currentRoute = 'landing';
 let splashShown = false;
@@ -471,6 +498,7 @@ ROUTES.landing = function(){
       <div class="metal-logo-badge" style="position:fixed;top:16px;left:16px;z-index:10;">
         <img src="${METAL_LOGO_IMG}" alt="Metal" class="metal-logo-img" style="width:2in;height:1.5in;object-fit:contain;display:block;">
       </div>
+      <button class="theme-toggle" onclick="toggleTheme()" style="position:fixed;top:16px;right:16px;z-index:10;width:40px;height:40px;border-radius:12px;border:1px solid var(--line);background:var(--card);font-size:18px;cursor:pointer;">🌙</button>
       <div class="gate">
         <div class="gate-top">
           <div class="cog" style="width:1in;height:0.65in;background:transparent;"><img src="${METAL_LOGO_IMG}" alt="Metal" style="width:100%;height:100%;object-fit:contain;"></div>
@@ -633,6 +661,7 @@ ROUTES.dealerSearch = function(){
           <div><div class="brand-name">${DB.settings.companyName}</div><div class="brand-sub">ডিলার পোর্টাল</div></div>
         </div>
         <div class="topbar-right">
+          <button class="btn btn-ghost btn-sm theme-toggle" onclick="toggleTheme()" style="color:#fff;border-color:rgba(255,255,255,.3)">🌙</button>
           <span class="pill">${DB.session.user.name}</span>
           <button class="btn btn-ghost btn-sm" style="color:#fff;border-color:rgba(255,255,255,.3)" id="logout">লগআউট</button>
         </div>
@@ -646,7 +675,7 @@ ROUTES.dealerSearch = function(){
             <button class="btn btn-primary" id="go">সার্চ</button>
           </div>
         </div>
-        <div id="results"></div>
+        <div id="results">${recentViewedHTML()}</div>
       </div>
     </div>
   `));
@@ -656,7 +685,7 @@ ROUTES.dealerSearch = function(){
   const runSearch = ()=>{
     const raw = input.value.trim();
     const results = document.getElementById('results');
-    if(!raw){ results.innerHTML=''; return; }
+    if(!raw){ results.innerHTML=recentViewedHTML(); return; }
     if(raw.length < 3){ results.innerHTML = `<div class="empty">অন্তত ৩ অক্ষর/সংখ্যা লিখুন</div>`; return; }
     const qDigits = digitsOnly(raw);
     const qText = raw.toLowerCase();
@@ -673,7 +702,7 @@ ROUTES.dealerSearch = function(){
     let html='';
     // পুরো নম্বর মিললে শুধু সেটাই দেখাবে — কাছাকাছি দেখাবে না
     if(exact.length){
-      exact.forEach(p=> html += partCardHTML(p, true));
+      exact.forEach(p=>{ html += partCardHTML(p, true); recordRecentView(p); });
     } else if(near.length){
       html += `<div class="group-label">কাছাকাছি আইটেম</div>`;
       near.slice(0, MAX_NEAR).forEach(p=> html += partCardHTML(p));
@@ -693,13 +722,35 @@ function displayPartNo(partNo){
   return idx >= 0 ? partNo.slice(idx + 5) : partNo;
 }
 function partCardHTML(p, isExact){
+  const waText = encodeURIComponent(`Part No: ${displayPartNo(p.partNo)}\nName: ${p.name}\nPrice: ৳${p.price}`);
   return `<div class="part-card${isExact ? ' exact' : ''}">
     <div>
       <div class="pn" style="font-weight:700">Part No. ${displayPartNo(p.partNo)}</div>
       <div class="nm" style="font-weight:700;color:var(--text);margin-top:3px">${p.name}</div>
     </div>
-    <div class="pr">৳${p.price}</div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <div class="pr">৳${p.price}</div>
+      <a href="https://wa.me/?text=${waText}" target="_blank" rel="noopener" title="WhatsApp-এ শেয়ার করুন" style="font-size:20px;text-decoration:none;">📲</a>
+    </div>
   </div>`;
+}
+function recordRecentView(p){
+  try{
+    let list = JSON.parse(localStorage.getItem('mp_recent') || '[]');
+    list = list.filter(id => id !== p.id);
+    list.unshift(p.id);
+    list = list.slice(0, 8);
+    localStorage.setItem('mp_recent', JSON.stringify(list));
+  }catch(e){}
+}
+function recentViewedHTML(){
+  try{
+    const ids = JSON.parse(localStorage.getItem('mp_recent') || '[]');
+    if(!ids.length) return '';
+    const found = ids.map(id => DB.parts.find(p=>p.id===id)).filter(Boolean);
+    if(!found.length) return '';
+    return `<div class="group-label">সাম্প্রতিক দেখা পার্টস</div>` + found.map(p=>partCardHTML(p)).join('');
+  }catch(e){ return ''; }
 }
 
 /* ============================================================= */
@@ -751,7 +802,7 @@ ROUTES.adminDashboard = function(){
             <img src="${TRACTOR_IMG_TAFE}" alt="TAFE" style="width:2in;height:1.5in;max-width:50%;object-fit:contain;">
             <img src="${TRACTOR_IMG_EICHER}" alt="Eicher" style="width:2in;height:1.5in;max-width:50%;object-fit:contain;">
           </div>
-          
+          ${DB.settings.adminPassword === 'admin123' ? `<div style="background:rgba(226,134,31,0.15);border:1px solid var(--amber);color:#fff;padding:12px 16px;border-radius:10px;margin-bottom:20px;font-size:14px;display:flex;align-items:center;gap:10px;">⚠️ <span>ডিফল্ট অ্যাডমিন পাসওয়ার্ড (admin123) এখনো ব্যবহার হচ্ছে — নিরাপত্তার জন্য Settings থেকে পরিবর্তন করুন।</span></div>` : ''}
           <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:16px;">
             <div style="background:#fff;border-radius:18px;padding:28px 14px;text-align:center;cursor:pointer;transition:all 0.25s;box-shadow:0 4px 14px rgba(0,0,0,0.16);" onclick="adminTab='dashboard';go('adminDashboard');" onmouseover="this.style.transform='translateY(-6px)'" onmouseout="this.style.transform='translateY(0)'">
               <div style="width:60px;height:60px;border-radius:16px;background:#e3ddc4;display:flex;align-items:center;justify-content:center;font-size:30px;margin:0 auto 14px;">📊</div>
