@@ -855,13 +855,13 @@ function partsTable(list, totalCount, searchQuery=''){
   return note + `<div style="overflow:auto;background:#f8f9fa;border-radius:8px;padding:12px;">
     <table class="parts-table" style="width:100%;border-collapse:separate;border-spacing:0 8px;">
       <thead>
-        <tr style="background:#1f8a4c;color:#fff;font-weight:700;font-size:22px;border-radius:6px;box-shadow:0 2px 4px rgba(0,0,0,0.1);">
-          <th style="text-align:left;padding:14px 6px 14px 14px;border-radius:6px 0 0 6px;color:#fff;font-size:22px;font-weight:700;">পার্ট নম্বর</th>
-          <th style="text-align:left;padding:14px 10px 14px 6px;color:#fff;font-size:22px;font-weight:700;">পার্টস নাম</th>
-          <th style="padding:14px 10px;color:#fff;font-size:22px;font-weight:700;">ক্যাটাগরি</th>
-          <th style="padding:14px 10px;color:#fff;font-size:22px;font-weight:700;">মূল্য</th>
-          <th style="text-align:center;padding:14px 10px;color:#fff;font-size:22px;font-weight:700;">সংশোধন</th>
-          <th style="text-align:center;padding:14px 10px;border-radius:0 6px 6px 0;color:#fff;font-size:22px;font-weight:700;">ডিলিট</th>
+        <tr style="background:#1f8a4c;color:#fff;font-weight:700;font-size:17px;border-radius:6px;box-shadow:0 2px 4px rgba(0,0,0,0.1);">
+          <th style="text-align:left;padding:14px 6px 14px 14px;border-radius:6px 0 0 6px;color:#fff;font-size:17px;font-weight:700;">পার্ট নম্বর</th>
+          <th style="text-align:left;padding:14px 10px 14px 6px;color:#fff;font-size:17px;font-weight:700;">পার্টস নাম</th>
+          <th style="padding:14px 10px;color:#fff;font-size:17px;font-weight:700;">ক্যাটাগরি</th>
+          <th style="padding:14px 10px;color:#fff;font-size:17px;font-weight:700;">মূল্য</th>
+          <th style="text-align:center;padding:14px 10px;color:#fff;font-size:17px;font-weight:700;">সংশোধন</th>
+          <th style="text-align:center;padding:14px 10px;border-radius:0 6px 6px 0;color:#fff;font-size:17px;font-weight:700;">ডিলিট</th>
         </tr>
       </thead>
       <tbody>
@@ -873,7 +873,7 @@ function partsTable(list, totalCount, searchQuery=''){
         const bgColor = isSearchMatch ? '#d4edda' : 'white';
         const borderColor = isSearchMatch ? '#1f8a4c' : '#ddd';
         
-        return `<tr style="background:${bgColor};border:2px solid ${borderColor};border-radius:6px;box-shadow:0 1px 3px rgba(0,0,0,0.05);transition:all 0.2s ease;font-size:20px;">
+        return `<tr style="background:${bgColor};border:2px solid ${borderColor};border-radius:6px;box-shadow:0 1px 3px rgba(0,0,0,0.05);transition:all 0.2s ease;font-size:15px;">
           <td class="mono" data-label="পার্ট নম্বর" style="text-align:left;padding:12px 6px 12px 14px;font-weight:600;${isSearchMatch?'color:#1f8a4c;':''}">${p.partNo}</td>
           <td data-label="পার্টস নাম" style="text-align:left;padding:12px 10px 12px 6px;${isSearchMatch?'color:#1f8a4c;font-weight:600;':''}">${p.name}</td>
           <td data-label="ক্যাটাগরি" style="padding:12px;">${p.category||'-'}</td>
