@@ -229,6 +229,14 @@ if('serviceWorker' in navigator){
       text-align:left; white-space:nowrap;
     }
   }
+
+  /* ---------- Admin panel: full-screen on mobile, no side margins ---------- */
+  @media(max-width:640px){
+    .admin-outer{padding:8px;}
+    .admin-header{border-radius:8px;padding:10px 12px;margin-bottom:12px;}
+    .admin-content{border-radius:8px;padding:12px;}
+    .admin-content .card{padding:12px;border-radius:10px;}
+  }
 </style>
 </head>
 <body>
@@ -693,9 +701,9 @@ let adminTab = null;
 function adminShell(innerHTML){
   const app = document.getElementById('app');
   app.appendChild(el(`
-    <div style="background:linear-gradient(135deg,#1a3a52 0%,#0d5a7a 100%);min-height:100vh;padding:20px;">
+    <div class="admin-outer" style="background:linear-gradient(135deg,#1a3a52 0%,#0d5a7a 100%);min-height:100vh;padding:20px;">
       <div style="max-width:1200px;margin:0 auto;">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;padding:16px;background:rgba(255,255,255,0.08);border-radius:12px;border:1px solid rgba(255,255,255,0.15);">
+        <div class="admin-header" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;padding:16px;background:rgba(255,255,255,0.08);border-radius:12px;border:1px solid rgba(255,255,255,0.15);">
           <button class="btn btn-ghost btn-sm" onclick="adminTab=null;go('adminDashboard')" style="color:#fff;border-color:rgba(255,255,255,0.3);font-size:15px;">⬅️ মেনু</button>
           <div style="color:#fff;font-weight:600;font-size:16px;">${DB.settings.companyName}</div>
           <div style="display:flex;gap:8px;">
@@ -703,7 +711,7 @@ function adminShell(innerHTML){
             <button class="btn btn-ghost btn-sm" id="logout" style="color:#fff;border-color:rgba(255,255,255,0.3);font-size:15px;">🚪</button>
           </div>
         </div>
-        <div style="background:rgba(255,255,255,0.05);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.15);padding:24px;border-radius:14px;color:#fff;">
+        <div class="admin-content" style="background:rgba(255,255,255,0.05);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.15);padding:24px;border-radius:14px;color:#fff;">
           ${innerHTML}
         </div>
       </div>
