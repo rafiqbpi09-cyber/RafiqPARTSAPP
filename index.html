@@ -661,6 +661,7 @@ ROUTES.dealerSearch = function(){
           <div><div class="brand-name">${DB.settings.companyName}</div><div class="brand-sub">ডিলার পোর্টাল</div></div>
         </div>
         <div class="topbar-right">
+          <button class="btn btn-ghost btn-sm" onclick="go('dealerRequisition')" style="color:#fff;border-color:rgba(255,255,255,.3)">📝 রিকুইজিশন</button>
           <button class="btn btn-ghost btn-sm theme-toggle" onclick="toggleTheme()" style="color:#fff;border-color:rgba(255,255,255,.3)">🌙</button>
           <span class="pill">${DB.session.user.name}</span>
           <button class="btn btn-ghost btn-sm" style="color:#fff;border-color:rgba(255,255,255,.3)" id="logout">লগআউট</button>
@@ -715,6 +716,98 @@ ROUTES.dealerSearch = function(){
   let searchTimer;
   input.addEventListener('input', ()=>{ clearTimeout(searchTimer); searchTimer = setTimeout(runSearch, 180); });
   document.getElementById('go').onclick = runSearch;
+};
+
+/* ---- Dealer Requisition (পার্টস রিকুইজিশন) ---- */
+const REQ_ROWS = 50;
+ROUTES.dealerRequisition = function(){
+  const app = document.getElementById('app');
+  let rowsHTML = '';
+  for(let i=1; i<=REQ_ROWS; i++){
+    rowsHTML += `
+      <tr>
+        <td style="text-align:center;font-weight:600;color:var(--muted)">${i}</td>
+        <td><input type="text" class="req-partno" data-row="${i}" placeholder="পার্ট নং" style="width:100%;border:1px solid var(--line);border-radius:8px;padding:8px;font-size:14px;" inputmode="text"></td>
+        <td><input type="text" class="req-name" data-row="${i}" readonly placeholder="স্বয়ংক্রিয়ভাবে আসবে" style="width:100%;border:1px solid var(--line);border-radius:8px;padding:8px;font-size:14px;background:var(--bg-2,#f4f4f4);color:var(--text)"></td>
+        <td><input type="number" min="0" class="req-qty" data-row="${i}" placeholder="০" style="width:100%;border:1px solid var(--line);border-radius:8px;padding:8px;font-size:14px;text-align:center;"></td>
+      </tr>`;
+  }
+  app.appendChild(el(`
+    <div>
+      <div class="topbar">
+        <div class="topbar-brand">
+          <div class="brand-logo">${DB.settings.logo ? `<img src="${DB.settings.logo}" style="width:100%;height:100%;object-fit:cover;border-radius:9px">` : '🔧'}</div>
+          <div><div class="brand-name">${DB.settings.companyName}</div><div class="brand-sub">পার্টস রিকুইজিশন</div></div>
+        </div>
+        <div class="topbar-right">
+          <button class="btn btn-ghost btn-sm" onclick="go('dealerSearch')" style="color:#fff;border-color:rgba(255,255,255,.3)">⬅️ সার্চে ফিরুন</button>
+          <span class="pill">${DB.session.user.name}</span>
+          <button class="btn btn-ghost btn-sm" style="color:#fff;border-color:rgba(255,255,255,.3)" id="logout">লগআউট</button>
+        </div>
+      </div>
+      <div class="wrap">
+        <div class="card" style="margin-bottom:16px">
+          <h3 style="margin:0 0 6px">📝 আজকের পার্টস রিকুইজিশন</h3>
+          <p class="hint" style="margin:0">পার্ট নং লিখুন — নাম নিজে থেকেই বসে যাবে। পরিমাণ লিখে নিচের বাটনে চাপুন।</p>
+        </div>
+        <div class="card" style="overflow-x:auto">
+          <table style="width:100%;border-collapse:collapse;min-width:520px">
+            <thead>
+              <tr>
+                <th style="padding:8px;text-align:center;width:44px">নং</th>
+                <th style="padding:8px;text-align:left">পার্ট নং</th>
+                <th style="padding:8px;text-align:left">পার্টের নাম</th>
+                <th style="padding:8px;text-align:center;width:90px">পরিমাণ</th>
+              </tr>
+            </thead>
+            <tbody id="reqBody">${rowsHTML}</tbody>
+          </table>
+        </div>
+        <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;flex-wrap:wrap">
+          <button class="btn btn-ghost" id="reqReset">🔄 রিসেট</button>
+          <button class="btn btn-primary" id="reqSend">📤 WhatsApp-এ পাঠান</button>
+        </div>
+      </div>
+    </div>
+    <div class="modal-bg" id="modalBg"><div class="modal" id="modalBody"></div></div>
+  `));
+  document.getElementById('logout').onclick = ()=>{ DB.session={role:null,user:null}; go('landing'); };
+
+  const body = document.getElementById('reqBody');
+  body.addEventListener('input', (e)=>{
+    if(!e.target.classList.contains('req-partno')) return;
+    const row = e.target.dataset.row;
+    const nameField = body.querySelector(`.req-name[data-row="${row}"]`);
+    const raw = e.target.value.trim();
+    if(!raw){ nameField.value=''; return; }
+    const qDigits = digitsOnly(raw);
+    const qText = raw.toLowerCase();
+    let found = null;
+    if(qDigits) found = DB.parts.find(p=>p.core===qDigits);
+    if(!found && qDigits) found = DB.parts.find(p=>p.core.includes(qDigits) || qDigits.includes(p.core));
+    if(!found) found = DB.parts.find(p=>p.nameLower.includes(qText));
+    nameField.value = found ? found.name : '❓ পাওয়া যায়নি';
+  });
+
+  document.getElementById('reqReset').onclick = ()=>{
+    if(!confirm('পুরো ফর্মটি খালি করতে চান?')) return;
+    body.querySelectorAll('input').forEach(inp=> inp.value='');
+  };
+
+  document.getElementById('reqSend').onclick = ()=>{
+    const lines = [];
+    for(let i=1; i<=REQ_ROWS; i++){
+      const partNo = body.querySelector(`.req-partno[data-row="${i}"]`).value.trim();
+      const name = body.querySelector(`.req-name[data-row="${i}"]`).value.trim();
+      const qty = body.querySelector(`.req-qty[data-row="${i}"]`).value.trim();
+      if(!partNo && !qty) continue;
+      lines.push(`${lines.length+1}. পার্ট নং: ${partNo || '-'} | নাম: ${name || '-'} | পরিমাণ: ${qty || '-'}`);
+    }
+    if(!lines.length){ alert('অন্তত একটি সারিতে তথ্য দিন।'); return; }
+    const header = `📦 পার্টস রিকুইজিশন\nডিলার: ${DB.session.user.name}\nতারিখ: ${new Date().toLocaleDateString('bn-BD')}\n\n`;
+    const text = encodeURIComponent(header + lines.join('\n'));
+    window.open(`https://wa.me/?text=${text}`, '_blank');
+  };
 };
 // display-friendly part number — strips SPAR.XXXX.IMPT. prefix
 function displayPartNo(partNo){
