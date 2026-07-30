@@ -220,26 +220,25 @@ if('serviceWorker' in navigator){
   }
 
   /* ---------- Mobile: card-style tables (no left-right scroll) ---------- */
+  /* পার্টস ও ইউজার ম্যানেজমেন্ট এখন মোবাইলেও ডেস্কটপের মতো টেবিল আকারেই দেখাবে (দরকার হলে পাশে স্ক্রল হবে) */
   html, body{overflow-x:hidden;}
   @media(max-width:768px){
-    .parts-table, .users-table, .history-table{border:none;}
-    .parts-table thead, .users-table thead, .history-table thead{display:none;}
-    .parts-table, .parts-table tbody, .parts-table tr, .parts-table td,
-    .users-table, .users-table tbody, .users-table tr, .users-table td,
+    .history-table{border:none;}
+    .history-table thead{display:none;}
     .history-table, .history-table tbody, .history-table tr, .history-table td{
       display:block; width:100%;
     }
-    .parts-table tr, .users-table tr, .history-table tr{
+    .history-table tr{
       margin-bottom:14px; border:1px solid var(--line); border-radius:12px;
       padding:10px 12px; box-shadow:0 1px 4px -1px rgba(18,35,61,.08);
     }
-    .parts-table td, .users-table td, .history-table td{
+    .history-table td{
       border:none; border-bottom:1px solid var(--paper);
       padding:9px 2px; display:flex; justify-content:space-between; align-items:center;
       text-align:right !important; gap:10px;
     }
-    .parts-table td:last-child, .users-table td:last-child, .history-table td:last-child{border-bottom:none;}
-    .parts-table td::before, .users-table td::before, .history-table td::before{
+    .history-table td:last-child{border-bottom:none;}
+    .history-table td::before{
       content:attr(data-label); font-weight:600; color:var(--muted); font-size:12px;
       text-align:left; white-space:nowrap;
     }
