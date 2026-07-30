@@ -2,7 +2,7 @@
 <html lang="bn">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Metal Parts Price List</title>
 <meta name="theme-color" content="#12233d">
 <meta name="mobile-web-app-capable" content="yes">
@@ -99,8 +99,7 @@ if('serviceWorker' in navigator){
   @media(max-width:600px){
     body { font-size:14px; }
     input, select, button { font-size:16px; }
-    .gate { max-width:100%; }
-    .center-screen { padding:12px 0; padding-left:env(safe-area-inset-left); padding-right:env(safe-area-inset-right); }
+    .gate { max-width:95vw; }
     .gate-top h1 { font-size:22px; }
     h2 { font-size:20px; }
     #app { overflow-x:hidden; }
@@ -109,7 +108,7 @@ if('serviceWorker' in navigator){
   .mono{font-family:'JetBrains Mono',monospace;}
 
   /* ---------- Layout shells ---------- */
-  #app{min-height:100vh;position:relative;width:100%;max-width:100%;}
+  #app{min-height:100vh;position:relative;}
   .center-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;}
 
   .gate{width:100%;max-width:380px;background:var(--card);border-radius:18px;box-shadow:0 20px 50px -20px rgba(18,35,61,.35);overflow:hidden;border:1px solid var(--line);}
@@ -143,7 +142,7 @@ if('serviceWorker' in navigator){
   .ok-msg{background:#e9f7ee;color:var(--ok);font-size:13px;padding:9px 12px;border-radius:8px;margin-bottom:14px;display:none;}
 
   /* ---------- Shared top bar ---------- */
-  .topbar{background:var(--navy);color:#fff;padding:14px 22px;padding-left:max(22px, env(safe-area-inset-left));padding-right:max(22px, env(safe-area-inset-right));display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;width:100%;}
+  .topbar{background:var(--navy);color:#fff;padding:14px 22px;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;}
   .topbar-brand{display:flex;align-items:center;gap:10px;}
   .brand-logo{width:36px;height:36px;border-radius:9px;object-fit:cover;background:var(--amber);display:flex;align-items:center;justify-content:center;font-weight:700;}
   .brand-name{font-weight:700;font-size:15.5px;}
@@ -151,7 +150,7 @@ if('serviceWorker' in navigator){
   .topbar-right{display:flex;align-items:center;gap:12px;}
   .pill{background:rgba(255,255,255,.1);padding:6px 12px;border-radius:20px;font-size:12.5px;}
 
-  .wrap{max-width:1100px;margin:0 auto;padding:22px 18px 60px;padding-left:max(18px, env(safe-area-inset-left));padding-right:max(18px, env(safe-area-inset-right));}
+  .wrap{max-width:1100px;margin:0 auto;padding:22px 18px 60px;}
 
   /* ---------- Admin nav ---------- */
   .tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:22px;background:var(--card);padding:6px;border-radius:12px;border:1px solid var(--line);}
@@ -216,30 +215,31 @@ if('serviceWorker' in navigator){
   .group-label::after{content:"";flex:1;height:1px;background:var(--line);}
 
   @media(max-width:640px){
-    .wrap{max-width:100%;padding:16px 0 50px;padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right);}
+    .wrap{padding:16px 12px 50px;}
     th,td{font-size:12.5px;padding:8px 6px;}
   }
 
   /* ---------- Mobile: card-style tables (no left-right scroll) ---------- */
-  /* পার্টস ও ইউজার ম্যানেজমেন্ট এখন মোবাইলেও ডেস্কটপের মতো টেবিল আকারেই দেখাবে (দরকার হলে পাশে স্ক্রল হবে) */
-  html, body{overflow-x:hidden;margin:0;padding:0;width:100%;max-width:100%;}
+  html, body{overflow-x:hidden;}
   @media(max-width:768px){
-    .history-table{border:none;}
-    .history-table thead{display:none;}
+    .parts-table, .users-table, .history-table{border:none;}
+    .parts-table thead, .users-table thead, .history-table thead{display:none;}
+    .parts-table, .parts-table tbody, .parts-table tr, .parts-table td,
+    .users-table, .users-table tbody, .users-table tr, .users-table td,
     .history-table, .history-table tbody, .history-table tr, .history-table td{
       display:block; width:100%;
     }
-    .history-table tr{
+    .parts-table tr, .users-table tr, .history-table tr{
       margin-bottom:14px; border:1px solid var(--line); border-radius:12px;
       padding:10px 12px; box-shadow:0 1px 4px -1px rgba(18,35,61,.08);
     }
-    .history-table td{
+    .parts-table td, .users-table td, .history-table td{
       border:none; border-bottom:1px solid var(--paper);
       padding:9px 2px; display:flex; justify-content:space-between; align-items:center;
       text-align:right !important; gap:10px;
     }
-    .history-table td:last-child{border-bottom:none;}
-    .history-table td::before{
+    .parts-table td:last-child, .users-table td:last-child, .history-table td:last-child{border-bottom:none;}
+    .parts-table td::before, .users-table td::before, .history-table td::before{
       content:attr(data-label); font-weight:600; color:var(--muted); font-size:12px;
       text-align:left; white-space:nowrap;
     }
@@ -247,18 +247,13 @@ if('serviceWorker' in navigator){
 
   /* ---------- Admin panel: full-screen on mobile, no side margins ---------- */
   @media(max-width:640px){
-    .admin-outer{padding:12px 0 !important;}
-    .admin-header{border-radius:8px !important;padding:10px 12px !important;margin-bottom:12px !important;}
-    .admin-content{border-radius:8px !important;padding:12px !important;}
-    .admin-content .card{padding:12px !important;border-radius:10px !important;}
+    .admin-outer{padding:8px;}
+    .admin-header{border-radius:8px;padding:10px 12px;margin-bottom:12px;}
+    .admin-content{border-radius:8px;padding:12px;}
+    .admin-content .card{padding:12px;border-radius:10px;}
     .tractor-banner img{width:1.5in;height:1.13in;}
     .metal-logo-img{width:1.4in !important;height:1.05in !important;}
     .metal-logo-badge{top:8px !important;left:8px !important;}
-  }
-  /* ---------- Full-bleed: kill any remaining inline max-width wrappers on mobile ---------- */
-  @media(max-width:768px){
-    #app, .admin-outer, .admin-content, .wrap{width:100% !important;max-width:100% !important;}
-    .admin-outer > div, .admin-content, .search-hero, .part-card{margin-left:0 !important;margin-right:0 !important;}
   }
 </style>
 </head>
@@ -280,7 +275,8 @@ const DB = {
   history: [
     {date:"2026-07-20 12:00", by:"Admin", action:"এক্সেল আপলোড: 14422টি পার্টস যোগ হয়েছে (web_price.xlsx)"},
   ],
-  session: { role: null, user: null } // role: 'admin' | 'dealer'
+  session: { role: null, user: null }, // role: 'admin' | 'dealer'
+  requisitions: []
 };
 let nextPartId = 14423, nextUserId = 3;
 
@@ -298,7 +294,8 @@ async function saveDB(){
       settings: { companyName: DB.settings.companyName, adminPassword: DB.settings.adminPassword, logo: DB.settings.logo },
       parts: DB.parts,
       nextPartId: nextPartId,
-      partsSaved: true
+      partsSaved: true,
+      requisitions: DB.requisitions.slice(0,200)
     };
     // Firebase এ সেভ
     await fetch(`${FB_URL}/appdata.json`, {
@@ -311,7 +308,7 @@ async function saveDB(){
   }catch(e){
     console.error('Firebase save failed:', e);
     // Firebase না হলে localStorage এ সেভ
-    try{ localStorage.setItem(LS_KEY, JSON.stringify({users:DB.users,history:DB.history.slice(0,50),settings:DB.settings,parts:DB.parts,nextPartId,partsSaved:true})); }catch(e2){}
+    try{ localStorage.setItem(LS_KEY, JSON.stringify({users:DB.users,history:DB.history.slice(0,50),settings:DB.settings,parts:DB.parts,nextPartId,partsSaved:true,requisitions:DB.requisitions.slice(0,200)})); }catch(e2){}
   }
 }
 async function loadDB(){
@@ -332,6 +329,7 @@ async function loadDB(){
         DB.parts = Array.isArray(saved.parts) ? saved.parts : [];
         if(saved.nextPartId) nextPartId = saved.nextPartId;
       }
+      if(Array.isArray(saved.requisitions)) DB.requisitions = saved.requisitions;
       if(DB.users.length) nextUserId = Math.max(...DB.users.map(u=>Number(u.id)||0))+1;
       return;
     }
@@ -352,6 +350,7 @@ async function loadDB(){
       DB.parts = Array.isArray(saved.parts) ? saved.parts : [];
       if(saved.nextPartId) nextPartId = saved.nextPartId;
     }
+    if(Array.isArray(saved.requisitions)) DB.requisitions = saved.requisitions;
     if(DB.users.length) nextUserId = Math.max(...DB.users.map(u=>Number(u.id)||0))+1;
   }catch(e){ console.error('localStorage load failed:', e); }
 }
@@ -427,6 +426,14 @@ function coreOf(partNo){
   return groups.reduce((a,b)=> b.length > a.length ? b : a, groups[0]);
 }
 function digitsOnly(s){ return (s||'').replace(/\D/g,''); }
+function highlightMatch(text, digitsQuery){
+  if(!digitsQuery || digitsQuery.length < 3 || !text) return text;
+  const idx = text.indexOf(digitsQuery);
+  if(idx === -1) return text;
+  return text.slice(0, idx)
+    + `<mark style="background:#ffe58a;color:#5a3d00;padding:0 2px;border-radius:3px;">${text.slice(idx, idx+digitsQuery.length)}</mark>`
+    + text.slice(idx+digitsQuery.length);
+}
 // pre-compute and cache core/nameLower once per part so repeated searches over
 // thousands of parts don't re-run regex work on every keystroke
 function deriveCategory(partNo){
@@ -711,7 +718,7 @@ ROUTES.dealerSearch = function(){
       exact.forEach(p=>{ html += partCardHTML(p, true); recordRecentView(p); });
     } else if(near.length){
       html += `<div class="group-label">কাছাকাছি আইটেম</div>`;
-      near.slice(0, MAX_NEAR).forEach(p=> html += partCardHTML(p));
+      near.slice(0, MAX_NEAR).forEach(p=> html += partCardHTML(p, false, qDigits));
       if(near.length > MAX_NEAR){
         html += `<div class="hint" style="text-align:center;margin-top:8px">মোট ${near.length}টি মিলেছে — আরও নির্দিষ্ট করে লিখুন</div>`;
       }
@@ -748,6 +755,7 @@ ROUTES.dealerRequisition = function(){
           <div><div class="brand-name">${DB.settings.companyName}</div><div class="brand-sub">পার্টস রিকুইজিশন</div></div>
         </div>
         <div class="topbar-right">
+          <button class="btn btn-ghost btn-sm" id="myReqHistory" style="color:#fff;border-color:rgba(255,255,255,.3)">📜 আমার আগের রিকুইজিশন</button>
           <button class="btn btn-ghost btn-sm" onclick="go('dealerSearch')" style="color:#fff;border-color:rgba(255,255,255,.3)">⬅️ সার্চে ফিরুন</button>
           <span class="pill">${DB.session.user.name}</span>
           <button class="btn btn-ghost btn-sm" style="color:#fff;border-color:rgba(255,255,255,.3)" id="logout">লগআউট</button>
@@ -780,6 +788,24 @@ ROUTES.dealerRequisition = function(){
     <div class="modal-bg" id="modalBg"><div class="modal" id="modalBody"></div></div>
   `));
   document.getElementById('logout').onclick = ()=>{ DB.session={role:null,user:null}; go('landing'); };
+  document.getElementById('myReqHistory').onclick = ()=>{
+    const mine = DB.requisitions.filter(r=> r.dealerId === DB.session.user.id);
+    if(!mine.length){
+      openModal(`<h3>📜 আমার আগের রিকুইজিশন</h3><div class="empty">এখনো কোনো রিকুইজিশন পাঠাননি</div><div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">বন্ধ করুন</button></div>`);
+      return;
+    }
+    const rowsBody = mine.map(r => `
+      <div style="border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin-bottom:10px">
+        <div class="mono" style="color:var(--muted);font-size:13px;margin-bottom:6px">${r.date}</div>
+        <div style="overflow-x:auto">
+          <table style="width:100%;border-collapse:collapse;min-width:340px;font-size:13.5px">
+            <thead><tr style="background:var(--bg-2,#f4f4f4)"><th style="padding:5px;text-align:center">নং</th><th style="padding:5px;text-align:left">পার্ট নং</th><th style="padding:5px;text-align:left">নাম</th><th style="padding:5px;text-align:center">পরিমাণ</th></tr></thead>
+            <tbody>${r.items.map((it,idx)=>`<tr><td style="padding:5px;text-align:center">${idx+1}</td><td style="padding:5px">${it.partNo||'-'}</td><td style="padding:5px">${it.name||'-'}</td><td style="padding:5px;text-align:center">${it.qty||'-'}</td></tr>`).join('')}</tbody>
+          </table>
+        </div>
+      </div>`).join('');
+    openModal(`<h3>📜 আমার আগের রিকুইজিশন (${mine.length}টি)</h3><div style="max-height:60vh;overflow-y:auto">${rowsBody}</div><div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">বন্ধ করুন</button></div>`);
+  };
 
   const body = document.getElementById('reqBody');
   const MAX_SUGGEST = 8;
@@ -854,14 +880,27 @@ ROUTES.dealerRequisition = function(){
 
   document.getElementById('reqSend').onclick = ()=>{
     const lines = [];
+    const items = [];
     for(let i=1; i<=REQ_ROWS; i++){
       const partNo = body.querySelector(`.req-partno[data-row="${i}"]`).value.trim();
       const name = body.querySelector(`.req-name[data-row="${i}"]`).value.trim();
       const qty = body.querySelector(`.req-qty[data-row="${i}"]`).value.trim();
       if(!partNo && !qty) continue;
+      items.push({partNo, name, qty});
       lines.push(`${lines.length+1}. পার্ট নং: ${partNo || '-'} | নাম: ${name || '-'} | পরিমাণ: ${qty || '-'}`);
     }
     if(!lines.length){ alert('অন্তত একটি সারিতে তথ্য দিন।'); return; }
+    const now = new Date();
+    const requisition = {
+      id: Date.now(),
+      dealerId: DB.session.user.id,
+      dealerName: DB.session.user.name,
+      dealerPhone: DB.session.user.phone,
+      date: now.toLocaleDateString('bn-BD') + ' ' + now.toLocaleTimeString('bn-BD'),
+      items
+    };
+    DB.requisitions.unshift(requisition);
+    saveDB();
     const header = `📦 পার্টস রিকুইজিশন\nডিলার: ${DB.session.user.name}\nতারিখ: ${new Date().toLocaleDateString('bn-BD')}\n\n`;
     const text = encodeURIComponent(header + lines.join('\n'));
     window.open(`https://wa.me/?text=${text}`, '_blank');
@@ -872,11 +911,12 @@ function displayPartNo(partNo){
   const idx = partNo.toUpperCase().lastIndexOf('IMPT.');
   return idx >= 0 ? partNo.slice(idx + 5) : partNo;
 }
-function partCardHTML(p, isExact){
+function partCardHTML(p, isExact, highlightQuery){
   const waText = encodeURIComponent(`Part No: ${displayPartNo(p.partNo)}\nName: ${p.name}\nPrice: ৳${p.price}`);
+  const shownPartNo = highlightQuery ? highlightMatch(displayPartNo(p.partNo), highlightQuery) : displayPartNo(p.partNo);
   return `<div class="part-card${isExact ? ' exact' : ''}">
     <div>
-      <div class="pn" style="font-weight:700">Part No. ${displayPartNo(p.partNo)}</div>
+      <div class="pn" style="font-weight:700">Part No. ${shownPartNo}</div>
       <div class="nm" style="font-weight:700;color:var(--text);margin-top:3px">${p.name}</div>
     </div>
     <div style="display:flex;align-items:center;gap:10px">
@@ -915,7 +955,7 @@ function adminShell(innerHTML){
   const app = document.getElementById('app');
   app.appendChild(el(`
     <div class="admin-outer" style="background:linear-gradient(135deg,#1a3a52 0%,#0d5a7a 100%);min-height:100vh;padding:20px;">
-      <div style="max-width:100%;margin:0 auto;">
+      <div style="max-width:1200px;margin:0 auto;">
         <div class="admin-header" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;padding:16px;background:rgba(255,255,255,0.08);border-radius:12px;border:1px solid rgba(255,255,255,0.15);">
           <button class="btn btn-ghost btn-sm" onclick="adminTab=null;go('adminDashboard')" style="color:#fff;border-color:rgba(255,255,255,0.3);font-size:15px;">⬅️ মেনু</button>
           <div style="color:#fff;font-weight:600;font-size:16px;">${DB.settings.companyName}</div>
@@ -945,8 +985,8 @@ ROUTES.adminDashboard = function(){
   if(!adminTab || adminTab === 'menu'){
     const app = document.getElementById('app');
     app.appendChild(el(`
-      <div style="background:linear-gradient(135deg,#1a3a52 0%,#0d5a7a 100%);min-height:100vh;padding:20px 0;border-radius:12px;margin:-20px 0;">
-        <div style="max-width:100%;margin:0 auto;">
+      <div style="background:linear-gradient(135deg,#1a3a52 0%,#0d5a7a 100%);min-height:100vh;padding:20px;border-radius:12px;margin:-20px -20px -20px -20px;">
+        <div style="max-width:1200px;margin:0 auto;">
           <div style="text-align:center;color:#fff;margin-bottom:8px;">
             <h2 style="font-size:24px;margin:0 0 2px 0;">Admin Panel</h2>
             <p style="margin:0;color:rgba(255,255,255,0.8);font-size:13px;">Metal Parts Management System</p>
@@ -981,7 +1021,14 @@ ROUTES.adminDashboard = function(){
               <div style="font-size:12px;color:#6b7280;margin-top:4px;">সকল পরিবর্তনের তালিকা</div>
             </div>
 
-            <div style="background:#fff;border-radius:18px;padding:28px 14px;text-align:center;cursor:pointer;transition:all 0.25s;box-shadow:0 4px 14px rgba(0,0,0,0.16);grid-column:1 / -1;max-width:calc(50% - 8px);margin:0 auto;" onclick="adminTab='settings';go('adminDashboard');" onmouseover="this.style.transform='translateY(-6px)'" onmouseout="this.style.transform='translateY(0)'">
+            <div style="background:#fff;border-radius:18px;padding:28px 14px;text-align:center;cursor:pointer;transition:all 0.25s;box-shadow:0 4px 14px rgba(0,0,0,0.16);position:relative;" onclick="adminTab='requisitions';go('adminDashboard');" onmouseover="this.style.transform='translateY(-6px)'" onmouseout="this.style.transform='translateY(0)'">
+              ${DB.requisitions.length ? `<div style="position:absolute;top:10px;right:10px;background:#e11d48;color:#fff;border-radius:999px;min-width:22px;height:22px;padding:0 6px;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;">${DB.requisitions.length}</div>` : ''}
+              <div style="width:60px;height:60px;border-radius:16px;background:#e3ddc4;display:flex;align-items:center;justify-content:center;font-size:30px;margin:0 auto 14px;">📝</div>
+              <div style="font-size:16px;font-weight:700;color:#1a2233;">রিকুইজিশন হিস্টরি</div>
+              <div style="font-size:12px;color:#6b7280;margin-top:4px;">ডিলারদের পাঠানো পার্টস চাহিদা</div>
+            </div>
+
+            <div style="background:#fff;border-radius:18px;padding:28px 14px;text-align:center;cursor:pointer;transition:all 0.25s;box-shadow:0 4px 14px rgba(0,0,0,0.16);" onclick="adminTab='settings';go('adminDashboard');" onmouseover="this.style.transform='translateY(-6px)'" onmouseout="this.style.transform='translateY(0)'">
               <div style="width:60px;height:60px;border-radius:16px;background:#e3ddc4;display:flex;align-items:center;justify-content:center;font-size:30px;margin:0 auto 14px;">🔧</div>
               <div style="font-size:16px;font-weight:700;color:#1a2233;">সেটিংস</div>
               <div style="font-size:12px;color:#6b7280;margin-top:4px;">অ্যাপ কনফিগারেশন</div>
@@ -998,6 +1045,7 @@ ROUTES.adminDashboard = function(){
   else if(adminTab==='parts') { adminShell(partsTabHTML()); wirePartsTab(); }
   else if(adminTab==='users') { adminShell(usersTabHTML()); wireUsersTab(); }
   else if(adminTab==='history') adminShell(historyTabHTML());
+  else if(adminTab==='requisitions') { adminShell(requisitionsTabHTML()); wireRequisitionsTab(); }
   else if(adminTab==='settings') { adminShell(settingsTabHTML()); wireSettingsTab(); }
 };
 
@@ -1005,8 +1053,8 @@ ROUTES.adminDashboard = function(){
 function dashboardTabHTML(){
   const lastUpdate = DB.history[0] ? DB.history[0].date : '—';
   return `
-    <div style="background:linear-gradient(135deg,#1a3a52 0%,#0d5a7a 100%);min-height:100vh;padding:20px 0;border-radius:12px;margin:-20px 0;">
-      <div style="max-width:100%;margin:0 auto;">
+    <div style="background:linear-gradient(135deg,#1a3a52 0%,#0d5a7a 100%);min-height:100vh;padding:20px;border-radius:12px;margin:-20px -20px -20px -20px;">
+      <div style="max-width:1200px;margin:0 auto;">
         <div style="text-align:center;color:#fff;margin-bottom:30px;">
           <h2 style="font-size:28px;margin:0 0 8px 0;">Dashboard</h2>
           <p style="margin:0;color:rgba(255,255,255,0.8);font-size:14px;">Metal Parts Management System</p>
@@ -1057,6 +1105,7 @@ function partsTabHTML(){
       <div class="card-head">
         <h3 style="margin:0">পার্টস তালিকা</h3>
         <div style="display:flex;gap:8px;">
+          <button class="btn btn-ghost btn-sm" id="exportParts">📄 এক্সেল এক্সপোর্ট</button>
           <label class="btn btn-ghost btn-sm file-btn">📥 এক্সেল আপলোড<input type="file" id="excelFile" accept=".xlsx,.xls,.csv"></label>
           <button class="btn btn-primary btn-sm" id="addPart">➕ নতুন পার্টস</button>
         </div>
@@ -1091,15 +1140,19 @@ function partsTable(list, totalCount, searchQuery=''){
       </thead>
       <tbody>
       ${list.map(p=>{
+        const qDigits = isSearching ? digitsOnly(searchQuery) : '';
+        const qText = isSearching ? searchQuery.toLowerCase() : '';
         const isSearchMatch = isSearching && (
-          p.partNo.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          p.name.toLowerCase().includes(searchQuery.toLowerCase())
+          p.partNo.toLowerCase().includes(qText) ||
+          p.name.toLowerCase().includes(qText) ||
+          (qDigits.length >= 3 && (p.core.includes(qDigits) || qDigits.includes(p.core)))
         );
         const bgColor = isSearchMatch ? '#d4edda' : 'white';
         const borderColor = isSearchMatch ? '#1f8a4c' : '#ddd';
-        
+        const shownPartNo = isSearchMatch ? highlightMatch(p.partNo, qDigits) : p.partNo;
+
         return `<tr style="background:${bgColor};border:2px solid ${borderColor};border-radius:6px;box-shadow:0 1px 3px rgba(0,0,0,0.05);transition:all 0.2s ease;font-size:15px;">
-          <td class="mono" data-label="পার্ট নম্বর" style="text-align:left;padding:12px 6px 12px 14px;font-weight:600;${isSearchMatch?'color:#1f8a4c;':''}">${p.partNo}</td>
+          <td class="mono" data-label="পার্ট নম্বর" style="text-align:left;padding:12px 6px 12px 14px;font-weight:600;${isSearchMatch?'color:#1f8a4c;':''}">${shownPartNo}</td>
           <td data-label="পার্টস নাম" style="text-align:left;padding:12px 10px 12px 6px;${isSearchMatch?'color:#1f8a4c;font-weight:600;':''}">${p.name}</td>
           <td data-label="ক্যাটাগরি" style="padding:12px;">${p.category||'-'}</td>
           <td data-label="মূল্য" style="padding:12px;font-weight:600;">৳${p.price}</td>
@@ -1143,6 +1196,14 @@ function wirePartsTab(){
   };
   document.getElementById('addPart').onclick = ()=> openPartModal();
   document.getElementById('excelFile').addEventListener('change', handleExcelUpload);
+  document.getElementById('exportParts').onclick = exportPartsExcel;
+}
+function exportPartsExcel(){
+  const data = DB.parts.map(p=>({ 'পার্ট নম্বর': displayPartNo(p.partNo), 'নাম': p.name, 'ক্যাটাগরি': p.category||'', 'মূল্য': p.price }));
+  const ws = XLSX.utils.json_to_sheet(data);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Parts");
+  XLSX.writeFile(wb, "parts_list.xlsx");
 }
 function openPartModal(part){
   const isEdit = !!part;
@@ -1384,6 +1445,84 @@ function historyTabHTML(){
       </table></div>`}
     </div>
   `;
+}
+
+/* ---- Requisition history tab (ডিলারদের পাঠানো পার্টস রিকুইজিশন) ---- */
+function topRequestedParts(limit){
+  const counts = {};
+  DB.requisitions.forEach(r=> r.items.forEach(it=>{
+    const key = (it.partNo||'').trim() || (it.name||'').trim();
+    if(!key) return;
+    if(!counts[key]) counts[key] = {partNo: it.partNo||'-', name: it.name||'-', count:0, qtySum:0};
+    counts[key].count += 1;
+    counts[key].qtySum += Number(it.qty)||0;
+  }));
+  return Object.values(counts).sort((a,b)=> b.count - a.count).slice(0, limit);
+}
+function requisitionsTabHTML(){
+  if(!DB.requisitions.length){
+    return `<div class="card"><h3>📝 রিকুইজিশন হিস্টরি</h3><div class="empty">এখনো কোনো রিকুইজিশন আসেনি</div></div>`;
+  }
+  const top = topRequestedParts(5);
+  return `
+    <div class="card" style="margin-bottom:16px">
+      <h3 style="margin:0 0 10px">🔝 সবচেয়ে বেশি চাওয়া পার্টস</h3>
+      <div style="overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;min-width:360px;font-size:14px">
+          <thead><tr style="background:var(--bg-2,#f4f4f4)"><th style="padding:6px;text-align:left">পার্ট নং</th><th style="padding:6px;text-align:left">নাম</th><th style="padding:6px;text-align:center">কতবার চাওয়া হয়েছে</th></tr></thead>
+          <tbody>${top.map(t=>`<tr><td style="padding:6px">${t.partNo}</td><td style="padding:6px">${t.name}</td><td style="padding:6px;text-align:center;font-weight:700">${t.count}</td></tr>`).join('')}</tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-head">
+        <h3 style="margin:0">📝 রিকুইজিশন হিস্টরি (${DB.requisitions.length}টি)</h3>
+        <button class="btn btn-ghost btn-sm" id="exportReq">📄 এক্সেল এক্সপোর্ট</button>
+      </div>
+      <p class="hint" style="margin:0 0 14px">ডিলার/মেকানিকরা যেসব পার্টস চেয়েছে তার তালিকা — নতুনগুলো ওপরে।</p>
+      <div style="display:flex;flex-direction:column;gap:12px">
+        ${DB.requisitions.map(r => `
+          <div style="border:1px solid var(--line);border-radius:12px;padding:14px 16px;position:relative;">
+            <button class="req-del" data-id="${r.id}" title="মুছে ফেলুন" style="position:absolute;top:10px;right:10px;background:none;border:none;font-size:16px;cursor:pointer;color:#e11d48;">✖️</button>
+            <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:8px;padding-right:26px;">
+              <div style="font-weight:700">${r.dealerName}${r.dealerPhone ? ` — ${r.dealerPhone}` : ''}</div>
+              <div class="mono" style="color:var(--muted);font-size:13px">${r.date}</div>
+            </div>
+            <div style="overflow-x:auto">
+              <table style="width:100%;border-collapse:collapse;min-width:400px;font-size:14px">
+                <thead><tr style="background:var(--bg-2,#f4f4f4)"><th style="padding:6px;text-align:center">নং</th><th style="padding:6px;text-align:left">পার্ট নং</th><th style="padding:6px;text-align:left">নাম</th><th style="padding:6px;text-align:center">পরিমাণ</th></tr></thead>
+                <tbody>${r.items.map((it,idx)=>`<tr><td style="padding:6px;text-align:center">${idx+1}</td><td style="padding:6px">${it.partNo||'-'}</td><td style="padding:6px">${it.name||'-'}</td><td style="padding:6px;text-align:center">${it.qty||'-'}</td></tr>`).join('')}</tbody>
+              </table>
+            </div>
+          </div>`).join('')}
+      </div>
+    </div>
+  `;
+}
+function exportRequisitionsExcel(){
+  const rows = [];
+  DB.requisitions.forEach(r=>{
+    r.items.forEach(it=>{
+      rows.push({ 'ডিলার': r.dealerName, 'মোবাইল': r.dealerPhone||'', 'তারিখ': r.date, 'পার্ট নং': it.partNo||'', 'নাম': it.name||'', 'পরিমাণ': it.qty||'' });
+    });
+  });
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Requisitions");
+  XLSX.writeFile(wb, "requisition_history.xlsx");
+}
+function wireRequisitionsTab(){
+  document.querySelectorAll('.req-del').forEach(btn=>{
+    btn.onclick = ()=>{
+      if(!confirm('এই রিকুইজিশনটা মুছে ফেলতে চান?')) return;
+      const id = Number(btn.dataset.id);
+      DB.requisitions = DB.requisitions.filter(r=>r.id!==id);
+      saveDB();
+      go('adminDashboard');
+    };
+  });
+  const exportBtn = document.getElementById('exportReq');
+  if(exportBtn) exportBtn.onclick = exportRequisitionsExcel;
 }
 
 /* ---- Settings tab ---- */
