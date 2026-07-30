@@ -100,7 +100,7 @@ if('serviceWorker' in navigator){
     body { font-size:14px; }
     input, select, button { font-size:16px; }
     .gate { max-width:100%; }
-    .center-screen { padding:12px; padding-left:max(12px, env(safe-area-inset-left)); padding-right:max(12px, env(safe-area-inset-right)); }
+    .center-screen { padding:12px 0; padding-left:env(safe-area-inset-left); padding-right:env(safe-area-inset-right); }
     .gate-top h1 { font-size:22px; }
     h2 { font-size:20px; }
     #app { overflow-x:hidden; }
@@ -216,7 +216,7 @@ if('serviceWorker' in navigator){
   .group-label::after{content:"";flex:1;height:1px;background:var(--line);}
 
   @media(max-width:640px){
-    .wrap{padding:16px 10px 50px;padding-left:max(10px, env(safe-area-inset-left));padding-right:max(10px, env(safe-area-inset-right));}
+    .wrap{max-width:100%;padding:16px 0 50px;padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right);}
     th,td{font-size:12.5px;padding:8px 6px;}
   }
 
@@ -247,13 +247,18 @@ if('serviceWorker' in navigator){
 
   /* ---------- Admin panel: full-screen on mobile, no side margins ---------- */
   @media(max-width:640px){
-    .admin-outer{padding:8px;padding-left:max(8px, env(safe-area-inset-left));padding-right:max(8px, env(safe-area-inset-right));}
-    .admin-header{border-radius:8px;padding:10px 12px;margin-bottom:12px;}
-    .admin-content{border-radius:8px;padding:12px;}
-    .admin-content .card{padding:12px;border-radius:10px;}
+    .admin-outer{padding:12px 0 !important;}
+    .admin-header{border-radius:8px !important;padding:10px 12px !important;margin-bottom:12px !important;}
+    .admin-content{border-radius:8px !important;padding:12px !important;}
+    .admin-content .card{padding:12px !important;border-radius:10px !important;}
     .tractor-banner img{width:1.5in;height:1.13in;}
     .metal-logo-img{width:1.4in !important;height:1.05in !important;}
     .metal-logo-badge{top:8px !important;left:8px !important;}
+  }
+  /* ---------- Full-bleed: kill any remaining inline max-width wrappers on mobile ---------- */
+  @media(max-width:768px){
+    #app, .admin-outer, .admin-content, .wrap{width:100% !important;max-width:100% !important;}
+    .admin-outer > div, .admin-content, .search-hero, .part-card{margin-left:0 !important;margin-right:0 !important;}
   }
 </style>
 </head>
@@ -910,7 +915,7 @@ function adminShell(innerHTML){
   const app = document.getElementById('app');
   app.appendChild(el(`
     <div class="admin-outer" style="background:linear-gradient(135deg,#1a3a52 0%,#0d5a7a 100%);min-height:100vh;padding:20px;">
-      <div style="max-width:1200px;margin:0 auto;">
+      <div style="max-width:100%;margin:0 auto;">
         <div class="admin-header" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;padding:16px;background:rgba(255,255,255,0.08);border-radius:12px;border:1px solid rgba(255,255,255,0.15);">
           <button class="btn btn-ghost btn-sm" onclick="adminTab=null;go('adminDashboard')" style="color:#fff;border-color:rgba(255,255,255,0.3);font-size:15px;">⬅️ মেনু</button>
           <div style="color:#fff;font-weight:600;font-size:16px;">${DB.settings.companyName}</div>
@@ -940,8 +945,8 @@ ROUTES.adminDashboard = function(){
   if(!adminTab || adminTab === 'menu'){
     const app = document.getElementById('app');
     app.appendChild(el(`
-      <div style="background:linear-gradient(135deg,#1a3a52 0%,#0d5a7a 100%);min-height:100vh;padding:20px;border-radius:12px;margin:-20px -20px -20px -20px;">
-        <div style="max-width:1200px;margin:0 auto;">
+      <div style="background:linear-gradient(135deg,#1a3a52 0%,#0d5a7a 100%);min-height:100vh;padding:20px 0;border-radius:12px;margin:-20px 0;">
+        <div style="max-width:100%;margin:0 auto;">
           <div style="text-align:center;color:#fff;margin-bottom:8px;">
             <h2 style="font-size:24px;margin:0 0 2px 0;">Admin Panel</h2>
             <p style="margin:0;color:rgba(255,255,255,0.8);font-size:13px;">Metal Parts Management System</p>
@@ -1000,8 +1005,8 @@ ROUTES.adminDashboard = function(){
 function dashboardTabHTML(){
   const lastUpdate = DB.history[0] ? DB.history[0].date : '—';
   return `
-    <div style="background:linear-gradient(135deg,#1a3a52 0%,#0d5a7a 100%);min-height:100vh;padding:20px;border-radius:12px;margin:-20px -20px -20px -20px;">
-      <div style="max-width:1200px;margin:0 auto;">
+    <div style="background:linear-gradient(135deg,#1a3a52 0%,#0d5a7a 100%);min-height:100vh;padding:20px 0;border-radius:12px;margin:-20px 0;">
+      <div style="max-width:100%;margin:0 auto;">
         <div style="text-align:center;color:#fff;margin-bottom:30px;">
           <h2 style="font-size:28px;margin:0 0 8px 0;">Dashboard</h2>
           <p style="margin:0;color:rgba(255,255,255,0.8);font-size:14px;">Metal Parts Management System</p>
