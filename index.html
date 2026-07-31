@@ -247,15 +247,25 @@ if('serviceWorker' in navigator){
     }
   }
 
-  /* ---------- Admin panel: full-screen on mobile, no side margins ---------- */
+  /* ---------- Admin panel: full-screen edge-to-edge on mobile, no side margins ---------- */
   @media(max-width:640px){
-    .admin-outer{padding:8px;padding-left:max(8px, env(safe-area-inset-left));padding-right:max(8px, env(safe-area-inset-right));}
-    .admin-header{border-radius:8px;padding:10px 12px;margin-bottom:12px;}
-    .admin-content{border-radius:8px;padding:12px;}
+    .admin-outer{
+      padding-top:8px;
+      padding-bottom:8px;
+      padding-left:env(safe-area-inset-left, 0px);
+      padding-right:env(safe-area-inset-right, 0px);
+    }
+    .admin-outer > div{max-width:100% !important; width:100% !important; margin:0 !important;}
+    .admin-header{border-radius:0;margin:0 0 8px 0;padding:10px 12px;width:100%;}
+    .admin-content{border-radius:0;padding:12px;width:100%;}
     .admin-content .card{padding:12px;border-radius:10px;}
     .tractor-banner img{width:1.5in;height:1.13in;}
     .metal-logo-img{width:1.4in !important;height:1.05in !important;}
     .metal-logo-badge{top:8px !important;left:8px !important;}
+  }
+  @media(max-width:640px){
+    .wrap{max-width:100%;padding-left:max(12px, env(safe-area-inset-left));padding-right:max(12px, env(safe-area-inset-right));}
+    .gate{max-width:100%;}
   }
 </style>
 </head>
