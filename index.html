@@ -291,7 +291,7 @@ const DB = {
   session: { role: null, user: null }, // role: 'admin' | 'dealer'
   requisitions: []
 };
-let nextPartId = 14423, nextUserId = 3;
+let nextPartId = 14423, nextUserId = 3, nextReqNo = 1;
 
 /* ================= LOCAL STORAGE PERSISTENCE ================= */
 const LS_KEY = 'partsAppDB_v1';
@@ -309,6 +309,7 @@ async function saveDB(){
       nextPartId: nextPartId,
       partsSaved: true,
       requisitions: DB.requisitions.slice(0,200),
+      nextReqNo: nextReqNo,
       resetRequests: DB.resetRequests.slice(0,200)
     };
     // Firebase এ সেভ
@@ -322,7 +323,7 @@ async function saveDB(){
   }catch(e){
     console.error('Firebase save failed:', e);
     // Firebase না হলে localStorage এ সেভ
-    try{ localStorage.setItem(LS_KEY, JSON.stringify({users:DB.users,history:DB.history.slice(0,50),settings:DB.settings,parts:DB.parts,nextPartId,partsSaved:true,requisitions:DB.requisitions.slice(0,200)})); }catch(e2){}
+    try{ localStorage.setItem(LS_KEY, JSON.stringify({users:DB.users,history:DB.history.slice(0,50),settings:DB.settings,parts:DB.parts,nextPartId,partsSaved:true,requisitions:DB.requisitions.slice(0,200),nextReqNo})); }catch(e2){}
   }
 }
 async function loadDB(){
@@ -347,6 +348,7 @@ async function loadDB(){
         if(saved.nextPartId) nextPartId = saved.nextPartId;
       }
       if(Array.isArray(saved.requisitions)) DB.requisitions = saved.requisitions;
+      nextReqNo = saved.nextReqNo || (DB.requisitions.length ? DB.requisitions.length + 1 : 1);
       if(Array.isArray(saved.resetRequests)) DB.resetRequests = saved.resetRequests;
       if(DB.users.length) nextUserId = Math.max(...DB.users.map(u=>Number(u.id)||0))+1;
       return;
@@ -372,6 +374,7 @@ async function loadDB(){
       if(saved.nextPartId) nextPartId = saved.nextPartId;
     }
     if(Array.isArray(saved.requisitions)) DB.requisitions = saved.requisitions;
+    nextReqNo = saved.nextReqNo || (DB.requisitions.length ? DB.requisitions.length + 1 : 1);
     if(Array.isArray(saved.resetRequests)) DB.resetRequests = saved.resetRequests;
     if(DB.users.length) nextUserId = Math.max(...DB.users.map(u=>Number(u.id)||0))+1;
   }catch(e){ console.error('localStorage load failed:', e); }
@@ -1035,9 +1038,14 @@ ROUTES.dealerRequisition = function(){
             <tbody id="reqBody">${rowsHTML}</tbody>
           </table>
         </div>
+        <div class="card" style="margin-top:16px">
+          <label style="font-size:14px;font-weight:600;display:block;margin-bottom:6px;">📝 মন্তব্য (ঐচ্ছিক)</label>
+          <textarea id="reqRemarks" rows="2" placeholder="কোনো বিশেষ নোট থাকলে লিখুন..." style="width:100%;border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:15px;font-family:inherit;resize:vertical;"></textarea>
+        </div>
         <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;flex-wrap:wrap">
           <button class="btn btn-ghost" id="reqReset">🔄 রিসেট</button>
           <button class="btn btn-primary" id="reqSend">📤 WhatsApp-এ পাঠান</button>
+          <button class="btn btn-navy" id="reqSubmitAdmin">✅ Admin-এ জমা দিন</button>
         </div>
       </div>
     </div>
@@ -1131,7 +1139,11 @@ ROUTES.dealerRequisition = function(){
   document.getElementById('reqReset').onclick = ()=>{
     if(!confirm('পুরো ফর্মটি খালি করতে চান?')) return;
     body.querySelectorAll('input').forEach(inp=> inp.value='');
+    const remarksEl = document.getElementById('reqRemarks');
+    if(remarksEl) remarksEl.value = '';
     hideAllSuggestions();
+    const submitBtn = document.getElementById('reqSubmitAdmin');
+    if(submitBtn){ submitBtn.disabled = false; submitBtn.textContent = '✅ Admin-এ জমা দিন'; }
   };
 
   document.getElementById('reqSend').onclick = ()=>{
@@ -1160,6 +1172,50 @@ ROUTES.dealerRequisition = function(){
     const header = `📦 পার্টস রিকুইজিশন\nডিলার: ${DB.session.user.name}\nতারিখ: ${new Date().toLocaleDateString('bn-BD')}\n\n`;
     const text = encodeURIComponent(header + lines.join('\n'));
     window.open(`https://wa.me/?text=${text}`, '_blank');
+  };
+
+  // ---- নতুন: সরাসরি Admin-এ জমা (WhatsApp বাটনের কার্যকারিতা পরিবর্তন করা হয়নি, এটা সম্পূর্ণ আলাদা) ----
+  document.getElementById('reqSubmitAdmin').onclick = ()=>{
+    const submitBtn = document.getElementById('reqSubmitAdmin');
+    if(submitBtn.disabled) return; // ডুপ্লিকেট সাবমিশন প্রতিরোধ
+    const items = [];
+    for(let i=1; i<=REQ_ROWS; i++){
+      const partNo = body.querySelector(`.req-partno[data-row="${i}"]`).value.trim();
+      const name = body.querySelector(`.req-name[data-row="${i}"]`).value.trim();
+      const qty = body.querySelector(`.req-qty[data-row="${i}"]`).value.trim();
+      if(!partNo && !qty) continue;
+      items.push({partNo, name, qty});
+    }
+    if(!items.length){ alert('অন্তত একটি সারিতে তথ্য দিন।'); return; }
+    submitBtn.disabled = true;
+    submitBtn.textContent = '⏳ জমা হচ্ছে...';
+    const now = new Date();
+    nextReqNo = (nextReqNo || 1);
+    const reqNo = 'REQ-' + String(nextReqNo).padStart(5,'0');
+    nextReqNo++;
+    const remarksEl = document.getElementById('reqRemarks');
+    const requisition = {
+      id: Date.now(),
+      reqNo,
+      dealerId: DB.session.user.id,
+      dealerName: DB.session.user.name,
+      dealerPhone: DB.session.user.phone,
+      date: now.toLocaleDateString('bn-BD') + ' ' + now.toLocaleTimeString('bn-BD'),
+      dateISO: now.toISOString(),
+      items,
+      remarks: remarksEl ? remarksEl.value.trim() : '',
+      status: 'নতুন'
+    };
+    DB.requisitions.unshift(requisition);
+    saveDB().then(()=>{
+      submitBtn.textContent = '✅ জমা দেওয়া হয়েছে';
+      openModal(`
+        <h3>✅ সফলভাবে জমা হয়েছে</h3>
+        <p style="margin:0 0 6px">রিকুইজিশন নম্বর: <span class="mono" style="font-weight:700">${reqNo}</span></p>
+        <p class="hint" style="margin:0">এটি এখন Admin প্যানেলের রিকুইজিশন হিস্টরিতে দেখা যাবে।</p>
+        <div class="modal-actions"><button class="btn btn-primary" onclick="closeModal()">ঠিক আছে</button></div>
+      `);
+    });
   };
 };
 // display-friendly part number — strips SPAR.XXXX.IMPT. prefix
@@ -1758,31 +1814,66 @@ function requisitionsTabHTML(){
         <h3 style="margin:0">📝 রিকুইজিশন হিস্টরি (${DB.requisitions.length}টি)</h3>
         <button class="btn btn-ghost btn-sm" id="exportReq">📄 এক্সেল এক্সপোর্ট</button>
       </div>
-      <p class="hint" style="margin:0 0 14px">ডিলার/মেকানিকরা যেসব পার্টস চেয়েছে তার তালিকা — নতুনগুলো ওপরে।</p>
-      <div style="display:flex;flex-direction:column;gap:12px">
-        ${DB.requisitions.map(r => `
-          <div style="border:1px solid var(--line);border-radius:12px;padding:14px 16px;position:relative;">
-            <button class="req-del" data-id="${r.id}" title="মুছে ফেলুন" style="position:absolute;top:10px;right:10px;background:none;border:none;font-size:16px;cursor:pointer;color:#e11d48;">✖️</button>
-            <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:8px;padding-right:26px;">
-              <div style="font-weight:700">${r.dealerName}${r.dealerPhone ? ` — ${r.dealerPhone}` : ''}</div>
-              <div class="mono" style="color:var(--muted);font-size:13px">${r.date}</div>
-            </div>
-            <div style="overflow-x:auto">
-              <table style="width:100%;border-collapse:collapse;min-width:400px;font-size:14px">
-                <thead><tr style="background:var(--bg-2,#f4f4f4)"><th style="padding:6px;text-align:center">নং</th><th style="padding:6px;text-align:left">পার্ট নং</th><th style="padding:6px;text-align:left">নাম</th><th style="padding:6px;text-align:center">পরিমাণ</th></tr></thead>
-                <tbody>${r.items.map((it,idx)=>`<tr><td style="padding:6px;text-align:center">${idx+1}</td><td style="padding:6px">${it.partNo||'-'}</td><td style="padding:6px">${it.name||'-'}</td><td style="padding:6px;text-align:center">${it.qty||'-'}</td></tr>`).join('')}</tbody>
-              </table>
-            </div>
-          </div>`).join('')}
+      <input type="text" id="reqSearch" placeholder="🔍 ডিলারের নাম, আইডি, রিকুইজিশন নম্বর, পার্ট নম্বর বা তারিখ দিয়ে খুঁজুন..." style="width:100%;border:1px solid var(--line);border-radius:8px;padding:9px 12px;font-size:15px;margin:6px 0 14px;">
+      <p class="hint" style="margin:0 0 10px">ডিলার/মেকানিকরা যেসব পার্টস চেয়েছে তার তালিকা — নতুনগুলো ওপরে।</p>
+      <div id="reqListWrap" style="display:flex;flex-direction:column;gap:12px">
+        ${renderRequisitionCards(DB.requisitions)}
       </div>
     </div>
   `;
+}
+function renderRequisitionCards(list){
+  if(!list.length) return `<div class="empty">কোনো ফলাফল পাওয়া যায়নি</div>`;
+  return list.map(r => `
+    <div style="border:1px solid var(--line);border-radius:12px;padding:14px 16px;position:relative;">
+      <button class="req-del" data-id="${r.id}" title="মুছে ফেলুন" style="position:absolute;top:10px;right:10px;background:none;border:none;font-size:16px;cursor:pointer;color:#e11d48;">✖️</button>
+      <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:6px;padding-right:26px;">
+        <div>
+          <div style="font-weight:700">${r.dealerName}${r.dealerPhone ? ` — ${r.dealerPhone}` : ''}</div>
+          ${r.reqNo ? `<div class="mono" style="color:#1f8a4c;font-size:12.5px;font-weight:700;margin-top:2px;">${r.reqNo}${r.status ? ` · ${r.status}` : ''}</div>` : ''}
+        </div>
+        <div class="mono" style="color:var(--muted);font-size:13px">${r.date}</div>
+      </div>
+      ${r.remarks ? `<div class="hint" style="margin:0 0 8px;">📝 ${r.remarks}</div>` : ''}
+      <div style="overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;min-width:400px;font-size:14px">
+          <thead><tr style="background:var(--bg-2,#f4f4f4)"><th style="padding:6px;text-align:center">নং</th><th style="padding:6px;text-align:left">পার্ট নং</th><th style="padding:6px;text-align:left">নাম</th><th style="padding:6px;text-align:center">পরিমাণ</th></tr></thead>
+          <tbody>${r.items.map((it,idx)=>`<tr><td style="padding:6px;text-align:center">${idx+1}</td><td style="padding:6px">${it.partNo||'-'}</td><td style="padding:6px">${it.name||'-'}</td><td style="padding:6px;text-align:center">${it.qty||'-'}</td></tr>`).join('')}</tbody>
+        </table>
+      </div>
+      <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn btn-ghost btn-sm req-view" data-id="${r.id}">👁️ বিস্তারিত / প্রিন্ট</button>
+      </div>
+    </div>`).join('');
+}
+function requisitionMatches(r, q){
+  if(!q) return true;
+  const hay = [r.dealerName, r.dealerId, r.reqNo, r.date, ...(r.items||[]).map(it=>it.partNo)].join(' ').toLowerCase();
+  return hay.includes(q.toLowerCase());
+}
+function printRequisition(r){
+  const win = window.open('', '_blank');
+  win.document.write(`
+    <html><head><title>${r.reqNo || r.id}</title>
+    <style>body{font-family:sans-serif;padding:24px;} table{width:100%;border-collapse:collapse;margin-top:12px;} th,td{border:1px solid #ccc;padding:8px;font-size:14px;text-align:left;} th{background:#f4f4f4;}</style>
+    </head><body>
+      <h2>📦 পার্টস রিকুইজিশন ${r.reqNo ? '— ' + r.reqNo : ''}</h2>
+      <p><strong>ডিলার:</strong> ${r.dealerName} ${r.dealerPhone ? '('+r.dealerPhone+')' : ''}</p>
+      <p><strong>তারিখ:</strong> ${r.date}</p>
+      ${r.status ? `<p><strong>স্ট্যাটাস:</strong> ${r.status}</p>` : ''}
+      ${r.remarks ? `<p><strong>মন্তব্য:</strong> ${r.remarks}</p>` : ''}
+      <table><thead><tr><th>নং</th><th>পার্ট নং</th><th>নাম</th><th>পরিমাণ</th></tr></thead>
+      <tbody>${r.items.map((it,idx)=>`<tr><td>${idx+1}</td><td>${it.partNo||'-'}</td><td>${it.name||'-'}</td><td>${it.qty||'-'}</td></tr>`).join('')}</tbody></table>
+    </body></html>
+  `);
+  win.document.close();
+  win.print();
 }
 function exportRequisitionsExcel(){
   const rows = [];
   DB.requisitions.forEach(r=>{
     r.items.forEach(it=>{
-      rows.push({ 'ডিলার': r.dealerName, 'মোবাইল': r.dealerPhone||'', 'তারিখ': r.date, 'পার্ট নং': it.partNo||'', 'নাম': it.name||'', 'পরিমাণ': it.qty||'' });
+      rows.push({ 'রিকুইজিশন নং': r.reqNo||'', 'ডিলার': r.dealerName, 'মোবাইল': r.dealerPhone||'', 'তারিখ': r.date, 'পার্ট নং': it.partNo||'', 'নাম': it.name||'', 'পরিমাণ': it.qty||'', 'মন্তব্য': r.remarks||'', 'স্ট্যাটাস': r.status||'' });
     });
   });
   const ws = XLSX.utils.json_to_sheet(rows);
@@ -1791,17 +1882,52 @@ function exportRequisitionsExcel(){
   XLSX.writeFile(wb, "requisition_history.xlsx");
 }
 function wireRequisitionsTab(){
-  document.querySelectorAll('.req-del').forEach(btn=>{
-    btn.onclick = ()=>{
-      if(!confirm('এই রিকুইজিশনটা মুছে ফেলতে চান?')) return;
-      const id = Number(btn.dataset.id);
-      DB.requisitions = DB.requisitions.filter(r=>r.id!==id);
-      saveDB();
-      go('adminDashboard');
-    };
-  });
+  const wireCardButtons = ()=>{
+    document.querySelectorAll('.req-del').forEach(btn=>{
+      btn.onclick = ()=>{
+        if(!confirm('এই রিকুইজিশনটা মুছে ফেলতে চান?')) return;
+        const id = Number(btn.dataset.id);
+        DB.requisitions = DB.requisitions.filter(r=>r.id!==id);
+        saveDB();
+        go('adminDashboard');
+      };
+    });
+    document.querySelectorAll('.req-view').forEach(btn=>{
+      btn.onclick = ()=>{
+        const r = DB.requisitions.find(x=>x.id===Number(btn.dataset.id));
+        if(!r) return;
+        openModal(`
+          <h3>${r.reqNo || 'রিকুইজিশন'} বিস্তারিত</h3>
+          <p style="margin:4px 0"><strong>ডিলার:</strong> ${r.dealerName} ${r.dealerPhone?`(${r.dealerPhone})`:''}</p>
+          <p style="margin:4px 0"><strong>তারিখ:</strong> ${r.date}</p>
+          ${r.status ? `<p style="margin:4px 0"><strong>স্ট্যাটাস:</strong> ${r.status}</p>` : ''}
+          ${r.remarks ? `<p style="margin:4px 0"><strong>মন্তব্য:</strong> ${r.remarks}</p>` : ''}
+          <div style="overflow-x:auto;margin-top:10px;">
+            <table style="width:100%;border-collapse:collapse;min-width:360px;font-size:14px">
+              <thead><tr style="background:var(--bg-2,#f4f4f4)"><th style="padding:6px;text-align:center">নং</th><th style="padding:6px;text-align:left">পার্ট নং</th><th style="padding:6px;text-align:left">নাম</th><th style="padding:6px;text-align:center">পরিমাণ</th></tr></thead>
+              <tbody>${r.items.map((it,idx)=>`<tr><td style="padding:6px;text-align:center">${idx+1}</td><td style="padding:6px">${it.partNo||'-'}</td><td style="padding:6px">${it.name||'-'}</td><td style="padding:6px;text-align:center">${it.qty||'-'}</td></tr>`).join('')}</tbody>
+            </table>
+          </div>
+          <div class="modal-actions">
+            <button class="btn btn-ghost" onclick="closeModal()">বন্ধ করুন</button>
+            <button class="btn btn-primary" onclick='printRequisition(${JSON.stringify(r).replace(/'/g,"&#39;")})'>🖨️ প্রিন্ট</button>
+          </div>
+        `);
+      };
+    });
+  };
+  wireCardButtons();
   const exportBtn = document.getElementById('exportReq');
   if(exportBtn) exportBtn.onclick = exportRequisitionsExcel;
+  const searchEl = document.getElementById('reqSearch');
+  if(searchEl){
+    searchEl.oninput = ()=>{
+      const q = searchEl.value.trim();
+      const filtered = DB.requisitions.filter(r=>requisitionMatches(r,q));
+      document.getElementById('reqListWrap').innerHTML = renderRequisitionCards(filtered);
+      wireCardButtons();
+    };
+  }
 }
 
 /* ---- Settings tab ---- */
