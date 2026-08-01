@@ -307,6 +307,7 @@ const DB = {
   ],
   resetRequests: [],
   loginHistory: [],
+  vehicleCompat: [],
   history: [
     {date:"2026-07-20 12:00", by:"Admin", action:"এক্সেল আপলোড: 14422টি পার্টস যোগ হয়েছে (web_price.xlsx)"},
   ],
@@ -335,7 +336,8 @@ async function saveDB(){
       nextReqNo: nextReqNo,
       resetRequests: DB.resetRequests.slice(0,200),
       drafts: DB.drafts.slice(0,200),
-      loginHistory: DB.loginHistory.slice(0,500)
+      loginHistory: DB.loginHistory.slice(0,500),
+      vehicleCompat: DB.vehicleCompat.slice(0,6000)
     };
     // Firebase এ সেভ
     await fetch(`${FB_URL}/appdata.json`, {
@@ -377,6 +379,7 @@ async function loadDB(){
       if(Array.isArray(saved.resetRequests)) DB.resetRequests = saved.resetRequests;
       if(Array.isArray(saved.drafts)) DB.drafts = saved.drafts;
       if(Array.isArray(saved.loginHistory)) DB.loginHistory = saved.loginHistory;
+      if(Array.isArray(saved.vehicleCompat)) DB.vehicleCompat = saved.vehicleCompat;
       if(saved.settings){ DB.settings.adminLastActive = saved.settings.adminLastActive || null; DB.settings.adminLastLogin = saved.settings.adminLastLogin || null; }
       if(DB.users.length) nextUserId = Math.max(...DB.users.map(u=>Number(u.id)||0))+1;
       return;
@@ -406,6 +409,7 @@ async function loadDB(){
     if(Array.isArray(saved.resetRequests)) DB.resetRequests = saved.resetRequests;
     if(Array.isArray(saved.drafts)) DB.drafts = saved.drafts;
       if(Array.isArray(saved.loginHistory)) DB.loginHistory = saved.loginHistory;
+      if(Array.isArray(saved.vehicleCompat)) DB.vehicleCompat = saved.vehicleCompat;
       if(saved.settings){ DB.settings.adminLastActive = saved.settings.adminLastActive || null; DB.settings.adminLastLogin = saved.settings.adminLastLogin || null; }
     if(DB.users.length) nextUserId = Math.max(...DB.users.map(u=>Number(u.id)||0))+1;
   }catch(e){ console.error('localStorage load failed:', e); }
@@ -1031,6 +1035,7 @@ ROUTES.dealerSearch = function(){
           <div><div class="brand-name">${DB.settings.companyName}</div><div class="brand-sub">ডিলার পোর্টাল</div></div>
         </div>
         <div class="topbar-right">
+          <button class="btn btn-ghost btn-sm" onclick="go('dealerVehicleSearch')" style="color:#fff;border-color:rgba(255,255,255,.3)">🚗 গাড়ির মডেল</button>
           <button class="btn btn-ghost btn-sm" onclick="go('dealerRequisition')" style="color:#fff;border-color:rgba(255,255,255,.3)">📝 রিকুইজিশন</button>
           <button class="btn btn-ghost btn-sm theme-toggle" onclick="toggleTheme()" style="color:#fff;border-color:rgba(255,255,255,.3)">🌙</button>
           <span class="pill">${DB.session.user.name}</span>
@@ -1086,6 +1091,89 @@ ROUTES.dealerSearch = function(){
   let searchTimer;
   input.addEventListener('input', ()=>{ clearTimeout(searchTimer); searchTimer = setTimeout(runSearch, 180); });
   document.getElementById('go').onclick = runSearch;
+};
+
+/* ---- Dealer Vehicle Model Search ---- */
+function levenshtein(a, b){
+  const m = a.length, n = b.length;
+  if(!m) return n; if(!n) return m;
+  const dp = Array.from({length:m+1}, (_,i)=>[i,...Array(n).fill(0)]);
+  for(let j=0;j<=n;j++) dp[0][j]=j;
+  for(let i=1;i<=m;i++){
+    for(let j=1;j<=n;j++){
+      dp[i][j] = a[i-1]===b[j-1] ? dp[i-1][j-1] : 1 + Math.min(dp[i-1][j], dp[i][j-1], dp[i-1][j-1]);
+    }
+  }
+  return dp[m][n];
+}
+function vehicleCompatBlob(v){
+  if(!v._blob) v._blob = normalizeVText([v.partNo, v.partName, (v.models||[]).join(' '), v.brand].join(' '));
+  return v._blob;
+}
+function searchVehicleCompat(qRaw){
+  const q = normalizeVText(qRaw);
+  if(!q) return [];
+  // ধাপ ১: সরাসরি partial/substring ম্যাচ (দ্রুততম)
+  let results = DB.vehicleCompat.filter(v => vehicleCompatBlob(v).includes(q));
+  if(results.length) return results.slice(0,50);
+  // ধাপ ২: বানান একটু ভুল হলে — approximate ম্যাচ (word-level Levenshtein, ছোট শব্দের জন্য tolerance কম)
+  const maxDist = q.length <= 4 ? 1 : (q.length <= 8 ? 2 : 3);
+  results = DB.vehicleCompat.filter(v=>{
+    const words = vehicleCompatBlob(v).split(' ');
+    return words.some(w => Math.abs(w.length - q.length) <= maxDist && levenshtein(w, q) <= maxDist);
+  });
+  return results.slice(0,50);
+}
+function vehicleResultCardHTML(v){
+  return `<div class="part-card" style="flex-direction:column;align-items:flex-start;gap:6px;">
+    <div style="display:flex;justify-content:space-between;width:100%;flex-wrap:wrap;gap:6px;">
+      <div class="pn" style="font-weight:700">${v.partNo}</div>
+      ${v.brand ? `<span class="pill" style="background:var(--paper);color:var(--navy);border:1px solid var(--line);">${v.brand}</span>` : ''}
+    </div>
+    <div class="nm" style="font-weight:700;color:var(--text);">${v.partName||'-'}</div>
+    <div style="font-size:13.5px;color:var(--text);"><b>গাড়ির মডেল:</b> ${(v.models||[]).join(', ')||'-'}</div>
+    ${v.category ? `<div style="font-size:12.5px;color:var(--muted);">ক্যাটাগরি: ${v.category}</div>` : ''}
+    ${v.remarks ? `<div style="font-size:12.5px;color:var(--muted);">মন্তব্য: ${v.remarks}</div>` : ''}
+  </div>`;
+}
+ROUTES.dealerVehicleSearch = function(){
+  const app = document.getElementById('app');
+  app.appendChild(el(`
+    <div>
+      <div class="topbar">
+        <div class="topbar-brand">
+          <div class="brand-logo">${DB.settings.logo ? `<img src="${DB.settings.logo}" style="width:100%;height:100%;object-fit:cover;border-radius:9px">` : '🚗'}</div>
+          <div><div class="brand-name">${DB.settings.companyName}</div><div class="brand-sub">গাড়ির মডেল সার্চ</div></div>
+        </div>
+        <div class="topbar-right">
+          <button class="btn btn-ghost btn-sm" onclick="go('dealerSearch')" style="color:#fff;border-color:rgba(255,255,255,.3)">⬅️ ফিরে যান</button>
+        </div>
+      </div>
+      <div class="wrap">
+        <div class="card">
+          <h3 style="margin:0 0 4px">🚗 গাড়ির মডেল দিয়ে পার্ট খুঁজুন</h3>
+          <p style="margin:0 0 16px;color:var(--muted);font-size:13.5px;">পার্ট নম্বর, নাম, মডেল বা ব্র্যান্ড — যেকোনো একটা লিখুন (যেমন: 8502, Oil Filter, TAFE)</p>
+          <input type="text" id="vq" placeholder="🔍 এখানে লিখুন..." style="width:100%;border:1px solid var(--line);border-radius:8px;padding:11px 14px;font-size:16px;">
+          <div id="vResults" style="margin-top:16px;display:flex;flex-direction:column;gap:10px;"></div>
+        </div>
+      </div>
+    </div>
+  `));
+  const input = document.getElementById('vq');
+  const results = document.getElementById('vResults');
+  let vTimer;
+  const runVSearch = ()=>{
+    const raw = input.value.trim();
+    if(!raw){ results.innerHTML=''; return; }
+    if(raw.length < 2){ results.innerHTML = `<div class="empty">অন্তত ২ অক্ষর/সংখ্যা লিখুন</div>`; return; }
+    results.innerHTML = `<div class="hint" style="text-align:center;padding:10px;">⏳ খোঁজা হচ্ছে...</div>`;
+    setTimeout(()=>{
+      const found = searchVehicleCompat(raw);
+      if(!found.length){ results.innerHTML = `<div class="empty">😕 কোনো ফলাফল পাওয়া যায়নি</div>`; return; }
+      results.innerHTML = found.map(vehicleResultCardHTML).join('');
+    }, 50);
+  };
+  input.addEventListener('input', ()=>{ clearTimeout(vTimer); vTimer = setTimeout(runVSearch, 180); });
 };
 
 /* ---- Dealer Requisition (পার্টস রিকুইজিশন) ---- */
@@ -1539,7 +1627,13 @@ ROUTES.adminDashboard = function(){
               <div style="font-size:12px;color:#6b7280;margin-top:4px;">ইউজার লগইন ও অনলাইন স্ট্যাটাস</div>
             </div>
 
-            <div style="background:#fff;border-radius:18px;padding:28px 14px;text-align:center;cursor:pointer;transition:all 0.25s;box-shadow:0 4px 14px rgba(0,0,0,0.16);grid-column:1 / -1;max-width:calc(50% - 8px);margin:0 auto;" onclick="adminTab='settings';go('adminDashboard');" onmouseover="this.style.transform='translateY(-6px)'" onmouseout="this.style.transform='translateY(0)'">
+            <div style="background:#fff;border-radius:18px;padding:28px 14px;text-align:center;cursor:pointer;transition:all 0.25s;box-shadow:0 4px 14px rgba(0,0,0,0.16);" onclick="adminTab='vehicleDb';go('adminDashboard');" onmouseover="this.style.transform='translateY(-6px)'" onmouseout="this.style.transform='translateY(0)'">
+              <div style="width:60px;height:60px;border-radius:16px;background:#e3ddc4;display:flex;align-items:center;justify-content:center;font-size:30px;margin:0 auto 14px;">🚗</div>
+              <div style="font-size:16px;font-weight:700;color:#1a2233;">Vehicle Model Database</div>
+              <div style="font-size:12px;color:#6b7280;margin-top:4px;">পার্ট ও গাড়ির মডেল ম্যাপিং</div>
+            </div>
+
+            <div style="background:#fff;border-radius:18px;padding:28px 14px;text-align:center;cursor:pointer;transition:all 0.25s;box-shadow:0 4px 14px rgba(0,0,0,0.16);" onclick="adminTab='settings';go('adminDashboard');" onmouseover="this.style.transform='translateY(-6px)'" onmouseout="this.style.transform='translateY(0)'">
               <div style="width:60px;height:60px;border-radius:16px;background:#e3ddc4;display:flex;align-items:center;justify-content:center;font-size:30px;margin:0 auto 14px;">🔧</div>
               <div style="font-size:16px;font-weight:700;color:#1a2233;">সেটিংস</div>
               <div style="font-size:12px;color:#6b7280;margin-top:4px;">অ্যাপ কনফিগারেশন</div>
@@ -1558,6 +1652,7 @@ ROUTES.adminDashboard = function(){
   else if(adminTab==='history') adminShell(historyTabHTML());
   else if(adminTab==='requisitions') { adminShell(requisitionsTabHTML()); wireRequisitionsTab(); }
   else if(adminTab==='loginActivity') { adminShell(loginActivityTabHTML()); wireLoginActivityTab(); }
+  else if(adminTab==='vehicleDb') { adminShell(vehicleDbTabHTML()); wireVehicleDbTab(); }
   else if(adminTab==='settings') { adminShell(settingsTabHTML()); wireSettingsTab(); }
 };
 
@@ -2267,6 +2362,192 @@ function wireLoginActivityTab(){
     );
     document.getElementById('loginHistWrap').innerHTML = renderLoginHistoryTable(filtered);
   };
+}
+
+/* ---- Vehicle Model Database tab (Admin) ---- */
+let pendingVehicleUpload = null;
+function normalizeVText(s){ return String(s||'').toLowerCase().replace(/[.\-_,]/g,' ').replace(/\s+/g,' ').trim(); }
+function vehicleDbTabHTML(){
+  return `
+    <div class="card" style="margin-bottom:16px">
+      <h3 style="margin:0 0 10px">🚗 Vehicle Model Database — Excel আপলোড</h3>
+      <p class="hint" style="margin:0 0 10px">কলাম হতে হবে: Part Number | Part Name | Vehicle Model | Brand | Category | Remarks। একাধিক মডেল হলে কমা (,) দিয়ে লিখুন।</p>
+      <label class="btn btn-primary file-btn">📥 এক্সেল ফাইল বাছাই করুন<input type="file" id="vehicleExcelFile" accept=".xlsx,.xls,.csv"></label>
+      <div id="vehicleUploadStatus" style="margin-top:10px;font-size:13.5px;color:var(--muted);"></div>
+    </div>
+    <div class="card">
+      <div class="card-head">
+        <h3 style="margin:0">রেকর্ড তালিকা (${DB.vehicleCompat.length}টি)</h3>
+      </div>
+      <input type="text" id="vehicleAdminSearch" placeholder="🔍 পার্ট নং, নাম, মডেল বা ব্র্যান্ড দিয়ে খুঁজুন..." style="width:100%;border:1px solid var(--line);border-radius:8px;padding:9px 12px;font-size:15px;margin:6px 0 14px;">
+      <div id="vehicleListWrap" style="overflow-x:auto">
+        ${renderVehicleCompatTable(DB.vehicleCompat.slice(0,100))}
+      </div>
+      ${DB.vehicleCompat.length > 100 ? `<p class="hint" style="margin-top:10px">মোট ${DB.vehicleCompat.length}টির মধ্যে প্রথম ১০০টি দেখানো হচ্ছে — সার্চ করে নির্দিষ্ট রেকর্ড খুঁজুন।</p>` : ''}
+    </div>
+  `;
+}
+function renderVehicleCompatTable(list){
+  if(!list.length) return `<div class="empty">কোনো রেকর্ড নেই</div>`;
+  return `<table style="width:100%;border-collapse:collapse;min-width:600px;font-size:13.5px">
+    <thead><tr style="background:var(--bg-2,#f4f4f4)">
+      <th style="padding:6px;text-align:left">পার্ট নং</th><th style="padding:6px;text-align:left">পার্টের নাম</th>
+      <th style="padding:6px;text-align:left">গাড়ির মডেল</th><th style="padding:6px;text-align:left">ব্র্যান্ড</th>
+      <th style="padding:6px;text-align:center">✏️</th><th style="padding:6px;text-align:center">🗑️</th>
+    </tr></thead>
+    <tbody>${list.map(v=>`<tr>
+      <td style="padding:6px" class="mono">${v.partNo}</td>
+      <td style="padding:6px">${v.partName}</td>
+      <td style="padding:6px">${(v.models||[]).join(', ')}</td>
+      <td style="padding:6px">${v.brand||'-'}</td>
+      <td style="padding:6px;text-align:center"><button class="v-edit" data-id="${v.id}" style="border:none;background:none;cursor:pointer;font-size:15px;">✏️</button></td>
+      <td style="padding:6px;text-align:center"><button class="v-del" data-id="${v.id}" style="border:none;background:none;cursor:pointer;font-size:15px;color:#e11d48;">🗑️</button></td>
+    </tr>`).join('')}</tbody>
+  </table>`;
+}
+function wireVehicleDbTab(){
+  document.getElementById('vehicleExcelFile').addEventListener('change', handleVehicleExcelUpload);
+  const searchEl = document.getElementById('vehicleAdminSearch');
+  searchEl.oninput = ()=>{
+    const q = normalizeVText(searchEl.value);
+    const filtered = !q ? DB.vehicleCompat.slice(0,100) : DB.vehicleCompat.filter(v=>
+      normalizeVText(v.partNo).includes(q) || normalizeVText(v.partName).includes(q) ||
+      normalizeVText((v.models||[]).join(' ')).includes(q) || normalizeVText(v.brand).includes(q)
+    ).slice(0,200);
+    document.getElementById('vehicleListWrap').innerHTML = renderVehicleCompatTable(filtered);
+    wireVehicleRowButtons();
+  };
+  wireVehicleRowButtons();
+}
+function wireVehicleRowButtons(){
+  document.querySelectorAll('.v-del').forEach(btn=>{
+    btn.onclick = ()=>{
+      if(!confirm('এই রেকর্ডটি মুছে ফেলতে চান?')) return;
+      const id = Number(btn.dataset.id);
+      DB.vehicleCompat = DB.vehicleCompat.filter(v=>v.id!==id);
+      logHistory('Vehicle Model Database থেকে ১টি রেকর্ড ডিলিট হয়েছে');
+      saveDB();
+      go('adminDashboard');
+    };
+  });
+  document.querySelectorAll('.v-edit').forEach(btn=>{
+    btn.onclick = ()=>{
+      const v = DB.vehicleCompat.find(x=>x.id===Number(btn.dataset.id));
+      if(!v) return;
+      openModal(`
+        <h3>রেকর্ড সম্পাদনা</h3>
+        <div class="field"><label>পার্ট নং</label><input type="text" id="vePartNo" value="${v.partNo}"></div>
+        <div class="field"><label>পার্টের নাম</label><input type="text" id="vePartName" value="${v.partName}"></div>
+        <div class="field"><label>গাড়ির মডেল (কমা দিয়ে আলাদা)</label><input type="text" id="veModels" value="${(v.models||[]).join(', ')}"></div>
+        <div class="field"><label>ব্র্যান্ড</label><input type="text" id="veBrand" value="${v.brand||''}"></div>
+        <div class="field"><label>ক্যাটাগরি</label><input type="text" id="veCategory" value="${v.category||''}"></div>
+        <div class="field"><label>মন্তব্য</label><input type="text" id="veRemarks" value="${v.remarks||''}"></div>
+        <div class="modal-actions">
+          <button class="btn btn-ghost" onclick="closeModal()">বাতিল</button>
+          <button class="btn btn-primary" id="veSave">সেভ করুন</button>
+        </div>
+      `);
+      document.getElementById('veSave').onclick = ()=>{
+        v.partNo = document.getElementById('vePartNo').value.trim();
+        v.partName = document.getElementById('vePartName').value.trim();
+        v.models = document.getElementById('veModels').value.split(',').map(s=>s.trim()).filter(Boolean);
+        v.brand = document.getElementById('veBrand').value.trim();
+        v.category = document.getElementById('veCategory').value.trim();
+        v.remarks = document.getElementById('veRemarks').value.trim();
+        saveDB();
+        closeModal();
+        go('adminDashboard');
+      };
+    };
+  });
+}
+function handleVehicleExcelUpload(e){
+  const file = e.target.files[0];
+  if(!file) return;
+  const statusEl = document.getElementById('vehicleUploadStatus');
+  statusEl.textContent = '⏳ ফাইল পড়া হচ্ছে...';
+  const reader = new FileReader();
+  reader.onload = (evt)=>{
+    try{
+      const wb = XLSX.read(evt.target.result, {type:'binary'});
+      const sheet = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(sheet, {defval:''});
+      const parsed = [];
+      rows.forEach(r=>{
+        const partNo = String(r['Part Number']||r['পার্ট নম্বর']||r.PartNo||r['Part No']||'').trim();
+        const partName = String(r['Part Name']||r['পার্টের নাম']||r.Name||'').trim();
+        const modelRaw = String(r['Vehicle Model']||r['গাড়ির মডেল']||r.Model||'').trim();
+        if(!partNo || !modelRaw) return;
+        const models = modelRaw.split(',').map(s=>s.trim()).filter(Boolean);
+        parsed.push({
+          partNo, partName,
+          models,
+          brand: String(r['Brand']||r['ব্র্যান্ড']||'').trim(),
+          category: String(r['Category']||r['ক্যাটাগরি']||'').trim(),
+          remarks: String(r['Remarks']||r['মন্তব্য']||'').trim()
+        });
+      });
+      if(!parsed.length){
+        statusEl.textContent = '❌ কোনো বৈধ রেকর্ড পাওয়া যায়নি — কলামের নাম চেক করুন';
+        return;
+      }
+      statusEl.textContent = `✅ ${parsed.length}টি রেকর্ড পড়া হয়েছে — নিচে Preview দেখুন`;
+      pendingVehicleUpload = { rows: parsed, fileName: file.name };
+      showVehicleUploadPreview(parsed);
+    }catch(err){
+      statusEl.textContent = '❌ ফাইল পড়া যায়নি: ' + err.message;
+    }
+  };
+  reader.readAsBinaryString(file);
+  e.target.value = '';
+}
+function showVehicleUploadPreview(parsed){
+  const previewRows = parsed.slice(0, 15);
+  openModal(`
+    <h3>📋 Preview — ${parsed.length}টি রেকর্ড</h3>
+    <p class="hint" style="margin:0 0 10px">প্রথম ১৫টি রেকর্ড দেখানো হচ্ছে। এগিয়ে যেতে নিচে থেকে একটা অপশন বাছাই করুন।</p>
+    <div style="overflow-x:auto;max-height:320px;overflow-y:auto;">
+      <table style="width:100%;border-collapse:collapse;min-width:520px;font-size:13px">
+        <thead><tr style="background:var(--bg-2,#f4f4f4)"><th style="padding:5px;text-align:left">পার্ট নং</th><th style="padding:5px;text-align:left">নাম</th><th style="padding:5px;text-align:left">মডেল</th><th style="padding:5px;text-align:left">ব্র্যান্ড</th></tr></thead>
+        <tbody>${previewRows.map(r=>`<tr><td style="padding:5px" class="mono">${r.partNo}</td><td style="padding:5px">${r.partName}</td><td style="padding:5px">${r.models.join(', ')}</td><td style="padding:5px">${r.brand||'-'}</td></tr>`).join('')}</tbody>
+      </table>
+    </div>
+    <div class="modal-actions" style="flex-direction:column;gap:8px;align-items:stretch;margin-top:14px;">
+      <button class="btn btn-primary btn-block" id="vAppend">➕ বিদ্যমান ডেটার সাথে যোগ করুন</button>
+      <button class="btn btn-navy btn-block" id="vReplace">🔄 পুরোনো সব ডেটা মুছে নতুন করে বসান</button>
+      <button class="btn btn-ghost btn-block" onclick="closeModal()">বাতিল</button>
+    </div>
+  `);
+  document.getElementById('vAppend').onclick = ()=> confirmVehicleUpload('append');
+  document.getElementById('vReplace').onclick = ()=> confirmVehicleUpload('replace');
+}
+function confirmVehicleUpload(mode){
+  if(!pendingVehicleUpload) return;
+  const parsed = pendingVehicleUpload.rows;
+  if(mode==='replace'){
+    if(!confirm('নিশ্চিত? পুরোনো সব Vehicle Model ডেটা মুছে ফেলা হবে।')) return;
+    DB.vehicleCompat = [];
+  }
+  // ডুপ্লিকেট এড়াতে partNo দিয়ে ম্যাপ বানানো
+  const byPartNo = new Map(DB.vehicleCompat.map(v=>[v.partNo, v]));
+  let added=0, updated=0;
+  parsed.forEach(r=>{
+    if(byPartNo.has(r.partNo)){
+      Object.assign(byPartNo.get(r.partNo), r);
+      updated++;
+    } else {
+      const item = { id: Date.now()+Math.random(), ...r };
+      DB.vehicleCompat.push(item);
+      byPartNo.set(r.partNo, item);
+      added++;
+    }
+  });
+  logHistory(`Vehicle Model Database: ${added}টি নতুন, ${updated}টি আপডেট হয়েছে (${pendingVehicleUpload.fileName})`);
+  saveDB();
+  closeModal();
+  pendingVehicleUpload = null;
+  alert(`✅ সম্পন্ন হয়েছে!\nনতুন যোগ হয়েছে: ${added}টি\nআপডেট হয়েছে: ${updated}টি\nমোট রেকর্ড: ${DB.vehicleCompat.length}টি`);
+  go('adminDashboard');
 }
 
 /* ---- Settings tab ---- */
