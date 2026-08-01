@@ -46,6 +46,7 @@ if('serviceWorker' in navigator){
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
 <style>
@@ -305,6 +306,7 @@ const DB = {
     {id:2, name:"রহিম মেকানিক", phone:"01711000002", password:"1234", active:false, role:"mechanic"},
   ],
   resetRequests: [],
+  loginHistory: [],
   history: [
     {date:"2026-07-20 12:00", by:"Admin", action:"এক্সেল আপলোড: 14422টি পার্টস যোগ হয়েছে (web_price.xlsx)"},
   ],
@@ -325,14 +327,15 @@ async function saveDB(){
     const payload = {
       users: DB.users,
       history: DB.history.slice(0,50),
-      settings: { companyName: DB.settings.companyName, adminPassword: DB.settings.adminPassword, logo: DB.settings.logo, recoveryEmail: DB.settings.recoveryEmail, resetOTP: DB.settings.resetOTP || null, resetOTPExpiry: DB.settings.resetOTPExpiry || null },
+      settings: { companyName: DB.settings.companyName, adminPassword: DB.settings.adminPassword, logo: DB.settings.logo, recoveryEmail: DB.settings.recoveryEmail, resetOTP: DB.settings.resetOTP || null, resetOTPExpiry: DB.settings.resetOTPExpiry || null, adminLastActive: DB.settings.adminLastActive || null, adminLastLogin: DB.settings.adminLastLogin || null },
       parts: DB.parts,
       nextPartId: nextPartId,
       partsSaved: true,
       requisitions: DB.requisitions.slice(0,200),
       nextReqNo: nextReqNo,
       resetRequests: DB.resetRequests.slice(0,200),
-      drafts: DB.drafts.slice(0,200)
+      drafts: DB.drafts.slice(0,200),
+      loginHistory: DB.loginHistory.slice(0,500)
     };
     // Firebase এ সেভ
     await fetch(`${FB_URL}/appdata.json`, {
@@ -373,6 +376,8 @@ async function loadDB(){
       nextReqNo = saved.nextReqNo || (DB.requisitions.length ? DB.requisitions.length + 1 : 1);
       if(Array.isArray(saved.resetRequests)) DB.resetRequests = saved.resetRequests;
       if(Array.isArray(saved.drafts)) DB.drafts = saved.drafts;
+      if(Array.isArray(saved.loginHistory)) DB.loginHistory = saved.loginHistory;
+      if(saved.settings){ DB.settings.adminLastActive = saved.settings.adminLastActive || null; DB.settings.adminLastLogin = saved.settings.adminLastLogin || null; }
       if(DB.users.length) nextUserId = Math.max(...DB.users.map(u=>Number(u.id)||0))+1;
       return;
     }
@@ -400,6 +405,8 @@ async function loadDB(){
     nextReqNo = saved.nextReqNo || (DB.requisitions.length ? DB.requisitions.length + 1 : 1);
     if(Array.isArray(saved.resetRequests)) DB.resetRequests = saved.resetRequests;
     if(Array.isArray(saved.drafts)) DB.drafts = saved.drafts;
+      if(Array.isArray(saved.loginHistory)) DB.loginHistory = saved.loginHistory;
+      if(saved.settings){ DB.settings.adminLastActive = saved.settings.adminLastActive || null; DB.settings.adminLastLogin = saved.settings.adminLastLogin || null; }
     if(DB.users.length) nextUserId = Math.max(...DB.users.map(u=>Number(u.id)||0))+1;
   }catch(e){ console.error('localStorage load failed:', e); }
 }
@@ -499,6 +506,72 @@ function ensureCores(){
 }
 
 const DEALER_ONLY = new URLSearchParams(location.search).get('app') === 'dealer';
+
+/* ================= LOGIN ACTIVITY TRACKING ================= */
+const ONLINE_THRESHOLD_MS = 3*60*1000; // ৩ মিনিটের মধ্যে হার্টবিট পেলে "অনলাইন" ধরা হবে
+
+function recordLogin(name, role, phone){
+  const entry = { id: Date.now()+'_'+Math.random().toString(36).slice(2,7), name, role, phone: phone||'', date: nowStr(), ts: Date.now() };
+  DB.loginHistory.unshift(entry);
+  if(DB.loginHistory.length > 500) DB.loginHistory.length = 500;
+  if(role === 'admin'){
+    DB.settings.adminLastLogin = Date.now();
+    DB.settings.adminLastActive = Date.now();
+  } else {
+    const u = DB.users.find(x=>x.phone===phone);
+    if(u){
+      u.loginCount = (u.loginCount||0) + 1;
+      u.lastLogin = Date.now();
+      u.lastActive = Date.now();
+    }
+  }
+  saveDB();
+}
+
+function heartbeatTick(){
+  if(DB.session.role === 'dealer' && DB.session.user){
+    const u = DB.users.find(x=>x.id===DB.session.user.id);
+    if(u){ u.lastActive = Date.now(); saveDB(); }
+  } else if(DB.session.role === 'admin'){
+    DB.settings.adminLastActive = Date.now();
+    saveDB();
+  }
+}
+setInterval(heartbeatTick, 60000);
+
+function isOnline(lastActive){ return !!lastActive && (Date.now() - lastActive) < ONLINE_THRESHOLD_MS; }
+
+/* ================= SMART BACK BUTTON (Android WebView) ================= */
+(function(){
+  let backArmed = false;
+  let backTimer = null;
+  history.pushState({mp:true}, '');
+  window.addEventListener('popstate', function(){
+    history.pushState({mp:true}, '');
+    if(backArmed){
+      backArmed = false;
+      if(backTimer) clearTimeout(backTimer);
+      history.go(-(history.length));
+      return;
+    }
+    backArmed = true;
+    showExitToast();
+    backTimer = setTimeout(()=>{ backArmed = false; }, 2500);
+  });
+  function showExitToast(){
+    let t = document.getElementById('exitToast');
+    if(!t){
+      t = document.createElement('div');
+      t.id = 'exitToast';
+      t.style.cssText = 'position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:rgba(18,35,61,0.94);color:#fff;padding:11px 20px;border-radius:999px;font-size:13.5px;z-index:99999;box-shadow:0 6px 18px rgba(0,0,0,0.25);white-space:nowrap;';
+      document.body.appendChild(t);
+    }
+    t.textContent = 'আবার Back চাপুন Exit করতে';
+    t.style.opacity = '1';
+    clearTimeout(t._hideTimer);
+    t._hideTimer = setTimeout(()=>{ t.style.transition='opacity 0.4s'; t.style.opacity='0'; }, 2200);
+  }
+})();
 
 function applyTheme(){
   const saved = localStorage.getItem('mp_theme');
@@ -645,6 +718,7 @@ ROUTES.adminLogin = function(){
     const pw = document.getElementById('pw').value;
     if(pw === DB.settings.adminPassword){
       DB.session = {role:'admin', user:{name:'Admin'}};
+      recordLogin('Admin', 'admin', '');
       go('adminDashboard');
     } else {
       const e = document.getElementById('err'); e.style.display='block'; e.textContent='পাসওয়ার্ড সঠিক নয়';
@@ -847,6 +921,7 @@ ROUTES.dealerLogin = function(){
     if(u.pending){ e.style.display='block'; e.textContent='আপনার অ্যাকাউন্ট এখনও অনুমোদন হয়নি, অ্যাডমিনের সাথে যোগাযোগ করুন'; return; }
     if(!u.active){ e.style.display='block'; e.textContent='আপনার অ্যাকাউন্টটি নিষ্ক্রিয় করা হয়েছে, অ্যাডমিনের সাথে যোগাযোগ করুন'; return; }
     DB.session = {role:'dealer', user:u};
+    recordLogin(u.name, u.role, u.phone);
     go('dealerSearch');
   };
 };
@@ -1458,7 +1533,13 @@ ROUTES.adminDashboard = function(){
               <div style="font-size:12px;color:#6b7280;margin-top:4px;">ডিলারদের পাঠানো পার্টস চাহিদা</div>
             </div>
 
-            <div style="background:#fff;border-radius:18px;padding:28px 14px;text-align:center;cursor:pointer;transition:all 0.25s;box-shadow:0 4px 14px rgba(0,0,0,0.16);" onclick="adminTab='settings';go('adminDashboard');" onmouseover="this.style.transform='translateY(-6px)'" onmouseout="this.style.transform='translateY(0)'">
+            <div style="background:#fff;border-radius:18px;padding:28px 14px;text-align:center;cursor:pointer;transition:all 0.25s;box-shadow:0 4px 14px rgba(0,0,0,0.16);position:relative;" onclick="adminTab='loginActivity';go('adminDashboard');" onmouseover="this.style.transform='translateY(-6px)'" onmouseout="this.style.transform='translateY(0)'">
+              <div style="width:60px;height:60px;border-radius:16px;background:#e3ddc4;display:flex;align-items:center;justify-content:center;font-size:30px;margin:0 auto 14px;">📶</div>
+              <div style="font-size:16px;font-weight:700;color:#1a2233;">লগইন অ্যাক্টিভিটি</div>
+              <div style="font-size:12px;color:#6b7280;margin-top:4px;">ইউজার লগইন ও অনলাইন স্ট্যাটাস</div>
+            </div>
+
+            <div style="background:#fff;border-radius:18px;padding:28px 14px;text-align:center;cursor:pointer;transition:all 0.25s;box-shadow:0 4px 14px rgba(0,0,0,0.16);grid-column:1 / -1;max-width:calc(50% - 8px);margin:0 auto;" onclick="adminTab='settings';go('adminDashboard');" onmouseover="this.style.transform='translateY(-6px)'" onmouseout="this.style.transform='translateY(0)'">
               <div style="width:60px;height:60px;border-radius:16px;background:#e3ddc4;display:flex;align-items:center;justify-content:center;font-size:30px;margin:0 auto 14px;">🔧</div>
               <div style="font-size:16px;font-weight:700;color:#1a2233;">সেটিংস</div>
               <div style="font-size:12px;color:#6b7280;margin-top:4px;">অ্যাপ কনফিগারেশন</div>
@@ -1476,6 +1557,7 @@ ROUTES.adminDashboard = function(){
   else if(adminTab==='users') { adminShell(usersTabHTML()); wireUsersTab(); }
   else if(adminTab==='history') adminShell(historyTabHTML());
   else if(adminTab==='requisitions') { adminShell(requisitionsTabHTML()); wireRequisitionsTab(); }
+  else if(adminTab==='loginActivity') { adminShell(loginActivityTabHTML()); wireLoginActivityTab(); }
   else if(adminTab==='settings') { adminShell(settingsTabHTML()); wireSettingsTab(); }
 };
 
@@ -1517,6 +1599,7 @@ function dashboardTabHTML(){
           </div>
         </div>
         
+        ${loginSummaryCardsHTML()}
         <div style="background:rgba(255,255,255,0.08);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.2);padding:20px;border-radius:14px;color:#fff;">
           <h3 style="margin:0 0 16px 0;font-size:18px;color:#fff;">সাম্প্রতিক কার্যক্রম</h3>
           <div style="max-height:240px;overflow-y:auto;">
@@ -1525,6 +1608,40 @@ function dashboardTabHTML(){
         </div>
       </div>
     </div>
+  `;
+}
+
+function loginSummaryCardsHTML(){
+  const todayStr = nowStr().slice(0,10);
+  const todayCount = DB.loginHistory.filter(h=>h.date.slice(0,10)===todayStr).length;
+  const dealersOnline = DB.users.filter(u=>isOnline(u.lastActive)).length;
+  const onlineCount = dealersOnline + (isOnline(DB.settings.adminLastActive)?1:0);
+  const topUser = DB.users.filter(u=>u.loginCount).sort((a,b)=>(b.loginCount||0)-(a.loginCount||0))[0];
+  const lastEntry = DB.loginHistory[0];
+  return `
+        <h3 style="margin:26px 0 12px;color:#fff;font-size:16px;">📶 লগইন অ্যাক্টিভিটি</h3>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:14px;margin-bottom:30px;">
+          <div style="background:rgba(255,255,255,0.1);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.2);padding:18px;border-radius:16px;text-align:center;color:#fff;cursor:pointer;" onclick="adminTab='loginActivity';go('adminDashboard');">
+            <div style="font-size:32px;margin-bottom:8px;">📶</div>
+            <div style="font-size:24px;font-weight:700;margin-bottom:4px;">${todayCount}</div>
+            <div style="font-size:12px;opacity:0.9;">আজকের লগইন</div>
+          </div>
+          <div style="background:rgba(255,255,255,0.1);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.2);padding:18px;border-radius:16px;text-align:center;color:#fff;cursor:pointer;" onclick="adminTab='loginActivity';go('adminDashboard');">
+            <div style="font-size:32px;margin-bottom:8px;">🟢</div>
+            <div style="font-size:24px;font-weight:700;margin-bottom:4px;">${onlineCount}</div>
+            <div style="font-size:12px;opacity:0.9;">এখন অনলাইন</div>
+          </div>
+          <div style="background:rgba(255,255,255,0.1);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.2);padding:18px;border-radius:16px;text-align:center;color:#fff;cursor:pointer;" onclick="adminTab='loginActivity';go('adminDashboard');">
+            <div style="font-size:32px;margin-bottom:8px;">🏆</div>
+            <div style="font-size:15px;font-weight:700;margin-bottom:4px;">${topUser ? topUser.name : '—'}</div>
+            <div style="font-size:12px;opacity:0.9;">সবচেয়ে সক্রিয় ইউজার</div>
+          </div>
+          <div style="background:rgba(255,255,255,0.1);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.2);padding:18px;border-radius:16px;text-align:center;color:#fff;cursor:pointer;" onclick="adminTab='loginActivity';go('adminDashboard');">
+            <div style="font-size:32px;margin-bottom:8px;">🕒</div>
+            <div style="font-size:14px;font-weight:700;margin-bottom:4px;">${lastEntry ? lastEntry.name : '—'}</div>
+            <div style="font-size:12px;opacity:0.9;">${lastEntry ? lastEntry.date : 'সর্বশেষ লগইন'}</div>
+          </div>
+        </div>
   `;
 }
 
@@ -2046,6 +2163,110 @@ function wireRequisitionsTab(){
       wireCardButtons();
     };
   }
+}
+
+/* ---- Login Activity tab ---- */
+function loginActivityTabHTML(){
+  const all = DB.loginHistory;
+  const todayStr = nowStr().slice(0,10);
+  const todayCount = all.filter(h=>h.date.slice(0,10)===todayStr).length;
+  const dealersOnline = DB.users.filter(u=>isOnline(u.lastActive)).length;
+  const adminOnline = isOnline(DB.settings.adminLastActive);
+  const onlineCount = dealersOnline + (adminOnline?1:0);
+  const lastEntry = all[0];
+
+  // Top active users (loginCount দিয়ে)
+  const topUsers = DB.users.filter(u=>u.loginCount).sort((a,b)=>(b.loginCount||0)-(a.loginCount||0)).slice(0,5);
+
+  // Daily/Weekly/Monthly গণনা
+  const now = Date.now();
+  const dayMs=86400000;
+  const weeklyCount = all.filter(h=>now-h.ts < 7*dayMs).length;
+  const monthlyCount = all.filter(h=>now-h.ts < 30*dayMs).length;
+
+  return `
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:16px;">
+      <div class="card" style="text-align:center;padding:16px;"><div style="font-size:22px;font-weight:800;color:var(--navy)">${todayCount}</div><div class="hint" style="margin:2px 0 0">আজকের লগইন</div></div>
+      <div class="card" style="text-align:center;padding:16px;"><div style="font-size:22px;font-weight:800;color:var(--ok)">${onlineCount}</div><div class="hint" style="margin:2px 0 0">এখন অনলাইন</div></div>
+      <div class="card" style="text-align:center;padding:16px;"><div style="font-size:22px;font-weight:800;color:var(--navy)">${weeklyCount}</div><div class="hint" style="margin:2px 0 0">এই সপ্তাহে</div></div>
+      <div class="card" style="text-align:center;padding:16px;"><div style="font-size:22px;font-weight:800;color:var(--navy)">${monthlyCount}</div><div class="hint" style="margin:2px 0 0">এই মাসে</div></div>
+    </div>
+
+    <div class="card" style="margin-bottom:16px">
+      <h3 style="margin:0 0 10px">🟢 ইউজার স্ট্যাটাস</h3>
+      <div style="overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;min-width:420px;font-size:14px">
+          <thead><tr style="background:var(--bg-2,#f4f4f4)"><th style="padding:6px;text-align:left">নাম</th><th style="padding:6px;text-align:left">মোবাইল</th><th style="padding:6px;text-align:center">স্ট্যাটাস</th><th style="padding:6px;text-align:left">সর্বশেষ লগইন</th><th style="padding:6px;text-align:center">মোট লগইন</th></tr></thead>
+          <tbody>
+            <tr><td style="padding:6px;font-weight:600">Admin</td><td style="padding:6px">—</td><td style="padding:6px;text-align:center">${adminOnline ? '<span style=\"color:var(--ok);font-weight:700\">🟢 অনলাইন</span>' : '<span style=\"color:var(--muted)\">⚪ অফলাইন</span>'}</td><td style="padding:6px" class="mono">${DB.settings.adminLastLogin ? new Date(DB.settings.adminLastLogin).toLocaleString('bn-BD') : '-'}</td><td style="padding:6px;text-align:center">-</td></tr>
+            ${DB.users.map(u=>`<tr><td style="padding:6px">${u.name}</td><td style="padding:6px" class="mono">${u.phone}</td><td style="padding:6px;text-align:center">${isOnline(u.lastActive) ? '<span style="color:var(--ok);font-weight:700">🟢 অনলাইন</span>' : '<span style="color:var(--muted)">⚪ অফলাইন</span>'}</td><td style="padding:6px" class="mono">${u.lastLogin ? new Date(u.lastLogin).toLocaleString('bn-BD') : '-'}</td><td style="padding:6px;text-align:center;font-weight:700">${u.loginCount||0}</td></tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    ${topUsers.length ? `
+    <div class="card" style="margin-bottom:16px">
+      <h3 style="margin:0 0 10px">🏆 সবচেয়ে বেশি সক্রিয় ইউজার</h3>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        ${topUsers.map((u,i)=>`<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line);"><div>${i+1}. ${u.name} <span class="hint">(${u.phone})</span></div><div style="font-weight:700">${u.loginCount} বার</div></div>`).join('')}
+      </div>
+    </div>` : ''}
+
+    <div class="card">
+      <div class="card-head">
+        <h3 style="margin:0">📜 লগইন হিস্টরি (${all.length}টি)</h3>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-ghost btn-sm" id="exportLoginExcel">📄 এক্সেল</button>
+          <button class="btn btn-ghost btn-sm" id="exportLoginPdf">🧾 PDF</button>
+        </div>
+      </div>
+      <input type="text" id="loginSearch" placeholder="🔍 নাম, মোবাইল বা তারিখ দিয়ে খুঁজুন..." style="width:100%;border:1px solid var(--line);border-radius:8px;padding:9px 12px;font-size:15px;margin:6px 0 14px;">
+      <div id="loginHistWrap" style="overflow-x:auto">
+        ${renderLoginHistoryTable(all)}
+      </div>
+      ${lastEntry ? `<p class="hint" style="margin-top:10px">সর্বশেষ লগইন: <b>${lastEntry.name}</b> — ${lastEntry.date}</p>` : ''}
+    </div>
+  `;
+}
+function renderLoginHistoryTable(list){
+  if(!list.length) return `<div class="empty">এখনো কোনো লগইন হয়নি</div>`;
+  return `<table style="width:100%;border-collapse:collapse;min-width:420px;font-size:14px">
+    <thead><tr style="background:var(--bg-2,#f4f4f4)"><th style="padding:6px;text-align:left">তারিখ ও সময়</th><th style="padding:6px;text-align:left">নাম</th><th style="padding:6px;text-align:left">ধরন</th><th style="padding:6px;text-align:left">মোবাইল</th></tr></thead>
+    <tbody>${list.map(h=>`<tr><td style="padding:6px" class="mono">${h.date}</td><td style="padding:6px">${h.name}</td><td style="padding:6px">${h.role==='admin'?'অ্যাডমিন':h.role==='dealer'?'ডিলার':'মেকানিক'}</td><td style="padding:6px" class="mono">${h.phone||'-'}</td></tr>`).join('')}</tbody>
+  </table>`;
+}
+function wireLoginActivityTab(){
+  document.getElementById('exportLoginExcel').onclick = ()=>{
+    const data = DB.loginHistory.map(h=>({ তারিখ:h.date, নাম:h.name, ধরন: h.role==='admin'?'অ্যাডমিন':h.role==='dealer'?'ডিলার':'মেকানিক', মোবাইল:h.phone||'' }));
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Login History");
+    XLSX.writeFile(wb, "login_history.xlsx");
+  };
+  document.getElementById('exportLoginPdf').onclick = ()=>{
+    if(!window.jspdf){ alert('PDF লাইব্রেরি লোড হয়নি, ইন্টারনেট চেক করুন'); return; }
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    doc.setFontSize(14);
+    doc.text('Login History', 14, 16);
+    let y = 26;
+    doc.setFontSize(9);
+    DB.loginHistory.slice(0,200).forEach(h=>{
+      doc.text(`${h.date}  |  ${h.name}  |  ${h.role}  |  ${h.phone||'-'}`, 14, y);
+      y += 6;
+      if(y > 280){ doc.addPage(); y = 16; }
+    });
+    doc.save('login_history.pdf');
+  };
+  const searchEl = document.getElementById('loginSearch');
+  searchEl.oninput = ()=>{
+    const q = searchEl.value.trim().toLowerCase();
+    const filtered = !q ? DB.loginHistory : DB.loginHistory.filter(h=>
+      h.name.toLowerCase().includes(q) || (h.phone||'').includes(q) || h.date.includes(q)
+    );
+    document.getElementById('loginHistWrap').innerHTML = renderLoginHistoryTable(filtered);
+  };
 }
 
 /* ---- Settings tab ---- */
