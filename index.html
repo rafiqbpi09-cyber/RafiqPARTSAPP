@@ -139,6 +139,16 @@ if('serviceWorker' in navigator){
   .btn-block{width:100%;}
   .link-btn{background:none;border:none;color:var(--steel);font-size:13px;cursor:pointer;text-decoration:underline;font-family:inherit;padding:0;}
 
+  /* ---------- WhatsApp button (official green theme) ---------- */
+  .btn-whatsapp{display:inline-flex;align-items:center;gap:8px;background:#25D366;color:#fff;border:none;border-radius:999px;padding:10px 20px;font-size:14.5px;font-weight:700;font-family:inherit;cursor:pointer;box-shadow:0 3px 10px -2px rgba(37,211,102,.5);transition:.15s ease;}
+  .btn-whatsapp svg{width:19px;height:19px;fill:#fff;flex-shrink:0;}
+  .btn-whatsapp:hover{background:#20bd5a;transform:translateY(-1px);box-shadow:0 5px 14px -2px rgba(37,211,102,.6);}
+  .btn-whatsapp:active{transform:translateY(0);box-shadow:0 2px 6px -1px rgba(37,211,102,.4);}
+
+  /* ---------- Requisition row: soft highlight when a row is fully filled ---------- */
+  #reqBody tr.row-filled{background:#e8f8ee;}
+  #reqBody tr.row-filled td input{background:#e8f8ee !important;}
+
   .switch-row{display:flex;gap:8px;margin-top:14px;justify-content:center;}
   .err{background:#fdeceb;color:var(--danger);font-size:13px;padding:9px 12px;border-radius:8px;margin-bottom:14px;display:none;}
   .ok-msg{background:#e9f7ee;color:var(--ok);font-size:13px;padding:9px 12px;border-radius:8px;margin-bottom:14px;display:none;}
@@ -299,7 +309,8 @@ const DB = {
     {date:"2026-07-20 12:00", by:"Admin", action:"এক্সেল আপলোড: 14422টি পার্টস যোগ হয়েছে (web_price.xlsx)"},
   ],
   session: { role: null, user: null }, // role: 'admin' | 'dealer'
-  requisitions: []
+  requisitions: [],
+  drafts: []
 };
 let nextPartId = 14423, nextUserId = 3, nextReqNo = 1;
 
@@ -320,7 +331,8 @@ async function saveDB(){
       partsSaved: true,
       requisitions: DB.requisitions.slice(0,200),
       nextReqNo: nextReqNo,
-      resetRequests: DB.resetRequests.slice(0,200)
+      resetRequests: DB.resetRequests.slice(0,200),
+      drafts: DB.drafts.slice(0,200)
     };
     // Firebase এ সেভ
     await fetch(`${FB_URL}/appdata.json`, {
@@ -333,7 +345,7 @@ async function saveDB(){
   }catch(e){
     console.error('Firebase save failed:', e);
     // Firebase না হলে localStorage এ সেভ
-    try{ localStorage.setItem(LS_KEY, JSON.stringify({users:DB.users,history:DB.history.slice(0,50),settings:DB.settings,parts:DB.parts,nextPartId,partsSaved:true,requisitions:DB.requisitions.slice(0,200),nextReqNo})); }catch(e2){}
+    try{ localStorage.setItem(LS_KEY, JSON.stringify({users:DB.users,history:DB.history.slice(0,50),settings:DB.settings,parts:DB.parts,nextPartId,partsSaved:true,requisitions:DB.requisitions.slice(0,200),nextReqNo,drafts:DB.drafts.slice(0,200)})); }catch(e2){}
   }
 }
 async function loadDB(){
@@ -360,6 +372,7 @@ async function loadDB(){
       if(Array.isArray(saved.requisitions)) DB.requisitions = saved.requisitions;
       nextReqNo = saved.nextReqNo || (DB.requisitions.length ? DB.requisitions.length + 1 : 1);
       if(Array.isArray(saved.resetRequests)) DB.resetRequests = saved.resetRequests;
+      if(Array.isArray(saved.drafts)) DB.drafts = saved.drafts;
       if(DB.users.length) nextUserId = Math.max(...DB.users.map(u=>Number(u.id)||0))+1;
       return;
     }
@@ -386,6 +399,7 @@ async function loadDB(){
     if(Array.isArray(saved.requisitions)) DB.requisitions = saved.requisitions;
     nextReqNo = saved.nextReqNo || (DB.requisitions.length ? DB.requisitions.length + 1 : 1);
     if(Array.isArray(saved.resetRequests)) DB.resetRequests = saved.resetRequests;
+    if(Array.isArray(saved.drafts)) DB.drafts = saved.drafts;
     if(DB.users.length) nextUserId = Math.max(...DB.users.map(u=>Number(u.id)||0))+1;
   }catch(e){ console.error('localStorage load failed:', e); }
 }
@@ -1052,9 +1066,14 @@ ROUTES.dealerRequisition = function(){
           <label style="font-size:14px;font-weight:600;display:block;margin-bottom:6px;">📝 মন্তব্য (ঐচ্ছিক)</label>
           <textarea id="reqRemarks" rows="2" placeholder="কোনো বিশেষ নোট থাকলে লিখুন..." style="width:100%;border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:15px;font-family:inherit;resize:vertical;"></textarea>
         </div>
-        <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;flex-wrap:wrap">
+        <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;flex-wrap:wrap;align-items:center">
           <button class="btn btn-ghost" id="reqReset">🔄 রিসেট</button>
-          <button class="btn btn-primary" id="reqSend">📤 WhatsApp-এ পাঠান</button>
+          <button class="btn btn-ghost" id="reqSaveDraft">💾 ড্রাফট সেভ করুন</button>
+          <button class="btn btn-ghost" id="reqLoadDraft" style="display:none">📂 ড্রাফট খুলুন</button>
+          <button class="btn-whatsapp" id="reqSend" type="button">
+            <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><path d="M16.004 3C9.377 3 4 8.373 4 15c0 2.386.7 4.61 1.908 6.478L4 29l7.72-1.868A11.94 11.94 0 0 0 16.004 27C22.63 27 28 21.627 28 15S22.63 3 16.004 3zm6.977 17.086c-.297.836-1.47 1.53-2.406 1.727-.64.135-1.475.243-4.29-.92-3.6-1.49-5.917-5.14-6.098-5.38-.174-.24-1.463-1.947-1.463-3.715 0-1.768.928-2.637 1.257-3 .33-.362.72-.453.96-.453.24 0 .48.002.69.013.222.011.518-.084.81.618.297.716 1.01 2.484 1.098 2.664.09.18.15.393.03.633-.12.24-.18.39-.36.6-.18.21-.378.468-.54.63-.18.18-.367.375-.157.735.21.36.933 1.542 2.005 2.498 1.378 1.23 2.54 1.61 2.9 1.79.36.18.57.15.78-.09.21-.24.9-1.05 1.14-1.41.24-.36.48-.3.81-.18.33.12 2.098.99 2.457 1.17.36.18.6.27.69.42.09.15.09.87-.207 1.706z"/></svg>
+            <span>WhatsApp</span>
+          </button>
           <button class="btn btn-navy" id="reqSubmitAdmin">✅ Admin-এ জমা দিন</button>
         </div>
       </div>
@@ -1088,23 +1107,36 @@ ROUTES.dealerRequisition = function(){
     body.querySelectorAll('.req-suggest').forEach(box=>{ box.style.display='none'; box.innerHTML=''; });
   }
 
+  function updateRowHighlight(row){
+    const tr = body.querySelector(`.req-partno[data-row="${row}"]`).closest('tr');
+    if(!tr) return;
+    const partNo = body.querySelector(`.req-partno[data-row="${row}"]`).value.trim();
+    const name = body.querySelector(`.req-name[data-row="${row}"]`).value.trim();
+    const qty = body.querySelector(`.req-qty[data-row="${row}"]`).value.trim();
+    const filled = partNo && name && name !== '❓ পাওয়া যায়নি' && qty && Number(qty) > 0;
+    tr.classList.toggle('row-filled', !!filled);
+  }
+
   function selectMatch(row, part){
     body.querySelector(`.req-partno[data-row="${row}"]`).value = displayPartNo(part.partNo);
     body.querySelector(`.req-name[data-row="${row}"]`).value = part.name;
     hideAllSuggestions();
+    updateRowHighlight(row);
   }
 
   body.addEventListener('input', (e)=>{
-    if(!e.target.classList.contains('req-partno')) return;
     const row = e.target.dataset.row;
+    if(!row) return;
+    if(e.target.classList.contains('req-qty')){ updateRowHighlight(row); return; }
+    if(!e.target.classList.contains('req-partno')) return;
     const nameField = body.querySelector(`.req-name[data-row="${row}"]`);
     const suggestBox = body.querySelector(`.req-suggest[data-row="${row}"]`);
     const raw = e.target.value.trim();
     hideAllSuggestions();
-    if(!raw){ nameField.value=''; return; }
+    if(!raw){ nameField.value=''; updateRowHighlight(row); return; }
     const qDigits = digitsOnly(raw);
     const qText = raw.toLowerCase();
-    if(qDigits.length < 3 && qText.length < 3){ nameField.value=''; return; }
+    if(qDigits.length < 3 && qText.length < 3){ nameField.value=''; updateRowHighlight(row); return; }
 
     let matches = [];
     if(qDigits){
@@ -1116,14 +1148,17 @@ ROUTES.dealerRequisition = function(){
 
     if(matches.length === 0){
       nameField.value = '❓ পাওয়া যায়নি';
+      updateRowHighlight(row);
       return;
     }
     if(matches.length === 1 || matches.some(p=>p.core===qDigits)){
       const exact = matches.find(p=>p.core===qDigits) || matches[0];
       nameField.value = exact.name;
+      updateRowHighlight(row);
       if(matches.length === 1) return;
     } else {
       nameField.value = '';
+      updateRowHighlight(row);
     }
     // একাধিক মিললে বেছে নেওয়ার তালিকা দেখাবে
     suggestBox.innerHTML = matches.slice(0, MAX_SUGGEST).map(p => `
@@ -1149,11 +1184,80 @@ ROUTES.dealerRequisition = function(){
   document.getElementById('reqReset').onclick = ()=>{
     if(!confirm('পুরো ফর্মটি খালি করতে চান?')) return;
     body.querySelectorAll('input').forEach(inp=> inp.value='');
+    body.querySelectorAll('tr').forEach(tr=> tr.classList.remove('row-filled'));
     const remarksEl = document.getElementById('reqRemarks');
     if(remarksEl) remarksEl.value = '';
     hideAllSuggestions();
     const submitBtn = document.getElementById('reqSubmitAdmin');
     if(submitBtn){ submitBtn.disabled = false; submitBtn.textContent = '✅ Admin-এ জমা দিন'; }
+  };
+
+  /* ---- ড্রাফট: ডিলার নিজে অসম্পূর্ণ রিকুইজিশন সেভ করে পরে চালিয়ে যেতে পারবে (Admin দেখবে না) ---- */
+  function collectFormRows(){
+    const rows = [];
+    for(let i=1; i<=REQ_ROWS; i++){
+      const partNo = body.querySelector(`.req-partno[data-row="${i}"]`).value.trim();
+      const name = body.querySelector(`.req-name[data-row="${i}"]`).value.trim();
+      const qty = body.querySelector(`.req-qty[data-row="${i}"]`).value.trim();
+      if(!partNo && !name && !qty) continue;
+      rows.push({row:i, partNo, name, qty});
+    }
+    return rows;
+  }
+  function fillFormFromRows(rows){
+    body.querySelectorAll('input').forEach(inp=> inp.value='');
+    body.querySelectorAll('tr').forEach(tr=> tr.classList.remove('row-filled'));
+    (rows||[]).forEach(it=>{
+      const partField = body.querySelector(`.req-partno[data-row="${it.row}"]`);
+      const nameField = body.querySelector(`.req-name[data-row="${it.row}"]`);
+      const qtyField = body.querySelector(`.req-qty[data-row="${it.row}"]`);
+      if(partField) partField.value = it.partNo || '';
+      if(nameField) nameField.value = it.name || '';
+      if(qtyField) qtyField.value = it.qty || '';
+      updateRowHighlight(it.row);
+    });
+  }
+  function myDraft(){ return DB.drafts.find(d=> d.dealerId === DB.session.user.id); }
+  function refreshDraftButton(){
+    const loadBtn = document.getElementById('reqLoadDraft');
+    const d = myDraft();
+    if(d){ loadBtn.style.display='inline-flex'; loadBtn.textContent = `📂 ড্রাফট খুলুন (${d.rows.length}টি)`; }
+    else { loadBtn.style.display='none'; }
+  }
+  refreshDraftButton();
+
+  document.getElementById('reqSaveDraft').onclick = ()=>{
+    const rows = collectFormRows();
+    if(!rows.length){ alert('সেভ করার মতো কোনো তথ্য নেই।'); return; }
+    const remarksEl = document.getElementById('reqRemarks');
+    const existing = myDraft();
+    const now = new Date();
+    const draft = {
+      id: existing ? existing.id : Date.now(),
+      dealerId: DB.session.user.id,
+      dealerName: DB.session.user.name,
+      savedDate: now.toLocaleDateString('bn-BD') + ' ' + now.toLocaleTimeString('bn-BD'),
+      rows,
+      remarks: remarksEl ? remarksEl.value.trim() : ''
+    };
+    if(existing){ Object.assign(existing, draft); }
+    else{ DB.drafts.push(draft); }
+    const saveBtn = document.getElementById('reqSaveDraft');
+    saveBtn.textContent = '⏳ সেভ হচ্ছে...';
+    saveDB().then(()=>{
+      saveBtn.textContent = '💾 ড্রাফট সেভ করুন';
+      refreshDraftButton();
+      alert('✅ ড্রাফট সেভ হয়েছে — পরে যেকোনো সময় "ড্রাফট খুলুন" চেপে চালিয়ে যেতে পারবেন।');
+    });
+  };
+
+  document.getElementById('reqLoadDraft').onclick = ()=>{
+    const d = myDraft();
+    if(!d) return;
+    if(collectFormRows().length && !confirm('ফর্মে ইতিমধ্যে কিছু তথ্য আছে, ড্রাফট খুললে সেগুলো মুছে গিয়ে ড্রাফটের তথ্য বসবে। এগিয়ে যেতে চান?')) return;
+    fillFormFromRows(d.rows);
+    const remarksEl = document.getElementById('reqRemarks');
+    if(remarksEl) remarksEl.value = d.remarks || '';
   };
 
   document.getElementById('reqSend').onclick = ()=>{
@@ -1217,8 +1321,12 @@ ROUTES.dealerRequisition = function(){
       status: 'নতুন'
     };
     DB.requisitions.unshift(requisition);
+    const existingDraft = DB.drafts.find(d=> d.dealerId === DB.session.user.id);
+    if(existingDraft) DB.drafts = DB.drafts.filter(d=> d.id !== existingDraft.id);
     saveDB().then(()=>{
       submitBtn.textContent = '✅ জমা দেওয়া হয়েছে';
+      const loadBtn = document.getElementById('reqLoadDraft');
+      if(loadBtn) loadBtn.style.display = 'none';
       openModal(`
         <h3>✅ সফলভাবে জমা হয়েছে</h3>
         <p style="margin:0 0 6px">রিকুইজিশন নম্বর: <span class="mono" style="font-weight:700">${reqNo}</span></p>
