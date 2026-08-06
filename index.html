@@ -2461,6 +2461,13 @@ function wireVehicleRowButtons(){
     };
   });
 }
+function findHeaderMatch(headerRow, aliases){
+  for(let i=0;i<headerRow.length;i++){
+    const h = normalizeVText(String(headerRow[i]||''));
+    if(aliases.some(a=>h===a || h.includes(a))) return i;
+  }
+  return -1;
+}
 function handleVehicleExcelUpload(e){
   const file = e.target.files[0];
   if(!file) return;
@@ -2471,27 +2478,58 @@ function handleVehicleExcelUpload(e){
     try{
       const wb = XLSX.read(evt.target.result, {type:'binary'});
       const sheet = wb.Sheets[wb.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json(sheet, {defval:''});
+      const raw = XLSX.utils.sheet_to_json(sheet, {header:1, defval:''});
+      if(!raw.length){ statusEl.textContent = '❌ ফাইলে কোনো ডেটা নেই'; return; }
+
+      // টাইটেল রো থেকে ব্র্যান্ড অনুমান করা (যেমন "Eicher Tractor's...")
+      const knownBrands = ['eicher','tafe','massey ferguson','sonalika','mahindra','new holland','john deere','farmtrac','powertrac','swaraj'];
+      let inferredBrand = '';
+      const titleText = normalizeVText(String(raw[0]&&raw[0][0]||''));
+      knownBrands.forEach(b=>{ if(titleText.includes(b)) inferredBrand = b.replace(/\b\w/g, c=>c.toUpperCase()); });
+
+      // হেডার রো খুঁজে বের করা (প্রথম কয়েক রো-র মধ্যে "part no" জাতীয় কিছু আছে কিনা)
+      let headerIdx = -1, colMap = {};
+      const partNoAliases = ['part no','part number','partno','পার্ট নম্বর','পার্ট নং'];
+      for(let i=0;i<Math.min(5, raw.length);i++){
+        const idx = findHeaderMatch(raw[i], partNoAliases);
+        if(idx !== -1){ headerIdx = i; break; }
+      }
+      if(headerIdx === -1){ statusEl.textContent = '❌ Part No./Part Number কলাম খুঁজে পাওয়া যায়নি — হেডার রো চেক করুন'; return; }
+      const headerRow = raw[headerIdx];
+      colMap.partNo = findHeaderMatch(headerRow, partNoAliases);
+      colMap.partName = findHeaderMatch(headerRow, ['part name','descriptions','description','পার্টের নাম','name']);
+      colMap.model = findHeaderMatch(headerRow, ['vehicle model','use for tractor','model','গাড়ির মডেল','tractor model']);
+      colMap.brand = findHeaderMatch(headerRow, ['brand','ব্র্যান্ড']);
+      colMap.category = findHeaderMatch(headerRow, ['category','position','ক্যাটাগরি']);
+      colMap.remarks = findHeaderMatch(headerRow, ['remarks','remark','মন্তব্য']);
+      colMap.itemCode = findHeaderMatch(headerRow, ['item code','itemcode']);
+
       const parsed = [];
-      rows.forEach(r=>{
-        const partNo = String(r['Part Number']||r['পার্ট নম্বর']||r.PartNo||r['Part No']||'').trim();
-        const partName = String(r['Part Name']||r['পার্টের নাম']||r.Name||'').trim();
-        const modelRaw = String(r['Vehicle Model']||r['গাড়ির মডেল']||r.Model||'').trim();
-        if(!partNo || !modelRaw) return;
-        const models = modelRaw.split(',').map(s=>s.trim()).filter(Boolean);
+      for(let i=headerIdx+1; i<raw.length; i++){
+        const row = raw[i];
+        if(!row || !row.length) continue;
+        const partNo = colMap.partNo!==-1 ? String(row[colMap.partNo]||'').trim() : '';
+        const modelRaw = colMap.model!==-1 ? String(row[colMap.model]||'').trim() : '';
+        if(!partNo || !modelRaw) continue;
+        // মডেল আলাদা করা — কমা (,) অথবা স্ল্যাশ (/) দুটোই সাপোর্ট করবে
+        let models = modelRaw.split(/[,/]/).map(s=>s.trim()).filter(Boolean);
+        const brand = colMap.brand!==-1 ? String(row[colMap.brand]||'').trim() : inferredBrand;
+        if(brand) models = models.map(m => /^\d/.test(m) ? `${brand} ${m}` : m); // শুধু সংখ্যা দিয়ে শুরু হলে ব্র্যান্ড prefix করা
+        models = [...new Set(models)]; // ডুপ্লিকেট মডেল বাদ
         parsed.push({
-          partNo, partName,
+          partNo,
+          partName: colMap.partName!==-1 ? String(row[colMap.partName]||'').trim() : '',
           models,
-          brand: String(r['Brand']||r['ব্র্যান্ড']||'').trim(),
-          category: String(r['Category']||r['ক্যাটাগরি']||'').trim(),
-          remarks: String(r['Remarks']||r['মন্তব্য']||'').trim()
+          brand,
+          category: colMap.category!==-1 ? String(row[colMap.category]||'').trim() : '',
+          remarks: colMap.remarks!==-1 ? String(row[colMap.remarks]||'').trim() : ''
         });
-      });
+      }
       if(!parsed.length){
-        statusEl.textContent = '❌ কোনো বৈধ রেকর্ড পাওয়া যায়নি — কলামের নাম চেক করুন';
+        statusEl.textContent = '❌ কোনো বৈধ রেকর্ড পাওয়া যায়নি — Part No. ও Model কলাম খালি কিনা চেক করুন';
         return;
       }
-      statusEl.textContent = `✅ ${parsed.length}টি রেকর্ড পড়া হয়েছে — নিচে Preview দেখুন`;
+      statusEl.textContent = `✅ ${parsed.length}টি রেকর্ড পড়া হয়েছে (হেডার রো ${headerIdx+1}) — নিচে Preview দেখুন`;
       pendingVehicleUpload = { rows: parsed, fileName: file.name };
       showVehicleUploadPreview(parsed);
     }catch(err){
