@@ -288,6 +288,39 @@ if('serviceWorker' in navigator){
     .wrap{max-width:100%;padding-left:max(12px, env(safe-area-inset-left));padding-right:max(12px, env(safe-area-inset-right));}
     .gate{max-width:100%;}
   }
+ 
+  /* ---------- Dealer Stock & Memo Management ---------- */
+  .dealer-tabs{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 18px;background:var(--card);padding:7px;border:1px solid var(--line);border-radius:12px;}
+  .dealer-tabs .tab{padding:9px 13px;font-size:13px;}
+  .dealer-stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:10px;margin-bottom:16px;}
+  .dealer-stat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:13px;position:relative;overflow:hidden;}
+  .dealer-stat::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--amber);}
+  .dealer-stat .n{font-size:23px;font-weight:700;color:var(--navy);}
+  .dealer-stat .l{font-size:11.5px;color:var(--muted);}
+  .dealer-management-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  .memo-items-wrap{overflow-x:auto;}
+  .memo-items-table{min-width:720px;}
+  .stock-low{color:var(--danger);font-weight:700;}
+  .stock-ok{color:var(--ok);font-weight:700;}
+  .source-badge{display:inline-block;padding:2px 7px;border-radius:999px;font-size:10.5px;font-weight:700;}
+  .source-company{background:#eaf0ff;color:#3156a6;}
+  .source-dealer{background:#fff1dc;color:#a65b00;}
+  .memo-print-sheet{max-width:820px;margin:0 auto;background:#fff;color:#111;padding:24px;border:1px solid #ddd;}
+  .memo-print-sheet table{font-size:12px;}
+  .memo-print-sheet th,.memo-print-sheet td{border-bottom:1px solid #ddd;padding:7px;}
+  @media(max-width:760px){
+    .dealer-management-grid{grid-template-columns:1fr;}
+    .dealer-tabs{overflow-x:auto;flex-wrap:nowrap;-webkit-overflow-scrolling:touch;}
+    .dealer-tabs .tab{white-space:nowrap;}
+    .dealer-stat .n{font-size:20px;}
+  }
+  @media print{
+    body.print-memo-only > *{display:none !important;}
+    body.print-memo-only #memoPrintArea{display:block !important;}
+    #memoPrintArea{position:static !important;width:100% !important;}
+    .memo-print-sheet{border:none;max-width:none;padding:0;}
+  }
+
 </style>
 </head>
 <body>
@@ -314,7 +347,12 @@ const DB = {
   session: { role: null, user: null }, // role: 'admin' | 'dealer'
   requisitions: [],
   drafts: [],
-  partsEngineers: []
+  partsEngineers: [],
+  // Dealer Stock & Memo Management
+  dealerShopParts: [],
+  dealerMemos: [],
+  stockHistory: [],
+  nextMemoNo: 1
 };
 let nextPartId = 14423, nextUserId = 3, nextReqNo = 1, nextPeId = 1;
 
@@ -340,7 +378,11 @@ async function saveDB(){
       loginHistory: DB.loginHistory.slice(0,500),
       vehicleCompat: DB.vehicleCompat.slice(0,6000),
       partsEngineers: DB.partsEngineers,
-      nextPeId: nextPeId
+      nextPeId: nextPeId,
+      dealerShopParts: DB.dealerShopParts,
+      dealerMemos: DB.dealerMemos,
+      stockHistory: DB.stockHistory,
+      nextMemoNo: DB.nextMemoNo || 1
     };
     // Firebase এ সেভ
     await fetch(`${FB_URL}/appdata.json`, {
@@ -353,7 +395,7 @@ async function saveDB(){
   }catch(e){
     console.error('Firebase save failed:', e);
     // Firebase না হলে localStorage এ সেভ
-    try{ localStorage.setItem(LS_KEY, JSON.stringify({users:DB.users,history:DB.history.slice(0,50),settings:DB.settings,parts:DB.parts,nextPartId,partsSaved:true,requisitions:DB.requisitions.slice(0,200),nextReqNo,drafts:DB.drafts.slice(0,200),partsEngineers:DB.partsEngineers,nextPeId})); }catch(e2){}
+    try{ localStorage.setItem(LS_KEY, JSON.stringify({users:DB.users,history:DB.history.slice(0,50),settings:DB.settings,parts:DB.parts,nextPartId,partsSaved:true,requisitions:DB.requisitions.slice(0,200),nextReqNo,drafts:DB.drafts.slice(0,200),partsEngineers:DB.partsEngineers,nextPeId,dealerShopParts:DB.dealerShopParts,dealerMemos:DB.dealerMemos,stockHistory:DB.stockHistory,nextMemoNo:DB.nextMemoNo||1})); }catch(e2){}
   }
 }
 async function loadDB(){
@@ -386,6 +428,10 @@ async function loadDB(){
       if(Array.isArray(saved.partsEngineers)) DB.partsEngineers = saved.partsEngineers;
       if(saved.nextPeId) nextPeId = saved.nextPeId;
       else if(DB.partsEngineers.length) nextPeId = Math.max(...DB.partsEngineers.map(p=>Number(p.id)||0))+1;
+      if(Array.isArray(saved.dealerShopParts)) DB.dealerShopParts = saved.dealerShopParts;
+      if(Array.isArray(saved.dealerMemos)) DB.dealerMemos = saved.dealerMemos;
+      if(Array.isArray(saved.stockHistory)) DB.stockHistory = saved.stockHistory;
+      DB.nextMemoNo = Number(saved.nextMemoNo || 1);
       if(saved.settings){ DB.settings.adminLastActive = saved.settings.adminLastActive || null; DB.settings.adminLastLogin = saved.settings.adminLastLogin || null; }
       if(DB.users.length) nextUserId = Math.max(...DB.users.map(u=>Number(u.id)||0))+1;
       return;
@@ -948,7 +994,8 @@ ROUTES.dealerLogin = function(){
     if(!u.active){ e.style.display='block'; e.textContent='আপনার অ্যাকাউন্টটি নিষ্ক্রিয় করা হয়েছে, অ্যাডমিনের সাথে যোগাযোগ করুন'; return; }
     DB.session = {role:'dealer', user:u};
     recordLogin(u.name, u.role, u.phone);
-    go('dealerSearch');
+    dealerManageTab = 'search';
+    go('dealerPortal');
   };
 };
 
@@ -1081,6 +1128,358 @@ ROUTES.dealerForgotPassword = function(){
   paint();
 };
 
+
+/* ============================================================= */
+/* ============ DEALER STOCK & MEMO MANAGEMENT ================= */
+/* ============================================================= */
+let dealerManageTab = 'search';
+
+function currentDealer(){
+  return DB.session && DB.session.role === 'dealer' ? DB.session.user : null;
+}
+function dealerShopParts(){
+  const u=currentDealer();
+  return u ? DB.dealerShopParts.filter(p=>String(p.dealerId)===String(u.id)) : [];
+}
+function dealerMemos(){
+  const u=currentDealer();
+  return u ? DB.dealerMemos.filter(m=>String(m.dealerId)===String(u.id)) : [];
+}
+function dealerStockHistory(){
+  const u=currentDealer();
+  return u ? DB.stockHistory.filter(h=>String(h.dealerId)===String(u.id)) : [];
+}
+function money(n){ return Number(n||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function escHtml(v){
+  return String(v==null?'':v).replace(/[&<>"']/g,s=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));
+}
+function memoNo(){
+  const n=Number(DB.nextMemoNo||1);
+  DB.nextMemoNo=n+1;
+  return 'M-'+String(n).padStart(5,'0');
+}
+function dealerPartSearch(q){
+  const raw=String(q||'').trim().toLowerCase();
+  if(!raw) return [];
+  const digits=digitsOnly(raw);
+  const company=DB.parts.map(p=>({...p,_source:'company',_sourceLabel:'Company Parts',_price:Number(p.price||0)}));
+  const own=dealerShopParts().map(p=>({...p,_source:'dealer',_sourceLabel:"Dealer's Own Parts",_price:Number(p.sellingPrice||0)}));
+  const all=[...company,...own];
+  const exact=[], near=[];
+  all.forEach(p=>{
+    const pn=String(p.partNo||'').toLowerCase();
+    const nm=String(p.name||p.partName||'').toLowerCase();
+    const core=String(p.core||coreOf(p.partNo||''));
+    if((digits && core===digits) || (!digits && pn===raw)){ exact.push(p); return; }
+    if((digits && (core.includes(digits)||digits.includes(core))) || pn.includes(raw) || nm.includes(raw)) near.push(p);
+  });
+  return [...exact,...near.slice(0,30)].slice(0,40);
+}
+function dealerSummary(){
+  const parts=dealerShopParts(), memos=dealerMemos();
+  const today=new Date().toISOString().slice(0,10);
+  const todays=memos.filter(m=>String(m.dateISO||'').slice(0,10)===today);
+  return {
+    shopParts:parts.length,
+    stockItems:parts.filter(p=>Number(p.currentStock||0)>0).length,
+    low:parts.filter(p=>Number(p.currentStock||0)<=Number(p.lowStock||5)).length,
+    todayMemo:todays.length,
+    todaySales:todays.reduce((s,m)=>s+Number(m.grandTotal||0),0),
+    stockValue:parts.reduce((s,p)=>s+Number(p.currentStock||0)*Number(p.purchasePrice||0),0)
+  };
+}
+function dealerNavHTML(){
+  const tabs=[
+    ['search','🔍 Parts Search'],
+    ['memo','🧾 Create Memo'],
+    ['memoHistory','📜 Memo History'],
+    ['shopParts','🧩 My Shop Parts'],
+    ['stock','📦 My Stock'],
+    ['stockHistory','↕️ Stock History']
+  ];
+  return `<div class="dealer-tabs">${tabs.map(([id,label])=>
+    `<button class="tab ${dealerManageTab===id?'active':''}" onclick="dealerManageTab='${id}';go('dealerPortal')">${label}</button>`).join('')}</div>`;
+}
+function dealerTopbar(sub='ডিলার পোর্টাল'){
+  const u=currentDealer();
+  return `<div class="topbar">
+    <div class="topbar-brand">
+      <div class="brand-logo">${DB.settings.logo ? `<img src="${DB.settings.logo}" style="width:100%;height:100%;object-fit:cover;border-radius:9px">` : '🔧'}</div>
+      <div><div class="brand-name">${escHtml(DB.settings.companyName)}</div><div class="brand-sub">${sub}</div></div>
+    </div>
+    <div class="topbar-right">
+      <button class="btn btn-ghost btn-sm" onclick="go('dealerVehicleSearch')" style="color:#fff;border-color:rgba(255,255,255,.3)">🚗 গাড়ির মডেল</button>
+      <button class="btn btn-ghost btn-sm" onclick="go('dealerRequisition')" style="color:#fff;border-color:rgba(255,255,255,.3)">📝 রিকুইজিশন</button>
+      <button class="btn btn-ghost btn-sm theme-toggle" onclick="toggleTheme()" style="color:#fff;border-color:rgba(255,255,255,.3)">🌙</button>
+      <span class="pill">${escHtml(u?u.name:'')}</span>
+      <button class="btn btn-ghost btn-sm" style="color:#fff;border-color:rgba(255,255,255,.3)" id="dealerLogout">লগআউট</button>
+    </div>
+  </div>`;
+}
+function dealerDashboardCards(){
+  const s=dealerSummary();
+  return `<div class="dealer-stat-grid">
+    <div class="dealer-stat"><div class="n">${s.shopParts}</div><div class="l">🧩 Total My Shop Parts</div></div>
+    <div class="dealer-stat"><div class="n">${s.stockItems}</div><div class="l">📦 Total Stock Items</div></div>
+    <div class="dealer-stat"><div class="n">${s.low}</div><div class="l">⚠️ Low Stock Items</div></div>
+    <div class="dealer-stat"><div class="n">${s.todayMemo}</div><div class="l">🧾 Today's Memo</div></div>
+    <div class="dealer-stat"><div class="n">৳${money(s.todaySales)}</div><div class="l">💰 Today's Sales</div></div>
+    <div class="dealer-stat"><div class="n">৳${money(s.stockValue)}</div><div class="l">📊 Total Stock Value</div></div>
+  </div>`;
+}
+function dealerPortalSearchHTML(){
+  return `<div class="search-hero">
+    <h2>পার্ট নম্বর / পার্টের নাম সার্চ করুন</h2>
+    <p>Company Parts এবং আপনার My Shop Parts একই Search Box থেকে খুঁজুন। শেষের ৩-৫ সংখ্যাও ব্যবহার করতে পারবেন।</p>
+    <div class="big-search"><input type="text" id="dealerUnifiedSearch" placeholder="যেমনঃ 97200754 বা Oil Filter"><button class="btn btn-primary" id="dealerUnifiedSearchBtn">সার্চ</button></div>
+  </div><div id="dealerUnifiedResults">${recentViewedHTML()}</div>`;
+}
+function renderDealerUnifiedSearch(){
+  const q=document.getElementById('dealerUnifiedSearch').value.trim();
+  const out=document.getElementById('dealerUnifiedResults');
+  if(!q){out.innerHTML=recentViewedHTML();return;}
+  if(q.length<2){out.innerHTML='<div class="empty">অন্তত ২ অক্ষর/সংখ্যা লিখুন</div>';return;}
+  const found=dealerPartSearch(q);
+  if(!found.length){out.innerHTML='<div class="empty">😕 কোনো Part পাওয়া যায়নি</div>';return;}
+  out.innerHTML=found.map(p=>`<div class="part-card">
+    <div style="flex:1"><div class="pn">${escHtml(displayPartNo(p.partNo))}</div><div class="nm" style="font-weight:700;color:var(--text)">${escHtml(p.name||'-')}</div>
+      <div style="margin-top:4px"><span class="source-badge ${p._source==='dealer'?'source-dealer':'source-company'}">${p._sourceLabel}</span>
+      ${p._source==='dealer'?` <span class="hint">Stock: ${Number(p.currentStock||0)}</span>`:''}</div>
+    </div><div class="pr">৳${money(p._price)}</div>
+  </div>`).join('');
+}
+function dealerShopPartsHTML(){
+  const parts=dealerShopParts();
+  return `<div class="card-head"><h3>🧩 My Shop Parts (${parts.length})</h3><button class="btn btn-primary btn-sm" id="addShopPart">➕ নতুন Part Add</button></div>
+  <div class="card"><input id="shopPartSearch" type="text" placeholder="🔍 Part Name / Number দিয়ে খুঁজুন..." style="width:100%;padding:10px;border:1px solid var(--line);border-radius:9px;font-size:16px;margin-bottom:12px;">
+  <div id="shopPartsList">${renderShopPartsTable(parts)}</div></div>`;
+}
+function renderShopPartsTable(parts){
+  if(!parts.length)return '<div class="empty">এখনো কোনো My Shop Part যোগ করা হয়নি।</div>';
+  return `<div style="overflow-x:auto"><table style="min-width:900px"><thead><tr><th>Part Name</th><th>Part Number</th><th>Category</th><th>Brand</th><th>Unit</th><th>Purchase</th><th>Selling</th><th>Stock</th><th>Action</th></tr></thead><tbody>${parts.map(p=>`<tr>
+    <td>${escHtml(p.name)}</td><td class="mono">${escHtml(p.partNo)}</td><td>${escHtml(p.category||'-')}</td><td>${escHtml(p.brand||'-')}</td><td>${escHtml(p.unit||'PCS')}</td>
+    <td>৳${money(p.purchasePrice)}</td><td>৳${money(p.sellingPrice)}</td><td>${Number(p.currentStock||0)}</td>
+    <td><div class="row-actions"><button class="btn btn-ghost btn-sm" onclick="editDealerShopPart(${p.id})">✏️</button><button class="btn btn-danger btn-sm" onclick="deleteDealerShopPart(${p.id})">🗑️</button></div></td>
+  </tr>`).join('')}</tbody></table></div>`;
+}
+function openDealerShopPartModal(part=null){
+  openModal(`<h3>${part?'✏️ Part Edit':'➕ My Shop Part Add'}</h3>
+    <div class="field"><label>Part Name *</label><input id="spName" value="${escHtml(part?.name||'')}"></div>
+    <div class="field"><label>Part Number *</label><input id="spNo" value="${escHtml(part?.partNo||'')}"></div>
+    <div class="dealer-management-grid">
+      <div class="field"><label>Category</label><input id="spCat" value="${escHtml(part?.category||'')}"></div>
+      <div class="field"><label>Brand</label><input id="spBrand" value="${escHtml(part?.brand||'')}"></div>
+      <div class="field"><label>Unit</label><input id="spUnit" value="${escHtml(part?.unit||'PCS')}"></div>
+      <div class="field"><label>Low Stock Alert</label><input id="spLow" type="number" min="0" value="${Number(part?.lowStock??5)}"></div>
+      <div class="field"><label>Purchase Price</label><input id="spPurchase" type="number" min="0" step="0.01" value="${Number(part?.purchasePrice||0)}"></div>
+      <div class="field"><label>Selling Price</label><input id="spSelling" type="number" min="0" step="0.01" value="${Number(part?.sellingPrice||0)}"></div>
+    </div>
+    ${part?`<div class="field"><label>Current Stock</label><input id="spStock" type="number" min="0" step="0.01" value="${Number(part.currentStock||0)}"></div>`:`<div class="field"><label>Opening Stock</label><input id="spStock" type="number" min="0" step="0.01" value="0"></div>`}
+    <div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">বাতিল</button><button class="btn btn-primary" id="saveShopPart">সেভ করুন</button></div>`);
+  document.getElementById('saveShopPart').onclick=async()=>{
+    const u=currentDealer();
+    const name=document.getElementById('spName').value.trim(), partNo=document.getElementById('spNo').value.trim();
+    if(!name||!partNo){alert('Part Name এবং Part Number দিন।');return;}
+    const now=new Date(), stock=Number(document.getElementById('spStock').value||0);
+    if(part){
+      const oldStock=Number(part.currentStock||0);
+      Object.assign(part,{name,partNo,category:document.getElementById('spCat').value.trim(),brand:document.getElementById('spBrand').value.trim(),unit:document.getElementById('spUnit').value.trim()||'PCS',lowStock:Number(document.getElementById('spLow').value||5),purchasePrice:Number(document.getElementById('spPurchase').value||0),sellingPrice:Number(document.getElementById('spSelling').value||0),currentStock:stock,updatedAt:now.toISOString()});
+      if(stock!==oldStock) addStockHistory(part,oldStock,stock>oldStock?stock-oldStock:0,stock<oldStock?oldStock-stock:0,stock,'Manual Stock Adjustment','');
+    }else{
+      if(dealerShopParts().some(p=>String(p.partNo).toLowerCase()===partNo.toLowerCase())){alert('এই Part Number আগে থেকেই আছে।');return;}
+      const np={id:Date.now()+Math.floor(Math.random()*1000),dealerId:u.id,name,partNo,category:document.getElementById('spCat').value.trim(),brand:document.getElementById('spBrand').value.trim(),unit:document.getElementById('spUnit').value.trim()||'PCS',lowStock:Number(document.getElementById('spLow').value||5),purchasePrice:Number(document.getElementById('spPurchase').value||0),sellingPrice:Number(document.getElementById('spSelling').value||0),openingStock:stock,currentStock:stock,createdAt:now.toISOString()};
+      DB.dealerShopParts.push(np);
+      if(stock>0)addStockHistory(np,0,stock,0,stock,'Opening Stock','');
+    }
+    await saveDB(); closeModal(); go('dealerPortal');
+  };
+}
+function editDealerShopPart(id){const p=dealerShopParts().find(x=>Number(x.id)===Number(id));if(p)openDealerShopPartModal(p);}
+async function deleteDealerShopPart(id){
+  const p=dealerShopParts().find(x=>Number(x.id)===Number(id));if(!p)return;
+  if(Number(p.currentStock||0)!==0){alert('Stock 0 না হলে Part delete করা যাবে না।');return;}
+  if(!confirm(`"${p.name}" মুছে ফেলবেন?`))return;
+  DB.dealerShopParts=DB.dealerShopParts.filter(x=>Number(x.id)!==Number(id));
+  await saveDB();go('dealerPortal');
+}
+function wireDealerShopParts(){
+  document.getElementById('addShopPart').onclick=()=>openDealerShopPartModal();
+  const s=document.getElementById('shopPartSearch');
+  s.oninput=()=>{const q=s.value.trim().toLowerCase();const list=dealerShopParts().filter(p=>!q||String(p.name).toLowerCase().includes(q)||String(p.partNo).toLowerCase().includes(q)||String(p.category||'').toLowerCase().includes(q));document.getElementById('shopPartsList').innerHTML=renderShopPartsTable(list);};
+}
+function addStockHistory(part,prev,inQty,outQty,current,reason,memoNumber){
+  const u=currentDealer(); if(!u)return;
+  DB.stockHistory.unshift({id:Date.now()+Math.random(),dealerId:u.id,dealerName:u.name,date:nowStr(),dateISO:new Date().toISOString(),partId:part.id,partName:part.name,partNo:part.partNo,previousStock:Number(prev||0),stockIn:Number(inQty||0),stockOut:Number(outQty||0),currentStock:Number(current||0),reason:reason||'',relatedMemoNumber:memoNumber||''});
+}
+function stockHTML(){
+  const parts=dealerShopParts();
+  return `<div class="card-head"><h3>📦 My Stock</h3><button class="btn btn-primary btn-sm" id="stockRefresh">🔄 Refresh</button></div>
+  <div class="card"><div style="overflow-x:auto"><table style="min-width:850px"><thead><tr><th>Part Name</th><th>Part Number</th><th>Category</th><th>Current Stock</th><th>Purchase</th><th>Selling</th><th>Stock Value</th><th>Status</th><th>Action</th></tr></thead><tbody>
+  ${parts.length?parts.map(p=>{const st=Number(p.currentStock||0),low=st<=Number(p.lowStock??5);return `<tr><td>${escHtml(p.name)}</td><td class="mono">${escHtml(p.partNo)}</td><td>${escHtml(p.category||'-')}</td><td><b>${st}</b> ${escHtml(p.unit||'PCS')}</td><td>৳${money(p.purchasePrice)}</td><td>৳${money(p.sellingPrice)}</td><td>৳${money(st*Number(p.purchasePrice||0))}</td><td class="${low?'stock-low':'stock-ok'}">${low?'⚠️ Low Stock':'✓ OK'}</td><td><button class="btn btn-ghost btn-sm" onclick="adjustDealerStock(${p.id})">⚙️ Adjust</button></td></tr>`}).join(''):'<tr><td colspan="9"><div class="empty">কোনো Stock Item নেই।</div></td></tr>'}
+  </tbody></table></div></div>`;
+}
+function adjustDealerStock(id){
+  const p=dealerShopParts().find(x=>Number(x.id)===Number(id));if(!p)return;
+  openModal(`<h3>📦 Stock Adjustment</h3><p style="margin-top:0"><b>${escHtml(p.name)}</b><br><span class="mono">${escHtml(p.partNo)}</span><br>Current Stock: <b>${Number(p.currentStock||0)}</b></p>
+    <div class="field"><label>Action</label><select id="adjType"><option value="in">Stock Increase</option><option value="out">Stock Decrease</option><option value="set">Set/Adjustment</option></select></div>
+    <div class="field"><label>Quantity</label><input id="adjQty" type="number" min="0" step="0.01"></div>
+    <div class="field"><label>Reason</label><input id="adjReason" placeholder="যেমন: Purchase / Damage / Correction"></div>
+    <div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">বাতিল</button><button class="btn btn-primary" id="saveAdj">সেভ করুন</button></div>`);
+  document.getElementById('saveAdj').onclick=async()=>{
+    const type=document.getElementById('adjType').value,q=Number(document.getElementById('adjQty').value||0),reason=document.getElementById('adjReason').value.trim()||'Manual Adjustment';
+    if(q<0){alert('সঠিক Quantity দিন।');return;}
+    const prev=Number(p.currentStock||0);let next=prev,stockIn=0,stockOut=0;
+    if(type==='in'){next=prev+q;stockIn=q;}else if(type==='out'){if(q>prev){alert('Stock-এর চেয়ে বেশি কমানো যাবে না।');return;}next=prev-q;stockOut=q;}else{next=q;stockIn=Math.max(0,q-prev);stockOut=Math.max(0,prev-q);}
+    p.currentStock=next;addStockHistory(p,prev,stockIn,stockOut,next,reason,'');await saveDB();closeModal();go('dealerPortal');
+  };
+}
+function stockHistoryHTML(){
+  const h=dealerStockHistory();
+  return `<div class="card-head"><h3>↕️ Stock Transaction History (${h.length})</h3></div><div class="card"><div style="overflow-x:auto"><table style="min-width:950px"><thead><tr><th>Date</th><th>Part Name</th><th>Part Number</th><th>Previous</th><th>Stock In</th><th>Stock Out</th><th>Current</th><th>Reason</th><th>Memo No.</th></tr></thead><tbody>
+  ${h.length?h.map(x=>`<tr><td>${escHtml(x.date)}</td><td>${escHtml(x.partName)}</td><td class="mono">${escHtml(x.partNo)}</td><td>${x.previousStock}</td><td>${x.stockIn}</td><td>${x.stockOut}</td><td><b>${x.currentStock}</b></td><td>${escHtml(x.reason||'-')}</td><td class="mono">${escHtml(x.relatedMemoNumber||'-')}</td></tr>`).join(''):'<tr><td colspan="9"><div class="empty">কোনো Stock Transaction নেই।</div></td></tr>'}
+  </tbody></table></div></div>`;
+}
+function memoEditorHTML(){
+  return `<div class="card-head"><h3>🧾 Create Memo</h3><span class="badge active">Automatic Memo No.</span></div>
+  <div class="card">
+    <div class="dealer-management-grid">
+      <div class="field"><label>Customer Name</label><input id="memoCustomerName" placeholder="কাস্টমারের নাম"></div>
+      <div class="field"><label>Customer Mobile</label><input id="memoCustomerMobile" placeholder="01XXXXXXXXX" inputmode="tel"></div>
+      <div class="field"><label>Memo Number</label><input id="memoNumber" value="${'M-'+String(DB.nextMemoNo||1).padStart(5,'0')}" readonly></div>
+      <div class="field"><label>Date</label><input id="memoDate" value="${new Date().toLocaleString('bn-BD')}" readonly></div>
+      <div class="field"><label>Payment Status</label><select id="memoPaymentStatus"><option value="Paid">Paid / পরিশোধিত</option><option value="Due">Due / বাকি</option><option value="Partial">Partial / আংশিক</option></select></div>
+      <div class="field"><label>Payment Method / Note</label><input id="memoPaymentInfo" placeholder="Cash / bKash / Due note"></div>
+    </div>
+    <div class="card" style="margin:10px 0 14px;background:var(--paper)">
+      <label style="font-weight:700;display:block;margin-bottom:6px">Part Search</label>
+      <input id="memoPartSearch" type="text" placeholder="Part Number / Name / শেষের সংখ্যা লিখুন..." style="width:100%;padding:11px;border:1px solid var(--line);border-radius:9px;font-size:16px;">
+      <div id="memoPartSuggestions" style="margin-top:8px"></div>
+    </div>
+    <div class="memo-items-wrap"><table class="memo-items-table"><thead><tr><th>Source</th><th>Part</th><th>Part Number</th><th>Qty</th><th>Unit Price</th><th>Total</th><th></th></tr></thead><tbody id="memoItemsBody"></tbody></table></div>
+    <div class="dealer-management-grid" style="margin-top:16px">
+      <div class="field"><label>Discount</label><input id="memoDiscount" type="number" min="0" step="0.01" value="0"></div>
+      <div class="field"><label>Customer / Payment Information</label><input id="memoNote" placeholder="Optional note"></div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;margin-top:12px"><div style="min-width:280px;border:1px solid var(--line);border-radius:10px;padding:12px;background:var(--paper)">
+      <div style="display:flex;justify-content:space-between"><span>Subtotal</span><b id="memoSubtotal">৳0.00</b></div>
+      <div style="display:flex;justify-content:space-between"><span>Discount</span><b id="memoDiscountView">৳0.00</b></div>
+      <div style="display:flex;justify-content:space-between;font-size:18px;margin-top:5px"><span>Grand Total</span><b id="memoGrandTotal">৳0.00</b></div>
+    </div></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-top:14px"><button class="btn btn-ghost" id="memoClear">🔄 Clear</button><button class="btn btn-primary" id="memoSave">💾 Save & Confirm Memo</button></div>
+  </div>`;
+}
+function renderMemoRows(rows){
+  const body=document.getElementById('memoItemsBody');
+  body.innerHTML=rows.map((it,i)=>`<tr>
+    <td><span class="source-badge ${it.source==='dealer'?'source-dealer':'source-company'}">${it.source==='dealer'?'Dealer':'Company'}</span></td>
+    <td>${escHtml(it.name)}</td><td class="mono">${escHtml(displayPartNo(it.partNo))}</td>
+    <td><input class="memo-qty" data-i="${i}" type="number" min="0.01" step="0.01" value="${it.qty}" style="width:75px;padding:6px"></td>
+    <td><input class="memo-price" data-i="${i}" type="number" min="0" step="0.01" value="${it.unitPrice}" style="width:100px;padding:6px"></td>
+    <td><b class="memo-row-total" data-i="${i}">৳${money(Number(it.qty)*Number(it.unitPrice))}</b></td>
+    <td><button class="btn btn-danger btn-sm memo-remove" data-i="${i}">✕</button></td>
+  </tr>`).join('');
+}
+function wireMemoPage(){
+  const rows=[];
+  const search=document.getElementById('memoPartSearch'),suggest=document.getElementById('memoPartSuggestions');
+  const recalc=()=>{
+    let sub=0;rows.forEach((it,i)=>{sub+=Number(it.qty||0)*Number(it.unitPrice||0);const el=document.querySelector(`.memo-row-total[data-i="${i}"]`);if(el)el.textContent='৳'+money(Number(it.qty||0)*Number(it.unitPrice||0));});
+    const d=Math.max(0,Number(document.getElementById('memoDiscount').value||0)),grand=Math.max(0,sub-d);
+    document.getElementById('memoSubtotal').textContent='৳'+money(sub);document.getElementById('memoDiscountView').textContent='৳'+money(d);document.getElementById('memoGrandTotal').textContent='৳'+money(grand);
+  };
+  const redraw=()=>{renderMemoRows(rows);document.querySelectorAll('.memo-qty').forEach(e=>e.oninput=()=>{rows[Number(e.dataset.i)].qty=Number(e.value||0);recalc();});document.querySelectorAll('.memo-price').forEach(e=>e.oninput=()=>{rows[Number(e.dataset.i)].unitPrice=Number(e.value||0);recalc();});document.querySelectorAll('.memo-remove').forEach(e=>e.onclick=()=>{rows.splice(Number(e.dataset.i),1);redraw();recalc();});recalc();};
+  const add=(p)=>{
+    const existing=rows.find(x=>String(x.partNo)===String(p.partNo)&&x.source===p._source);
+    if(existing){existing.qty=Number(existing.qty||0)+1;}
+    else rows.push({source:p._source,sourceLabel:p._sourceLabel,name:p.name,partNo:p.partNo,partId:p.id,qty:1,unitPrice:Number(p._price||0)});
+    suggest.innerHTML='';search.value='';redraw();
+  };
+  const showSuggest=()=>{
+    const found=dealerPartSearch(search.value).slice(0,8);
+    suggest.innerHTML=found.map((p,i)=>`<div class="part-card" data-pidx="${i}" style="cursor:pointer"><div style="flex:1"><b>${escHtml(displayPartNo(p.partNo))}</b><div class="nm">${escHtml(p.name)}</div></div><div><span class="source-badge ${p._source==='dealer'?'source-dealer':'source-company'}">${p._sourceLabel}</span><br><b>৳${money(p._price)}</b>${p._source==='dealer'?`<div class="hint">Stock: ${Number(p.currentStock||0)}</div>`:''}</div></div>`).join('');
+    suggest.querySelectorAll('[data-pidx]').forEach(el=>el.onclick=()=>add(found[Number(el.dataset.pidx)]));
+  };
+  search.oninput=()=>{if(search.value.trim().length>=2)showSuggest();else suggest.innerHTML='';};
+  document.getElementById('memoDiscount').oninput=recalc;
+  document.getElementById('memoClear').onclick=()=>{if(confirm('Memo form clear করবেন?'))go('dealerPortal');};
+  document.getElementById('memoSave').onclick=async()=>{
+    const u=currentDealer(), customerName=document.getElementById('memoCustomerName').value.trim();
+    if(!customerName){alert('Customer Name দিন।');return;}
+    if(!rows.length){alert('কমপক্ষে একটি Part add করুন।');return;}
+    // Validate stock before committing anything.
+    for(const it of rows){
+      if(it.source!=='dealer')continue;
+      const p=dealerShopParts().find(x=>Number(x.id)===Number(it.partId));
+      if(!p){alert('একটি Dealer Part আর পাওয়া যাচ্ছে না।');return;}
+      if(Number(it.qty||0)>Number(p.currentStock||0)){alert(`Insufficient Stock\n${p.name}\nCurrent Stock: ${p.currentStock}\nRequested: ${it.qty}`);return;}
+    }
+    const subtotal=rows.reduce((s,it)=>s+Number(it.qty||0)*Number(it.unitPrice||0),0);
+    const discount=Math.max(0,Number(document.getElementById('memoDiscount').value||0));
+    if(discount>subtotal){alert('Discount Subtotal-এর চেয়ে বেশি হতে পারবে না।');return;}
+    const now=new Date(), number=document.getElementById('memoNumber').value;
+    DB.nextMemoNo = Math.max(Number(DB.nextMemoNo||1)+1, Number(String(number).replace(/\D/g,''))+1);
+    const memo={id:Date.now()+Math.random(),dealerId:u.id,dealerName:u.name,dealerPhone:u.phone,memoNo:number,date:now.toLocaleString('bn-BD'),dateISO:now.toISOString(),customerName,customerMobile:document.getElementById('memoCustomerMobile').value.trim(),paymentStatus:document.getElementById('memoPaymentStatus').value,paymentInfo:document.getElementById('memoPaymentInfo').value.trim(),note:document.getElementById('memoNote').value.trim(),items:rows.map(x=>({...x})),subtotal,discount,grandTotal:subtotal-discount};
+    // Commit stock deductions.
+    rows.filter(x=>x.source==='dealer').forEach(it=>{
+      const p=dealerShopParts().find(x=>Number(x.id)===Number(it.partId));
+      const prev=Number(p.currentStock||0),out=Number(it.qty||0);p.currentStock=prev-out;
+      addStockHistory(p,prev,0,out,p.currentStock,'Sold via Memo',number);
+    });
+    DB.dealerMemos.unshift(memo);
+    await saveDB();
+    showSavedMemoActions(memo);
+  };
+  redraw();
+}
+function showSavedMemoActions(memo){
+  openModal(`<h3>✅ Memo Saved</h3><p style="margin:0">Memo No: <b class="mono">${escHtml(memo.memoNo)}</b><br>Grand Total: <b>৳${money(memo.grandTotal)}</b></p>
+    <div class="modal-actions"><button class="btn btn-primary" onclick="printDealerMemo(${JSON.stringify(memo.id)});closeModal()">🖨️ Print</button><button class="btn btn-ghost" onclick="closeModal();go('dealerPortal')">ঠিক আছে</button></div>`);
+}
+function memoHistoryHTML(){
+  const list=dealerMemos();
+  return `<div class="card-head"><h3>📜 Memo History (${list.length})</h3></div><div class="card"><div style="overflow-x:auto"><table style="min-width:780px"><thead><tr><th>Memo No.</th><th>Date</th><th>Customer</th><th>Total</th><th>Payment</th><th>Action</th></tr></thead><tbody>
+  ${list.length?list.map(m=>`<tr><td class="mono">${escHtml(m.memoNo)}</td><td>${escHtml(m.date)}</td><td>${escHtml(m.customerName)}<div class="hint">${escHtml(m.customerMobile||'')}</div></td><td>৳${money(m.grandTotal)}</td><td>${escHtml(m.paymentStatus)}</td><td><div class="row-actions"><button class="btn btn-ghost btn-sm" onclick="viewDealerMemo(${JSON.stringify(m.id)})">👁️ View</button><button class="btn btn-primary btn-sm" onclick="printDealerMemo(${JSON.stringify(m.id)})">🖨️ Reprint</button></div></td></tr>`).join(''):'<tr><td colspan="6"><div class="empty">এখনো কোনো Memo নেই।</div></td></tr>'}
+  </tbody></table></div></div>`;
+}
+function memoDetailsHTML(m){
+  return `<div class="memo-print-sheet"><div style="text-align:center;border-bottom:2px solid #12233d;padding-bottom:10px;margin-bottom:12px"><h2 style="margin:0">${escHtml(DB.settings.companyName)}</h2><div>Dealer Memo / Invoice</div></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:13px"><div><b>Memo No:</b> ${escHtml(m.memoNo)}</div><div><b>Date:</b> ${escHtml(m.date)}</div><div><b>Customer:</b> ${escHtml(m.customerName)}</div><div><b>Mobile:</b> ${escHtml(m.customerMobile||'-')}</div><div><b>Payment:</b> ${escHtml(m.paymentStatus)}</div><div><b>Payment Info:</b> ${escHtml(m.paymentInfo||'-')}</div></div>
+  <div style="overflow-x:auto;margin-top:14px"><table style="width:100%;border-collapse:collapse"><thead><tr><th>SL</th><th>Source</th><th>Part Name</th><th>Part No.</th><th>Qty</th><th>Unit Price</th><th>Total</th></tr></thead><tbody>${m.items.map((it,i)=>`<tr><td>${i+1}</td><td>${it.source==='dealer'?'Dealer':'Company'}</td><td>${escHtml(it.name)}</td><td class="mono">${escHtml(displayPartNo(it.partNo))}</td><td>${it.qty}</td><td>৳${money(it.unitPrice)}</td><td>৳${money(Number(it.qty)*Number(it.unitPrice))}</td></tr>`).join('')}</tbody></table></div>
+  <div style="margin-left:auto;max-width:300px;margin-top:12px"><div style="display:flex;justify-content:space-between"><b>Subtotal</b><b>৳${money(m.subtotal)}</b></div><div style="display:flex;justify-content:space-between"><b>Discount</b><b>৳${money(m.discount)}</b></div><div style="display:flex;justify-content:space-between;font-size:18px;border-top:2px solid #12233d;margin-top:5px;padding-top:5px"><b>Grand Total</b><b>৳${money(m.grandTotal)}</b></div></div>
+  ${m.note?`<div style="margin-top:12px;font-size:13px"><b>Note:</b> ${escHtml(m.note)}</div>`:''}
+  <div style="margin-top:28px;display:flex;justify-content:space-between;font-size:12px"><span>Customer Signature</span><span>Dealer Signature</span></div></div>`;
+}
+function viewDealerMemo(id){
+  const m=dealerMemos().find(x=>String(x.id)===String(id));if(!m)return;
+  openModal(`<h3>🧾 ${escHtml(m.memoNo)}</h3>${memoDetailsHTML(m)}<div class="modal-actions"><button class="btn btn-primary" onclick="printDealerMemo(${JSON.stringify(m.id)});closeModal()">🖨️ Print</button><button class="btn btn-ghost" onclick="closeModal()">বন্ধ</button></div>`);
+}
+function printDealerMemo(id){
+  const m=dealerMemos().find(x=>String(x.id)===String(id));if(!m)return;
+  const area=document.createElement('div');area.id='memoPrintArea';area.innerHTML=memoDetailsHTML(m);document.body.appendChild(area);
+  document.body.classList.add('print-memo-only');window.print();document.body.classList.remove('print-memo-only');area.remove();
+}
+function dealerPortalRender(){
+  const u=currentDealer();
+  if(!u){go('dealerLogin');return;}
+  let content='';
+  if(dealerManageTab==='memo')content=memoEditorHTML();
+  else if(dealerManageTab==='memoHistory')content=memoHistoryHTML();
+  else if(dealerManageTab==='shopParts')content=dealerShopPartsHTML();
+  else if(dealerManageTab==='stock')content=stockHTML();
+  else if(dealerManageTab==='stockHistory')content=stockHistoryHTML();
+  else content=dealerPortalSearchHTML();
+  document.getElementById('app').appendChild(el(`<div>${dealerTopbar()}<div class="wrap">${dealerDashboardCards()}${dealerNavHTML()}${content}</div></div><div class="modal-bg" id="modalBg"><div class="modal" id="modalBody"></div></div>`));
+  document.getElementById('dealerLogout').onclick=()=>{DB.session={role:null,user:null};go('landing');};
+  document.getElementById('modalBg').addEventListener('click',ev=>{if(ev.target.id==='modalBg')closeModal();});
+  if(dealerManageTab==='memo')wireMemoPage();
+  if(dealerManageTab==='shopParts')wireDealerShopParts();
+  if(dealerManageTab==='search'){
+    document.getElementById('dealerUnifiedSearch').addEventListener('input',()=>{clearTimeout(window._dealerSearchTimer);window._dealerSearchTimer=setTimeout(renderDealerUnifiedSearch,180);});
+    document.getElementById('dealerUnifiedSearchBtn').onclick=renderDealerUnifiedSearch;
+  }
+}
+ROUTES.dealerPortal=function(){dealerPortalRender();};
+
 /* ---- Dealer Search Page ---- */
 ROUTES.dealerSearch = function(){
   const app = document.getElementById('app');
@@ -1092,6 +1491,7 @@ ROUTES.dealerSearch = function(){
           <div><div class="brand-name">${DB.settings.companyName}</div><div class="brand-sub">ডিলার পোর্টাল</div></div>
         </div>
         <div class="topbar-right">
+          <button class="btn btn-ghost btn-sm" onclick="go('dealerPortal')" style="color:#fff;border-color:rgba(255,255,255,.3)">🧾 Dealer Management</button>
           <button class="btn btn-ghost btn-sm" onclick="go('dealerVehicleSearch')" style="color:#fff;border-color:rgba(255,255,255,.3)">🚗 গাড়ির মডেল</button>
           <button class="btn btn-ghost btn-sm" onclick="go('dealerRequisition')" style="color:#fff;border-color:rgba(255,255,255,.3)">📝 রিকুইজিশন</button>
           <button class="btn btn-ghost btn-sm theme-toggle" onclick="toggleTheme()" style="color:#fff;border-color:rgba(255,255,255,.3)">🌙</button>
@@ -1203,6 +1603,7 @@ ROUTES.dealerVehicleSearch = function(){
           <div><div class="brand-name">${DB.settings.companyName}</div><div class="brand-sub">গাড়ির মডেল সার্চ</div></div>
         </div>
         <div class="topbar-right">
+          <button class="btn btn-ghost btn-sm" onclick="go('dealerPortal')" style="color:#fff;border-color:rgba(255,255,255,.3)">🧾 Dealer Management</button>
           <button class="btn btn-ghost btn-sm" onclick="go('dealerSearch')" style="color:#fff;border-color:rgba(255,255,255,.3)">⬅️ ফিরে যান</button>
         </div>
       </div>
@@ -1259,6 +1660,7 @@ ROUTES.dealerRequisition = function(){
         </div>
         <div class="topbar-right">
           <button class="btn btn-ghost btn-sm" id="myReqHistory" style="color:#fff;border-color:rgba(255,255,255,.3)">📜 আমার আগের রিকুইজিশন</button>
+          <button class="btn btn-ghost btn-sm" onclick="go('dealerPortal')" style="color:#fff;border-color:rgba(255,255,255,.3)">🧾 Dealer Management</button>
           <button class="btn btn-ghost btn-sm" onclick="go('dealerSearch')" style="color:#fff;border-color:rgba(255,255,255,.3)">⬅️ সার্চে ফিরুন</button>
           <span class="pill">${DB.session.user.name}</span>
           <button class="btn btn-ghost btn-sm" style="color:#fff;border-color:rgba(255,255,255,.3)" id="logout">লগআউট</button>
