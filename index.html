@@ -1829,7 +1829,7 @@ function peRequisitionsTabHTML(){
           </div>
           <div style="overflow-x:auto">
             <table style="width:100%;border-collapse:collapse;min-width:400px;font-size:14px">
-              <thead><tr style="background:rgba(255,255,255,0.1)"><th style="padding:6px;text-align:center">নং</th><th style="padding:6px;text-align:left">পার্ট নং</th><th style="padding:6px;text-align:left">নাম</th><th style="padding:6px;text-align:center">পরিমাণ</th></tr></thead>
+              <thead><tr style="background:rgba(255,255,255,0.22)"><th style="padding:6px;text-align:center;color:#fff;font-weight:700;">নং</th><th style="padding:6px;text-align:left;color:#fff;font-weight:700;">পার্ট নং</th><th style="padding:6px;text-align:left;color:#fff;font-weight:700;">নাম</th><th style="padding:6px;text-align:center;color:#fff;font-weight:700;">পরিমাণ</th></tr></thead>
               <tbody>${(r.items||[]).map((it,idx)=>`<tr><td style="padding:6px;text-align:center">${idx+1}</td><td style="padding:6px">${it.partNo||'-'}</td><td style="padding:6px">${it.name||'-'}</td><td style="padding:6px;text-align:center">${it.qty||'-'}</td></tr>`).join('')}</tbody>
             </table>
           </div>
