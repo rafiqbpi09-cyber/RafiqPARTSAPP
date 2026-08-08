@@ -1650,6 +1650,7 @@ function peShell(innerHTML){
         </div>
         <div style="display:flex;gap:8px;margin:14px 0;flex-wrap:wrap;">
           <button class="btn ${peTab==='dealers'?'btn-primary':'btn-ghost'} btn-sm" onclick="peTab='dealers';go('peDashboard')" style="${peTab!=='dealers'?'color:#fff;border-color:rgba(255,255,255,0.3);':''}">👥 আমার ডিলার/মেকানিক</button>
+          <button class="btn ${peTab==='search'?'btn-primary':'btn-ghost'} btn-sm" onclick="peTab='search';go('peDashboard')" style="${peTab!=='search'?'color:#fff;border-color:rgba(255,255,255,0.3);':''}">🔍 পার্টস সার্চ</button>
           <button class="btn ${peTab==='requisitions'?'btn-primary':'btn-ghost'} btn-sm" onclick="peTab='requisitions';go('peDashboard')" style="${peTab!=='requisitions'?'color:#fff;border-color:rgba(255,255,255,0.3);':''}">📝 রিকুইজিশন</button>
           <button class="btn ${peTab==='report'?'btn-primary':'btn-ghost'} btn-sm" onclick="peTab='report';go('peDashboard')" style="${peTab!=='report'?'color:#fff;border-color:rgba(255,255,255,0.3);':''}">📊 রিপোর্ট</button>
         </div>
@@ -1667,7 +1668,8 @@ function peShell(innerHTML){
 ROUTES.peDashboard = function(){
   const pe = DB.session.user;
   if(!pe || DB.session.role !== 'partsEngineer'){ go('landing'); return; }
-  if(peTab === 'requisitions'){ peShell(peRequisitionsTabHTML()); }
+  if(peTab === 'search'){ peShell(peSearchTabHTML()); wirePeSearchTab(); }
+  else if(peTab === 'requisitions'){ peShell(peRequisitionsTabHTML()); wirePeRequisitionsTab(); }
   else if(peTab === 'report'){ peShell(peReportTabHTML()); }
   else { peShell(peUsersTabHTML()); wirePeUsersTab(); }
 };
@@ -1675,6 +1677,55 @@ ROUTES.peDashboard = function(){
 function myPeUsers(){
   const pe = DB.session.user;
   return DB.users.filter(u=> Number(u.peId) === Number(pe.id));
+}
+function peSearchTabHTML(){
+  return `
+    <div class="search-hero" style="background:transparent;padding:0;">
+      <h3 style="margin:0 0 6px">🔍 পার্টস সার্চ</h3>
+      <p class="hint" style="margin:0 0 12px">শুধু মূল সংখ্যাটি লিখুন — কোড বা সাফিক্স (m01, m91 ইত্যাদি) লেখার দরকার নেই</p>
+      <div class="big-search">
+        <input type="text" id="peQ" placeholder="যেমনঃ 97200754 বা ইঞ্জিন" inputmode="text" style="color:#12233d">
+        <button class="btn btn-primary" id="peGo">সার্চ</button>
+      </div>
+    </div>
+    <div id="peResults" style="margin-top:16px"></div>
+  `;
+}
+function wirePeSearchTab(){
+  const input = document.getElementById('peQ');
+  const MAX_NEAR = 10;
+  const runSearch = ()=>{
+    const raw = input.value.trim();
+    const results = document.getElementById('peResults');
+    if(!raw){ results.innerHTML=''; return; }
+    if(raw.length < 3){ results.innerHTML = `<div class="empty">অন্তত ৩ অক্ষর/সংখ্যা লিখুন</div>`; return; }
+    const qDigits = digitsOnly(raw);
+    const qText = raw.toLowerCase();
+    const exact = [], near = [];
+    for(const p of DB.parts){
+      if(qDigits && p.core === qDigits){ exact.push(p); continue; }
+      const nameMatch = p.nameLower.includes(qText);
+      if((qDigits && (p.core.includes(qDigits) || qDigits.includes(p.core))) || nameMatch){ near.push(p); }
+    }
+    if(exact.length===0 && near.length===0){
+      results.innerHTML = `<div class="empty">😕 কোনো পার্ট পাওয়া যায়নি</div>`;
+      return;
+    }
+    let html='';
+    if(exact.length){
+      exact.forEach(p=>{ html += partCardHTML(p, true); });
+    } else if(near.length){
+      html += `<div class="group-label">কাছাকাছি আইটেম</div>`;
+      near.slice(0, MAX_NEAR).forEach(p=> html += partCardHTML(p, false, qDigits));
+      if(near.length > MAX_NEAR){
+        html += `<div class="hint" style="text-align:center;margin-top:8px">মোট ${near.length}টি মিলেছে — আরও নির্দিষ্ট করে লিখুন</div>`;
+      }
+    }
+    results.innerHTML = html;
+  };
+  let searchTimer;
+  input.addEventListener('input', ()=>{ clearTimeout(searchTimer); searchTimer = setTimeout(runSearch, 180); });
+  document.getElementById('peGo').onclick = runSearch;
 }
 function peUsersTabHTML(){
   const mine = myPeUsers();
@@ -1759,13 +1810,22 @@ function peRequisitionsTabHTML(){
   const mine = DB.requisitions.filter(r=> myIds.includes(r.dealerId));
   if(!mine.length) return `<h3 style="margin:0 0 10px">📝 রিকুইজিশন</h3><div class="empty">আপনার ডিলারদের কাছ থেকে এখনো কোনো রিকুইজিশন আসেনি</div>`;
   return `
-    <h3 style="margin:0 0 14px">📝 রিকুইজিশন (${mine.length}টি)</h3>
-    <div style="display:flex;flex-direction:column;gap:12px">
+    <div class="card-head" style="margin-bottom:14px">
+      <h3 style="margin:0">📝 রিকুইজিশন (${mine.length}টি)</h3>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn btn-ghost btn-sm" id="pePrintAll" style="color:#fff;border-color:rgba(255,255,255,0.3);">🖨️ প্রিন্ট</button>
+        <button class="btn btn-ghost btn-sm" id="peExportReq" style="color:#fff;border-color:rgba(255,255,255,0.3);">📄 এক্সেল এক্সপোর্ট</button>
+      </div>
+    </div>
+    <div id="peReqList" style="display:flex;flex-direction:column;gap:12px">
       ${mine.map(r => `
-        <div style="border:1px solid rgba(255,255,255,0.2);border-radius:12px;padding:14px 16px;">
+        <div class="pe-req-card" data-id="${r.id}" style="border:1px solid rgba(255,255,255,0.2);border-radius:12px;padding:14px 16px;">
           <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:8px;">
             <div style="font-weight:700">${r.dealerName}${r.dealerPhone ? ` — ${r.dealerPhone}` : ''}</div>
-            <div class="mono" style="font-size:13px;opacity:0.8">${r.date}</div>
+            <div style="display:flex;align-items:center;gap:10px;">
+              <div class="mono" style="font-size:13px;opacity:0.8">${r.date}</div>
+              <button class="btn btn-ghost btn-sm pe-print-one" data-id="${r.id}" style="color:#fff;border-color:rgba(255,255,255,0.3);padding:4px 8px;font-size:12px;">🖨️</button>
+            </div>
           </div>
           <div style="overflow-x:auto">
             <table style="width:100%;border-collapse:collapse;min-width:400px;font-size:14px">
@@ -1776,6 +1836,57 @@ function peRequisitionsTabHTML(){
         </div>`).join('')}
     </div>
   `;
+}
+function myPeRequisitions(){
+  const myIds = myPeUsers().map(u=>u.id);
+  return DB.requisitions.filter(r=> myIds.includes(r.dealerId));
+}
+function wirePeRequisitionsTab(){
+  const mine = myPeRequisitions();
+  const printAllBtn = document.getElementById('pePrintAll');
+  if(printAllBtn) printAllBtn.onclick = ()=> printPeRequisitions(mine);
+  const exportBtn = document.getElementById('peExportReq');
+  if(exportBtn) exportBtn.onclick = ()=> exportPeRequisitionsExcel(mine);
+  document.querySelectorAll('.pe-print-one').forEach(btn=>{
+    btn.onclick = ()=>{
+      const r = mine.find(x=> String(x.id) === btn.dataset.id);
+      if(r) printRequisition(r);
+    };
+  });
+}
+function printPeRequisitions(list){
+  if(!list.length) return;
+  const pe = DB.session.user;
+  const win = window.open('', '_blank');
+  win.document.write(`
+    <html><head><title>রিকুইজিশন — ${pe.region||''}</title>
+    <style>body{font-family:sans-serif;padding:24px;} h2{margin-bottom:2px;} table{width:100%;border-collapse:collapse;margin-top:8px;margin-bottom:22px;} th,td{border:1px solid #ccc;padding:8px;font-size:13.5px;text-align:left;} th{background:#f4f4f4;} .req-block{page-break-inside:avoid;margin-bottom:18px;}</style>
+    </head><body>
+      <h2>📝 রিকুইজিশন — ${pe.name} (${pe.region||'-'})</h2>
+      <p style="color:#555;margin-top:0">মোট ${list.length}টি রিকুইজিশন</p>
+      ${list.map(r=>`
+        <div class="req-block">
+          <p style="margin:4px 0"><strong>ডিলার:</strong> ${r.dealerName} ${r.dealerPhone ? '('+r.dealerPhone+')' : ''} &nbsp; <strong>তারিখ:</strong> ${r.date} ${r.reqNo ? '&nbsp; <strong>নং:</strong> '+r.reqNo : ''}</p>
+          <table><thead><tr><th>নং</th><th>পার্ট নং</th><th>নাম</th><th>পরিমাণ</th></tr></thead>
+          <tbody>${(r.items||[]).map((it,idx)=>`<tr><td>${idx+1}</td><td>${it.partNo||'-'}</td><td>${it.name||'-'}</td><td>${it.qty||'-'}</td></tr>`).join('')}</tbody></table>
+        </div>`).join('')}
+    </body></html>
+  `);
+  win.document.close();
+  win.print();
+}
+function exportPeRequisitionsExcel(list){
+  if(!list.length) return;
+  const rows = [];
+  list.forEach(r=>{
+    (r.items||[]).forEach(it=>{
+      rows.push({ 'রিকুইজিশন নং': r.reqNo||'', 'ডিলার': r.dealerName, 'মোবাইল': r.dealerPhone||'', 'তারিখ': r.date, 'পার্ট নং': it.partNo||'', 'নাম': it.name||'', 'পরিমাণ': it.qty||'', 'স্ট্যাটাস': r.status||'' });
+    });
+  });
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Requisitions");
+  XLSX.writeFile(wb, `requisitions_${(DB.session.user.region||'region').replace(/\s+/g,'_')}.xlsx`);
 }
 function peReportTabHTML(){
   const pe = DB.session.user;
