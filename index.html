@@ -1810,9 +1810,9 @@ function peRequisitionsTabHTML(){
   const mine = DB.requisitions.filter(r=> myIds.includes(r.dealerId));
   if(!mine.length) return `<h3 style="margin:0 0 10px">📝 রিকুইজিশন</h3><div class="empty">আপনার ডিলারদের কাছ থেকে এখনো কোনো রিকুইজিশন আসেনি</div>`;
   return `
-    <div class="card-head" style="margin-bottom:14px">
-      <h3 style="margin:0">📝 রিকুইজিশন (${mine.length}টি)</h3>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+    <div class="card-head" style="margin-bottom:14px;position:relative;justify-content:flex-end;">
+      <h3 style="margin:0;position:absolute;left:0;right:0;text-align:center;pointer-events:none;">📝 রিকুইজিশন (${mine.length}টি)</h3>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;position:relative;z-index:1;">
         <button class="btn btn-ghost btn-sm" id="pePrintAll" style="color:#fff;border-color:rgba(255,255,255,0.3);">🖨️ প্রিন্ট</button>
         <button class="btn btn-ghost btn-sm" id="peExportReq" style="color:#fff;border-color:rgba(255,255,255,0.3);">📄 এক্সেল এক্সপোর্ট</button>
       </div>
@@ -2670,12 +2670,31 @@ function printRequisition(r){
   const win = window.open('', '_blank');
   win.document.write(`
     <html><head><title>${r.reqNo || r.id}</title>
-    <style>body{font-family:sans-serif;padding:24px;} table{width:100%;border-collapse:collapse;margin-top:12px;} th,td{border:1px solid #ccc;padding:8px;font-size:14px;text-align:left;} th{background:#f4f4f4;}</style>
+    <style>
+      body{font-family:sans-serif;padding:24px;margin:0;}
+      .req-print-header{background:linear-gradient(135deg,#1a3a52 0%,#0d5a7a 100%);color:#fff;text-align:center;padding:22px 20px;border-radius:10px;margin-bottom:20px;-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact;}
+      .req-print-header h2{margin:0 0 10px;color:#fff;font-size:22px;}
+      .req-print-header p{margin:4px 0;color:#fff;font-size:14.5px;}
+      .req-print-header strong{font-weight:700;}
+      table{width:100%;border-collapse:collapse;margin-top:12px;}
+      th,td{border:1px solid #ccc;padding:8px;font-size:14px;text-align:left;}
+      th{background:#f4f4f4;}
+      @media print{
+        .req-print-header{-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact;}
+      }
+      @media (max-width:480px){
+        body{padding:14px;}
+        .req-print-header{padding:16px 12px;}
+        .req-print-header h2{font-size:19px;}
+      }
+    </style>
     </head><body>
-      <h2>📦 পার্টস রিকুইজিশন ${r.reqNo ? '— ' + r.reqNo : ''}</h2>
-      <p><strong>ডিলার:</strong> ${r.dealerName} ${r.dealerPhone ? '('+r.dealerPhone+')' : ''}</p>
-      <p><strong>তারিখ:</strong> ${r.date}</p>
-      ${r.status ? `<p><strong>স্ট্যাটাস:</strong> ${r.status}</p>` : ''}
+      <div class="req-print-header">
+        <h2>📦 পার্টস রিকুইজিশন ${r.reqNo ? '— ' + r.reqNo : ''}</h2>
+        <p><strong>ডিলার:</strong> ${r.dealerName} ${r.dealerPhone ? '('+r.dealerPhone+')' : ''}</p>
+        <p><strong>তারিখ:</strong> ${r.date}</p>
+        ${r.status ? `<p><strong>স্ট্যাটাস:</strong> ${r.status}</p>` : ''}
+      </div>
       ${r.remarks ? `<p><strong>মন্তব্য:</strong> ${r.remarks}</p>` : ''}
       <table><thead><tr><th>নং</th><th>পার্ট নং</th><th>নাম</th><th>পরিমাণ</th></tr></thead>
       <tbody>${r.items.map((it,idx)=>`<tr><td>${idx+1}</td><td>${it.partNo||'-'}</td><td>${it.name||'-'}</td><td>${it.qty||'-'}</td></tr>`).join('')}</tbody></table>
