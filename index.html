@@ -154,6 +154,14 @@ if('serviceWorker' in navigator){
   .err{background:#fdeceb;color:var(--danger);font-size:13px;padding:9px 12px;border-radius:8px;margin-bottom:14px;display:none;}
   .ok-msg{background:#e9f7ee;color:var(--ok);font-size:13px;padding:9px 12px;border-radius:8px;margin-bottom:14px;display:none;}
 
+  /* ---------- Search result highlight + pagination ---------- */
+  .part-card.search-hit{background:#fff8d6 !important;border:2px solid #e0a100 !important;box-shadow:0 6px 18px rgba(224,161,0,.20);transform:translateY(-1px);}
+  .part-card.search-hit.exact{background:#e8f8ee !important;border-color:#1f8a4c !important;box-shadow:0 7px 20px rgba(31,138,76,.20);}
+  .search-hit .pn,.search-hit .nm{font-weight:800 !important;}
+  .search-pagination{display:flex;justify-content:center;align-items:center;gap:10px;margin:20px 0 6px;flex-wrap:wrap;}
+  .search-pagination .page-info{font-size:13px;color:var(--muted);font-weight:600;}
+  .search-next{min-width:110px;}
+
   /* ---------- Shared top bar ---------- */
   .topbar{background:var(--navy);color:#fff;padding:14px 22px;padding-left:max(22px, env(safe-area-inset-left));padding-right:max(22px, env(safe-area-inset-right));display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;width:100%;}
   .topbar-brand{display:flex;align-items:center;gap:10px;}
@@ -351,6 +359,7 @@ const DB = {
   // Dealer Stock & Memo Management
   dealerShopParts: [],
   dealerMemos: [],
+  dealerMemoDrafts: [],
   stockHistory: [],
   nextMemoNo: 1
 };
@@ -381,6 +390,7 @@ async function saveDB(){
       nextPeId: nextPeId,
       dealerShopParts: DB.dealerShopParts,
       dealerMemos: DB.dealerMemos,
+      dealerMemoDrafts: DB.dealerMemoDrafts,
       stockHistory: DB.stockHistory,
       nextMemoNo: DB.nextMemoNo || 1
     };
@@ -395,7 +405,7 @@ async function saveDB(){
   }catch(e){
     console.error('Firebase save failed:', e);
     // Firebase না হলে localStorage এ সেভ
-    try{ localStorage.setItem(LS_KEY, JSON.stringify({users:DB.users,history:DB.history.slice(0,50),settings:DB.settings,parts:DB.parts,nextPartId,partsSaved:true,requisitions:DB.requisitions.slice(0,200),nextReqNo,drafts:DB.drafts.slice(0,200),partsEngineers:DB.partsEngineers,nextPeId,dealerShopParts:DB.dealerShopParts,dealerMemos:DB.dealerMemos,stockHistory:DB.stockHistory,nextMemoNo:DB.nextMemoNo||1})); }catch(e2){}
+    try{ localStorage.setItem(LS_KEY, JSON.stringify({users:DB.users,history:DB.history.slice(0,50),settings:DB.settings,parts:DB.parts,nextPartId,partsSaved:true,requisitions:DB.requisitions.slice(0,200),nextReqNo,drafts:DB.drafts.slice(0,200),partsEngineers:DB.partsEngineers,nextPeId,dealerShopParts:DB.dealerShopParts,dealerMemos:DB.dealerMemos,dealerMemoDrafts:DB.dealerMemoDrafts,stockHistory:DB.stockHistory,nextMemoNo:DB.nextMemoNo||1})); }catch(e2){}
   }
 }
 async function loadDB(){
@@ -430,6 +440,7 @@ async function loadDB(){
       else if(DB.partsEngineers.length) nextPeId = Math.max(...DB.partsEngineers.map(p=>Number(p.id)||0))+1;
       if(Array.isArray(saved.dealerShopParts)) DB.dealerShopParts = saved.dealerShopParts;
       if(Array.isArray(saved.dealerMemos)) DB.dealerMemos = saved.dealerMemos;
+      if(Array.isArray(saved.dealerMemoDrafts)) DB.dealerMemoDrafts = saved.dealerMemoDrafts;
       if(Array.isArray(saved.stockHistory)) DB.stockHistory = saved.stockHistory;
       DB.nextMemoNo = Number(saved.nextMemoNo || 1);
       if(saved.settings){ DB.settings.adminLastActive = saved.settings.adminLastActive || null; DB.settings.adminLastLogin = saved.settings.adminLastLogin || null; }
@@ -1192,6 +1203,7 @@ function dealerNavHTML(){
   const tabs=[
     ['search','🔍 Parts Search'],
     ['memo','🧾 Create Memo'],
+    ['memoDrafts','🟡 Saved/Draft Memos'],
     ['memoHistory','📜 Memo History'],
     ['shopParts','🧩 My Shop Parts'],
     ['stock','📦 My Stock'],
@@ -1339,110 +1351,179 @@ function stockHistoryHTML(){
   ${h.length?h.map(x=>`<tr><td>${escHtml(x.date)}</td><td>${escHtml(x.partName)}</td><td class="mono">${escHtml(x.partNo)}</td><td>${x.previousStock}</td><td>${x.stockIn}</td><td>${x.stockOut}</td><td><b>${x.currentStock}</b></td><td>${escHtml(x.reason||'-')}</td><td class="mono">${escHtml(x.relatedMemoNumber||'-')}</td></tr>`).join(''):'<tr><td colspan="9"><div class="empty">কোনো Stock Transaction নেই।</div></td></tr>'}
   </tbody></table></div></div>`;
 }
-function memoEditorHTML(){
-  return `<div class="card-head"><h3>🧾 Create Memo</h3><span class="badge active">Automatic Memo No.</span></div>
+function memoEditorHTML(draft=null){
+  const d=draft||null;
+  const memoNumber=d?.memoNo || ('M-'+String(DB.nextMemoNo||1).padStart(5,'0'));
+  const dateValue=d?.date || new Date().toLocaleString('bn-BD');
+  const status=d?'DRAFT':'NEW';
+  return `<div class="card-head"><h3>🧾 Create Memo</h3><span class="badge ${d?'pending':'active'}">${status}${d?' • '+escHtml(d.memoNo):' • Automatic Memo No.'}</span></div>
   <div class="card">
     <div class="dealer-management-grid">
-      <div class="field"><label>Customer Name</label><input id="memoCustomerName" placeholder="কাস্টমারের নাম"></div>
-      <div class="field"><label>Customer Mobile</label><input id="memoCustomerMobile" placeholder="01XXXXXXXXX" inputmode="tel"></div>
-      <div class="field"><label>Memo Number</label><input id="memoNumber" value="${'M-'+String(DB.nextMemoNo||1).padStart(5,'0')}" readonly></div>
-      <div class="field"><label>Date</label><input id="memoDate" value="${new Date().toLocaleString('bn-BD')}" readonly></div>
-      <div class="field"><label>Payment Status</label><select id="memoPaymentStatus"><option value="Paid">Paid / পরিশোধিত</option><option value="Due">Due / বাকি</option><option value="Partial">Partial / আংশিক</option></select></div>
-      <div class="field"><label>Payment Method / Note</label><input id="memoPaymentInfo" placeholder="Cash / bKash / Due note"></div>
+      <div class="field"><label>Customer Name</label><input id="memoCustomerName" value="${escHtml(d?.customerName||'')}" placeholder="কাস্টমারের নাম"></div>
+      <div class="field"><label>Customer Mobile</label><input id="memoCustomerMobile" value="${escHtml(d?.customerMobile||'')}" placeholder="01XXXXXXXXX" inputmode="tel"></div>
+      <div class="field"><label>Memo Number</label><input id="memoNumber" value="${escHtml(memoNumber)}" readonly></div>
+      <div class="field"><label>Date</label><input id="memoDate" value="${escHtml(dateValue)}" readonly></div>
+      <div class="field"><label>Payment Status</label><select id="memoPaymentStatus"><option value="Paid" ${d?.paymentStatus==='Paid'?'selected':''}>Paid / পরিশোধিত</option><option value="Due" ${d?.paymentStatus==='Due'?'selected':''}>Due / বাকি</option><option value="Partial" ${d?.paymentStatus==='Partial'?'selected':''}>Partial / আংশিক</option></select></div>
+      <div class="field"><label>Payment Method / Note</label><input id="memoPaymentInfo" value="${escHtml(d?.paymentInfo||'')}" placeholder="Cash / bKash / Due note"></div>
     </div>
-    <div class="card" style="margin:10px 0 14px;background:var(--paper)">
-      <label style="font-weight:700;display:block;margin-bottom:6px">Part Search</label>
+    <div class="field"><label>Part Search</label>
       <input id="memoPartSearch" type="text" placeholder="Part Number / Name / শেষের সংখ্যা লিখুন..." style="width:100%;padding:11px;border:1px solid var(--line);border-radius:9px;font-size:16px;">
       <div id="memoPartSuggestions" style="margin-top:8px"></div>
     </div>
     <div class="memo-items-wrap"><table class="memo-items-table"><thead><tr><th>Source</th><th>Part</th><th>Part Number</th><th>Qty</th><th>Unit Price</th><th>Total</th><th></th></tr></thead><tbody id="memoItemsBody"></tbody></table></div>
-    <div class="dealer-management-grid" style="margin-top:16px">
-      <div class="field"><label>Discount</label><input id="memoDiscount" type="number" min="0" step="0.01" value="0"></div>
-      <div class="field"><label>Customer / Payment Information</label><input id="memoNote" placeholder="Optional note"></div>
+    <div class="dealer-management-grid" style="margin-top:12px">
+      <div class="field"><label>Discount</label><input id="memoDiscount" type="number" min="0" step="0.01" value="${Number(d?.discount||0)}"></div>
+      <div class="field"><label>Customer / Payment Information</label><input id="memoNote" value="${escHtml(d?.note||'')}" placeholder="Optional note"></div>
     </div>
-    <div style="display:flex;justify-content:flex-end;margin-top:12px"><div style="min-width:280px;border:1px solid var(--line);border-radius:10px;padding:12px;background:var(--paper)">
+    <div style="margin-top:14px;padding:12px;background:var(--paper);border:1px solid var(--line);border-radius:10px">
       <div style="display:flex;justify-content:space-between"><span>Subtotal</span><b id="memoSubtotal">৳0.00</b></div>
       <div style="display:flex;justify-content:space-between"><span>Discount</span><b id="memoDiscountView">৳0.00</b></div>
       <div style="display:flex;justify-content:space-between;font-size:18px;margin-top:5px"><span>Grand Total</span><b id="memoGrandTotal">৳0.00</b></div>
-    </div></div>
-    <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-top:14px"><button class="btn btn-ghost" id="memoClear">🔄 Clear</button><button class="btn btn-primary" id="memoSave">💾 Save & Confirm Memo</button></div>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-top:14px">
+      <button class="btn btn-ghost" id="memoClear">🔄 Clear</button>
+      <button class="btn btn-warning" id="memoSaveDraft">🟡 SAVE DRAFT</button>
+      ${d?`<button class="btn btn-primary" id="memoFinalSubmit">🟢 FINAL SUBMIT</button>`:`<button class="btn btn-primary" id="memoFinalSubmit">🟢 FINAL SUBMIT</button>`}
+    </div>
+    <div id="memoAutosaveStatus" class="hint" style="margin-top:8px;text-align:right">${d?'Draft loaded — Continue editing':'Auto-save প্রস্তুত'}</div>
   </div>`;
 }
-function renderMemoRows(rows){
-  const body=document.getElementById('memoItemsBody');
-  body.innerHTML=rows.map((it,i)=>`<tr>
-    <td><span class="source-badge ${it.source==='dealer'?'source-dealer':'source-company'}">${it.source==='dealer'?'Dealer':'Company'}</span></td>
-    <td>${escHtml(it.name)}</td><td class="mono">${escHtml(displayPartNo(it.partNo))}</td>
-    <td><input class="memo-qty" data-i="${i}" type="number" min="0.01" step="0.01" value="${it.qty}" style="width:75px;padding:6px"></td>
-    <td><input class="memo-price" data-i="${i}" type="number" min="0" step="0.01" value="${it.unitPrice}" style="width:100px;padding:6px"></td>
-    <td><b class="memo-row-total" data-i="${i}">৳${money(Number(it.qty)*Number(it.unitPrice))}</b></td>
-    <td><button class="btn btn-danger btn-sm memo-remove" data-i="${i}">✕</button></td>
-  </tr>`).join('');
+function draftListForDealer(){
+  const u=currentDealer();
+  return u ? DB.dealerMemoDrafts.filter(m=>String(m.dealerId)===String(u.id)).sort((a,b)=>new Date(b.updatedAt||b.dateISO||0)-new Date(a.updatedAt||a.dateISO||0)) : [];
 }
-function wireMemoPage(){
-  const rows=[];
+function memoDraftsHTML(){
+  const list=draftListForDealer();
+  return `<div class="card-head"><h3>🟡 Saved / Draft Memos (${list.length})</h3><button class="btn btn-primary btn-sm" onclick="dealerManageTab='memo';go('dealerPortal')">➕ New Memo</button></div>
+  <div class="card"><div style="overflow-x:auto"><table style="min-width:900px"><thead><tr><th>Memo / Draft ID</th><th>Date & Time</th><th>Customer</th><th>Total Item</th><th>Total Amount</th><th>Status</th><th>Action</th></tr></thead><tbody>
+  ${list.length?list.map(d=>`<tr><td class="mono">${escHtml(d.memoNo)}</td><td>${escHtml(d.updatedAtDisplay||d.date||'-')}</td><td>${escHtml(d.customerName||'-')}<div class="hint">${escHtml(d.customerMobile||'')}</div></td><td>${d.items?.length||0}</td><td>৳${money(d.grandTotal||0)}</td><td><span class="badge pending">DRAFT</span></td><td><div class="row-actions"><button class="btn btn-primary btn-sm" onclick="continueDealerMemoDraft(${JSON.stringify(d.id)})">▶ Continue / Edit</button><button class="btn btn-danger btn-sm" onclick="deleteDealerMemoDraft(${JSON.stringify(d.id)})">🗑️ Delete</button></div></td></tr>`).join(''):'<tr><td colspan="7"><div class="empty">কোনো Draft Memo নেই।</div></td></tr>'}
+  </tbody></table></div></div>`;
+}
+function draftAutosaveKey(){const u=currentDealer();return u?'dlr_memo_autosave_'+u.id:null;}
+function buildMemoState(rows){
+  const customerName=document.getElementById('memoCustomerName')?.value.trim()||'';
+  const customerMobile=document.getElementById('memoCustomerMobile')?.value.trim()||'';
+  const memoNo=document.getElementById('memoNumber')?.value||'';
+  const date=document.getElementById('memoDate')?.value||new Date().toLocaleString('bn-BD');
+  const paymentStatus=document.getElementById('memoPaymentStatus')?.value||'Paid';
+  const paymentInfo=document.getElementById('memoPaymentInfo')?.value.trim()||'';
+  const discount=Math.max(0,Number(document.getElementById('memoDiscount')?.value||0));
+  const note=document.getElementById('memoNote')?.value.trim()||'';
+  const subtotal=rows.reduce((s,it)=>s+Number(it.qty||0)*Number(it.unitPrice||0),0);
+  return {memoNo,date,customerName,customerMobile,paymentStatus,paymentInfo,discount,note,items:rows.map(x=>({...x})),subtotal,grandTotal:Math.max(0,subtotal-discount)};
+}
+function persistDraftLocal(state){
+  try{const k=draftAutosaveKey();if(k)localStorage.setItem(k,JSON.stringify({...state,autosavedAt:new Date().toISOString()}));}catch(e){}
+}
+function clearDraftLocal(){try{const k=draftAutosaveKey();if(k)localStorage.removeItem(k);}catch(e){}}
+function wireMemoPage(existingDraft=null){
+  const initial=existingDraft||null;
+  let rows=(initial?.items||[]).map(x=>({...x}));
   const search=document.getElementById('memoPartSearch'),suggest=document.getElementById('memoPartSuggestions');
+  let draftId=initial?.id||null;
+  let autoTimer=null;
   const recalc=()=>{
     let sub=0;rows.forEach((it,i)=>{sub+=Number(it.qty||0)*Number(it.unitPrice||0);const el=document.querySelector(`.memo-row-total[data-i="${i}"]`);if(el)el.textContent='৳'+money(Number(it.qty||0)*Number(it.unitPrice||0));});
     const d=Math.max(0,Number(document.getElementById('memoDiscount').value||0)),grand=Math.max(0,sub-d);
     document.getElementById('memoSubtotal').textContent='৳'+money(sub);document.getElementById('memoDiscountView').textContent='৳'+money(d);document.getElementById('memoGrandTotal').textContent='৳'+money(grand);
   };
-  const redraw=()=>{renderMemoRows(rows);document.querySelectorAll('.memo-qty').forEach(e=>e.oninput=()=>{rows[Number(e.dataset.i)].qty=Number(e.value||0);recalc();});document.querySelectorAll('.memo-price').forEach(e=>e.oninput=()=>{rows[Number(e.dataset.i)].unitPrice=Number(e.value||0);recalc();});document.querySelectorAll('.memo-remove').forEach(e=>e.onclick=()=>{rows.splice(Number(e.dataset.i),1);redraw();recalc();});recalc();};
+  const state=()=>buildMemoState(rows);
+  const autoSave=()=>{
+    const st=state();persistDraftLocal(st);
+    const status=document.getElementById('memoAutosaveStatus');if(status)status.textContent='Auto-saved locally • '+new Date().toLocaleTimeString('en-GB');
+    if(draftId){clearTimeout(autoTimer);autoTimer=setTimeout(async()=>{
+      const d=DB.dealerMemoDrafts.find(x=>String(x.id)===String(draftId));
+      if(d){Object.assign(d,st,{updatedAt:new Date().toISOString(),updatedAtDisplay:new Date().toLocaleString('bn-BD'),status:'DRAFT'});await saveDB();}
+    },1200);}
+  };
+  const redraw=()=>{renderMemoRows(rows);document.querySelectorAll('.memo-qty').forEach(e=>e.oninput=()=>{rows[Number(e.dataset.i)].qty=Number(e.value||0);recalc();autoSave();});document.querySelectorAll('.memo-price').forEach(e=>e.oninput=()=>{rows[Number(e.dataset.i)].unitPrice=Number(e.value||0);recalc();autoSave();});document.querySelectorAll('.memo-remove').forEach(e=>e.onclick=()=>{rows.splice(Number(e.dataset.i),1);redraw();autoSave();});recalc();};
   const add=(p)=>{
     const existing=rows.find(x=>String(x.partNo)===String(p.partNo)&&x.source===p._source);
-    if(existing){existing.qty=Number(existing.qty||0)+1;}
-    else rows.push({source:p._source,sourceLabel:p._sourceLabel,name:p.name,partNo:p.partNo,partId:p.id,qty:1,unitPrice:Number(p._price||0)});
-    suggest.innerHTML='';search.value='';redraw();
+    if(existing){existing.qty=Number(existing.qty||0)+1;} else rows.push({source:p._source,sourceLabel:p._sourceLabel,name:p.name,partNo:p.partNo,partId:p.id,qty:1,unitPrice:Number(p._price||0)});
+    suggest.innerHTML='';search.value='';redraw();autoSave();
   };
-  const showSuggest=()=>{
-    const found=dealerPartSearch(search.value).slice(0,8);
-    suggest.innerHTML=found.map((p,i)=>`<div class="part-card" data-pidx="${i}" style="cursor:pointer"><div style="flex:1"><b>${escHtml(displayPartNo(p.partNo))}</b><div class="nm">${escHtml(p.name)}</div></div><div><span class="source-badge ${p._source==='dealer'?'source-dealer':'source-company'}">${p._sourceLabel}</span><br><b>৳${money(p._price)}</b>${p._source==='dealer'?`<div class="hint">Stock: ${Number(p.currentStock||0)}</div>`:''}</div></div>`).join('');
-    suggest.querySelectorAll('[data-pidx]').forEach(el=>el.onclick=()=>add(found[Number(el.dataset.pidx)]));
+  const showSuggest=()=>{const found=dealerPartSearch(search.value).slice(0,8);suggest.innerHTML=found.map((p,i)=>`<div class="part-card" data-pidx="${i}" style="cursor:pointer"><div style="flex:1"><b>${escHtml(displayPartNo(p.partNo))}</b><div class="nm">${escHtml(p.name)}</div></div><div><span class="source-badge ${p._source==='dealer'?'source-dealer':'source-company'}">${p._sourceLabel}</span><br><b>৳${money(p._price)}</b>${p._source==='dealer'?`<div class="hint">Stock: ${Number(p.currentStock||0)}</div>`:''}</div></div>`).join('');suggest.querySelectorAll('[data-pidx]').forEach(el=>el.onclick=()=>add(found[Number(el.dataset.pidx)]));};
+  search.oninput=()=>{if(search.value.trim().length>=2)showSuggest();else suggest.innerHTML='';autoSave();};
+  ['memoCustomerName','memoCustomerMobile','memoPaymentInfo','memoNote'].forEach(id=>{document.getElementById(id).oninput=autoSave;});
+  document.getElementById('memoPaymentStatus').onchange=autoSave;
+  document.getElementById('memoDiscount').oninput=()=>{recalc();autoSave();};
+  document.getElementById('memoClear').onclick=()=>{if(confirm('Memo form clear করবেন?')){clearDraftLocal();dealerManageTab='search';go('dealerPortal');}};
+  document.getElementById('memoSaveDraft').onclick=async()=>{
+    const u=currentDealer();if(!u)return;
+    const st=state();
+    if(!st.items.length && !st.customerName){alert('Draft Save করতে অন্তত একটি Item অথবা Customer তথ্য দিন।');return;}
+    const now=new Date();
+    if(!draftId){
+      const id=Date.now()+Math.random();
+      draftId=id;
+      const allocatedNo=st.memoNo || ('M-'+String(DB.nextMemoNo||1).padStart(5,'0'));
+      st.memoNo=allocatedNo;
+      DB.nextMemoNo=Math.max(Number(DB.nextMemoNo||1)+1,Number(String(allocatedNo).replace(/\D/g,''))+1);
+      const draft={id,dealerId:u.id,dealerName:u.name,status:'DRAFT',createdAt:now.toISOString(),createdAtDisplay:now.toLocaleString('bn-BD'),updatedAt:now.toISOString(),updatedAtDisplay:now.toLocaleString('bn-BD'),dateISO:now.toISOString(),...st};
+      DB.dealerMemoDrafts.unshift(draft);
+      const memoInput=document.getElementById('memoNumber');if(memoInput)memoInput.value=allocatedNo;
+    }else{
+      const draft=DB.dealerMemoDrafts.find(x=>String(x.id)===String(draftId));
+      if(!draft){alert('Draft পাওয়া যায়নি।');return;}
+      Object.assign(draft,st,{updatedAt:now.toISOString(),updatedAtDisplay:now.toLocaleString('bn-BD'),status:'DRAFT'});
+    }
+    persistDraftLocal(st);await saveDB();
+    document.getElementById('memoAutosaveStatus').textContent='Draft Saved ✓';
+    alert(`Memo ${st.memoNo} Draft হিসেবে Save হয়েছে।`);
   };
-  search.oninput=()=>{if(search.value.trim().length>=2)showSuggest();else suggest.innerHTML='';};
-  document.getElementById('memoDiscount').oninput=recalc;
-  document.getElementById('memoClear').onclick=()=>{if(confirm('Memo form clear করবেন?'))go('dealerPortal');};
-  document.getElementById('memoSave').onclick=async()=>{
-    const u=currentDealer(), customerName=document.getElementById('memoCustomerName').value.trim();
-    if(!customerName){alert('Customer Name দিন।');return;}
-    if(!rows.length){alert('কমপক্ষে একটি Part add করুন।');return;}
-    // Validate stock before committing anything.
-    for(const it of rows){
+  document.getElementById('memoFinalSubmit').onclick=async()=>{
+    const u=currentDealer();if(!u)return;
+    const st=state();
+    if(!st.customerName){alert('Customer Name দিন।');return;}
+    if(!st.items.length){alert('কমপক্ষে একটি Part add করুন।');return;}
+    if(st.discount>st.subtotal){alert('Discount Subtotal-এর চেয়ে বেশি হতে পারবে না।');return;}
+    for(const it of st.items){
       if(it.source!=='dealer')continue;
       const p=dealerShopParts().find(x=>Number(x.id)===Number(it.partId));
       if(!p){alert('একটি Dealer Part আর পাওয়া যাচ্ছে না।');return;}
       if(Number(it.qty||0)>Number(p.currentStock||0)){alert(`Insufficient Stock\n${p.name}\nCurrent Stock: ${p.currentStock}\nRequested: ${it.qty}`);return;}
     }
-    const subtotal=rows.reduce((s,it)=>s+Number(it.qty||0)*Number(it.unitPrice||0),0);
-    const discount=Math.max(0,Number(document.getElementById('memoDiscount').value||0));
-    if(discount>subtotal){alert('Discount Subtotal-এর চেয়ে বেশি হতে পারবে না।');return;}
-    const now=new Date(), number=document.getElementById('memoNumber').value;
-    DB.nextMemoNo = Math.max(Number(DB.nextMemoNo||1)+1, Number(String(number).replace(/\D/g,''))+1);
-    const memo={id:Date.now()+Math.random(),dealerId:u.id,dealerName:u.name,dealerPhone:u.phone,memoNo:number,date:now.toLocaleString('bn-BD'),dateISO:now.toISOString(),customerName,customerMobile:document.getElementById('memoCustomerMobile').value.trim(),paymentStatus:document.getElementById('memoPaymentStatus').value,paymentInfo:document.getElementById('memoPaymentInfo').value.trim(),note:document.getElementById('memoNote').value.trim(),items:rows.map(x=>({...x})),subtotal,discount,grandTotal:subtotal-discount};
-    // Commit stock deductions.
-    rows.filter(x=>x.source==='dealer').forEach(it=>{
-      const p=dealerShopParts().find(x=>Number(x.id)===Number(it.partId));
-      const prev=Number(p.currentStock||0),out=Number(it.qty||0);p.currentStock=prev-out;
-      addStockHistory(p,prev,0,out,p.currentStock,'Sold via Memo',number);
-    });
+    if(!confirm(`Memo ${st.memoNo} FINAL SUBMIT করবেন?\nFinal Submit-এর পর এটি Draft থাকবে না।`))return;
+    const now=new Date();
+    const memo={id:Date.now()+Math.random(),dealerId:u.id,dealerName:u.name,dealerPhone:u.phone,memoNo:st.memoNo,date:now.toLocaleString('bn-BD'),dateISO:now.toISOString(),customerName:st.customerName,customerMobile:st.customerMobile,paymentStatus:st.paymentStatus,paymentInfo:st.paymentInfo,note:st.note,items:st.items.map(x=>({...x})),subtotal:st.subtotal,discount:st.discount,grandTotal:st.grandTotal,status:'SUBMITTED'};
+    DB.nextMemoNo=Math.max(Number(DB.nextMemoNo||1)+1,Number(String(st.memoNo).replace(/\D/g,''))+1);
+    st.items.filter(x=>x.source==='dealer').forEach(it=>{const p=dealerShopParts().find(x=>Number(x.id)===Number(it.partId));const prev=Number(p.currentStock||0),out=Number(it.qty||0);p.currentStock=prev-out;addStockHistory(p,prev,0,out,p.currentStock,'Sold via Memo',st.memoNo);});
     DB.dealerMemos.unshift(memo);
-    await saveDB();
-    showSavedMemoActions(memo);
+    if(draftId)DB.dealerMemoDrafts=DB.dealerMemoDrafts.filter(x=>String(x.id)!==String(draftId));
+    clearDraftLocal();await saveDB();showSavedMemoActions(memo);
   };
   redraw();
+  // Restore a local auto-saved session if it is newer than the loaded draft and the form is otherwise empty.
+  if(!initial){
+    try{const raw=localStorage.getItem(draftAutosaveKey());if(raw){const a=JSON.parse(raw);if(a&&Array.isArray(a.items)&&a.items.length){
+      rows=a.items.map(x=>({...x}));
+      ['memoCustomerName','memoCustomerMobile','memoPaymentInfo','memoNote'].forEach(id=>{const key=id.replace('memo','').replace(/^[A-Z]/,c=>c.toLowerCase());});
+      document.getElementById('memoCustomerName').value=a.customerName||'';document.getElementById('memoCustomerMobile').value=a.customerMobile||'';document.getElementById('memoPaymentInfo').value=a.paymentInfo||'';document.getElementById('memoNote').value=a.note||'';document.getElementById('memoDiscount').value=Number(a.discount||0);if(a.paymentStatus)document.getElementById('memoPaymentStatus').value=a.paymentStatus;redraw();
+      document.getElementById('memoAutosaveStatus').textContent='Local auto-save restored ✓ — SAVE DRAFT চাপুন';
+    }}}catch(e){}
+  }
+}
+function continueDealerMemoDraft(id){
+  const d=draftListForDealer().find(x=>String(x.id)===String(id));if(!d){alert('Draft পাওয়া যায়নি।');return;}
+  window._editingMemoDraft=d;dealerManageTab='memo';go('dealerPortal');
+}
+function deleteDealerMemoDraft(id){
+  const d=draftListForDealer().find(x=>String(x.id)===String(id));if(!d)return;
+  if(!confirm(`Draft ${d.memoNo} delete করবেন?`))return;
+  DB.dealerMemoDrafts=DB.dealerMemoDrafts.filter(x=>String(x.id)!==String(id));saveDB();dealerManageTab='memoDrafts';go('dealerPortal');
 }
 function showSavedMemoActions(memo){
   openModal(`<h3>✅ Memo Saved</h3><p style="margin:0">Memo No: <b class="mono">${escHtml(memo.memoNo)}</b><br>Grand Total: <b>৳${money(memo.grandTotal)}</b></p>
     <div class="modal-actions"><button class="btn btn-primary" onclick="printDealerMemo(${JSON.stringify(memo.id)});closeModal()">🖨️ Print</button><button class="btn btn-ghost" onclick="closeModal();go('dealerPortal')">ঠিক আছে</button></div>`);
 }
 function memoHistoryHTML(){
-  const list=dealerMemos();
+  const list=dealerMemos().filter(m=>m.status!=='DRAFT');
   return `<div class="card-head"><h3>📜 Memo History (${list.length})</h3></div><div class="card"><div style="overflow-x:auto"><table style="min-width:780px"><thead><tr><th>Memo No.</th><th>Date</th><th>Customer</th><th>Total</th><th>Payment</th><th>Action</th></tr></thead><tbody>
   ${list.length?list.map(m=>`<tr><td class="mono">${escHtml(m.memoNo)}</td><td>${escHtml(m.date)}</td><td>${escHtml(m.customerName)}<div class="hint">${escHtml(m.customerMobile||'')}</div></td><td>৳${money(m.grandTotal)}</td><td>${escHtml(m.paymentStatus)}</td><td><div class="row-actions"><button class="btn btn-ghost btn-sm" onclick="viewDealerMemo(${JSON.stringify(m.id)})">👁️ View</button><button class="btn btn-primary btn-sm" onclick="printDealerMemo(${JSON.stringify(m.id)})">🖨️ Reprint</button></div></td></tr>`).join(''):'<tr><td colspan="6"><div class="empty">এখনো কোনো Memo নেই।</div></td></tr>'}
   </tbody></table></div></div>`;
 }
 function memoDetailsHTML(m){
-  return `<div class="memo-print-sheet"><div style="text-align:center;border-bottom:2px solid #12233d;padding-bottom:10px;margin-bottom:12px"><h2 style="margin:0">${escHtml(DB.settings.companyName)}</h2><div>Dealer Memo / Invoice</div></div>
+  return `<div class="memo-print-sheet"><div style="text-align:center;border-bottom:2px solid #12233d;padding-bottom:10px;margin-bottom:12px"><h2 style="margin:0">${escHtml(m.dealerName||DB.settings.companyName)}</h2><div>Dealer Memo / Invoice</div></div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:13px"><div><b>Memo No:</b> ${escHtml(m.memoNo)}</div><div><b>Date:</b> ${escHtml(m.date)}</div><div><b>Customer:</b> ${escHtml(m.customerName)}</div><div><b>Mobile:</b> ${escHtml(m.customerMobile||'-')}</div><div><b>Payment:</b> ${escHtml(m.paymentStatus)}</div><div><b>Payment Info:</b> ${escHtml(m.paymentInfo||'-')}</div></div>
   <div style="overflow-x:auto;margin-top:14px"><table style="width:100%;border-collapse:collapse"><thead><tr><th>SL</th><th>Source</th><th>Part Name</th><th>Part No.</th><th>Qty</th><th>Unit Price</th><th>Total</th></tr></thead><tbody>${m.items.map((it,i)=>`<tr><td>${i+1}</td><td>${it.source==='dealer'?'Dealer':'Company'}</td><td>${escHtml(it.name)}</td><td class="mono">${escHtml(displayPartNo(it.partNo))}</td><td>${it.qty}</td><td>৳${money(it.unitPrice)}</td><td>৳${money(Number(it.qty)*Number(it.unitPrice))}</td></tr>`).join('')}</tbody></table></div>
   <div style="margin-left:auto;max-width:300px;margin-top:12px"><div style="display:flex;justify-content:space-between"><b>Subtotal</b><b>৳${money(m.subtotal)}</b></div><div style="display:flex;justify-content:space-between"><b>Discount</b><b>৳${money(m.discount)}</b></div><div style="display:flex;justify-content:space-between;font-size:18px;border-top:2px solid #12233d;margin-top:5px;padding-top:5px"><b>Grand Total</b><b>৳${money(m.grandTotal)}</b></div></div>
@@ -1462,7 +1543,8 @@ function dealerPortalRender(){
   const u=currentDealer();
   if(!u){go('dealerLogin');return;}
   let content='';
-  if(dealerManageTab==='memo')content=memoEditorHTML();
+  if(dealerManageTab==='memo'){ const ed=window._editingMemoDraft||null; window._memoDraftForWire=ed; window._editingMemoDraft=null; content=memoEditorHTML(ed); }
+  else if(dealerManageTab==='memoDrafts')content=memoDraftsHTML();
   else if(dealerManageTab==='memoHistory')content=memoHistoryHTML();
   else if(dealerManageTab==='shopParts')content=dealerShopPartsHTML();
   else if(dealerManageTab==='stock')content=stockHTML();
@@ -1471,7 +1553,7 @@ function dealerPortalRender(){
   document.getElementById('app').appendChild(el(`<div>${dealerTopbar()}<div class="wrap">${dealerDashboardCards()}${dealerNavHTML()}${content}</div></div><div class="modal-bg" id="modalBg"><div class="modal" id="modalBody"></div></div>`));
   document.getElementById('dealerLogout').onclick=()=>{DB.session={role:null,user:null};go('landing');};
   document.getElementById('modalBg').addEventListener('click',ev=>{if(ev.target.id==='modalBg')closeModal();});
-  if(dealerManageTab==='memo')wireMemoPage();
+  if(dealerManageTab==='memo'){ const ed=window._memoDraftForWire||null; window._memoDraftForWire=null; wireMemoPage(ed); }
   if(dealerManageTab==='shopParts')wireDealerShopParts();
   if(dealerManageTab==='search'){
     document.getElementById('dealerUnifiedSearch').addEventListener('input',()=>{clearTimeout(window._dealerSearchTimer);window._dealerSearchTimer=setTimeout(renderDealerUnifiedSearch,180);});
@@ -1502,9 +1584,9 @@ ROUTES.dealerSearch = function(){
       <div class="wrap">
         <div class="search-hero">
           <h2>পার্ট নম্বর সার্চ করুন</h2>
-          <p>শুধু মূল সংখ্যাটি লিখুন — কোড বা সাফিক্স (m01, m91 ইত্যাদি) লেখার দরকার নেই</p>
+          <p>পার্ট নম্বর/নাম, আংশিক নম্বর বা শেষের ৪/৫টি সংখ্যা দিয়েও খুঁজুন</p>
           <div class="big-search">
-            <input type="text" id="q" placeholder="যেমনঃ 97200754 বা ইঞ্জিন" inputmode="text">
+            <input type="text" id="q" placeholder="যেমনঃ 97200754 বা 0754 বা ইঞ্জিন" inputmode="text">
             <button class="btn btn-primary" id="go">সার্চ</button>
           </div>
         </div>
@@ -1514,40 +1596,68 @@ ROUTES.dealerSearch = function(){
   `));
   document.getElementById('logout').onclick = ()=>{ DB.session={role:null,user:null}; go('landing'); };
   const input = document.getElementById('q');
-  const MAX_NEAR = 10;
-  const runSearch = ()=>{
-    const raw = input.value.trim();
+  const PAGE = 10;
+  let currentPage = 1;
+  let currentResults = [];
+  let currentIsExact = false;
+
+  const scorePart = (p, qDigits, qText)=>{
+    const pn = String(p.partNo||'').toLowerCase();
+    const name = String(p.name||'').toLowerCase();
+    let score = 0;
+    if(qText && pn === qText) score += 1000;
+    if(qText && name === qText) score += 900;
+    if(qDigits && p.core === qDigits) score += 850;
+    if(qText && pn.includes(qText)) score += 700;
+    if(qText && name.includes(qText)) score += 600;
+    if(qDigits && p.core.includes(qDigits)) score += 500;
+    if(qDigits && pn.replace(/\D/g,'').includes(qDigits)) score += 450;
+    return score;
+  };
+  const renderPage = ()=>{
     const results = document.getElementById('results');
+    const totalPages = Math.max(1, Math.ceil(currentResults.length/PAGE));
+    if(currentPage > totalPages) currentPage = totalPages;
+    const start = (currentPage-1)*PAGE;
+    const pageItems = currentResults.slice(start,start+PAGE);
+    let html = '';
+    if(!pageItems.length){ results.innerHTML='<div class="empty">😕 কোনো পার্ট পাওয়া যায়নি</div>'; return; }
+    if(!currentIsExact && currentResults.length) html += `<div class="group-label">কাছাকাছি/মিল থাকা আইটেম — মোট ${currentResults.length}টি</div>`;
+    pageItems.forEach(p=>{ recordRecentView(p); html += partCardHTML(p, currentIsExact, digitsOnly(input.value.trim()), true); });
+    if(totalPages>1){
+      html += `<div class="search-pagination">
+        <button class="btn btn-navy search-next" id="dealerNext" ${currentPage>=totalPages?'disabled':''}>NEXT ➜</button>
+        <span class="page-info">Page ${currentPage} / ${totalPages}</span>
+      </div>`;
+    }
+    results.innerHTML=html;
+    const next=document.getElementById('dealerNext');
+    if(next) next.onclick=()=>{ if(currentPage<totalPages){currentPage++;renderPage();window.scrollTo({top:document.getElementById('results').offsetTop-20,behavior:'smooth'});} };
+  };
+
+  const runSearch = ()=>{
+    const raw=input.value.trim();
+    const results=document.getElementById('results');
+    currentPage=1; currentResults=[]; currentIsExact=false;
     if(!raw){ results.innerHTML=recentViewedHTML(); return; }
-    if(raw.length < 3){ results.innerHTML = `<div class="empty">অন্তত ৩ অক্ষর/সংখ্যা লিখুন</div>`; return; }
-    const qDigits = digitsOnly(raw);
-    const qText = raw.toLowerCase();
-    const exact = [], near = [];
+    if(raw.length<3){ results.innerHTML='<div class="empty">অন্তত ৩ অক্ষর/সংখ্যা লিখুন</div>'; return; }
+    const qDigits=digitsOnly(raw), qText=raw.toLowerCase();
+    const exact=[], near=[];
     for(const p of DB.parts){
-      if(qDigits && p.core === qDigits){ exact.push(p); continue; }
-      const nameMatch = p.nameLower.includes(qText);
-      if((qDigits && (p.core.includes(qDigits) || qDigits.includes(p.core))) || nameMatch){ near.push(p); }
+      const pn=String(p.partNo||'').toLowerCase(), name=String(p.name||'').toLowerCase();
+      const core=String(p.core||'');
+      if((qDigits && core===qDigits) || pn===qText){ exact.push(p); continue; }
+      if((qDigits && (core.includes(qDigits) || pn.replace(/\D/g,'').includes(qDigits))) || name.includes(qText) || pn.includes(qText)) near.push(p);
     }
-    if(exact.length===0 && near.length===0){
-      results.innerHTML = `<div class="empty">😕 কোনো পার্ট পাওয়া যায়নি</div>`;
-      return;
-    }
-    let html='';
-    // পুরো নম্বর মিললে শুধু সেটাই দেখাবে — কাছাকাছি দেখাবে না
-    if(exact.length){
-      exact.forEach(p=>{ html += partCardHTML(p, true); recordRecentView(p); });
-    } else if(near.length){
-      html += `<div class="group-label">কাছাকাছি আইটেম</div>`;
-      near.slice(0, MAX_NEAR).forEach(p=> html += partCardHTML(p, false, qDigits));
-      if(near.length > MAX_NEAR){
-        html += `<div class="hint" style="text-align:center;margin-top:8px">মোট ${near.length}টি মিলেছে — আরও নির্দিষ্ট করে লিখুন</div>`;
-      }
-    }
-    results.innerHTML = html;
+    const list = exact.length ? exact : near;
+    if(!list.length){ results.innerHTML='<div class="empty">😕 কোনো পার্ট পাওয়া যায়নি</div>'; return; }
+    currentIsExact=exact.length>0;
+    currentResults=list.slice().sort((a,b)=>scorePart(b,qDigits,qText)-scorePart(a,qDigits,qText));
+    renderPage();
   };
   let searchTimer;
-  input.addEventListener('input', ()=>{ clearTimeout(searchTimer); searchTimer = setTimeout(runSearch, 180); });
-  document.getElementById('go').onclick = runSearch;
+  input.addEventListener('input',()=>{clearTimeout(searchTimer);searchTimer=setTimeout(runSearch,180);});
+  document.getElementById('go').onclick=runSearch;
 };
 
 /* ---- Dealer Vehicle Model Search ---- */
@@ -1963,13 +2073,13 @@ function displayPartNo(partNo){
   const idx = partNo.toUpperCase().lastIndexOf('IMPT.');
   return idx >= 0 ? partNo.slice(idx + 5) : partNo;
 }
-function partCardHTML(p, isExact, highlightQuery){
+function partCardHTML(p, isExact, highlightQuery, searchHit=false){
   const waText = encodeURIComponent(`Part No: ${displayPartNo(p.partNo)}\nName: ${p.name}\nPrice: ৳${p.price}`);
   const shownPartNo = highlightQuery ? highlightMatch(displayPartNo(p.partNo), highlightQuery) : displayPartNo(p.partNo);
-  return `<div class="part-card${isExact ? ' exact' : ''}">
+  return `<div class="part-card${isExact ? ' exact' : ''}${searchHit ? ' search-hit' : ''}">
     <div>
       <div class="pn" style="font-weight:700">Part No. ${shownPartNo}</div>
-      <div class="nm" style="font-weight:700;color:var(--text);margin-top:3px">${p.name}</div>
+      <div class="nm" style="font-weight:700;color:var(--text);margin-top:3px">${searchHit && highlightQuery && !/\d/.test(highlightQuery) ? highlightMatch(p.name, highlightQuery.toLowerCase()) : p.name}</div>
     </div>
     <div style="display:flex;align-items:center;gap:10px">
       <div class="pr">৳${p.price}</div>
@@ -2094,40 +2204,11 @@ function peSearchTabHTML(){
   `;
 }
 function wirePeSearchTab(){
-  const input = document.getElementById('peQ');
-  const MAX_NEAR = 10;
-  const runSearch = ()=>{
-    const raw = input.value.trim();
-    const results = document.getElementById('peResults');
-    if(!raw){ results.innerHTML=''; return; }
-    if(raw.length < 3){ results.innerHTML = `<div class="empty">অন্তত ৩ অক্ষর/সংখ্যা লিখুন</div>`; return; }
-    const qDigits = digitsOnly(raw);
-    const qText = raw.toLowerCase();
-    const exact = [], near = [];
-    for(const p of DB.parts){
-      if(qDigits && p.core === qDigits){ exact.push(p); continue; }
-      const nameMatch = p.nameLower.includes(qText);
-      if((qDigits && (p.core.includes(qDigits) || qDigits.includes(p.core))) || nameMatch){ near.push(p); }
-    }
-    if(exact.length===0 && near.length===0){
-      results.innerHTML = `<div class="empty">😕 কোনো পার্ট পাওয়া যায়নি</div>`;
-      return;
-    }
-    let html='';
-    if(exact.length){
-      exact.forEach(p=>{ html += partCardHTML(p, true); });
-    } else if(near.length){
-      html += `<div class="group-label">কাছাকাছি আইটেম</div>`;
-      near.slice(0, MAX_NEAR).forEach(p=> html += partCardHTML(p, false, qDigits));
-      if(near.length > MAX_NEAR){
-        html += `<div class="hint" style="text-align:center;margin-top:8px">মোট ${near.length}টি মিলেছে — আরও নির্দিষ্ট করে লিখুন</div>`;
-      }
-    }
-    results.innerHTML = html;
-  };
-  let searchTimer;
-  input.addEventListener('input', ()=>{ clearTimeout(searchTimer); searchTimer = setTimeout(runSearch, 180); });
-  document.getElementById('peGo').onclick = runSearch;
+  const input=document.getElementById('peQ'); const PAGE=10; let page=1; let list=[]; let exactMode=false;
+  const score=(p,qd,qt)=>{ const pn=String(p.partNo||'').toLowerCase(), n=String(p.name||'').toLowerCase(); let x=0; if(qt&&pn===qt)x+=1000;if(qt&&n===qt)x+=900;if(qd&&p.core===qd)x+=850;if(qt&&pn.includes(qt))x+=700;if(qt&&n.includes(qt))x+=600;if(qd&&String(p.core).includes(qd))x+=500;return x; };
+  const render=()=>{ const box=document.getElementById('peResults'); const pages=Math.max(1,Math.ceil(list.length/PAGE)); if(page>pages)page=pages; const items=list.slice((page-1)*PAGE,page*PAGE); let html=exactMode?'':'<div class="group-label">কাছাকাছি/মিল থাকা আইটেম — মোট '+list.length+'টি</div>'; items.forEach(p=>html+=partCardHTML(p,exactMode,digitsOnly(input.value.trim()),true)); if(pages>1) html+=`<div class="search-pagination"><button class="btn btn-navy search-next" id="peNext" ${page>=pages?'disabled':''}>NEXT ➜</button><span class="page-info">Page ${page} / ${pages}</span></div>`; box.innerHTML=html; const b=document.getElementById('peNext'); if(b)b.onclick=()=>{page++;render();}; };
+  const run=()=>{ const raw=input.value.trim(); const box=document.getElementById('peResults'); page=1; list=[]; exactMode=false; if(!raw){box.innerHTML='';return;} if(raw.length<3){box.innerHTML='<div class="empty">অন্তত ৩ অক্ষর/সংখ্যা লিখুন</div>';return;} const qd=digitsOnly(raw),qt=raw.toLowerCase(),exact=[],near=[]; DB.parts.forEach(p=>{const pn=String(p.partNo||'').toLowerCase(),n=String(p.name||'').toLowerCase(),c=String(p.core||'');if((qd&&c===qd)||pn===qt)exact.push(p);else if((qd&&(c.includes(qd)||pn.replace(/\D/g,'').includes(qd)))||n.includes(qt)||pn.includes(qt))near.push(p);}); list=(exact.length?exact:near).slice().sort((a,b)=>score(b,qd,qt)-score(a,qd,qt)); exactMode=exact.length>0; if(!list.length){box.innerHTML='<div class="empty">😕 কোনো পার্ট পাওয়া যায়নি</div>';return;} render(); };
+  let t; input.addEventListener('input',()=>{clearTimeout(t);t=setTimeout(run,180);}); document.getElementById('peGo').onclick=run;
 }
 function peUsersTabHTML(){
   const mine = myPeUsers();
@@ -2553,38 +2634,23 @@ function partsTable(list, totalCount, searchQuery=''){
   </div>`;
 }
 function wirePartsTab(){
-  const PAGE = 100;
-  let currentQuery = '';
-  const renderTable = (q='')=>{
-    currentQuery = q;
-    let matched;
-    if(q){
-      const qd = digitsOnly(q), qt = q.toLowerCase();
-      matched = DB.parts.filter(p=> p.nameLower.includes(qt) || (qd && (p.core.includes(qd) || qd.includes(p.core))));
-      matched = matched.slice().sort((a,b)=>{
-        const aExact = a.partNo.toLowerCase().includes(qt) || a.nameLower.includes(qt);
-        const bExact = b.partNo.toLowerCase().includes(qt) || b.nameLower.includes(qt);
-        return (bExact?1:0) - (aExact?1:0);
-      });
-    } else {
-      matched = DB.parts;
-    }
-    document.getElementById('partsTableWrap').innerHTML = partsTable(matched.slice(0, PAGE), matched.length, q);
+  const PAGE=100; let currentQuery=''; let currentPage=1; let matched=[];
+  const renderTable=(q='',reset=true)=>{
+    currentQuery=q; if(reset)currentPage=1;
+    if(q){const qd=digitsOnly(q),qt=q.toLowerCase(); matched=DB.parts.filter(p=>p.nameLower.includes(qt)||(qd&&(p.core.includes(qd)||qd.includes(p.core)))||p.partNo.toLowerCase().includes(qt)); matched=matched.slice().sort((a,b)=>{const qd2=digitsOnly(q),qt2=q.toLowerCase();const score=p=>((p.partNo.toLowerCase()===qt2)?1000:0)+((p.nameLower===qt2)?900:0)+((qd2&&p.core===qd2)?850:0)+((p.partNo.toLowerCase().includes(qt2))?700:0)+((p.nameLower.includes(qt2))?600:0)+((qd2&&p.core.includes(qd2))?500:0);return score(b)-score(a);});}else matched=DB.parts.slice();
+    const pages=Math.max(1,Math.ceil(matched.length/PAGE)); if(currentPage>pages)currentPage=pages;
+    const items=matched.slice((currentPage-1)*PAGE,currentPage*PAGE);
+    let html=partsTable(items,matched.length,q);
+    if(matched.length>PAGE){html+=`<div class="search-pagination"><button class="btn btn-navy search-next" id="adminPartsNext" ${currentPage>=pages?'disabled':''}>NEXT ➜</button><span class="page-info">Page ${currentPage} / ${pages}</span></div>`;}
+    document.getElementById('partsTableWrap').innerHTML=html;
+    const nb=document.getElementById('adminPartsNext'); if(nb)nb.onclick=()=>{if(currentPage<pages){currentPage++;renderTable(currentQuery,false);document.getElementById('partsTableWrap').scrollIntoView({behavior:'smooth',block:'start'});}};
   };
   renderTable();
-  let searchTimer;
-  document.getElementById('partSearch').addEventListener('input', e=>{
-    const q = e.target.value.trim();
-    clearTimeout(searchTimer);
-    searchTimer = setTimeout(()=> renderTable(q), 180);
-  });
-  document.getElementById('searchPartBtn').onclick = ()=>{
-    const q = document.getElementById('partSearch').value.trim();
-    renderTable(q);
-  };
-  document.getElementById('addPart').onclick = ()=> openPartModal();
-  document.getElementById('excelFile').addEventListener('change', handleExcelUpload);
-  document.getElementById('exportParts').onclick = exportPartsExcel;
+  let searchTimer; document.getElementById('partSearch').addEventListener('input',e=>{const q=e.target.value.trim();clearTimeout(searchTimer);searchTimer=setTimeout(()=>renderTable(q,true),180);});
+  document.getElementById('searchPartBtn').onclick=()=>renderTable(document.getElementById('partSearch').value.trim(),true);
+  document.getElementById('addPart').onclick=()=>openPartModal();
+  document.getElementById('excelFile').addEventListener('change',handleExcelUpload);
+  document.getElementById('exportParts').onclick=exportPartsExcel;
 }
 function exportPartsExcel(){
   const data = DB.parts.map(p=>({ 'পার্ট নম্বর': displayPartNo(p.partNo), 'নাম': p.name, 'ক্যাটাগরি': p.category||'', 'মূল্য': p.price }));
@@ -2914,6 +2980,9 @@ function wirePartsEngineersTab(){
   document.getElementById('addPe').onclick = ()=> openPeModal();
   document.getElementById('exportPe').onclick = exportPeExcel;
 }
+
+const PARTS_ENGINEER_REGIONS = ['Dhaka', 'Gazipur', 'Kishoreganj', 'Munshiganj', 'Tangail', 'Chattogram', 'Cumilla', 'Brahmanbaria', 'Noakhali', 'Rajshahi', 'Natore', 'Naogaon', 'Jashore', 'Chuadanga', 'Barishal', 'Bhola', 'Sylhet', 'Rangpur', 'Dinajpur', 'Thakurgaon', 'Nilphamari', 'Lalmonirhat', 'Gaibandha', 'Mymensingh', 'Jamalpur'];
+
 function openPeModal(pe){
   const isEdit = !!pe;
   openModal(`
@@ -2921,7 +2990,13 @@ function openPeModal(pe){
     <div class="field"><label>নাম</label><input type="text" id="mPeName" value="${pe?pe.name:''}"></div>
     <div class="field"><label>মোবাইল নম্বর</label><input type="text" id="mPePhone" value="${pe?pe.phone:''}"></div>
     <div class="field"><label>পাসওয়ার্ড</label><input type="text" id="mPePw" value="${pe?pe.password:''}"></div>
-    <div class="field"><label>রিজিয়ন</label><input type="text" id="mPeRegion" placeholder="যেমন: ঢাকা, চট্টগ্রাম, রংপুর বিভাগ" value="${pe?(pe.region||''):''}"></div>
+    <div class="field">
+      <label>রিজিয়ন</label>
+      <select id="mPeRegion" required>
+        <option value="">— একটি Region নির্বাচন করুন —</option>
+        ${PARTS_ENGINEER_REGIONS.map(r=>`<option value="${r}" ${pe&&pe.region===r?'selected':''}>${r}</option>`).join('')}
+      </select>
+    </div>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal()">বাতিল</button>
       <button class="btn btn-primary" id="savePe">সংরক্ষণ করুন</button>
@@ -2931,8 +3006,9 @@ function openPeModal(pe){
     const name = document.getElementById('mPeName').value.trim();
     const phone = document.getElementById('mPePhone').value.trim();
     const password = document.getElementById('mPePw').value.trim();
-    const region = document.getElementById('mPeRegion').value.trim();
-    if(!name || !phone || !password || !region) { alert('সব ঘর পূরণ করুন — নাম, মোবাইল, পাসওয়ার্ড, রিজিয়ন প্রয়োজন।'); return; }
+    const region = document.getElementById('mPeRegion').value;
+    if(!name || !phone || !password || !region) { alert('সব ঘর পূরণ করুন — নাম, মোবাইল, পাসওয়ার্ড, রিজিয়ন নির্বাচন করুন।'); return; }
+    if(!PARTS_ENGINEER_REGIONS.includes(region)) { alert('অনুগ্রহ করে তালিকা থেকে একটি বৈধ Region নির্বাচন করুন।'); return; }
     if(isEdit){
       Object.assign(pe, {name,phone,password,region});
       logHistory(`Parts Engineer আপডেট: ${name} (${region})`);
