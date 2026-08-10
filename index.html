@@ -787,21 +787,19 @@ function showSplash(callback){
   const splash = document.createElement('div');
   splash.id = 'splash-screen';
   splash.innerHTML = `
-    <div style="position:fixed;inset:0;background:linear-gradient(135deg,var(--navy),var(--navy-2));display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;font-family:'Hind Siliguri',sans-serif;">
-      <div style="text-align:center;">
-        <div style="font-size:48px;font-weight:700;color:#fff;margin-bottom:12px;letter-spacing:2px;">Welcome to</div>
-        <div style="font-size:42px;font-weight:700;color:var(--amber);margin-bottom:20px;">Metal Parts</div>
-        <div style="font-size:14px;color:rgba(255,255,255,0.7);margin-top:24px;">Powered by</div>
-        <div style="font-size:16px;color:#fff;font-weight:600;margin-top:6px;letter-spacing:0.5px;">প্রোকৌশলী মোঃ রফিকুল ইসলাম</div>
-      </div>
+    <div style="position:fixed;inset:0;background:linear-gradient(135deg,var(--navy),var(--navy-2));display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;font-family:'Hind Siliguri',sans-serif;padding:24px;text-align:center;">
+      <img src="${METAL_LOGO_IMG}" alt="Metal Parts" style="width:1.6in;height:1.2in;object-fit:contain;display:block;margin-bottom:22px;">
+      <div style="font-size:22px;font-weight:600;color:rgba(255,255,255,0.85);letter-spacing:1px;">Welcome to</div>
+      <div style="font-size:30px;font-weight:700;color:var(--amber);margin-top:6px;line-height:1.3;max-width:340px;">Metal Parts Price Finder</div>
+      <div style="font-size:14px;color:rgba(255,255,255,0.7);margin-top:14px;max-width:300px;line-height:1.5;">Parts Price &amp; Information Management System</div>
     </div>
   `;
   document.body.appendChild(splash);
   setTimeout(()=>{
     splash.style.opacity = '0';
-    splash.style.transition = 'opacity 0.5s ease-out';
-    setTimeout(()=>{ splash.remove(); callback(); }, 500);
-  }, 3000);
+    splash.style.transition = 'opacity 0.4s ease-out';
+    setTimeout(()=>{ splash.remove(); callback(); }, 400);
+  }, 2000);
 }
 
 function go(route){ 
@@ -880,9 +878,6 @@ ROUTES.landing = function(){
   const app = document.getElementById('app');
   app.appendChild(el(`
     <div class="center-screen">
-      <div class="metal-logo-badge" style="position:fixed;top:16px;left:16px;z-index:10;">
-        <img src="${METAL_LOGO_IMG}" alt="Metal" class="metal-logo-img" style="width:2in;height:1.5in;object-fit:contain;display:block;">
-      </div>
       <button class="theme-toggle" onclick="toggleTheme()" style="position:fixed;top:16px;right:16px;z-index:10;width:40px;height:40px;border-radius:12px;border:1px solid var(--line);background:var(--card);font-size:18px;cursor:pointer;">🌙</button>
       <div class="gate" style="max-width:400px;">
         <div class="gate-top">
@@ -948,10 +943,7 @@ ROUTES.adminLogin = function(){
       try{
         await fbEnsureAuth(DB.settings, pw, 'admin');
       }catch(err){
-        console.error('Firebase admin auth failed:', err);
-        btn.disabled = false; btn.textContent = 'প্রবেশ করুন';
-        e.style.display='block'; e.textContent='সার্ভারে সংযোগে সমস্যা হয়েছে, আবার চেষ্টা করুন';
-        return;
+        console.warn('Firebase admin auth skipped (offline/network issue), continuing with local login:', err);
       }
       DB.session = {role:'admin', user:{name:'Admin'}};
       recordLogin('Admin', 'admin', '');
@@ -1169,10 +1161,7 @@ ROUTES.dealerLogin = function(){
     try{
       await fbEnsureAuth(u, pw, 'dealer');
     }catch(err){
-      console.error('Firebase dealer auth failed:', err);
-      btn.disabled = false; btn.textContent = 'লগইন করুন';
-      e.style.display='block'; e.textContent='সার্ভারে সংযোগে সমস্যা হয়েছে, আবার চেষ্টা করুন';
-      return;
+      console.warn('Firebase dealer auth skipped (offline/network issue), continuing with local login:', err);
     }
     DB.session = {role:'dealer', user:u};
     recordLogin(u.name, u.role, u.phone);
@@ -1216,10 +1205,7 @@ ROUTES.peLogin = function(){
     try{
       await fbEnsureAuth(pe, pw, 'pe');
     }catch(err){
-      console.error('Firebase parts-engineer auth failed:', err);
-      btn.disabled = false; btn.textContent = 'লগইন করুন';
-      e.style.display='block'; e.textContent='সার্ভারে সংযোগে সমস্যা হয়েছে, আবার চেষ্টা করুন';
-      return;
+      console.warn('Firebase parts-engineer auth skipped (offline/network issue), continuing with local login:', err);
     }
     DB.session = {role:'partsEngineer', user:pe};
     recordLogin(pe.name, 'partsEngineer', pe.phone);
@@ -4005,10 +3991,10 @@ function wireSettingsTab(){
 /* ================= INIT ================= */
 if(SYNC_ON){
   document.getElementById('app').innerHTML = `<div class="center-screen"><div style="text-align:center;color:var(--muted)">🔄 Google Sheet থেকে ডেটা লোড হচ্ছে...</div></div>`;
-  loadFromSheet().then(render);
+  loadFromSheet().then(()=>{ splashShown = true; showSplash(render); });
 } else {
   document.getElementById('app').innerHTML = `<div class="center-screen"><div style="text-align:center;color:var(--muted)">🔄 ডেটা লোড হচ্ছে...</div></div>`;
-  loadDB().then(()=>{ ensureCores(); render(); });
+  loadDB().then(()=>{ ensureCores(); splashShown = true; showSplash(render); });
 }
 </script>
 </body>
