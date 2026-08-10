@@ -276,6 +276,22 @@ if('serviceWorker' in navigator){
   .dash-bleed-top{padding:20px;}
   .dash-bleed{padding:20px;border-radius:12px;margin:-20px;}
 
+  /* ---------- Admin Panel: Left Sidebar (desktop) with METAL branding ---------- */
+  .admin-sidebar{display:none;}
+  .admin-mobile-logo{display:flex;align-items:center;gap:8px;flex-shrink:0;}
+  .admin-mobile-logo img{height:26px;width:auto;object-fit:contain;display:block;}
+  @media(min-width:900px){
+    .admin-sidebar{display:flex;flex-direction:column;position:fixed;left:0;top:0;bottom:0;width:212px;background:#0d2b3f;border-right:1px solid rgba(255,255,255,0.12);z-index:40;overflow-y:auto;}
+    .admin-outer, .dash-bleed-top{padding-left:212px;}
+    .admin-sidebar-logo{padding:22px 16px;text-align:center;border-bottom:1px solid rgba(255,255,255,0.12);background:#fff;flex-shrink:0;}
+    .admin-sidebar-logo img{max-width:100%;height:58px;width:auto;object-fit:contain;display:block;margin:0 auto;}
+    .admin-sidebar-nav{padding:14px 8px;display:flex;flex-direction:column;gap:3px;}
+    .admin-sidebar-nav button{display:flex;align-items:center;gap:10px;background:none;border:none;color:rgba(255,255,255,0.85);text-align:left;padding:10px 12px;border-radius:9px;font-size:13.5px;font-family:inherit;cursor:pointer;width:100%;}
+    .admin-sidebar-nav button:hover{background:rgba(255,255,255,0.08);}
+    .admin-sidebar-nav button.active{background:#e3ddc4;color:#1a2233;font-weight:700;}
+    .admin-mobile-logo{display:none;}
+  }
+
   /* ---------- Admin panel: full-screen edge-to-edge on mobile, no side margins ---------- */
   @media(max-width:640px){
     .admin-outer{
@@ -840,6 +856,26 @@ function showDealerMoreMenu(){
       <button class="btn btn-ghost btn-block" onclick="closeModal();go('dealerRequisition')">📝 রিকুইজিশন</button>
       <button class="btn btn-ghost btn-block" onclick="closeModal()">বাতিল</button>
     </div>`);
+}
+// Left sidebar (desktop) with METAL branding — Admin Panel only
+function adminSidebarHTML(activeKey){
+  const items = [
+    ['home','🏠','হোম', "adminTab=null;go('adminDashboard')"],
+    ['parts','⚙️','পার্টস ম্যানেজমেন্ট', "adminTab='parts';go('adminDashboard')"],
+    ['users','👥','ইউজার ম্যানেজমেন্ট', "adminTab='users';go('adminDashboard')"],
+    ['history','📅','আপডেট হিস্টরি', "adminTab='history';go('adminDashboard')"],
+    ['requisitions','📝','রিকুইজিশন হিস্টরি', "adminTab='requisitions';go('adminDashboard')"],
+    ['loginActivity','📶','লগইন অ্যাক্টিভিটি', "adminTab='loginActivity';go('adminDashboard')"],
+    ['vehicleDb','🚗','Vehicle Model DB', "adminTab='vehicleDb';go('adminDashboard')"],
+    ['partsEngineers','🧑‍🔧','Parts Engineer', "adminTab='partsEngineers';go('adminDashboard')"],
+    ['settings','🔧','সেটিংস', "adminTab='settings';go('adminDashboard')"]
+  ];
+  return `<div class="admin-sidebar">
+    <div class="admin-sidebar-logo"><img src="${METAL_LOGO_IMG}" alt="Metal"></div>
+    <div class="admin-sidebar-nav">${items.map(([key,icon,label,onclick])=>
+      `<button type="button" class="${activeKey===key?'active':''}" onclick="${onclick}">${icon} ${label}</button>`
+    ).join('')}</div>
+  </div>`;
 }
 function adminBottomNavHTML(){
   return bottomNavHTML([
@@ -2396,10 +2432,11 @@ function adminShell(innerHTML){
   const app = document.getElementById('app');
   app.appendChild(el(`
     <div class="admin-outer has-bottom-nav" style="background:linear-gradient(135deg,#1a3a52 0%,#0d5a7a 100%);min-height:100vh;">
+      ${adminSidebarHTML(adminTab||'home')}
       <div style="max-width:1200px;margin:0 auto;">
         <div class="admin-header" style="display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);">
           <button class="btn btn-ghost btn-sm" onclick="adminTab=null;go('adminDashboard')" style="color:#fff;border-color:rgba(255,255,255,0.3);font-size:15px;">⬅️ মেনু</button>
-          <div style="color:#fff;font-weight:600;font-size:16px;">${DB.settings.companyName}</div>
+          <div style="display:flex;align-items:center;gap:8px;color:#fff;font-weight:600;font-size:16px;"><span class="admin-mobile-logo"><img src="${METAL_LOGO_IMG}" alt="Metal"></span>${DB.settings.companyName}</div>
           <div style="display:flex;gap:8px;">
             <button class="btn btn-ghost btn-sm" onclick="(()=>{const t=document.createElement('div');t.innerHTML='🔄 রিফ্রেশ হচ্ছে...';t.style.cssText='position:fixed;top:20px;left:20px;background:#1f8a4c;color:#fff;padding:12px 16px;border-radius:8px;font-weight:600;z-index:9999';document.body.appendChild(t);loadDB().then(()=>{ensureCores();t.remove();go('adminDashboard')})})();" style="color:#fff;border-color:rgba(255,255,255,0.3);font-size:15px;">🔄</button>
             <button class="btn btn-ghost btn-sm" id="logout" style="color:#fff;border-color:rgba(255,255,255,0.3);font-size:15px;">🚪</button>
@@ -2678,8 +2715,10 @@ ROUTES.adminDashboard = function(){
     const app = document.getElementById('app');
     app.appendChild(el(`
       <div class="dash-bleed-top has-bottom-nav" style="background:linear-gradient(135deg,#1a3a52 0%,#0d5a7a 100%);min-height:100vh;">
+        ${adminSidebarHTML('home')}
         <div style="max-width:1200px;margin:0 auto;">
           <div style="text-align:center;color:#fff;margin-bottom:8px;">
+            <div class="admin-mobile-logo" style="justify-content:center;margin-bottom:8px;"><img src="${METAL_LOGO_IMG}" alt="Metal"></div>
             <h2 style="font-size:24px;margin:0 0 2px 0;">Admin Panel</h2>
             <p style="margin:0;color:rgba(255,255,255,0.8);font-size:13px;">Metal Parts Management System</p>
           </div>
@@ -2688,61 +2727,61 @@ ROUTES.adminDashboard = function(){
             <img src="${TRACTOR_IMG_EICHER}" alt="Eicher" style="width:2in;height:1.5in;max-width:50%;object-fit:contain;">
           </div>
           ${DB.settings.adminPassword === 'admin123' ? `<div style="background:rgba(226,134,31,0.15);border:1px solid var(--amber);color:#fff;padding:12px 16px;border-radius:10px;margin-bottom:20px;font-size:14px;display:flex;align-items:center;gap:10px;">⚠️ <span>ডিফল্ট অ্যাডমিন পাসওয়ার্ড (admin123) এখনো ব্যবহার হচ্ছে — নিরাপত্তার জন্য Settings থেকে পরিবর্তন করুন।</span></div>` : ''}
-          <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:16px;">
-            <div style="background:#fff;border-radius:18px;padding:28px 14px;text-align:center;cursor:pointer;transition:all 0.25s;box-shadow:0 4px 14px rgba(0,0,0,0.16);" onclick="adminTab='dashboard';go('adminDashboard');" onmouseover="this.style.transform='translateY(-6px)'" onmouseout="this.style.transform='translateY(0)'">
-              <div style="width:60px;height:60px;border-radius:16px;background:#e3ddc4;display:flex;align-items:center;justify-content:center;font-size:30px;margin:0 auto 14px;">📊</div>
-              <div style="font-size:16px;font-weight:700;color:#1a2233;">ড্যাশবোর্ড</div>
-              <div style="font-size:12px;color:#6b7280;margin-top:4px;">পরিসংখ্যান ও সারাংশ</div>
+          <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:13px;">
+            <div style="background:#fff;border-radius:14px;padding:22px 11px;text-align:center;cursor:pointer;transition:all 0.25s;box-shadow:0 3px 11px rgba(0,0,0,0.16);" onclick="adminTab='dashboard';go('adminDashboard');" onmouseover="this.style.transform='translateY(-6px)'" onmouseout="this.style.transform='translateY(0)'">
+              <div style="width:48px;height:48px;border-radius:13px;background:#e3ddc4;display:flex;align-items:center;justify-content:center;font-size:24px;margin:0 auto 11px;">📊</div>
+              <div style="font-size:13px;font-weight:700;color:#1a2233;">ড্যাশবোর্ড</div>
+              <div style="font-size:10.5px;color:#6b7280;margin-top:3px;">পরিসংখ্যান ও সারাংশ</div>
             </div>
 
-            <div style="background:#fff;border-radius:18px;padding:28px 14px;text-align:center;cursor:pointer;transition:all 0.25s;box-shadow:0 4px 14px rgba(0,0,0,0.16);" onclick="adminTab='parts';go('adminDashboard');" onmouseover="this.style.transform='translateY(-6px)'" onmouseout="this.style.transform='translateY(0)'">
-              <div style="width:60px;height:60px;border-radius:16px;background:#e3ddc4;display:flex;align-items:center;justify-content:center;font-size:30px;margin:0 auto 14px;">⚙️</div>
-              <div style="font-size:16px;font-weight:700;color:#1a2233;">পার্টস ম্যানেজমেন্ট</div>
-              <div style="font-size:12px;color:#6b7280;margin-top:4px;">পার্টস যোগ ও সম্পাদন</div>
+            <div style="background:#fff;border-radius:14px;padding:22px 11px;text-align:center;cursor:pointer;transition:all 0.25s;box-shadow:0 3px 11px rgba(0,0,0,0.16);" onclick="adminTab='parts';go('adminDashboard');" onmouseover="this.style.transform='translateY(-6px)'" onmouseout="this.style.transform='translateY(0)'">
+              <div style="width:48px;height:48px;border-radius:13px;background:#e3ddc4;display:flex;align-items:center;justify-content:center;font-size:24px;margin:0 auto 11px;">⚙️</div>
+              <div style="font-size:13px;font-weight:700;color:#1a2233;">পার্টস ম্যানেজমেন্ট</div>
+              <div style="font-size:10.5px;color:#6b7280;margin-top:3px;">পার্টস যোগ ও সম্পাদন</div>
             </div>
 
-            <div style="background:#fff;border-radius:18px;padding:28px 14px;text-align:center;cursor:pointer;transition:all 0.25s;box-shadow:0 4px 14px rgba(0,0,0,0.16);" onclick="adminTab='users';go('adminDashboard');" onmouseover="this.style.transform='translateY(-6px)'" onmouseout="this.style.transform='translateY(0)'">
-              <div style="width:60px;height:60px;border-radius:16px;background:#e3ddc4;display:flex;align-items:center;justify-content:center;font-size:30px;margin:0 auto 14px;">👥</div>
-              <div style="font-size:16px;font-weight:700;color:#1a2233;">ইউজার ম্যানেজমেন্ট</div>
-              <div style="font-size:12px;color:#6b7280;margin-top:4px;">ডিলার ও মেকানিক পরিচালনা</div>
+            <div style="background:#fff;border-radius:14px;padding:22px 11px;text-align:center;cursor:pointer;transition:all 0.25s;box-shadow:0 3px 11px rgba(0,0,0,0.16);" onclick="adminTab='users';go('adminDashboard');" onmouseover="this.style.transform='translateY(-6px)'" onmouseout="this.style.transform='translateY(0)'">
+              <div style="width:48px;height:48px;border-radius:13px;background:#e3ddc4;display:flex;align-items:center;justify-content:center;font-size:24px;margin:0 auto 11px;">👥</div>
+              <div style="font-size:13px;font-weight:700;color:#1a2233;">ইউজার ম্যানেজমেন্ট</div>
+              <div style="font-size:10.5px;color:#6b7280;margin-top:3px;">ডিলার ও মেকানিক পরিচালনা</div>
             </div>
 
-            <div style="background:#fff;border-radius:18px;padding:28px 14px;text-align:center;cursor:pointer;transition:all 0.25s;box-shadow:0 4px 14px rgba(0,0,0,0.16);" onclick="adminTab='history';go('adminDashboard');" onmouseover="this.style.transform='translateY(-6px)'" onmouseout="this.style.transform='translateY(0)'">
-              <div style="width:60px;height:60px;border-radius:16px;background:#e3ddc4;display:flex;align-items:center;justify-content:center;font-size:30px;margin:0 auto 14px;">📅</div>
-              <div style="font-size:16px;font-weight:700;color:#1a2233;">আপডেট হিস্টরি</div>
-              <div style="font-size:12px;color:#6b7280;margin-top:4px;">সকল পরিবর্তনের তালিকা</div>
+            <div style="background:#fff;border-radius:14px;padding:22px 11px;text-align:center;cursor:pointer;transition:all 0.25s;box-shadow:0 3px 11px rgba(0,0,0,0.16);" onclick="adminTab='history';go('adminDashboard');" onmouseover="this.style.transform='translateY(-6px)'" onmouseout="this.style.transform='translateY(0)'">
+              <div style="width:48px;height:48px;border-radius:13px;background:#e3ddc4;display:flex;align-items:center;justify-content:center;font-size:24px;margin:0 auto 11px;">📅</div>
+              <div style="font-size:13px;font-weight:700;color:#1a2233;">আপডেট হিস্টরি</div>
+              <div style="font-size:10.5px;color:#6b7280;margin-top:3px;">সকল পরিবর্তনের তালিকা</div>
             </div>
 
-            <div style="background:#fff;border-radius:18px;padding:28px 14px;text-align:center;cursor:pointer;transition:all 0.25s;box-shadow:0 4px 14px rgba(0,0,0,0.16);position:relative;" onclick="adminTab='requisitions';go('adminDashboard');" onmouseover="this.style.transform='translateY(-6px)'" onmouseout="this.style.transform='translateY(0)'">
+            <div style="background:#fff;border-radius:14px;padding:22px 11px;text-align:center;cursor:pointer;transition:all 0.25s;box-shadow:0 3px 11px rgba(0,0,0,0.16);position:relative;" onclick="adminTab='requisitions';go('adminDashboard');" onmouseover="this.style.transform='translateY(-6px)'" onmouseout="this.style.transform='translateY(0)'">
               ${DB.requisitions.length ? `<div style="position:absolute;top:10px;right:10px;background:#e11d48;color:#fff;border-radius:999px;min-width:22px;height:22px;padding:0 6px;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;">${DB.requisitions.length}</div>` : ''}
-              <div style="width:60px;height:60px;border-radius:16px;background:#e3ddc4;display:flex;align-items:center;justify-content:center;font-size:30px;margin:0 auto 14px;">📝</div>
-              <div style="font-size:16px;font-weight:700;color:#1a2233;">রিকুইজিশন হিস্টরি</div>
-              <div style="font-size:12px;color:#6b7280;margin-top:4px;">ডিলারদের পাঠানো পার্টস চাহিদা</div>
+              <div style="width:48px;height:48px;border-radius:13px;background:#e3ddc4;display:flex;align-items:center;justify-content:center;font-size:24px;margin:0 auto 11px;">📝</div>
+              <div style="font-size:13px;font-weight:700;color:#1a2233;">রিকুইজিশন হিস্টরি</div>
+              <div style="font-size:10.5px;color:#6b7280;margin-top:3px;">ডিলারদের পাঠানো পার্টস চাহিদা</div>
             </div>
 
-            <div style="background:#fff;border-radius:18px;padding:28px 14px;text-align:center;cursor:pointer;transition:all 0.25s;box-shadow:0 4px 14px rgba(0,0,0,0.16);position:relative;" onclick="adminTab='loginActivity';go('adminDashboard');" onmouseover="this.style.transform='translateY(-6px)'" onmouseout="this.style.transform='translateY(0)'">
-              <div style="width:60px;height:60px;border-radius:16px;background:#e3ddc4;display:flex;align-items:center;justify-content:center;font-size:30px;margin:0 auto 14px;">📶</div>
-              <div style="font-size:16px;font-weight:700;color:#1a2233;">লগইন অ্যাক্টিভিটি</div>
-              <div style="font-size:12px;color:#6b7280;margin-top:4px;">ইউজার লগইন ও অনলাইন স্ট্যাটাস</div>
+            <div style="background:#fff;border-radius:14px;padding:22px 11px;text-align:center;cursor:pointer;transition:all 0.25s;box-shadow:0 3px 11px rgba(0,0,0,0.16);position:relative;" onclick="adminTab='loginActivity';go('adminDashboard');" onmouseover="this.style.transform='translateY(-6px)'" onmouseout="this.style.transform='translateY(0)'">
+              <div style="width:48px;height:48px;border-radius:13px;background:#e3ddc4;display:flex;align-items:center;justify-content:center;font-size:24px;margin:0 auto 11px;">📶</div>
+              <div style="font-size:13px;font-weight:700;color:#1a2233;">লগইন অ্যাক্টিভিটি</div>
+              <div style="font-size:10.5px;color:#6b7280;margin-top:3px;">ইউজার লগইন ও অনলাইন স্ট্যাটাস</div>
             </div>
 
-            <div style="background:#fff;border-radius:18px;padding:28px 14px;text-align:center;cursor:pointer;transition:all 0.25s;box-shadow:0 4px 14px rgba(0,0,0,0.16);" onclick="adminTab='vehicleDb';go('adminDashboard');" onmouseover="this.style.transform='translateY(-6px)'" onmouseout="this.style.transform='translateY(0)'">
-              <div style="width:60px;height:60px;border-radius:16px;background:#e3ddc4;display:flex;align-items:center;justify-content:center;font-size:30px;margin:0 auto 14px;">🚗</div>
-              <div style="font-size:16px;font-weight:700;color:#1a2233;">Vehicle Model Database</div>
-              <div style="font-size:12px;color:#6b7280;margin-top:4px;">পার্ট ও গাড়ির মডেল ম্যাপিং</div>
+            <div style="background:#fff;border-radius:14px;padding:22px 11px;text-align:center;cursor:pointer;transition:all 0.25s;box-shadow:0 3px 11px rgba(0,0,0,0.16);" onclick="adminTab='vehicleDb';go('adminDashboard');" onmouseover="this.style.transform='translateY(-6px)'" onmouseout="this.style.transform='translateY(0)'">
+              <div style="width:48px;height:48px;border-radius:13px;background:#e3ddc4;display:flex;align-items:center;justify-content:center;font-size:24px;margin:0 auto 11px;">🚗</div>
+              <div style="font-size:13px;font-weight:700;color:#1a2233;">Vehicle Model Database</div>
+              <div style="font-size:10.5px;color:#6b7280;margin-top:3px;">পার্ট ও গাড়ির মডেল ম্যাপিং</div>
             </div>
 
-            <div style="background:#fff;border-radius:18px;padding:28px 14px;text-align:center;cursor:pointer;transition:all 0.25s;box-shadow:0 4px 14px rgba(0,0,0,0.16);position:relative;" onclick="adminTab='partsEngineers';go('adminDashboard');" onmouseover="this.style.transform='translateY(-6px)'" onmouseout="this.style.transform='translateY(0)'">
+            <div style="background:#fff;border-radius:14px;padding:22px 11px;text-align:center;cursor:pointer;transition:all 0.25s;box-shadow:0 3px 11px rgba(0,0,0,0.16);position:relative;" onclick="adminTab='partsEngineers';go('adminDashboard');" onmouseover="this.style.transform='translateY(-6px)'" onmouseout="this.style.transform='translateY(0)'">
               ${DB.partsEngineers.length ? `<div style="position:absolute;top:10px;right:10px;background:#0d5a7a;color:#fff;border-radius:999px;min-width:22px;height:22px;padding:0 6px;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;">${DB.partsEngineers.length}</div>` : ''}
-              <div style="width:60px;height:60px;border-radius:16px;background:#e3ddc4;display:flex;align-items:center;justify-content:center;font-size:30px;margin:0 auto 14px;">🧑‍🔧</div>
-              <div style="font-size:16px;font-weight:700;color:#1a2233;">Parts Engineer</div>
-              <div style="font-size:12px;color:#6b7280;margin-top:4px;">রিজিয়ন-ভিত্তিক ইঞ্জিনিয়ার ম্যানেজমেন্ট</div>
+              <div style="width:48px;height:48px;border-radius:13px;background:#e3ddc4;display:flex;align-items:center;justify-content:center;font-size:24px;margin:0 auto 11px;">🧑‍🔧</div>
+              <div style="font-size:13px;font-weight:700;color:#1a2233;">Parts Engineer</div>
+              <div style="font-size:10.5px;color:#6b7280;margin-top:3px;">রিজিয়ন-ভিত্তিক ইঞ্জিনিয়ার ম্যানেজমেন্ট</div>
             </div>
 
-            <div style="background:#fff;border-radius:18px;padding:28px 14px;text-align:center;cursor:pointer;transition:all 0.25s;box-shadow:0 4px 14px rgba(0,0,0,0.16);" onclick="adminTab='settings';go('adminDashboard');" onmouseover="this.style.transform='translateY(-6px)'" onmouseout="this.style.transform='translateY(0)'">
-              <div style="width:60px;height:60px;border-radius:16px;background:#e3ddc4;display:flex;align-items:center;justify-content:center;font-size:30px;margin:0 auto 14px;">🔧</div>
-              <div style="font-size:16px;font-weight:700;color:#1a2233;">সেটিংস</div>
-              <div style="font-size:12px;color:#6b7280;margin-top:4px;">অ্যাপ কনফিগারেশন</div>
+            <div style="background:#fff;border-radius:14px;padding:22px 11px;text-align:center;cursor:pointer;transition:all 0.25s;box-shadow:0 3px 11px rgba(0,0,0,0.16);" onclick="adminTab='settings';go('adminDashboard');" onmouseover="this.style.transform='translateY(-6px)'" onmouseout="this.style.transform='translateY(0)'">
+              <div style="width:48px;height:48px;border-radius:13px;background:#e3ddc4;display:flex;align-items:center;justify-content:center;font-size:24px;margin:0 auto 11px;">🔧</div>
+              <div style="font-size:13px;font-weight:700;color:#1a2233;">সেটিংস</div>
+              <div style="font-size:10.5px;color:#6b7280;margin-top:3px;">অ্যাপ কনফিগারেশন</div>
             </div>
           </div>
         </div>
