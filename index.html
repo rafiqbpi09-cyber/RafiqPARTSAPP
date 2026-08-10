@@ -1433,8 +1433,8 @@ function dealerPartSearch(q){
     const pn=String(p.partNo||'').toLowerCase();
     const nm=String(p.name||p.partName||'').toLowerCase();
     const core=String(p.core||coreOf(p.partNo||''));
-    if((digits && core===digits) || (!digits && pn===raw)){ exact.push(p); return; }
-    if((digits && (core.includes(digits)||digits.includes(core))) || pn.includes(raw) || nm.includes(raw)) near.push(p);
+    if((digits && core===digits) || (!digits && pn===raw)){ p._exact=true; exact.push(p); return; }
+    if((digits && (core.includes(digits)||digits.includes(core))) || pn.includes(raw) || nm.includes(raw)){ p._exact=false; near.push(p); }
   });
   return [...exact,...near.slice(0,30)].slice(0,40);
 }
@@ -1505,12 +1505,23 @@ function renderDealerUnifiedSearch(){
   if(q.length<2){out.innerHTML='<div class="empty">অন্তত ২ অক্ষর/সংখ্যা লিখুন</div>';return;}
   const found=dealerPartSearch(q);
   if(!found.length){out.innerHTML='<div class="empty">😕 কোনো Part পাওয়া যায়নি</div>';return;}
-  out.innerHTML=found.map(p=>`<div class="part-card">
-    <div style="flex:1"><div class="pn">${escHtml(displayPartNo(p.partNo))}</div><div class="nm" style="font-weight:700;color:var(--text)">${escHtml(p.name||'-')}</div>
+  const highlightQuery=digitsOnly(q);
+  out.innerHTML=found.map(p=>{
+    const waText=encodeURIComponent(`Part No: ${displayPartNo(p.partNo)}\nName: ${p.name}\nPrice: ৳${p._price}`);
+    const shownPartNo=highlightQuery?highlightMatch(displayPartNo(p.partNo),highlightQuery):displayPartNo(p.partNo);
+    return `<div class="part-card search-hit${p._exact?' exact':''}">
+    <div style="flex:1"><div class="pn" style="font-weight:700">${shownPartNo}</div><div class="nm" style="font-weight:700;color:var(--text);margin-top:3px">${p._exact&&highlightQuery&&!/\d/.test(q)?highlightMatch(p.name,q.toLowerCase()):escHtml(p.name||'-')}</div>
       <div style="margin-top:4px"><span class="source-badge ${p._source==='dealer'?'source-dealer':'source-company'}">${p._sourceLabel}</span>
       ${p._source==='dealer'?` <span class="hint">Stock: ${Number(p.currentStock||0)}</span>`:''}</div>
-    </div><div class="pr">৳${money(p._price)}</div>
-  </div>`).join('');
+    </div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <div class="pr">৳${money(p._price)}</div>
+      <a href="https://wa.me/?text=${waText}" target="_blank" rel="noopener" title="WhatsApp-এ শেয়ার করুন" style="display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:50%;background:#25D366;text-decoration:none;flex-shrink:0;">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="#fff"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38a9.9 9.9 0 0 0 4.74 1.21h.01c5.46 0 9.9-4.45 9.9-9.92 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2zm0 18.13h-.01a8.2 8.2 0 0 1-4.19-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.22 8.22 0 0 1-1.26-4.36c0-4.54 3.7-8.24 8.26-8.24 2.2 0 4.27.86 5.83 2.42a8.18 8.18 0 0 1 2.41 5.83c0 4.55-3.7 8.21-8.25 8.21zm4.52-6.16c-.25-.12-1.47-.72-1.7-.81-.23-.08-.39-.12-.56.12-.17.25-.64.81-.78.97-.14.17-.29.19-.54.06-.25-.12-1.04-.38-1.98-1.22-.73-.65-1.23-1.46-1.37-1.7-.14-.25-.02-.38.11-.51.11-.11.25-.29.37-.43.12-.14.16-.25.25-.41.08-.17.04-.31-.02-.43-.06-.12-.56-1.35-.77-1.85-.2-.48-.41-.42-.56-.43h-.48c-.17 0-.43.06-.66.31-.23.25-.86.85-.86 2.06s.88 2.39 1 2.56c.12.17 1.75 2.67 4.24 3.74.59.26 1.05.41 1.41.52.59.19 1.13.16 1.55.1.47-.07 1.47-.6 1.68-1.18.21-.58.21-1.08.15-1.18-.06-.1-.23-.16-.48-.28z"/></svg>
+      </a>
+    </div>
+  </div>`;
+  }).join('');
 }
 function dealerShopPartsHTML(){
   const parts=dealerShopParts();
