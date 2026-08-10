@@ -1457,8 +1457,8 @@ function memoEditorHTML(draft=null){
   return `<div class="card-head"><h3>🧾 Create Memo</h3><span class="badge ${d?'pending':'active'}">${status}${d?' • '+escHtml(d.memoNo):' • Automatic Memo No.'}</span></div>
   <div class="card">
     <div class="dealer-management-grid">
-      <div class="field"><label>Customer Name</label><input id="memoCustomerName" value="${escHtml(d?.customerName||'')}" placeholder="কাস্টমারের নাম"></div>
-      <div class="field"><label>Customer Mobile</label><input id="memoCustomerMobile" value="${escHtml(d?.customerMobile||'')}" placeholder="01XXXXXXXXX" inputmode="tel"></div>
+      <div class="field"><label>Customer Name</label><input id="memoCustomerName" value="${escHtml(d?.customerName||'')}" placeholder="কাস্টমারের নাম" style="background:#fff9ec;border-color:#f0dfb8"></div>
+      <div class="field"><label>Customer Mobile</label><input id="memoCustomerMobile" value="${escHtml(d?.customerMobile||'')}" placeholder="01XXXXXXXXX" inputmode="tel" style="background:#fff9ec;border-color:#f0dfb8"></div>
       <div class="field"><label>Memo Number</label><input id="memoNumber" value="${escHtml(memoNumber)}" readonly></div>
       <div class="field"><label>Date</label><input id="memoDate" value="${escHtml(dateValue)}" readonly></div>
       <div class="field"><label>Payment Status</label><select id="memoPaymentStatus"><option value="Paid" ${d?.paymentStatus==='Paid'?'selected':''}>Paid / পরিশোধিত</option><option value="Due" ${d?.paymentStatus==='Due'?'selected':''}>Due / বাকি</option><option value="Partial" ${d?.paymentStatus==='Partial'?'selected':''}>Partial / আংশিক</option></select></div>
@@ -1473,10 +1473,14 @@ function memoEditorHTML(draft=null){
       <div class="field"><label>Discount</label><input id="memoDiscount" type="number" min="0" step="0.01" value="${Number(d?.discount||0)}"></div>
       <div class="field"><label>Customer / Payment Information</label><input id="memoNote" value="${escHtml(d?.note||'')}" placeholder="Optional note"></div>
     </div>
-    <div style="margin-top:14px;padding:12px;background:var(--paper);border:1px solid var(--line);border-radius:10px">
-      <div style="display:flex;justify-content:space-between"><span>Subtotal</span><b id="memoSubtotal">৳0.00</b></div>
-      <div style="display:flex;justify-content:space-between"><span>Discount</span><b id="memoDiscountView">৳0.00</b></div>
-      <div style="display:flex;justify-content:space-between;font-size:18px;margin-top:5px"><span>Grand Total</span><b id="memoGrandTotal">৳0.00</b></div>
+    <div style="margin-top:16px;padding:16px 18px;background:linear-gradient(135deg,#eef6ff,#f8fbff);border:1.5px solid #cfe0f5;border-radius:14px">
+      <div style="display:flex;justify-content:space-between;padding:3px 0;font-size:14.5px;color:var(--steel,#425466)"><span>Subtotal</span><b id="memoSubtotal">৳0.00</b></div>
+      <div style="display:flex;justify-content:space-between;padding:3px 0;font-size:14.5px;color:var(--steel,#425466)"><span>Discount / Adjustment</span><b id="memoDiscountView" style="color:#c0392b">৳0.00</b></div>
+      <div style="border-top:2px dashed #b9cfe8;margin:10px 0"></div>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:15.5px;font-weight:700;color:var(--navy,#12233d)">Grand Total</span>
+        <b id="memoGrandTotal" style="font-size:26px;color:#0d7a3f">৳0.00</b>
+      </div>
     </div>
     <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-top:14px">
       <button class="btn btn-ghost" id="memoClear">🔄 Clear</button>
@@ -1496,6 +1500,24 @@ function memoDraftsHTML(){
   <div class="card"><div style="overflow-x:auto"><table style="min-width:900px"><thead><tr><th>Memo / Draft ID</th><th>Date & Time</th><th>Customer</th><th>Total Item</th><th>Total Amount</th><th>Status</th><th>Action</th></tr></thead><tbody>
   ${list.length?list.map(d=>`<tr><td class="mono">${escHtml(d.memoNo)}</td><td>${escHtml(d.updatedAtDisplay||d.date||'-')}</td><td>${escHtml(d.customerName||'-')}<div class="hint">${escHtml(d.customerMobile||'')}</div></td><td>${d.items?.length||0}</td><td>৳${money(d.grandTotal||0)}</td><td><span class="badge pending">DRAFT</span></td><td><div class="row-actions"><button class="btn btn-primary btn-sm" onclick="continueDealerMemoDraft(${JSON.stringify(d.id)})">▶ Continue / Edit</button><button class="btn btn-danger btn-sm" onclick="deleteDealerMemoDraft(${JSON.stringify(d.id)})">🗑️ Delete</button></div></td></tr>`).join(''):'<tr><td colspan="7"><div class="empty">কোনো Draft Memo নেই।</div></td></tr>'}
   </tbody></table></div></div>`;
+}
+// Item List টেবিলের প্রতিটি row আঁকে — Qty/Unit Price ইনপুট, Row Total, Remove বাটন সহ।
+// data-i attribute দিয়ে rows[] array-এর index ধরে রাখা হয়, যেটা wireMemoPage()-এর redraw()/recalc() ব্যবহার করে।
+function renderMemoRows(rows){
+  const body=document.getElementById('memoItemsBody');
+  if(!body)return;
+  body.innerHTML = rows.length ? rows.map((it,i)=>{
+    const rowTotal=Number(it.qty||0)*Number(it.unitPrice||0);
+    return `<tr>
+      <td><span class="source-badge ${it.source==='dealer'?'source-dealer':'source-company'}">${escHtml(it.sourceLabel||(it.source==='dealer'?'Dealer':'Company'))}</span></td>
+      <td>${escHtml(it.name||'')}</td>
+      <td class="mono">${escHtml(displayPartNo(it.partNo))}</td>
+      <td><input type="number" min="0" step="1" class="memo-qty" data-i="${i}" value="${Number(it.qty||0)}" style="width:64px;padding:7px;border:1.5px solid var(--line);border-radius:8px;font-size:14.5px"></td>
+      <td><input type="number" min="0" step="0.01" class="memo-price" data-i="${i}" value="${Number(it.unitPrice||0)}" style="width:88px;padding:7px;border:1.5px solid var(--line);border-radius:8px;font-size:14.5px"></td>
+      <td><b class="memo-row-total" data-i="${i}">৳${money(rowTotal)}</b></td>
+      <td><button type="button" class="btn btn-danger btn-sm memo-remove" data-i="${i}" title="Remove">🗑️</button></td>
+    </tr>`;
+  }).join('') : `<tr><td colspan="7"><div class="empty">এখনো কোনো Part add করা হয়নি — উপরে Part Search দিয়ে খুঁজে Add করুন।</div></td></tr>`;
 }
 function draftAutosaveKey(){const u=currentDealer();return u?'dlr_memo_autosave_'+u.id:null;}
 function buildMemoState(rows){
@@ -1523,7 +1545,7 @@ function wireMemoPage(existingDraft=null){
   const recalc=()=>{
     let sub=0;rows.forEach((it,i)=>{sub+=Number(it.qty||0)*Number(it.unitPrice||0);const el=document.querySelector(`.memo-row-total[data-i="${i}"]`);if(el)el.textContent='৳'+money(Number(it.qty||0)*Number(it.unitPrice||0));});
     const d=Math.max(0,Number(document.getElementById('memoDiscount').value||0)),grand=Math.max(0,sub-d);
-    document.getElementById('memoSubtotal').textContent='৳'+money(sub);document.getElementById('memoDiscountView').textContent='৳'+money(d);document.getElementById('memoGrandTotal').textContent='৳'+money(grand);
+    document.getElementById('memoSubtotal').textContent='৳'+money(sub);document.getElementById('memoDiscountView').textContent=(d>0?'- ':'')+'৳'+money(d);document.getElementById('memoGrandTotal').textContent='৳'+money(grand);
   };
   const state=()=>buildMemoState(rows);
   const autoSave=()=>{
