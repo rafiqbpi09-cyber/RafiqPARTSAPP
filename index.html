@@ -331,6 +331,21 @@ if('serviceWorker' in navigator){
     .memo-print-sheet{border:none;max-width:none;padding:0;}
   }
 
+  /* ---- Bottom Navigation Bar (Dealer/PE/Admin — app-style quick nav) ---- */
+  .bottom-nav{position:fixed;left:0;right:0;bottom:0;z-index:60;background:#fff;border-top:1px solid #e7e1cf;display:flex;justify-content:space-around;align-items:stretch;padding:6px 4px calc(6px + env(safe-area-inset-bottom,0px));box-shadow:0 -6px 16px rgba(0,0,0,0.10);}
+  .bottom-nav-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;background:none;border:none;cursor:pointer;padding:5px 2px;color:#6b7280;font-size:11px;font-family:inherit;-webkit-tap-highlight-color:transparent;}
+  .bottom-nav-item .bn-icon{width:34px;height:34px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:18px;background:transparent;transition:.15s;}
+  .bottom-nav-item.active{color:#1f8a4c;font-weight:700;}
+  .bottom-nav-item.active .bn-icon{background:#e3ddc4;}
+  .has-bottom-nav{padding-bottom:76px;}
+  /* ---- Home-style Card Grid (Landing / quick menus) ---- */
+  .home-card-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;}
+  .home-card{background:#fff;border-radius:18px;padding:24px 12px;text-align:center;cursor:pointer;transition:all .25s;box-shadow:0 4px 14px rgba(0,0,0,.16);}
+  .home-card:hover{transform:translateY(-4px);}
+  .home-card .hc-icon{width:56px;height:56px;border-radius:16px;background:#e3ddc4;display:flex;align-items:center;justify-content:center;font-size:28px;margin:0 auto 10px;}
+  .home-card .hc-title{font-size:15px;font-weight:700;color:#1a2233;}
+  .home-card .hc-sub{font-size:11.5px;color:#6b7280;margin-top:3px;}
+
 </style>
 </head>
 <body>
@@ -802,6 +817,60 @@ function go(route){
 }
 
 function el(html){ const t=document.createElement('template'); t.innerHTML=html.trim(); return t.content; }
+// Bottom navigation bar (Dealer/PE/Admin) — items: [{key,icon,label,onclick}]
+function bottomNavHTML(items, activeKey){
+  return `<div class="bottom-nav">${items.map(it=>`<button type="button" class="bottom-nav-item ${activeKey===it.key?'active':''}" onclick="${it.onclick}"><span class="bn-icon">${it.icon}</span><span>${it.label}</span></button>`).join('')}</div>`;
+}
+function dealerBottomNavHTML(){
+  return bottomNavHTML([
+    {key:'search',icon:'🏠',label:'হোম',onclick:"dealerManageTab='search';go('dealerPortal')"},
+    {key:'memo',icon:'🧾',label:'মেমো',onclick:"dealerManageTab='memo';go('dealerPortal')"},
+    {key:'stock',icon:'📦',label:'স্টক',onclick:"dealerManageTab='stock';go('dealerPortal')"},
+    {key:'vehicle',icon:'🚗',label:'গাড়ির মডেল',onclick:"go('dealerVehicleSearch')"},
+    {key:'more',icon:'➕',label:'আরও',onclick:"showDealerMoreMenu()"}
+  ], dealerManageTab);
+}
+function showDealerMoreMenu(){
+  openModal(`<h3>আরও অপশন</h3>
+    <div class="modal-actions" style="flex-direction:column;align-items:stretch;gap:8px;">
+      <button class="btn btn-ghost btn-block" onclick="closeModal();dealerManageTab='memoDrafts';go('dealerPortal')">🟡 Saved/Draft Memos</button>
+      <button class="btn btn-ghost btn-block" onclick="closeModal();dealerManageTab='memoHistory';go('dealerPortal')">📜 Memo History</button>
+      <button class="btn btn-ghost btn-block" onclick="closeModal();dealerManageTab='shopParts';go('dealerPortal')">🧩 My Shop Parts</button>
+      <button class="btn btn-ghost btn-block" onclick="closeModal();dealerManageTab='stockHistory';go('dealerPortal')">↕️ Stock History</button>
+      <button class="btn btn-ghost btn-block" onclick="closeModal();go('dealerRequisition')">📝 রিকুইজিশন</button>
+      <button class="btn btn-ghost btn-block" onclick="closeModal()">বাতিল</button>
+    </div>`);
+}
+function adminBottomNavHTML(){
+  return bottomNavHTML([
+    {key:'home',icon:'🏠',label:'হোম',onclick:"adminTab=null;go('adminDashboard')"},
+    {key:'parts',icon:'⚙️',label:'পার্টস',onclick:"adminTab='parts';go('adminDashboard')"},
+    {key:'users',icon:'👥',label:'ইউজার',onclick:"adminTab='users';go('adminDashboard')"},
+    {key:'history',icon:'📅',label:'হিস্টোরি',onclick:"adminTab='history';go('adminDashboard')"},
+    {key:'more',icon:'➕',label:'আরও',onclick:"showAdminMoreMenu()"}
+  ], adminTab||'home');
+}
+function showAdminMoreMenu(){
+  openModal(`<h3>আরও অপশন</h3>
+    <div class="modal-actions" style="flex-direction:column;align-items:stretch;gap:8px;">
+      <button class="btn btn-ghost btn-block" onclick="closeModal();adminTab='dashboard';go('adminDashboard')">📊 ড্যাশবোর্ড</button>
+      <button class="btn btn-ghost btn-block" onclick="closeModal();adminTab='requisitions';go('adminDashboard')">📝 রিকুইজিশন হিস্টরি</button>
+      <button class="btn btn-ghost btn-block" onclick="closeModal();adminTab='loginActivity';go('adminDashboard')">📶 লগইন অ্যাক্টিভিটি</button>
+      <button class="btn btn-ghost btn-block" onclick="closeModal();adminTab='vehicleDb';go('adminDashboard')">🚗 Vehicle Model Database</button>
+      <button class="btn btn-ghost btn-block" onclick="closeModal();adminTab='partsEngineers';go('adminDashboard')">🧑‍🔧 Parts Engineer</button>
+      <button class="btn btn-ghost btn-block" onclick="closeModal();adminTab='settings';go('adminDashboard')">🔧 সেটিংস</button>
+      <button class="btn btn-ghost btn-block" onclick="closeModal()">বাতিল</button>
+    </div>`);
+}
+function peBottomNavHTML(){
+  return bottomNavHTML([
+    {key:'dealers',icon:'🏠',label:'হোম',onclick:"peTab='dealers';go('peDashboard')"},
+    {key:'search',icon:'🔍',label:'পার্টস সার্চ',onclick:"peTab='search';go('peDashboard')"},
+    {key:'requisitions',icon:'📝',label:'রিকুইজিশন',onclick:"peTab='requisitions';go('peDashboard')"},
+    {key:'report',icon:'📊',label:'রিপোর্ট',onclick:"peTab='report';go('peDashboard')"},
+    {key:'logout',icon:'🚪',label:'লগআউট',onclick:"if(confirm('লগআউট করবেন?')){DB.session={role:null,user:null};go('landing');}"}
+  ], peTab);
+}
 
 /* ================= ROUTES ================= */
 const ROUTES = {};
@@ -815,15 +884,28 @@ ROUTES.landing = function(){
         <img src="${METAL_LOGO_IMG}" alt="Metal" class="metal-logo-img" style="width:2in;height:1.5in;object-fit:contain;display:block;">
       </div>
       <button class="theme-toggle" onclick="toggleTheme()" style="position:fixed;top:16px;right:16px;z-index:10;width:40px;height:40px;border-radius:12px;border:1px solid var(--line);background:var(--card);font-size:18px;cursor:pointer;">🌙</button>
-      <div class="gate">
+      <div class="gate" style="max-width:400px;">
         <div class="gate-top">
           <div class="cog" style="width:1in;height:0.65in;background:transparent;"><img src="${METAL_LOGO_IMG}" alt="Metal" style="width:100%;height:100%;object-fit:contain;"></div>
           <h1>${DB.settings.companyName}</h1>
           <p>পার্টস মূল্য ও তথ্য ব্যবস্থাপনা সিস্টেম</p>
         </div>
         <div class="gate-body">
-          <button class="btn btn-primary btn-block" style="margin-bottom:10px" id="toDealer">ডিলার / মেকানিক লগইন</button>
-          ${DEALER_ONLY ? '' : '<button class="btn btn-ghost btn-block" style="margin-bottom:10px" id="toPe">🧑‍🔧 Parts Engineer লগইন</button><button class="btn btn-navy btn-block" id="toAdmin">অ্যাডমিন প্যানেল</button>'}
+          <div class="home-card-grid" style="grid-template-columns:1fr;gap:12px;">
+            <div class="home-card" style="text-align:left;display:flex;align-items:center;gap:14px;padding:16px 18px;" id="toDealer">
+              <div class="hc-icon" style="margin:0;flex-shrink:0;">📱</div>
+              <div><div class="hc-title">ডিলার / মেকানিক লগইন</div><div class="hc-sub">পার্টস সার্চ, মেমো, স্টক ব্যবস্থাপনা</div></div>
+            </div>
+            ${DEALER_ONLY ? '' : `
+            <div class="home-card" style="text-align:left;display:flex;align-items:center;gap:14px;padding:16px 18px;" id="toPe">
+              <div class="hc-icon" style="margin:0;flex-shrink:0;">🧑‍🔧</div>
+              <div><div class="hc-title">Parts Engineer লগইন</div><div class="hc-sub">রিজিয়ন-ভিত্তিক ডিলার ম্যানেজমেন্ট</div></div>
+            </div>
+            <div class="home-card" style="text-align:left;display:flex;align-items:center;gap:14px;padding:16px 18px;" id="toAdmin">
+              <div class="hc-icon" style="margin:0;flex-shrink:0;">🔑</div>
+              <div><div class="hc-title">অ্যাডমিন প্যানেল</div><div class="hc-sub">সম্পূর্ণ সিস্টেম নিয়ন্ত্রণ</div></div>
+            </div>`}
+          </div>
         </div>
       </div>
     </div>
@@ -1742,7 +1824,7 @@ function dealerPortalRender(){
   else if(dealerManageTab==='stock')content=stockHTML();
   else if(dealerManageTab==='stockHistory')content=stockHistoryHTML();
   else content=dealerPortalSearchHTML();
-  document.getElementById('app').appendChild(el(`<div>${dealerTopbar()}<div class="wrap">${dealerDashboardCards()}${dealerNavHTML()}${content}</div></div><div class="modal-bg" id="modalBg"><div class="modal" id="modalBody"></div></div>`));
+  document.getElementById('app').appendChild(el(`<div>${dealerTopbar()}<div class="wrap has-bottom-nav">${dealerDashboardCards()}${dealerNavHTML()}${content}</div>${dealerBottomNavHTML()}</div><div class="modal-bg" id="modalBg"><div class="modal" id="modalBody"></div></div>`));
   document.getElementById('dealerLogout').onclick=()=>{DB.session={role:null,user:null};go('landing');};
   document.getElementById('modalBg').addEventListener('click',ev=>{if(ev.target.id==='modalBg')closeModal();});
   if(dealerManageTab==='memo'){ const ed=window._memoDraftForWire||null; window._memoDraftForWire=null; wireMemoPage(ed); }
@@ -2309,7 +2391,7 @@ let peTab = 'dealers';
 function adminShell(innerHTML){
   const app = document.getElementById('app');
   app.appendChild(el(`
-    <div class="admin-outer" style="background:linear-gradient(135deg,#1a3a52 0%,#0d5a7a 100%);min-height:100vh;">
+    <div class="admin-outer has-bottom-nav" style="background:linear-gradient(135deg,#1a3a52 0%,#0d5a7a 100%);min-height:100vh;">
       <div style="max-width:1200px;margin:0 auto;">
         <div class="admin-header" style="display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);">
           <button class="btn btn-ghost btn-sm" onclick="adminTab=null;go('adminDashboard')" style="color:#fff;border-color:rgba(255,255,255,0.3);font-size:15px;">⬅️ মেনু</button>
@@ -2324,6 +2406,7 @@ function adminShell(innerHTML){
         </div>
       </div>
     </div>
+    ${adminBottomNavHTML()}
     <div class="modal-bg" id="modalBg"><div class="modal" id="modalBody"></div></div>
   `));
   document.getElementById('logout').onclick = ()=>{ DB.session={role:null,user:null}; go('landing'); };
@@ -2340,7 +2423,7 @@ function peShell(innerHTML){
   const app = document.getElementById('app');
   const pe = DB.session.user;
   app.appendChild(el(`
-    <div class="admin-outer" style="background:linear-gradient(135deg,#1a3a52 0%,#0d5a7a 100%);min-height:100vh;">
+    <div class="admin-outer has-bottom-nav" style="background:linear-gradient(135deg,#1a3a52 0%,#0d5a7a 100%);min-height:100vh;">
       <div style="max-width:1200px;margin:0 auto;">
         <div class="admin-header" style="display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);flex-wrap:wrap;gap:8px;">
           <div style="color:#fff;">
@@ -2363,6 +2446,7 @@ function peShell(innerHTML){
         </div>
       </div>
     </div>
+    ${peBottomNavHTML()}
     <div class="modal-bg" id="modalBg"><div class="modal" id="modalBody"></div></div>
   `));
   document.getElementById('logout').onclick = ()=>{ DB.session={role:null,user:null}; go('landing'); };
@@ -2589,7 +2673,7 @@ ROUTES.adminDashboard = function(){
   if(!adminTab || adminTab === 'menu'){
     const app = document.getElementById('app');
     app.appendChild(el(`
-      <div class="dash-bleed-top" style="background:linear-gradient(135deg,#1a3a52 0%,#0d5a7a 100%);min-height:100vh;">
+      <div class="dash-bleed-top has-bottom-nav" style="background:linear-gradient(135deg,#1a3a52 0%,#0d5a7a 100%);min-height:100vh;">
         <div style="max-width:1200px;margin:0 auto;">
           <div style="text-align:center;color:#fff;margin-bottom:8px;">
             <h2 style="font-size:24px;margin:0 0 2px 0;">Admin Panel</h2>
@@ -2659,6 +2743,7 @@ ROUTES.adminDashboard = function(){
           </div>
         </div>
       </div>
+      ${adminBottomNavHTML()}
     `));
     return;
   }
