@@ -49,6 +49,7 @@ if('serviceWorker' in navigator){
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-database-compat.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
 <style>
@@ -361,6 +362,11 @@ if('serviceWorker' in navigator){
   .home-card .hc-icon{width:56px;height:56px;border-radius:16px;background:#e3ddc4;display:flex;align-items:center;justify-content:center;font-size:28px;margin:0 auto 10px;}
   .home-card .hc-title{font-size:15px;font-weight:700;color:#1a2233;}
   .home-card .hc-sub{font-size:11.5px;color:#6b7280;margin-top:3px;}
+  /* ---- Memo Search (mobile/memo-number/date tabs) ---- */
+  .memo-search-modes{display:flex;gap:8px;flex-wrap:wrap;}
+  .memo-search-modes .msm-btn{flex:1;min-width:120px;padding:10px 12px;border:1.5px solid var(--line);background:var(--card);border-radius:10px;font-size:13.5px;font-weight:600;cursor:pointer;color:var(--steel,#425466);transition:.15s;font-family:inherit;}
+  .memo-search-modes .msm-btn.active{background:var(--navy,#12233d);color:#fff;border-color:var(--navy,#12233d);}
+  @media(max-width:640px){.memo-search-modes .msm-btn{min-width:100%;}}
 
 </style>
 </head>
@@ -417,6 +423,7 @@ const firebaseConfig = {
 };
 firebase.initializeApp(firebaseConfig);
 const fbAuth = firebase.auth();
+const fbDb = firebase.database();
 
 // Firebase Auth পাসওয়ার্ড কমপক্ষে ৬ ক্যারেক্টার লাগে; আমাদের অ্যাপের পুরনো পাসওয়ার্ড এর চেয়ে ছোট হতে পারে,
 // তাই ছোট পাসওয়ার্ডকে একই নিয়মে (deterministic) প্যাড করে ৬ ক্যারেক্টার বানানো হয় — আসল পাসওয়ার্ড অপরিবর্তিত থাকে DB-তে।
@@ -454,6 +461,123 @@ async function fbEnsureAuth(record, pw, prefix){
     } else throw err;
   }
   record.authEmail = newEmail;
+}
+
+/* ================= GLOBAL UNIQUE MEMO NUMBER SYSTEM =================
+   Format: DDMMYY + Daily Serial. Serial is COMMON/GLOBAL across ALL dealers and resets
+   every day. Uniqueness is guaranteed with a Firebase Realtime Database ATOMIC
+   TRANSACTION on /memoCounters/{DDMMYY} — even if two dealers hit Save/Submit at the
+   exact same moment, only one of them can win each serial, so duplicate Memo Numbers
+   and race conditions are not possible. Nothing is generated purely client-side, so a
+   page refresh can never reuse an already-issued number either. */
+function ddmmyyOf(date){
+  const dd=String(date.getDate()).padStart(2,'0');
+  const mm=String(date.getMonth()+1).padStart(2,'0');
+  const yy=String(date.getFullYear()).slice(-2);
+  return dd+mm+yy;
+}
+function dateKeyOf(date){ // 'YYYY-MM-DD' — sortable/rangeable key used for indexed date search
+  return date.getFullYear()+'-'+String(date.getMonth()+1).padStart(2,'0')+'-'+String(date.getDate()).padStart(2,'0');
+}
+async function nextGlobalMemoSerial(ddmmyy){
+  const ref=fbDb.ref('memoCounters/'+ddmmyy);
+  const result=await ref.transaction(current=>(Number(current)||0)+1);
+  if(!result.committed) throw new Error('Memo Serial allocate করা যায়নি (নেটওয়ার্ক সমস্যা), আবার চেষ্টা করুন।');
+  return result.snapshot.val();
+}
+async function allocateMemoNumber(){
+  const now=new Date();
+  const serial=await nextGlobalMemoSerial(ddmmyyOf(now));
+  return ddmmyyOf(now)+String(serial);
+}
+// Final Memo-কে /memos/{memoNo} পাথে ATOMIC "create-if-not-exists" transaction দিয়ে সেভ করে —
+// এটাই সেই node যেটার ওপর মোবাইল/মেমো নম্বর/তারিখ দিয়ে ইনডেক্সড (Fast) সার্চ চলবে।
+// Duplicate memoNo (স্বাভাবিকভাবে হবার কথা না, তারপরও একটা safety net — যেমন একই Draft
+// দুইটা ট্যাবে খোলা থেকে দুইবার Final Submit করা) হলে transaction সেটা ধরে ফেলবে এবং
+// throw করবে, ফলে Stock deduction/Memo History-তে কিছুই ভুলভাবে সেভ হবে না।
+async function writeFinalMemoToIndex(memo){
+  const ref=fbDb.ref('memos/'+memo.memoNo);
+  const record={
+    memoNumber:String(memo.memoNo),
+    customerName:memo.customerName||'',
+    mobileNumber:digitsOnly(memo.customerMobile||''),
+    memoDateKey:dateKeyOf(new Date(memo.dateISO||Date.now())),
+    dateDisplay:memo.date,
+    timestamp:new Date(memo.dateISO||Date.now()).getTime(),
+    dealerId:memo.dealerId,
+    dealerName:memo.dealerName,
+    dealerPhone:memo.dealerPhone||'',
+    items:memo.items,
+    subtotal:memo.subtotal,
+    discount:memo.discount,
+    grandTotal:memo.grandTotal,
+    paymentStatus:memo.paymentStatus,
+    paymentInfo:memo.paymentInfo,
+    note:memo.note,
+    status:memo.status,
+    localId:memo.id
+  };
+  const result=await ref.transaction(current=>current===null?record:current);
+  if(!result.committed || String(result.snapshot.val() && result.snapshot.val().localId)!==String(memo.id)){
+    throw new Error('এই Memo Number ('+memo.memoNo+') ইতিমধ্যে ব্যবহৃত হয়েছে। আবার চেষ্টা করুন।');
+  }
+  return record;
+}
+// পুরনো (এই ফিচারের আগে তৈরি) Final Memo-গুলোকে একবার /memos ইনডেক্সে ব্যাকফিল করে, যাতে
+// Memo Search পুরনো মেমোতেও কাজ করে। /_meta/memoIndexMigrated মার্কার দিয়ে একবারই চলে।
+async function migrateOldMemosToIndex(){
+  try{
+    const marker=await fbDb.ref('_meta/memoIndexMigrated').once('value');
+    if(marker.exists() && marker.val()) return;
+    const finals=(DB.dealerMemos||[]).filter(m=>m.status!=='DRAFT');
+    if(finals.length){
+      const updates={};
+      finals.forEach(m=>{
+        updates[String(m.memoNo)]={
+          memoNumber:String(m.memoNo),
+          customerName:m.customerName||'',
+          mobileNumber:digitsOnly(m.customerMobile||''),
+          memoDateKey:dateKeyOf(new Date(m.dateISO||Date.now())),
+          dateDisplay:m.date,
+          timestamp:new Date(m.dateISO||Date.now()).getTime(),
+          dealerId:m.dealerId,
+          dealerName:m.dealerName,
+          dealerPhone:m.dealerPhone||'',
+          items:m.items,
+          subtotal:m.subtotal,
+          discount:m.discount,
+          grandTotal:m.grandTotal,
+          paymentStatus:m.paymentStatus,
+          paymentInfo:m.paymentInfo,
+          note:m.note,
+          status:m.status,
+          localId:m.id
+        };
+      });
+      await fbDb.ref('memos').update(updates);
+    }
+    await fbDb.ref('_meta/memoIndexMigrated').set(true);
+  }catch(e){ console.warn('Old memo migration skipped/failed:',e); }
+}
+/* ---- Memo Search Queries — Firebase INDEXED queries, not full-load-then-JS-filter ---- */
+function snapshotToMemoList(snap){
+  const out=[];
+  snap.forEach(ch=>out.push(ch.val()));
+  out.sort((a,b)=>Number(b.timestamp||0)-Number(a.timestamp||0));
+  return out;
+}
+async function searchMemosByMobile(mobile){
+  const digits=digitsOnly(mobile);
+  const snap=await fbDb.ref('memos').orderByChild('mobileNumber').equalTo(digits).once('value');
+  return snapshotToMemoList(snap);
+}
+async function searchMemoByNumber(no){
+  const snap=await fbDb.ref('memos').orderByChild('memoNumber').equalTo(String(no).trim()).once('value');
+  return snapshotToMemoList(snap);
+}
+async function searchMemosByDateRange(fromKey,toKey){
+  const snap=await fbDb.ref('memos').orderByChild('memoDateKey').startAt(fromKey).endAt(toKey).once('value');
+  return snapshotToMemoList(snap);
 }
 
 async function saveDB(){
@@ -851,6 +975,7 @@ function showDealerMoreMenu(){
     <div class="modal-actions" style="flex-direction:column;align-items:stretch;gap:8px;">
       <button class="btn btn-ghost btn-block" onclick="closeModal();dealerManageTab='memoDrafts';go('dealerPortal')">🟡 Saved/Draft Memos</button>
       <button class="btn btn-ghost btn-block" onclick="closeModal();dealerManageTab='memoHistory';go('dealerPortal')">📜 Memo History</button>
+      <button class="btn btn-ghost btn-block" onclick="closeModal();dealerManageTab='memoSearch';go('dealerPortal')">🔎 Memo Search</button>
       <button class="btn btn-ghost btn-block" onclick="closeModal();dealerManageTab='shopParts';go('dealerPortal')">🧩 My Shop Parts</button>
       <button class="btn btn-ghost btn-block" onclick="closeModal();dealerManageTab='stockHistory';go('dealerPortal')">↕️ Stock History</button>
       <button class="btn btn-ghost btn-block" onclick="closeModal();go('dealerRequisition')">📝 রিকুইজিশন</button>
@@ -1486,6 +1611,7 @@ function dealerNavHTML(){
     ['memo','🧾 Create Memo'],
     ['memoDrafts','🟡 Saved/Draft Memos'],
     ['memoHistory','📜 Memo History'],
+    ['memoSearch','🔎 Memo Search'],
     ['shopParts','🧩 My Shop Parts'],
     ['stock','📦 My Stock'],
     ['stockHistory','↕️ Stock History']
@@ -1645,15 +1771,15 @@ function stockHistoryHTML(){
 }
 function memoEditorHTML(draft=null){
   const d=draft||null;
-  const memoNumber=d?.memoNo || ('M-'+String(DB.nextMemoNo||1).padStart(5,'0'));
+  const memoNumber=d?.memoNo || 'Auto — Save/Submit করলে বরাদ্দ হবে';
   const dateValue=d?.date || new Date().toLocaleString('bn-BD');
   const status=d?'DRAFT':'NEW';
-  return `<div class="card-head"><h3>🧾 Create Memo</h3><span class="badge ${d?'pending':'active'}">${status}${d?' • '+escHtml(d.memoNo):' • Automatic Memo No.'}</span></div>
+  return `<div class="card-head"><h3>🧾 Create Memo</h3><span class="badge ${d?'pending':'active'}" id="memoNumberBadge">${status}${d?' • '+escHtml(d.memoNo):' • Automatic Memo No. (DDMMYY+Serial)'}</span></div>
   <div class="card">
     <div class="dealer-management-grid">
       <div class="field"><label>Customer Name</label><input id="memoCustomerName" value="${escHtml(d?.customerName||'')}" placeholder="কাস্টমারের নাম" style="background:#fff9ec;border-color:#f0dfb8"></div>
       <div class="field"><label>Customer Mobile</label><input id="memoCustomerMobile" value="${escHtml(d?.customerMobile||'')}" placeholder="01XXXXXXXXX" inputmode="tel" style="background:#fff9ec;border-color:#f0dfb8"></div>
-      <div class="field"><label>Memo Number</label><input id="memoNumber" value="${escHtml(memoNumber)}" readonly></div>
+      <div class="field"><label>Memo Number</label><input id="memoNumber" value="${escHtml(memoNumber)}" readonly style="${d?'':'font-style:italic;color:#8a8f98'}"></div>
       <div class="field"><label>Date</label><input id="memoDate" value="${escHtml(dateValue)}" readonly></div>
       <div class="field"><label>Payment Status</label><select id="memoPaymentStatus"><option value="Paid" ${d?.paymentStatus==='Paid'?'selected':''}>Paid / পরিশোধিত</option><option value="Due" ${d?.paymentStatus==='Due'?'selected':''}>Due / বাকি</option><option value="Partial" ${d?.paymentStatus==='Partial'?'selected':''}>Partial / আংশিক</option></select></div>
       <div class="field"><label>Payment Method / Note</label><input id="memoPaymentInfo" value="${escHtml(d?.paymentInfo||'')}" placeholder="Cash / bKash / Due note"></div>
@@ -1736,6 +1862,22 @@ function wireMemoPage(existingDraft=null){
   const search=document.getElementById('memoPartSearch'),suggest=document.getElementById('memoPartSuggestions');
   let draftId=initial?.id||null;
   let autoTimer=null;
+  let memoNumberAllocated=!!(initial?.memoNo);
+  let memoNumberAllocating=null;
+  // প্রথমবার Save Draft/Final Submit চাপার সময়ই (শুধু একবার) Firebase atomic transaction দিয়ে
+  // real global-unique Memo Number আনা হয়; Draft Continue করলে আগের বরাদ্দ করা নম্বরই থাকে।
+  const ensureMemoNumber=async()=>{
+    if(memoNumberAllocated) return document.getElementById('memoNumber').value;
+    if(memoNumberAllocating) return memoNumberAllocating;
+    memoNumberAllocating=(async()=>{
+      const no=await allocateMemoNumber();
+      memoNumberAllocated=true;
+      const inp=document.getElementById('memoNumber');if(inp){inp.value=no;inp.style.fontStyle='normal';inp.style.color='';}
+      const badge=document.getElementById('memoNumberBadge');if(badge)badge.textContent='NEW • '+no;
+      return no;
+    })();
+    try{ return await memoNumberAllocating; } finally{ memoNumberAllocating=null; }
+  };
   const recalc=()=>{
     let sub=0;rows.forEach((it,i)=>{sub+=Number(it.qty||0)*Number(it.unitPrice||0);const el=document.querySelector(`.memo-row-total[data-i="${i}"]`);if(el)el.textContent='৳'+money(Number(it.qty||0)*Number(it.unitPrice||0));});
     const d=Math.max(0,Number(document.getElementById('memoDiscount').value||0)),grand=Math.max(0,sub-d);
@@ -1764,18 +1906,22 @@ function wireMemoPage(existingDraft=null){
   document.getElementById('memoClear').onclick=()=>{if(confirm('Memo form clear করবেন?')){clearDraftLocal();dealerManageTab='search';go('dealerPortal');}};
   document.getElementById('memoSaveDraft').onclick=async()=>{
     const u=currentDealer();if(!u)return;
-    const st=state();
+    let st=state();
     if(!st.items.length && !st.customerName){alert('Draft Save করতে অন্তত একটি Item অথবা Customer তথ্য দিন।');return;}
+    const btn=document.getElementById('memoSaveDraft');const oldTxt=btn.textContent;
+    if(!draftId && !memoNumberAllocated){
+      btn.disabled=true;btn.textContent='⏳ Memo No. Generate হচ্ছে...';
+      try{ await ensureMemoNumber(); }
+      catch(e){ alert('Memo Number generate করা যায়নি। ইন্টারনেট চেক করে আবার চেষ্টা করুন।\n'+e.message); btn.disabled=false;btn.textContent=oldTxt; return; }
+      btn.disabled=false;btn.textContent=oldTxt;
+      st=state();
+    }
     const now=new Date();
     if(!draftId){
       const id=Date.now()+Math.random();
       draftId=id;
-      const allocatedNo=st.memoNo || ('M-'+String(DB.nextMemoNo||1).padStart(5,'0'));
-      st.memoNo=allocatedNo;
-      DB.nextMemoNo=Math.max(Number(DB.nextMemoNo||1)+1,Number(String(allocatedNo).replace(/\D/g,''))+1);
       const draft={id,dealerId:u.id,dealerName:u.name,status:'DRAFT',createdAt:now.toISOString(),createdAtDisplay:now.toLocaleString('bn-BD'),updatedAt:now.toISOString(),updatedAtDisplay:now.toLocaleString('bn-BD'),dateISO:now.toISOString(),...st};
       DB.dealerMemoDrafts.unshift(draft);
-      const memoInput=document.getElementById('memoNumber');if(memoInput)memoInput.value=allocatedNo;
     }else{
       const draft=DB.dealerMemoDrafts.find(x=>String(x.id)===String(draftId));
       if(!draft){alert('Draft পাওয়া যায়নি।');return;}
@@ -1787,7 +1933,7 @@ function wireMemoPage(existingDraft=null){
   };
   document.getElementById('memoFinalSubmit').onclick=async()=>{
     const u=currentDealer();if(!u)return;
-    const st=state();
+    let st=state();
     if(!st.customerName){alert('Customer Name দিন।');return;}
     if(!st.items.length){alert('কমপক্ষে একটি Part add করুন।');return;}
     if(st.discount>st.subtotal){alert('Discount Subtotal-এর চেয়ে বেশি হতে পারবে না।');return;}
@@ -1797,14 +1943,29 @@ function wireMemoPage(existingDraft=null){
       if(!p){alert('একটি Dealer Part আর পাওয়া যাচ্ছে না।');return;}
       if(Number(it.qty||0)>Number(p.currentStock||0)){alert(`Insufficient Stock\n${p.name}\nCurrent Stock: ${p.currentStock}\nRequested: ${it.qty}`);return;}
     }
+    const btn=document.getElementById('memoFinalSubmit');const oldTxt=btn.textContent;
+    if(!memoNumberAllocated){
+      btn.disabled=true;btn.textContent='⏳ Memo No. Generate হচ্ছে...';
+      try{ await ensureMemoNumber(); }
+      catch(e){ alert('Memo Number generate করা যায়নি। ইন্টারনেট চেক করে আবার চেষ্টা করুন।\n'+e.message); btn.disabled=false;btn.textContent=oldTxt; return; }
+      btn.disabled=false;btn.textContent=oldTxt;
+      st=state();
+    }
     if(!confirm(`Memo ${st.memoNo} FINAL SUBMIT করবেন?\nFinal Submit-এর পর এটি Draft থাকবে না।`))return;
     const now=new Date();
     const memo={id:Date.now()+Math.random(),dealerId:u.id,dealerName:u.name,dealerPhone:u.phone,memoNo:st.memoNo,date:now.toLocaleString('bn-BD'),dateISO:now.toISOString(),customerName:st.customerName,customerMobile:st.customerMobile,paymentStatus:st.paymentStatus,paymentInfo:st.paymentInfo,note:st.note,items:st.items.map(x=>({...x})),subtotal:st.subtotal,discount:st.discount,grandTotal:st.grandTotal,status:'SUBMITTED'};
-    DB.nextMemoNo=Math.max(Number(DB.nextMemoNo||1)+1,Number(String(st.memoNo).replace(/\D/g,''))+1);
+    btn.disabled=true;btn.textContent='⏳ Submitting...';
+    try{
+      await writeFinalMemoToIndex(memo);
+    }catch(e){
+      alert('Final Submit ব্যর্থ হয়েছে: '+e.message+'\nকোনো Stock deduction বা Memo সেভ হয়নি, আবার চেষ্টা করুন।');
+      btn.disabled=false;btn.textContent=oldTxt;
+      return;
+    }
     st.items.filter(x=>x.source==='dealer').forEach(it=>{const p=dealerShopParts().find(x=>Number(x.id)===Number(it.partId));const prev=Number(p.currentStock||0),out=Number(it.qty||0);p.currentStock=prev-out;addStockHistory(p,prev,0,out,p.currentStock,'Sold via Memo',st.memoNo);});
     DB.dealerMemos.unshift(memo);
     if(draftId)DB.dealerMemoDrafts=DB.dealerMemoDrafts.filter(x=>String(x.id)!==String(draftId));
-    clearDraftLocal();await saveDB();showSavedMemoActions(memo);
+    clearDraftLocal();await saveDB();btn.disabled=false;btn.textContent=oldTxt;showSavedMemoActions(memo);
   };
   redraw();
   // Restore a local auto-saved session if it is newer than the loaded draft and the form is otherwise empty.
@@ -1853,6 +2014,97 @@ function printDealerMemo(id){
   const area=document.createElement('div');area.id='memoPrintArea';area.innerHTML=memoDetailsHTML(m);document.body.appendChild(area);
   document.body.classList.add('print-memo-only');window.print();document.body.classList.remove('print-memo-only');area.remove();
 }
+/* ---- Memo History / Search (Part 2) — mobile / memo-number / date, Firebase-indexed ---- */
+function memoSearchHTML(){
+  return `<div class="card-head"><h3>🔎 Memo History / Search</h3></div>
+  <div class="card">
+    <div class="memo-search-modes" id="memoSearchModes">
+      <button type="button" class="msm-btn active" data-mode="mobile">📱 Mobile Number</button>
+      <button type="button" class="msm-btn" data-mode="memo">🧾 Memo Number</button>
+      <button type="button" class="msm-btn" data-mode="date">📅 Date</button>
+    </div>
+    <div id="memoSearchInputs" style="margin-top:14px"></div>
+    <div id="memoSearchResults" style="margin-top:18px"></div>
+  </div>`;
+}
+function memoSearchInputsHTML(mode){
+  if(mode==='mobile') return `<div class="big-search"><input type="tel" id="msMobile" placeholder="যেমনঃ 017XXXXXXXX" inputmode="tel"><button class="btn btn-primary" id="msMobileBtn">SEARCH</button></div>`;
+  if(mode==='memo') return `<div class="big-search"><input type="text" id="msMemoNo" placeholder="Memo Number লিখুন"><button class="btn btn-primary" id="msMemoBtn">SEARCH</button></div>`;
+  return `<div class="dealer-management-grid">
+    <div class="field"><label>From Date</label><input type="date" id="msFrom"></div>
+    <div class="field"><label>To Date (একই তারিখ হলে From-ই দিন, খালি রাখলে From-ই ধরা হবে)</label><input type="date" id="msTo"></div>
+  </div><div style="margin-top:10px;text-align:right"><button class="btn btn-primary" id="msDateBtn">SEARCH</button></div>`;
+}
+let _memoSearchCache={};
+function memoObjFromIndexRecord(r){ // memoDetailsHTML()-এর জন্য locally-stored memo object-এর মতো shape বানানো
+  return {id:r.localId,memoNo:r.memoNumber,date:r.dateDisplay,dealerName:r.dealerName,customerName:r.customerName,customerMobile:r.mobileNumber,paymentStatus:r.paymentStatus,paymentInfo:r.paymentInfo,note:r.note,items:r.items||[],subtotal:r.subtotal,discount:r.discount,grandTotal:r.grandTotal};
+}
+function memoSearchResultsTable(list,opts){
+  opts=opts||{};
+  if(!list.length) return `<div class="empty">😕 No Memo Found — এই তথ্যের সাথে কোনো Memo পাওয়া যায়নি।</div>`;
+  let header='';
+  if(opts.showCustomerHeader){
+    const first=list[0];
+    header=`<div style="margin-bottom:12px;padding:12px 14px;background:#f8fbff;border:1px solid #cfe0f5;border-radius:12px">
+      <div><b>CUSTOMER:</b> ${escHtml(first.customerName||'-')}</div>
+      <div><b>MOBILE:</b> ${escHtml(first.mobileNumber||'-')}</div>
+      <div><b>TOTAL MEMOS:</b> ${list.length}</div>
+    </div>`;
+  }
+  return `${header}<div style="overflow-x:auto"><table style="min-width:820px"><thead><tr><th>Date</th><th>Memo No.</th><th>Customer</th><th>Mobile</th><th>Total</th><th>Dealer</th><th>Status</th><th>Action</th></tr></thead><tbody>
+  ${list.map(m=>`<tr><td>${escHtml(m.dateDisplay||'')}</td><td class="mono">${escHtml(m.memoNumber)}</td><td>${escHtml(m.customerName||'')}</td><td>${escHtml(m.mobileNumber||'-')}</td><td>৳${money(m.grandTotal)}</td><td>${escHtml(m.dealerName||'-')}</td><td>${escHtml(m.status||'')}</td><td><div class="row-actions"><button class="btn btn-ghost btn-sm" onclick='viewSearchedMemo(${JSON.stringify(m.memoNumber)})'>👁️ View</button><button class="btn btn-primary btn-sm" onclick='printSearchedMemo(${JSON.stringify(m.memoNumber)})'>🖨️ Print</button></div></td></tr>`).join('')}
+  </tbody></table></div>`;
+}
+function viewSearchedMemo(memoNumber){
+  const r=_memoSearchCache[memoNumber];if(!r)return;
+  const m=memoObjFromIndexRecord(r);
+  openModal(`<h3>🧾 ${escHtml(m.memoNo)}</h3>${memoDetailsHTML(m)}<div class="modal-actions"><button class="btn btn-primary" onclick='printSearchedMemo(${JSON.stringify(memoNumber)});closeModal()'>🖨️ Print</button><button class="btn btn-ghost" onclick="closeModal()">বন্ধ</button></div>`);
+}
+function printSearchedMemo(memoNumber){
+  const r=_memoSearchCache[memoNumber];if(!r)return;
+  const m=memoObjFromIndexRecord(r);
+  const area=document.createElement('div');area.id='memoPrintArea';area.innerHTML=memoDetailsHTML(m);document.body.appendChild(area);
+  document.body.classList.add('print-memo-only');window.print();document.body.classList.remove('print-memo-only');area.remove();
+}
+function wireMemoSearch(){
+  let mode='mobile';
+  const inputsBox=document.getElementById('memoSearchInputs');
+  const resultsBox=document.getElementById('memoSearchResults');
+  const setResults=(list,opts)=>{ list.forEach(r=>{_memoSearchCache[r.memoNumber]=r;}); resultsBox.innerHTML=memoSearchResultsTable(list,opts); };
+  const runSearch=async(fn,opts)=>{
+    resultsBox.innerHTML='<div class="empty">🔎 খোঁজা হচ্ছে...</div>';
+    try{ const list=await fn(); setResults(list,opts); }
+    catch(e){ resultsBox.innerHTML='<div class="empty">সার্চ ব্যর্থ হয়েছে। ইন্টারনেট চেক করে আবার চেষ্টা করুন।</div>'; console.error(e); }
+  };
+  const wireInputs=()=>{
+    if(mode==='mobile'){
+      const btn=document.getElementById('msMobileBtn'),inp=document.getElementById('msMobile');
+      const run=()=>{const v=inp.value.trim();if(!v){alert('Mobile Number দিন।');return;}runSearch(()=>searchMemosByMobile(v),{showCustomerHeader:true});};
+      btn.onclick=run;inp.addEventListener('keydown',e=>{if(e.key==='Enter')run();});
+    }else if(mode==='memo'){
+      const btn=document.getElementById('msMemoBtn'),inp=document.getElementById('msMemoNo');
+      const run=()=>{const v=inp.value.trim();if(!v){alert('Memo Number দিন।');return;}runSearch(()=>searchMemoByNumber(v),{});};
+      btn.onclick=run;inp.addEventListener('keydown',e=>{if(e.key==='Enter')run();});
+    }else{
+      const btn=document.getElementById('msDateBtn');
+      btn.onclick=()=>{
+        const from=document.getElementById('msFrom').value,to=document.getElementById('msTo').value||from;
+        if(!from){alert('From Date দিন।');return;}
+        runSearch(()=>searchMemosByDateRange(from,to),{});
+      };
+    }
+  };
+  const renderInputs=()=>{ inputsBox.innerHTML=memoSearchInputsHTML(mode); wireInputs(); };
+  document.querySelectorAll('#memoSearchModes .msm-btn').forEach(b=>{
+    b.onclick=()=>{
+      mode=b.dataset.mode;
+      document.querySelectorAll('#memoSearchModes .msm-btn').forEach(x=>x.classList.toggle('active',x===b));
+      resultsBox.innerHTML='';
+      renderInputs();
+    };
+  });
+  renderInputs();
+}
 function dealerPortalRender(){
   const u=currentDealer();
   if(!u){go('dealerLogin');return;}
@@ -1860,6 +2112,7 @@ function dealerPortalRender(){
   if(dealerManageTab==='memo'){ const ed=window._editingMemoDraft||null; window._memoDraftForWire=ed; window._editingMemoDraft=null; content=memoEditorHTML(ed); }
   else if(dealerManageTab==='memoDrafts')content=memoDraftsHTML();
   else if(dealerManageTab==='memoHistory')content=memoHistoryHTML();
+  else if(dealerManageTab==='memoSearch')content=memoSearchHTML();
   else if(dealerManageTab==='shopParts')content=dealerShopPartsHTML();
   else if(dealerManageTab==='stock')content=stockHTML();
   else if(dealerManageTab==='stockHistory')content=stockHistoryHTML();
@@ -1868,6 +2121,7 @@ function dealerPortalRender(){
   document.getElementById('dealerLogout').onclick=()=>{DB.session={role:null,user:null};go('landing');};
   document.getElementById('modalBg').addEventListener('click',ev=>{if(ev.target.id==='modalBg')closeModal();});
   if(dealerManageTab==='memo'){ const ed=window._memoDraftForWire||null; window._memoDraftForWire=null; wireMemoPage(ed); }
+  if(dealerManageTab==='memoSearch')wireMemoSearch();
   if(dealerManageTab==='shopParts')wireDealerShopParts();
   if(dealerManageTab==='search'){
     document.getElementById('dealerUnifiedSearch').addEventListener('input',()=>{clearTimeout(window._dealerSearchTimer);window._dealerSearchTimer=setTimeout(renderDealerUnifiedSearch,180);});
@@ -4063,7 +4317,7 @@ if(SYNC_ON){
   loadFromSheet().then(()=>{ splashShown = true; showSplash(render); });
 } else {
   document.getElementById('app').innerHTML = `<div class="center-screen"><div style="text-align:center;color:var(--muted)">🔄 ডেটা লোড হচ্ছে...</div></div>`;
-  loadDB().then(()=>{ ensureCores(); splashShown = true; showSplash(render); });
+  loadDB().then(()=>{ ensureCores(); migrateOldMemosToIndex(); splashShown = true; showSplash(render); });
 }
 </script>
 </body>
