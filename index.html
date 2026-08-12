@@ -529,6 +529,37 @@ const LS_KEY = 'partsAppDB_v1';
 /* ================= FIREBASE REALTIME DATABASE ================= */
 const FB_URL = 'https://metal-parts-default-rtdb.firebaseio.com';
 
+/* ================= নিরাপত্তা নোট (গুরুত্বপূর্ণ) =================
+   এই অ্যাপের Parts/Dealer/Memo তালিকার মূল ডেটা (DB অবজেক্ট) Google Sheet
+   Apps Script (CONFIG.API_URL) থেকে সিঙ্ক হয়ে সরাসরি ব্রাউজারে (client-side)
+   লোড হয়, এবং এখানে দেখানো Dealer Name/Mobile/Address, memo header ইত্যাদি
+   সব সময় currentDealer() অর্থাৎ লগইন-করা সেশনের ইউজার থেকেই আসে — তাই সাধারণ
+   ব্যবহারে এক Dealer কখনো UI-তে অন্য Dealer-এর তথ্য দেখতে পারবে না।
+
+   তবে প্রকৃত (server-side) নিরাপত্তার জন্য দুটো জিনিস অতিরিক্তভাবে নিশ্চিত করা দরকার,
+   যেগুলো এই HTML ফাইলের বাইরে করতে হবে:
+
+   ১) Firebase Realtime Database Rules (Firebase Console → Realtime Database → Rules):
+      {
+        "rules": {
+          "memos": {
+            ".read": "auth != null",
+            ".write": "auth != null",
+            "$memoNo": { ".validate": "newData.child('dealerId').exists()" }
+          },
+          "memoCounters": { ".read": "auth != null", ".write": "auth != null" },
+          "_meta": { ".read": "auth != null", ".write": "auth != null" }
+        }
+      }
+      এতে করে Login (Firebase Auth uid) ছাড়া কেউ memos/ ডেটা read/write করতে পারবে না।
+
+   ২) Google Apps Script (CONFIG.API_URL) ব্যাকএন্ডে — যেটা DB.users/DB.parts ইত্যাদি
+      সরবরাহ করে — অনুরোধ করা হচ্ছে, requester-এর phone/uid অনুযায়ী response
+      scope করা থাকলে সবচেয়ে ভালো হয় (যাতে network tab থেকেও অন্য Dealer-এর raw
+      ডেটা কেউ দেখতে না পারে)। এই HTML ফাইল থেকে সেই ব্যাকএন্ড কোড পরিবর্তন করা যায় না,
+      তাই এটি Apps Script-এ আলাদাভাবে করতে হবে।
+*/
+
 /* ---- Firebase Authentication (রিয়েলটাইম ডাটাবেস rules যাতে auth ছাড়া কেউ write করতে না পারে) ---- */
 const firebaseConfig = {
   apiKey: "AIzaSyBTdMUeBXD49NPOBPv4M53FzFGJcbBfPl8",
@@ -885,6 +916,106 @@ function toggleTheme(){
 }
 applyTheme();
 
+/* ================= APP LANGUAGE (বাংলা / English) =================
+   পুরো সফটওয়্যারের Login Page ও Post-Login UI-এর জন্য একটি সাধারণ Language
+   Switch সিস্টেম। localStorage-এ 'mp_lang' key-তে সেভ থাকে (bn / en),
+   ডিফল্ট বাংলা। t(key) ফাংশন দিয়ে যেকোনো জায়গায় অনুবাদ করা টেক্সট পাওয়া যায়। */
+const I18N = {
+  bn: {
+    appTitle: 'পার্টস মূল্য ও তথ্য ব্যবস্থাপনা সিস্টেম',
+    login: 'লগইন করুন', mobileNumber: 'মোবাইল নম্বর', password: 'পাসওয়ার্ড',
+    forgotPassword: 'পাসওয়ার্ড ভুলে গেছেন?', dealerLogin: 'ডিলার লগইন',
+    dealerMechanicLogin: 'ডিলার / মেকানিক লগইন', adminLogin: 'অ্যাডমিন লগইন',
+    partsEngineerLogin: 'Parts Engineer লগইন', logout: 'লগআউট', dashboard: 'ড্যাশবোর্ড',
+    register: 'রেজিস্ট্রেশন করুন', newUserRegister: 'নতুন ইউজার? রেজিস্ট্রেশন করুন',
+    haveAccountLogin: 'আগে থেকে অ্যাকাউন্ট আছে? লগইন করুন', backToHome: '← হোমে ফিরে যান',
+    name: 'নাম', enter: 'প্রবেশ করুন', myProfile: 'আমার প্রোফাইল'
+  },
+  en: {
+    appTitle: 'Parts Price & Information Management System',
+    login: 'Login', mobileNumber: 'Mobile Number', password: 'Password',
+    forgotPassword: 'Forgot Password?', dealerLogin: 'Dealer Login',
+    dealerMechanicLogin: 'Dealer / Mechanic Login', adminLogin: 'Admin Login',
+    partsEngineerLogin: 'Parts Engineer Login', logout: 'Logout', dashboard: 'Dashboard',
+    register: 'Register', newUserRegister: 'New user? Register here',
+    haveAccountLogin: 'Already have an account? Login', backToHome: '← Back to Home',
+    name: 'Name', enter: 'Enter', myProfile: 'My Profile'
+  }
+};
+function getLang(){ return localStorage.getItem('mp_lang') === 'en' ? 'en' : 'bn'; }
+function setLang(l){ localStorage.setItem('mp_lang', l==='en'?'en':'bn'); render(); }
+function t(key){ const l=getLang(); return (I18N[l] && I18N[l][key]!==undefined) ? I18N[l][key] : (I18N.bn[key]||key); }
+// যেকোনো gate/login স্ক্রিনের উপরের দিকে বসানোর জন্য ছোট বাংলা|English টগল
+function langSwitchHTML(){
+  const l = getLang();
+  return `<div class="lang-switch" style="position:absolute;top:12px;right:12px;z-index:5;display:flex;gap:2px;background:rgba(255,255,255,.15);border-radius:8px;padding:3px;">
+    <button type="button" onclick="setLang('bn')" style="border:none;cursor:pointer;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:600;${l==='bn'?'background:#fff;color:var(--navy);':'background:transparent;color:#fff;'}">বাংলা</button>
+    <button type="button" onclick="setLang('en')" style="border:none;cursor:pointer;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:600;${l==='en'?'background:#fff;color:var(--navy);':'background:transparent;color:#fff;'}">English</button>
+  </div>`;
+}
+
+/* ================= MEMO (Create Memo / Sales Memo) LANGUAGE =================
+   Create Memo পেজে ডিলার নিজে বাংলা/English বেছে নিতে পারবে। এটা localStorage-এ
+   প্রতি-ডিলার আলাদাভাবে সেভ থাকে ('mp_memo_lang_' + dealerId), যাতে একজন ডিলারের
+   পছন্দ অন্য ডিলারের memo-কে প্রভাবিত না করে। শুধু label/heading পরিবর্তন হয় —
+   item data, calculation ও amount কখনো পরিবর্তন হয় না। */
+const MEMO_I18N = {
+  bn: {
+    badge:'🧾 ক্রয় মেমো', subtitle:'এসবিইউ২ পার্টস – বরিশাল অঞ্চল', tagline:'ট্রাক্টর ও মেশিনারি পার্টস সাপ্লায়ার',
+    customerInfoHead:'👤 ক্রেতার তথ্য', customerName:'ক্রেতার নাম', mobileNumber:'মোবাইল নম্বর', address:'ঠিকানা',
+    memoInfoHead:'📄 মেমো তথ্য', memoNumber:'মেমো নম্বর', date:'তারিখ', time:'সময়',
+    partSearchLabel:'🔍 পার্ট খুঁজুন',
+    thSl:'ক্রম', thPartNo:'পার্ট নম্বর', thPartName:'পার্টের নাম / বিবরণ', thQty:'পরিমাণ', thUnitPrice:'একক মূল্য (৳)', thTotalPrice:'মোট মূল্য (৳)',
+    noteHead:'📝 মন্তব্য', subtotal:'সাবটোটাল', discount:'ছাড় / সমন্বয়', grandTotal:'সর্বমোট',
+    clear:'🔄 মুছুন', saveDraft:'🟡 ড্রাফট সেভ করুন', finalSubmit:'🟢 চূড়ান্ত জমা',
+    custSign:'ক্রেতার স্বাক্ষর', dealerName:'ডিলারের নাম', dealerMobile:'মোবাইল নম্বর', dealerAddress:'ঠিকানা'
+  },
+  en: {
+    badge:'🧾 SALES MEMO', subtitle:'SBU2 Parts – Barishal Region', tagline:'Tractor & Machinery Parts Supplier',
+    customerInfoHead:'👤 CUSTOMER INFORMATION', customerName:'CUSTOMER NAME', mobileNumber:'MOBILE NUMBER', address:'ADDRESS',
+    memoInfoHead:'📄 MEMO INFORMATION', memoNumber:'MEMO NUMBER', date:'DATE', time:'TIME',
+    partSearchLabel:'🔍 Part Search',
+    thSl:'SL', thPartNo:'PART NO.', thPartName:'PART NAME / DESCRIPTION', thQty:'QTY.', thUnitPrice:'UNIT PRICE (৳)', thTotalPrice:'TOTAL PRICE (৳)',
+    noteHead:'📝 NOTE', subtotal:'Subtotal', discount:'Discount / Adjustment', grandTotal:'GRAND TOTAL',
+    clear:'🔄 Clear', saveDraft:'🟡 SAVE DRAFT', finalSubmit:'🟢 FINAL SUBMIT',
+    custSign:'Customer Signature', dealerName:'Dealer Name', dealerMobile:'Mobile', dealerAddress:'Address'
+  }
+};
+function memoLangKey(){ const u=currentDealer(); return 'mp_memo_lang_'+(u?u.id:'guest'); }
+function getMemoLang(){ return localStorage.getItem(memoLangKey())==='en' ? 'en' : 'bn'; }
+function setMemoLang(l){ localStorage.setItem(memoLangKey(), l==='en'?'en':'bn'); applyMemoLang(); }
+// পুরো memo editor ফর্ম re-render না করে শুধু label/heading টেক্সট বদলে দেয়,
+// যাতে ইউজারের টাইপ করা Customer/Item ডেটা হারিয়ে না যায়।
+function applyMemoLang(){
+  const box=document.querySelector('.memo2-wrap'); if(!box) return;
+  const m=MEMO_I18N[getMemoLang()];
+  const set=(id,val)=>{const e=document.getElementById(id); if(e) e.textContent=val;};
+  set('memoLblBadge', m.badge); set('memoLblSubtitle', m.subtitle); set('memoLblTagline', m.tagline);
+  set('memoLblCustomerInfoHead', m.customerInfoHead); set('memoLblCustomerName', m.customerName);
+  set('memoLblMobileNumber', m.mobileNumber); set('memoLblAddress', m.address);
+  set('memoLblMemoInfoHead', m.memoInfoHead); set('memoLblMemoNumber', m.memoNumber);
+  set('memoLblDate', m.date); set('memoLblTime', m.time); set('memoLblPartSearch', m.partSearchLabel);
+  set('memoThSl', m.thSl); set('memoThPartNo', m.thPartNo); set('memoThPartName', m.thPartName);
+  set('memoThQty', m.thQty); set('memoThUnitPrice', m.thUnitPrice); set('memoThTotalPrice', m.thTotalPrice);
+  set('memoLblNoteHead', m.noteHead); set('memoLblSubtotalText', m.subtotal); set('memoLblDiscountText', m.discount);
+  set('memoLblGrandTotalText', m.grandTotal); set('memoBtnClear', m.clear); set('memoBtnSaveDraft', m.saveDraft);
+  set('memoBtnFinalSubmit', m.finalSubmit); set('memoLblCustSign', m.custSign);
+  set('memoLblDealerName', m.dealerName); set('memoLblDealerMobile', m.dealerMobile); set('memoLblDealerAddress', m.dealerAddress);
+  const langInput=document.getElementById('memoLang'); if(langInput) langInput.value=getMemoLang();
+  document.querySelectorAll('.memo-lang-toggle button').forEach(btn=>{
+    const active = btn.dataset.lang===getMemoLang();
+    btn.style.background = active ? '#123f24' : 'transparent';
+    btn.style.color = active ? '#fff' : '#123f24';
+  });
+}
+// currentDealer()-এর নিজের প্রোফাইল থেকে Name/Mobile/Address বের করে —
+// অন্য কোনো Dealer-এর তথ্য কখনো এখানে আসে না (session-bound)।
+function dealerHeaderInfo(u){
+  if(!u) return {name:'-', mobile:'-', address:'-'};
+  const addr = u.address ? u.address : [u.upazila, u.district].filter(Boolean).join(', ');
+  return {name:u.name||'-', mobile:u.phone||'-', address:addr||'-'};
+}
+
 function render(){ document.getElementById('app').innerHTML = ''; ROUTES[currentRoute](); }
 let currentRoute = 'landing';
 let splashShown = false;
@@ -1069,24 +1200,25 @@ ROUTES.landing = function(){
       <button class="theme-toggle" onclick="toggleTheme()" style="position:fixed;top:16px;right:16px;z-index:10;width:40px;height:40px;border-radius:12px;border:1px solid var(--line);background:var(--card);font-size:18px;cursor:pointer;">🌙</button>
       <div class="gate" style="max-width:400px;">
         <div class="gate-top">
+          ${langSwitchHTML()}
           <div class="cog" style="width:1in;height:0.65in;background:transparent;"><img src="${METAL_LOGO_IMG}" alt="Metal" style="width:100%;height:100%;object-fit:contain;"></div>
           <h1>${DB.settings.companyName}</h1>
-          <p>পার্টস মূল্য ও তথ্য ব্যবস্থাপনা সিস্টেম</p>
+          <p>${t('appTitle')}</p>
         </div>
         <div class="gate-body">
           <div class="home-card-grid" style="grid-template-columns:1fr;gap:12px;">
             <div class="home-card" style="text-align:left;display:flex;align-items:center;gap:14px;padding:16px 18px;" id="toDealer">
               <div class="hc-icon" style="margin:0;flex-shrink:0;">📱</div>
-              <div><div class="hc-title">ডিলার / মেকানিক লগইন</div><div class="hc-sub">পার্টস সার্চ, মেমো, স্টক ব্যবস্থাপনা</div></div>
+              <div><div class="hc-title">${t('dealerMechanicLogin')}</div><div class="hc-sub">পার্টস সার্চ, মেমো, স্টক ব্যবস্থাপনা</div></div>
             </div>
             ${DEALER_ONLY ? '' : `
             <div class="home-card" style="text-align:left;display:flex;align-items:center;gap:14px;padding:16px 18px;" id="toPe">
               <div class="hc-icon" style="margin:0;flex-shrink:0;">🧑‍🔧</div>
-              <div><div class="hc-title">Parts Engineer লগইন</div><div class="hc-sub">রিজিয়ন-ভিত্তিক ডিলার ম্যানেজমেন্ট</div></div>
+              <div><div class="hc-title">${t('partsEngineerLogin')}</div><div class="hc-sub">রিজিয়ন-ভিত্তিক ডিলার ম্যানেজমেন্ট</div></div>
             </div>
             <div class="home-card" style="text-align:left;display:flex;align-items:center;gap:14px;padding:16px 18px;" id="toAdmin">
               <div class="hc-icon" style="margin:0;flex-shrink:0;">🔑</div>
-              <div><div class="hc-title">অ্যাডমিন প্যানেল</div><div class="hc-sub">সম্পূর্ণ সিস্টেম নিয়ন্ত্রণ</div></div>
+              <div><div class="hc-title">${t('adminLogin')}</div><div class="hc-sub">সম্পূর্ণ সিস্টেম নিয়ন্ত্রণ</div></div>
             </div>`}
           </div>
         </div>
@@ -1107,16 +1239,17 @@ ROUTES.adminLogin = function(){
     <div class="center-screen">
       <div class="gate">
         <div class="gate-top">
+          ${langSwitchHTML()}
           <div class="cog">🔑</div>
-          <h1>অ্যাডমিন লগইন</h1>
+          <h1>${t('adminLogin')}</h1>
           <p>শুধুমাত্র অ্যাডমিনদের জন্য</p>
         </div>
         <div class="gate-body">
           <div class="err" id="err"></div>
-          <div class="field"><label>পাসওয়ার্ড</label><input type="password" id="pw" placeholder="••••••••"></div>
-          <button class="btn btn-primary btn-block" id="submit">প্রবেশ করুন</button>
-          <div class="switch-row"><button class="link-btn" id="forgot" style="color:var(--amber-dark);font-size:13px;">পাসওয়ার্ড ভুলে গেছেন?</button></div>
-          <div class="switch-row"><button class="link-btn" id="back">← হোমে ফিরে যান</button></div>
+          <div class="field"><label>${t('password')}</label><input type="password" id="pw" placeholder="••••••••"></div>
+          <button class="btn btn-primary btn-block" id="submit">${t('enter')}</button>
+          <div class="switch-row"><button class="link-btn" id="forgot" style="color:var(--amber-dark);font-size:13px;">${t('forgotPassword')}</button></div>
+          <div class="switch-row"><button class="link-btn" id="back">${t('backToHome')}</button></div>
         </div>
       </div>
     </div>
@@ -1338,14 +1471,15 @@ ROUTES.dealerRegister = function(){
     <div class="center-screen">
       <div class="gate">
         <div class="gate-top">
+          ${langSwitchHTML()}
           <div class="cog">📱</div>
           <h1>নতুন রেজিস্ট্রেশন</h1>
           <p>ডিলার / মেকানিক অ্যাকাউন্ট তৈরি করুন</p>
         </div>
         <div class="gate-body">
           <div class="err" id="err"></div>
-          <div class="field"><label>নাম</label><input type="text" id="name" placeholder="আপনার নাম / দোকানের নাম"></div>
-          <div class="field"><label>মোবাইল নম্বর</label><input type="text" id="phone" placeholder="01XXXXXXXXX"></div>
+          <div class="field"><label>${t('name')}</label><input type="text" id="name" placeholder="আপনার নাম / দোকানের নাম"></div>
+          <div class="field"><label>${t('mobileNumber')}</label><input type="text" id="phone" placeholder="01XXXXXXXXX"></div>
           <div class="field"><label>ধরন নির্বাচন করুন</label>
             <select id="role">
               <option value="dealer">ডিলার</option>
@@ -1359,19 +1493,22 @@ ROUTES.dealerRegister = function(){
             <div class="field"><label>উপজেলা <span style="color:#e53e3e">*</span></label>
               <select id="regUpazila">${upazilaOptionsHTML('', '')}</select>
             </div>
+            <div class="field"><label>বিস্তারিত ঠিকানা (দোকান) — ঐচ্ছিক</label>
+              <input type="text" id="regAddress" placeholder="যেমনঃ রোড নং ৩, বাজার এলাকা">
+            </div>
           </div>
           <div id="mechanicTerritoryField" style="display:none">
             <div class="field"><label>মেকানিক টেরিটরি <span style="color:#e53e3e">*</span></label>
               <input type="text" id="regTerritory" placeholder="মেকানিকের টেরিটরি লিখুন">
             </div>
           </div>
-          <div class="field"><label>পাসওয়ার্ড</label><input type="password" id="pw" placeholder="পাসওয়ার্ড দিন"></div>
+          <div class="field"><label>${t('password')}</label><input type="password" id="pw" placeholder="পাসওয়ার্ড দিন"></div>
           <div class="field"><label>পাসওয়ার্ড নিশ্চিত করুন</label><input type="password" id="pw2" placeholder="আবার পাসওয়ার্ড দিন"></div>
-          <button class="btn btn-primary btn-block" id="submit">রেজিস্ট্রেশন করুন</button>
+          <button class="btn btn-primary btn-block" id="submit">${t('register')}</button>
           <div class="switch-row">
-            <button class="link-btn" id="toLogin">আগে থেকে অ্যাকাউন্ট আছে? লগইন করুন</button>
+            <button class="link-btn" id="toLogin">${t('haveAccountLogin')}</button>
           </div>
-          <div class="switch-row"><button class="link-btn" id="back">← হোমে ফিরে যান</button></div>
+          <div class="switch-row"><button class="link-btn" id="back">${t('backToHome')}</button></div>
         </div>
       </div>
     </div>
@@ -1395,6 +1532,7 @@ ROUTES.dealerRegister = function(){
     const role = document.getElementById('role').value;
     const district = document.getElementById('regDistrict').value;
     const upazila = document.getElementById('regUpazila').value;
+    const address = document.getElementById('regAddress').value.trim();
     const territory = document.getElementById('regTerritory').value.trim();
     const pw = document.getElementById('pw').value;
     const pw2 = document.getElementById('pw2').value;
@@ -1411,7 +1549,7 @@ ROUTES.dealerRegister = function(){
     if(DB.partsEngineers.some(p=>p.phone===phone)){ e.style.display='block'; e.textContent='এই মোবাইল নম্বরটি ইতিমধ্যে একটি Parts Engineer অ্যাকাউন্টে ব্যবহৃত আছে। একই ব্যক্তি দুটি ভিন্ন role-এ থাকতে পারবেন না।'; return; }
     // pending=true — অ্যাডমিন অনুমোদন না দেওয়া পর্যন্ত লগইন করতে পারবে না
     const newUser = {id: nextUserId++, name, phone, password: pw, active:false, pending:true, role};
-    if(role === 'dealer'){ newUser.district = district; newUser.upazila = upazila; }
+    if(role === 'dealer'){ newUser.district = district; newUser.upazila = upazila; newUser.address = address; }
     if(role === 'mechanic'){ newUser.territory = territory; }
     const btn = document.getElementById('submit'); btn.disabled = true; btn.textContent = 'রেজিস্ট্রেশন হচ্ছে...';
     try{
@@ -1448,18 +1586,19 @@ ROUTES.dealerLogin = function(){
       </div>
       <div class="gate" style="position:relative;z-index:1;">
         <div class="gate-top">
+          ${langSwitchHTML()}
           <div class="cog">📱</div>
-          <h1>ডিলার লগইন</h1>
+          <h1>${t('dealerLogin')}</h1>
           <p>মোবাইল নম্বর ও পাসওয়ার্ড দিয়ে প্রবেশ করুন</p>
         </div>
         <div class="gate-body">
           <div class="err" id="err"></div>
-          <div class="field"><label>মোবাইল নম্বর</label><input type="text" id="phone" placeholder="01XXXXXXXXX"></div>
-          <div class="field"><label>পাসওয়ার্ড</label><input type="password" id="pw" placeholder="••••••••"></div>
-          <button class="btn btn-primary btn-block" id="submit">লগইন করুন</button>
-          <div class="switch-row"><button class="link-btn" id="forgot" style="color:var(--amber-dark);font-size:13px;">পাসওয়ার্ড ভুলে গেছেন?</button></div>
-          <div class="switch-row"><button class="link-btn" id="toReg">নতুন ইউজার? রেজিস্ট্রেশন করুন</button></div>
-          <div class="switch-row"><button class="link-btn" id="back">← হোমে ফিরে যান</button></div>
+          <div class="field"><label>${t('mobileNumber')}</label><input type="text" id="phone" placeholder="01XXXXXXXXX"></div>
+          <div class="field"><label>${t('password')}</label><input type="password" id="pw" placeholder="••••••••"></div>
+          <button class="btn btn-primary btn-block" id="submit">${t('login')}</button>
+          <div class="switch-row"><button class="link-btn" id="forgot" style="color:var(--amber-dark);font-size:13px;">${t('forgotPassword')}</button></div>
+          <div class="switch-row"><button class="link-btn" id="toReg">${t('newUserRegister')}</button></div>
+          <div class="switch-row"><button class="link-btn" id="back">${t('backToHome')}</button></div>
         </div>
       </div>
     </div>
@@ -1570,7 +1709,7 @@ ROUTES.mechanicDashboard = function(){
       <div class="topbar-right">
         <button class="btn btn-ghost btn-sm theme-toggle" onclick="toggleTheme()" style="color:#fff;border-color:rgba(255,255,255,.3)">🌙</button>
         <span class="pill">${escHtml(u?u.name:'')}</span>
-        <button class="btn btn-ghost btn-sm" style="color:#fff;border-color:rgba(255,255,255,.3)" id="mechLogout">লগআউট</button>
+        <button class="btn btn-ghost btn-sm" style="color:#fff;border-color:rgba(255,255,255,.3)" id="mechLogout">${t('logout')}</button>
       </div>
     </div>
     <div class="wrap has-bottom-nav">
@@ -1600,17 +1739,18 @@ ROUTES.peLogin = function(){
     <div class="center-screen">
       <div class="gate">
         <div class="gate-top">
+          ${langSwitchHTML()}
           <div class="cog">🧑‍🔧</div>
-          <h1>Parts Engineer লগইন</h1>
+          <h1>${t('partsEngineerLogin')}</h1>
           <p>মোবাইল নম্বর অথবা Engineer ID ও পাসওয়ার্ড দিয়ে প্রবেশ করুন</p>
         </div>
         <div class="gate-body">
           <div class="err" id="err"></div>
           <div class="field"><label>মোবাইল নম্বর / Engineer ID</label><input type="text" id="phone" placeholder="01XXXXXXXXX অথবা Engineer ID"></div>
-          <div class="field"><label>পাসওয়ার্ড</label><input type="password" id="pw" placeholder="••••••••"></div>
-          <button class="btn btn-primary btn-block" id="submit">লগইন করুন</button>
+          <div class="field"><label>${t('password')}</label><input type="password" id="pw" placeholder="••••••••"></div>
+          <button class="btn btn-primary btn-block" id="submit">${t('login')}</button>
           <div class="switch-row"><button class="link-btn" id="toPeReg">নতুন Parts Engineer? এখানে Registration করুন</button></div>
-          <div class="switch-row"><button class="link-btn" id="back">← হোমে ফিরে যান</button></div>
+          <div class="switch-row"><button class="link-btn" id="back">${t('backToHome')}</button></div>
         </div>
       </div>
     </div>
@@ -1644,6 +1784,7 @@ ROUTES.peRegister = function(){
     <div class="center-screen">
       <div class="gate">
         <div class="gate-top">
+          ${langSwitchHTML()}
           <div class="cog">🧑‍🔧</div>
           <h1>Parts Engineer রেজিস্ট্রেশন</h1>
           <p>প্রথমবার ব্যবহারের জন্য একবারই Registration করুন</p>
@@ -1890,7 +2031,7 @@ function dealerTopbar(sub='ডিলার পোর্টাল'){
       <button class="btn btn-ghost btn-sm" onclick="go('dealerRequisition')" style="color:#fff;border-color:rgba(255,255,255,.3)">📝 রিকুইজিশন</button>
       <button class="btn btn-ghost btn-sm theme-toggle" onclick="toggleTheme()" style="color:#fff;border-color:rgba(255,255,255,.3)">🌙</button>
       <span class="pill">${escHtml(u?u.name:'')}</span>
-      <button class="btn btn-ghost btn-sm" style="color:#fff;border-color:rgba(255,255,255,.3)" id="dealerLogout">লগআউট</button>
+      <button class="btn btn-ghost btn-sm" style="color:#fff;border-color:rgba(255,255,255,.3)" id="dealerLogout">${t('logout')}</button>
     </div>
   </div>`;
 }
@@ -2202,83 +2343,96 @@ function memoEditorHTML(draft=null){
   const timeOnly=dtParts.slice(1).join(',').trim();
   const status=d?'DRAFT':'NEW';
   const u=currentDealer();
+  const ml=MEMO_I18N[getMemoLang()];
+  const dh=dealerHeaderInfo(u);
   return `<div class="memo2-wrap">
+    <div class="memo-lang-toggle" style="display:flex;justify-content:flex-end;gap:4px;margin-bottom:10px;">
+      <button type="button" data-lang="bn" onclick="setMemoLang('bn')" style="border:1.5px solid #123f24;border-radius:8px 0 0 8px;padding:5px 14px;font-size:13px;font-weight:700;cursor:pointer;">বাংলা</button>
+      <button type="button" data-lang="en" onclick="setMemoLang('en')" style="border:1.5px solid #123f24;border-left:none;border-radius:0 8px 8px 0;padding:5px 14px;font-size:13px;font-weight:700;cursor:pointer;">English</button>
+    </div>
     <div class="memo2-header">
       <div class="memo2-header-left">
         <div class="memo2-logo-icon">🚜</div>
         <div>
           <h1 class="memo2-title">${escHtml(DB.settings.companyName||'METAL PARTS LIMITED')}</h1>
-          <div class="memo2-subtitle">SBU2 Parts – Barishal Region</div>
-          <div class="memo2-tagline">Tractor &amp; Machinery Parts Supplier</div>
+          <div class="memo2-subtitle" id="memoLblSubtitle">${ml.subtitle}</div>
+          <div class="memo2-tagline" id="memoLblTagline">${ml.tagline}</div>
         </div>
       </div>
       <div class="memo2-header-right">
-        <div class="memo2-badge">🧾 SALES MEMO</div>
+        <div class="memo2-badge" id="memoLblBadge">${ml.badge}</div>
         <div class="memo2-status">${status}${d?' • '+escHtml(d.memoNo):' • Automatic Memo No.'}</div>
       </div>
+    </div>
+
+    <div class="memo2-dealer-info" style="margin-top:10px;padding:10px 14px;background:#f4f8f5;border:1px solid #d7e4da;border-radius:10px;display:flex;flex-wrap:wrap;gap:14px;font-size:13px;">
+      <div><b id="memoLblDealerName">${ml.dealerName}:</b> ${escHtml(dh.name)}</div>
+      <div><b id="memoLblDealerMobile">${ml.dealerMobile}:</b> ${escHtml(dh.mobile)}</div>
+      <div><b id="memoLblDealerAddress">${ml.dealerAddress}:</b> ${escHtml(dh.address)}</div>
     </div>
     <div class="memo2-divider"></div>
 
     <div class="memo2-info-grid">
       <div class="memo2-box">
-        <div class="memo2-box-head">👤 CUSTOMER INFORMATION</div>
+        <div class="memo2-box-head" id="memoLblCustomerInfoHead">${ml.customerInfoHead}</div>
         <div class="memo2-box-body">
-          <div class="memo2-row"><span class="memo2-ic">👤</span><label>Customer Name</label><input id="memoCustomerName" value="${escHtml(d?.customerName||'')}" placeholder="কাস্টমারের নাম"></div>
-          <div class="memo2-row"><span class="memo2-ic">📞</span><label>Mobile Number</label><input id="memoCustomerMobile" value="${escHtml(d?.customerMobile||'')}" placeholder="01XXXXXXXXX" inputmode="tel"></div>
-          <div class="memo2-row memo2-row-top"><span class="memo2-ic">📍</span><label>Address</label><textarea id="memoCustomerAddress" rows="2" placeholder="কাস্টমারের ঠিকানা">${escHtml(d?.customerAddress||'')}</textarea></div>
+          <div class="memo2-row"><span class="memo2-ic">👤</span><label id="memoLblCustomerName">${ml.customerName}</label><input id="memoCustomerName" value="${escHtml(d?.customerName||'')}" placeholder="কাস্টমারের নাম"></div>
+          <div class="memo2-row"><span class="memo2-ic">📞</span><label id="memoLblMobileNumber">${ml.mobileNumber}</label><input id="memoCustomerMobile" value="${escHtml(d?.customerMobile||'')}" placeholder="01XXXXXXXXX" inputmode="tel"></div>
+          <div class="memo2-row memo2-row-top"><span class="memo2-ic">📍</span><label id="memoLblAddress">${ml.address}</label><textarea id="memoCustomerAddress" rows="2" placeholder="কাস্টমারের ঠিকানা">${escHtml(d?.customerAddress||'')}</textarea></div>
         </div>
       </div>
       <div class="memo2-box">
-        <div class="memo2-box-head">📄 MEMO INFORMATION</div>
+        <div class="memo2-box-head" id="memoLblMemoInfoHead">${ml.memoInfoHead}</div>
         <div class="memo2-box-body">
-          <div class="memo2-row"><span class="memo2-ic">📄</span><label>Memo Number</label><input id="memoNumber" value="${escHtml(memoNumber)}" placeholder="${d?'':'তৈরি হচ্ছে...'}" readonly></div>
-          <div class="memo2-row"><span class="memo2-ic">📅</span><label>Date</label><input id="memoDateDisplay" value="${escHtml(dateOnly)}" readonly></div>
-          <div class="memo2-row"><span class="memo2-ic">🕐</span><label>Time</label><input id="memoTimeDisplay" value="${escHtml(timeOnly)}" readonly></div>
+          <div class="memo2-row"><span class="memo2-ic">📄</span><label id="memoLblMemoNumber">${ml.memoNumber}</label><input id="memoNumber" value="${escHtml(memoNumber)}" placeholder="${d?'':'তৈরি হচ্ছে...'}" readonly></div>
+          <div class="memo2-row"><span class="memo2-ic">📅</span><label id="memoLblDate">${ml.date}</label><input id="memoDateDisplay" value="${escHtml(dateOnly)}" readonly></div>
+          <div class="memo2-row"><span class="memo2-ic">🕐</span><label id="memoLblTime">${ml.time}</label><input id="memoTimeDisplay" value="${escHtml(timeOnly)}" readonly></div>
         </div>
       </div>
     </div>
 
     <input type="hidden" id="memoDate" value="${escHtml(dateValue)}">
+    <input type="hidden" id="memoLang" value="${escHtml(getMemoLang())}">
     <div style="display:none" aria-hidden="true">
       <select id="memoPaymentStatus"><option value="Paid" ${(!d?.paymentStatus||d.paymentStatus==='Paid')?'selected':''}>Paid / পরিশোধিত</option><option value="Due" ${d?.paymentStatus==='Due'?'selected':''}>Due / বাকি</option><option value="Partial" ${d?.paymentStatus==='Partial'?'selected':''}>Partial / আংশিক</option></select>
       <input id="memoPaymentInfo" value="${escHtml(d?.paymentInfo||'')}">
     </div>
 
     <div class="memo2-search-box">
-      <label>🔍 Part Search</label>
+      <label id="memoLblPartSearch">${ml.partSearchLabel}</label>
       <input id="memoPartSearch" type="text" placeholder="Part Number / Name / শেষের সংখ্যা লিখুন...">
       <div id="memoPartSuggestions" style="margin-top:8px"></div>
     </div>
 
     <div class="memo2-table-wrap">
-      <table class="memo2-table"><thead><tr><th>SL</th><th>PART NO.</th><th>PART NAME / DESCRIPTION</th><th>QTY.</th><th>UNIT PRICE (৳)</th><th>TOTAL PRICE (৳)</th><th></th></tr></thead><tbody id="memoItemsBody"></tbody></table>
+      <table class="memo2-table"><thead><tr><th id="memoThSl">${ml.thSl}</th><th id="memoThPartNo">${ml.thPartNo}</th><th id="memoThPartName">${ml.thPartName}</th><th id="memoThQty">${ml.thQty}</th><th id="memoThUnitPrice">${ml.thUnitPrice}</th><th id="memoThTotalPrice">${ml.thTotalPrice}</th><th></th></tr></thead><tbody id="memoItemsBody"></tbody></table>
     </div>
 
     <div class="memo2-bottom-grid">
       <div class="memo2-note-box">
-        <div class="memo2-box-head">📝 NOTE</div>
+        <div class="memo2-box-head" id="memoLblNoteHead">${ml.noteHead}</div>
         <div class="memo2-note-body">
           <input id="memoNote" value="${escHtml(d?.note||'')}" placeholder="Optional note">
           <div class="memo2-note-hint">★ পণ্য ভালোভাবে যাচাই করে নিন।<br>★ বিক্রি হওয়া পণ্য ফেরত নেওয়া হবে না।</div>
         </div>
       </div>
       <div class="memo2-total-box">
-        <div class="memo2-total-row"><span>Subtotal</span><b id="memoSubtotal">৳0.00</b></div>
-        <div class="memo2-total-row"><span>Discount / Adjustment</span><span class="memo2-discount-wrap">৳<input id="memoDiscount" type="number" min="0" step="0.01" value="${Number(d?.discount||0)}"></span></div>
+        <div class="memo2-total-row"><span id="memoLblSubtotalText">${ml.subtotal}</span><b id="memoSubtotal">৳0.00</b></div>
+        <div class="memo2-total-row"><span id="memoLblDiscountText">${ml.discount}</span><span class="memo2-discount-wrap">৳<input id="memoDiscount" type="number" min="0" step="0.01" value="${Number(d?.discount||0)}"></span></div>
         <b id="memoDiscountView" style="display:none">৳0.00</b>
-        <div class="memo2-total-row memo2-grand"><span>GRAND TOTAL</span><b id="memoGrandTotal">৳0.00</b></div>
+        <div class="memo2-total-row memo2-grand"><span id="memoLblGrandTotalText">${ml.grandTotal}</span><b id="memoGrandTotal">৳0.00</b></div>
       </div>
     </div>
 
     <div class="memo2-actions">
-      <button class="btn btn-ghost" id="memoClear">🔄 Clear</button>
-      <button class="btn btn-warning" id="memoSaveDraft" ${d?'':'disabled'}>🟡 SAVE DRAFT</button>
-      <button class="btn btn-primary" id="memoFinalSubmit" ${d?'':'disabled'}>🟢 FINAL SUBMIT</button>
+      <button class="btn btn-ghost" id="memoClear">${ml.clear}</button>
+      <button class="btn btn-warning" id="memoSaveDraft" ${d?'':'disabled'}>${ml.saveDraft}</button>
+      <button class="btn btn-primary" id="memoFinalSubmit" ${d?'':'disabled'}>${ml.finalSubmit}</button>
     </div>
     <div id="memoAutosaveStatus" class="hint memo2-autosave-hint">${d?'Draft loaded — Continue editing':'Memo Number তৈরি হচ্ছে...'}</div>
 
     <div class="memo2-footer">
-      <div class="memo2-sign"><div class="memo2-sign-line"></div>Customer Signature</div>
+      <div class="memo2-sign"><div class="memo2-sign-line"></div><span id="memoLblCustSign">${ml.custSign}</span></div>
       <div class="memo2-thankyou">🚜<div><b>Thank You!</b></div><div>We Appreciate Your Business</div></div>
       <div class="memo2-contact">${u?`📞 ${escHtml(u.phone||'')}${u.name?' • '+escHtml(u.name):''}`:''}</div>
     </div>
@@ -2325,7 +2479,8 @@ function buildMemoState(rows){
   const discount=Math.max(0,Number(document.getElementById('memoDiscount')?.value||0));
   const note=document.getElementById('memoNote')?.value.trim()||'';
   const subtotal=rows.reduce((s,it)=>s+Number(it.qty||0)*Number(it.unitPrice||0),0);
-  return {memoNo,date,customerName,customerMobile,customerAddress,paymentStatus,paymentInfo,discount,note,items:rows.map(x=>({...x})),subtotal,grandTotal:Math.max(0,subtotal-discount)};
+  const lang=document.getElementById('memoLang')?.value||getMemoLang();
+  return {memoNo,date,customerName,customerMobile,customerAddress,paymentStatus,paymentInfo,discount,note,items:rows.map(x=>({...x})),subtotal,grandTotal:Math.max(0,subtotal-discount),lang};
 }
 function persistDraftLocal(state){
   try{const k=draftAutosaveKey();if(k)localStorage.setItem(k,JSON.stringify({...state,autosavedAt:new Date().toISOString()}));}catch(e){}
@@ -2421,7 +2576,7 @@ function wireMemoPage(existingDraft=null){
     }
     if(!confirm(`Memo ${st.memoNo} FINAL SUBMIT করবেন?\nFinal Submit-এর পর এটি Draft থাকবে না।`))return;
     const now=new Date();
-    const memo={id:Date.now()+Math.random(),dealerId:u.id,dealerName:u.name,dealerPhone:u.phone,memoNo:st.memoNo,date:now.toLocaleString('bn-BD'),dateISO:now.toISOString(),customerName:st.customerName,customerMobile:st.customerMobile,customerAddress:st.customerAddress,paymentStatus:st.paymentStatus,paymentInfo:st.paymentInfo,note:st.note,items:st.items.map(x=>({...x})),subtotal:st.subtotal,discount:st.discount,grandTotal:st.grandTotal,status:'SUBMITTED'};
+    const memo={id:Date.now()+Math.random(),dealerId:u.id,dealerName:u.name,dealerPhone:u.phone,dealerAddress:dealerHeaderInfo(u).address,memoNo:st.memoNo,date:now.toLocaleString('bn-BD'),dateISO:now.toISOString(),customerName:st.customerName,customerMobile:st.customerMobile,customerAddress:st.customerAddress,paymentStatus:st.paymentStatus,paymentInfo:st.paymentInfo,note:st.note,items:st.items.map(x=>({...x})),subtotal:st.subtotal,discount:st.discount,grandTotal:st.grandTotal,status:'SUBMITTED',lang:st.lang||'bn'};
     // Search-ইনডেক্সে লেখা (Firebase transaction) — এটা fail করলে stock deduction/finalize কিছুই হবে না,
     // যাতে ডেটা কখনো অর্ধেক-সেভ অবস্থায় না থাকে।
     try{ await writeFinalMemoToIndex(memo); }catch(e){ alert(e.message||'Memo সেভ করা যায়নি — ইন্টারনেট সংযোগ চেক করে আবার চেষ্টা করুন।'); return; }
@@ -2432,6 +2587,7 @@ function wireMemoPage(existingDraft=null){
     clearDraftLocal();await saveDB();showSavedMemoActions(memo);
   };
   redraw();
+  if(initial?.lang){ setMemoLang(initial.lang); } else { applyMemoLang(); }
   // Restore a local auto-saved session if it is newer than the loaded draft and the form is otherwise empty.
   if(!initial){
     try{const raw=localStorage.getItem(draftAutosaveKey());if(raw){const a=JSON.parse(raw);if(a&&Array.isArray(a.items)&&a.items.length){
@@ -2462,12 +2618,16 @@ function memoHistoryHTML(){
   </tbody></table></div></div>`;
 }
 function memoDetailsHTML(m){
-  return `<div class="memo-print-sheet"><div style="text-align:center;border-bottom:2px solid #12233d;padding-bottom:10px;margin-bottom:12px"><h2 style="margin:0">${escHtml(m.dealerName||DB.settings.companyName)}</h2><div>Dealer Memo / Invoice</div></div>
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:13px"><div><b>Memo No:</b> ${escHtml(m.memoNo)}</div><div><b>Date:</b> ${escHtml(m.date)}</div><div><b>Customer:</b> ${escHtml(m.customerName)}</div><div><b>Mobile:</b> ${escHtml(m.customerMobile||'-')}</div><div><b>Payment:</b> ${escHtml(m.paymentStatus)}</div><div><b>Payment Info:</b> ${escHtml(m.paymentInfo||'-')}</div>${m.customerAddress?`<div style="grid-column:1/-1"><b>Address:</b> ${escHtml(m.customerAddress)}</div>`:''}</div>
-  <div style="overflow-x:auto;margin-top:14px"><table style="width:100%;border-collapse:collapse"><thead><tr><th>SL</th><th>Source</th><th>Part Name</th><th>Part No.</th><th>Qty</th><th>Unit Price</th><th>Total</th></tr></thead><tbody>${m.items.map((it,i)=>`<tr><td>${i+1}</td><td>${it.source==='dealer'?'Dealer':'Company'}</td><td>${escHtml(it.name)}</td><td class="mono">${escHtml(displayPartNo(it.partNo))}</td><td>${it.qty}</td><td>৳${money(it.unitPrice)}</td><td>৳${money(Number(it.qty)*Number(it.unitPrice))}</td></tr>`).join('')}</tbody></table></div>
-  <div style="margin-left:auto;max-width:300px;margin-top:12px"><div style="display:flex;justify-content:space-between"><b>Subtotal</b><b>৳${money(m.subtotal)}</b></div><div style="display:flex;justify-content:space-between"><b>Discount</b><b>৳${money(m.discount)}</b></div><div style="display:flex;justify-content:space-between;font-size:18px;border-top:2px solid #12233d;margin-top:5px;padding-top:5px"><b>Grand Total</b><b>৳${money(m.grandTotal)}</b></div></div>
-  ${m.note?`<div style="margin-top:12px;font-size:13px"><b>Note:</b> ${escHtml(m.note)}</div>`:''}
-  <div style="margin-top:28px;display:flex;justify-content:space-between;font-size:12px"><span>Customer Signature</span><span>Dealer Signature</span></div></div>`;
+  const ml = MEMO_I18N[m.lang==='en'?'en':'bn'];
+  const dealerAddr = m.dealerAddress || '';
+  return `<div class="memo-print-sheet"><div style="text-align:center;border-bottom:2px solid #12233d;padding-bottom:10px;margin-bottom:12px"><h2 style="margin:0">${escHtml(m.dealerName||DB.settings.companyName)}</h2><div>${ml.badge}</div></div>
+  <div style="text-align:center;font-size:12px;color:#5c6b82;margin-bottom:10px">${ml.subtitle} — ${ml.tagline}</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:13px;background:#f4f8f5;border:1px solid #d7e4da;border-radius:8px;padding:8px 10px;margin-bottom:10px"><div><b>${ml.dealerName}:</b> ${escHtml(m.dealerName||'-')}</div><div><b>${ml.dealerMobile}:</b> ${escHtml(m.dealerPhone||'-')}</div>${dealerAddr?`<div style="grid-column:1/-1"><b>${ml.dealerAddress}:</b> ${escHtml(dealerAddr)}</div>`:''}</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:13px"><div><b>${ml.memoNumber}:</b> ${escHtml(m.memoNo)}</div><div><b>${ml.date}:</b> ${escHtml(m.date)}</div><div><b>${ml.customerName}:</b> ${escHtml(m.customerName)}</div><div><b>${ml.mobileNumber}:</b> ${escHtml(m.customerMobile||'-')}</div><div><b>Payment:</b> ${escHtml(m.paymentStatus)}</div><div><b>Payment Info:</b> ${escHtml(m.paymentInfo||'-')}</div>${m.customerAddress?`<div style="grid-column:1/-1"><b>${ml.address}:</b> ${escHtml(m.customerAddress)}</div>`:''}</div>
+  <div style="overflow-x:auto;margin-top:14px"><table style="width:100%;border-collapse:collapse"><thead><tr><th>${ml.thSl}</th><th>Source</th><th>${ml.thPartName}</th><th>${ml.thPartNo}</th><th>${ml.thQty}</th><th>${ml.thUnitPrice}</th><th>${ml.thTotalPrice}</th></tr></thead><tbody>${m.items.map((it,i)=>`<tr><td>${i+1}</td><td>${it.source==='dealer'?'Dealer':'Company'}</td><td>${escHtml(it.name)}</td><td class="mono">${escHtml(displayPartNo(it.partNo))}</td><td>${it.qty}</td><td>৳${money(it.unitPrice)}</td><td>৳${money(Number(it.qty)*Number(it.unitPrice))}</td></tr>`).join('')}</tbody></table></div>
+  <div style="margin-left:auto;max-width:300px;margin-top:12px"><div style="display:flex;justify-content:space-between"><b>${ml.subtotal}</b><b>৳${money(m.subtotal)}</b></div><div style="display:flex;justify-content:space-between"><b>${ml.discount}</b><b>৳${money(m.discount)}</b></div><div style="display:flex;justify-content:space-between;font-size:18px;border-top:2px solid #12233d;margin-top:5px;padding-top:5px"><b>${ml.grandTotal}</b><b>৳${money(m.grandTotal)}</b></div></div>
+  ${m.note?`<div style="margin-top:12px;font-size:13px"><b>${ml.noteHead}:</b> ${escHtml(m.note)}</div>`:''}
+  <div style="margin-top:28px;display:flex;justify-content:space-between;font-size:12px"><span>${ml.custSign}</span><span>Dealer Signature</span></div></div>`;
 }
 function viewDealerMemo(id){
   const m=dealerMemos().find(x=>String(x.id)===String(id));if(!m)return;
@@ -2519,7 +2679,7 @@ ROUTES.dealerSearch = function(){
           <button class="btn btn-ghost btn-sm" onclick="go('dealerRequisition')" style="color:#fff;border-color:rgba(255,255,255,.3)">📝 রিকুইজিশন</button>
           <button class="btn btn-ghost btn-sm theme-toggle" onclick="toggleTheme()" style="color:#fff;border-color:rgba(255,255,255,.3)">🌙</button>
           <span class="pill">${DB.session.user.name}</span>
-          <button class="btn btn-ghost btn-sm" style="color:#fff;border-color:rgba(255,255,255,.3)" id="logout">লগআউট</button>
+          <button class="btn btn-ghost btn-sm" style="color:#fff;border-color:rgba(255,255,255,.3)" id="logout">${t('logout')}</button>
         </div>
       </div>
       <div class="wrap">
@@ -2715,7 +2875,7 @@ ROUTES.dealerRequisition = function(){
           <button class="btn btn-ghost btn-sm" onclick="go('dealerPortal')" style="color:#fff;border-color:rgba(255,255,255,.3)">🧾 Dealer Management</button>
           <button class="btn btn-ghost btn-sm" onclick="go('dealerSearch')" style="color:#fff;border-color:rgba(255,255,255,.3)">⬅️ সার্চে ফিরুন</button>
           <span class="pill">${DB.session.user.name}</span>
-          <button class="btn btn-ghost btn-sm" style="color:#fff;border-color:rgba(255,255,255,.3)" id="logout">লগআউট</button>
+          <button class="btn btn-ghost btn-sm" style="color:#fff;border-color:rgba(255,255,255,.3)" id="logout">${t('logout')}</button>
         </div>
       </div>
       <div class="wrap">
@@ -3101,7 +3261,7 @@ function peShell(innerHTML){
           </div>
           <div style="display:flex;gap:8px;">
             <button class="btn btn-ghost btn-sm" onclick="(()=>{const t=document.createElement('div');t.innerHTML='🔄 রিফ্রেশ হচ্ছে...';t.style.cssText='position:fixed;top:20px;left:20px;background:#1f8a4c;color:#fff;padding:12px 16px;border-radius:8px;font-weight:600;z-index:9999';document.body.appendChild(t);loadDB().then(()=>{ensureCores();t.remove();go('peDashboard')})})();" style="color:#fff;border-color:rgba(255,255,255,0.3);font-size:15px;">🔄</button>
-            <button class="btn btn-ghost btn-sm" id="logout" style="color:#fff;border-color:rgba(255,255,255,0.3);font-size:15px;">🚪 লগআউট</button>
+            <button class="btn btn-ghost btn-sm" id="logout" style="color:#fff;border-color:rgba(255,255,255,0.3);font-size:15px;">🚪 ${t('logout')}</button>
           </div>
         </div>
         <div style="display:flex;gap:8px;margin:14px 0;flex-wrap:wrap;">
@@ -3204,6 +3364,9 @@ function openPeUserModal(user){
       <div class="field"><label>উপজেলা <span style="color:#e53e3e">*</span></label>
         <select id="mPUUpazila">${upazilaOptionsHTML(user?user.district:'', user?user.upazila:'')}</select>
       </div>
+      <div class="field"><label>বিস্তারিত ঠিকানা (দোকান) — ঐচ্ছিক</label>
+        <input type="text" id="mPUAddress" value="${user&&user.address?escHtml(user.address):''}" placeholder="যেমনঃ রোড নং ৩, বাজার এলাকা">
+      </div>
     </div>
     <div id="mPUMechField" style="display:none">
       <div class="field"><label>মেকানিক টেরিটরি <span style="color:#e53e3e">*</span></label>
@@ -3234,6 +3397,7 @@ function openPeUserModal(user){
     const role = document.getElementById('mPURole').value;
     const district = document.getElementById('mPUDistrict').value;
     const upazila = document.getElementById('mPUUpazila').value;
+    const address = document.getElementById('mPUAddress').value.trim();
     const territory = document.getElementById('mPUTerritory').value.trim();
     const errBox = document.getElementById('mPUErr');
     errBox.style.display = 'none';
@@ -3246,12 +3410,12 @@ function openPeUserModal(user){
     }
     if(isEdit){
       Object.assign(user, {name,phone,password,role,peId:pe.id,peName:pe.name,region:pe.region});
-      if(role === 'dealer'){ user.district = district; user.upazila = upazila; delete user.territory; }
-      if(role === 'mechanic'){ user.territory = territory; delete user.district; delete user.upazila; }
+      if(role === 'dealer'){ user.district = district; user.upazila = upazila; user.address = address; delete user.territory; }
+      if(role === 'mechanic'){ user.territory = territory; delete user.district; delete user.upazila; delete user.address; }
       logHistory(`Parts Engineer ${pe.name} তার ${role==='dealer'?'ডিলার':'মেকানিক'} ${name}-এর তথ্য আপডেট করেছেন`);
     } else {
       const newUser = {id: nextUserId++, name, phone, password, role, active:true, peId:pe.id, peName:pe.name, region:pe.region};
-      if(role === 'dealer'){ newUser.district = district; newUser.upazila = upazila; }
+      if(role === 'dealer'){ newUser.district = district; newUser.upazila = upazila; newUser.address = address; }
       if(role === 'mechanic'){ newUser.territory = territory; }
       DB.users.push(newUser);
       logHistory(`Parts Engineer ${pe.name} নতুন ${role==='dealer'?'ডিলার':'মেকানিক'} যোগ করেছেন: ${name}`);
@@ -3398,7 +3562,7 @@ ROUTES.adminDashboard = function(){
           <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:13px;">
             <div style="background:#fff;border-radius:14px;padding:22px 11px;text-align:center;cursor:pointer;transition:all 0.25s;box-shadow:0 3px 11px rgba(0,0,0,0.16);" onclick="adminTab='dashboard';go('adminDashboard');" onmouseover="this.style.transform='translateY(-6px)'" onmouseout="this.style.transform='translateY(0)'">
               <div style="width:48px;height:48px;border-radius:13px;background:#e3ddc4;display:flex;align-items:center;justify-content:center;font-size:24px;margin:0 auto 11px;">📊</div>
-              <div style="font-size:13px;font-weight:700;color:#1a2233;">ড্যাশবোর্ড</div>
+              <div style="font-size:13px;font-weight:700;color:#1a2233;">${t('dashboard')}</div>
               <div style="font-size:10.5px;color:#6b7280;margin-top:3px;">পরিসংখ্যান ও সারাংশ</div>
             </div>
 
@@ -3884,6 +4048,9 @@ function openUserModal(user){
       <div class="field"><label>উপজেলা <span style="color:#e53e3e">*</span></label>
         <select id="mUUpazila">${upazilaOptionsHTML(user?user.district:'', user?user.upazila:'')}</select>
       </div>
+      <div class="field"><label>বিস্তারিত ঠিকানা (দোকান) — ঐচ্ছিক</label>
+        <input type="text" id="mUAddress" value="${user&&user.address?escHtml(user.address):''}" placeholder="যেমনঃ রোড নং ৩, বাজার এলাকা">
+      </div>
     </div>
     <div id="mUMechField" style="display:none">
       <div class="field"><label>মেকানিক টেরিটরি <span style="color:#e53e3e">*</span></label>
@@ -3919,6 +4086,7 @@ function openUserModal(user){
     const role = document.getElementById('mURole').value;
     const district = document.getElementById('mUDistrict').value;
     const upazila = document.getElementById('mUUpazila').value;
+    const address = document.getElementById('mUAddress').value.trim();
     const territory = document.getElementById('mUTerritory').value.trim();
     const peIdRaw = document.getElementById('mUPeId').value;
     const pe = peIdRaw ? DB.partsEngineers.find(p=>p.id===Number(peIdRaw)) : null;
@@ -3937,13 +4105,13 @@ function openUserModal(user){
     if(isEdit){
       const prevPeName = user.peName || 'Unassigned';
       Object.assign(user, {name,phone,password,role,peId,peName,region});
-      if(role === 'dealer'){ user.district = district; user.upazila = upazila; delete user.territory; }
-      if(role === 'mechanic'){ user.territory = territory; delete user.district; delete user.upazila; }
-      syncPush('editUser', {id:user.id, name,phone,password,role,peId,peName,region,district:user.district,upazila:user.upazila,territory:user.territory});
+      if(role === 'dealer'){ user.district = district; user.upazila = upazila; user.address = address; delete user.territory; }
+      if(role === 'mechanic'){ user.territory = territory; delete user.district; delete user.upazila; delete user.address; }
+      syncPush('editUser', {id:user.id, name,phone,password,role,peId,peName,region,district:user.district,upazila:user.upazila,address:user.address,territory:user.territory});
       if(prevPeName !== (peName||'Unassigned')) logHistory(`${name}-কে ${prevPeName} থেকে ${peName||'Unassigned'}-এ ট্রান্সফার করা হয়েছে`);
     } else {
       const newUser = {id: nextUserId++, name, phone, password, role, active:true, peId, peName, region};
-      if(role === 'dealer'){ newUser.district = district; newUser.upazila = upazila; }
+      if(role === 'dealer'){ newUser.district = district; newUser.upazila = upazila; newUser.address = address; }
       if(role === 'mechanic'){ newUser.territory = territory; }
       DB.users.push(newUser);
       syncPush('addUser', newUser);
