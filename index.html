@@ -1135,6 +1135,100 @@ ROUTES.adminForgotPassword = function(){
   paint();
 };
 
+/* ================= বাংলাদেশ জেলা ও উপজেলা ডেটা =================
+   Dealer Registration-এর District/Upazila dropdown-এর জন্য।
+   Key = জেলার নাম (বাংলা), Value = সেই জেলার উপজেলার তালিকা (English names)।
+   ভবিষ্যতে Admin Panel থেকে সহজে আপডেট করার জন্য একটি সাধারণ object হিসেবে রাখা হয়েছে —
+   নতুন জেলা/উপজেলা এখানে key/array হিসেবে যোগ করলেই যথেষ্ট। */
+const DISTRICT_UPAZILA_DATA = {
+  "ঢাকা": ["Savar","Dhamrai","Keraniganj","Nawabganj","Dohar"],
+  "ফরিদপুর": ["Faridpur Sadar","Alfadanga","Boalmari","Sadarpur","Nagarkanda","Bhanga","Charbhadrasan","Madhukhali","Saltha"],
+  "গাজীপুর": ["Kaliganj","Kaliakair","Kapasia","Gazipur Sadar","Sreepur"],
+  "গোপালগঞ্জ": ["Gopalganj Sadar","Kashiani","Tungipara","Kotalipara","Muksudpur"],
+  "কিশোরগঞ্জ": ["Itna","Katiadi","Bhairab","Tarail","Hossainpur","Pakundia","Kuliarchar","Kishoreganj Sadar","Karimgonj","Bajitpur","Austagram","Mithamoin","Nikli"],
+  "মাদারীপুর": ["Madaripur Sadar","Shibchar","Kalkini","Rajoir","Dasar"],
+  "মানিকগঞ্জ": ["Harirampur","Saturia","Manikganj Sadar","Gior","Shibaloy","Doulatpur","Singiar"],
+  "মুন্সীগঞ্জ": ["Munshiganj Sadar","Sreenagar","Sirajdikhan","Louhajanj","Gajaria","Tongibari"],
+  "নারায়ণগঞ্জ": ["Araihazar","Bandar","Narayanganj Sadar","Rupganj","Sonargaon"],
+  "নরসিংদী": ["Belabo","Monohardi","Narsingdi Sadar","Palash","Raipura","Shibpur"],
+  "রাজবাড়ী": ["Rajbari Sadar","Goalanda","Pangsa","Baliakandi","Kalukhali"],
+  "শরীয়তপুর": ["Shariatpur Sadar","Naria","Zajira","Gosairhat","Bhedarganj","Damudya"],
+  "টাঙ্গাইল": ["Basail","Bhuapur","Delduar","Ghatail","Gopalpur","Madhupur","Mirzapur","Nagarpur","Sakhipur","Tangail Sadar","Kalihati","Dhanbari"],
+  "চট্টগ্রাম": ["Rangunia","Sitakunda","Mirsharai","Patiya","Sandwip","Banshkhali","Boalkhali","Anwara","Chandanaish","Satkania","Lohagara","Hathazari","Fatikchhari","Raozan","Karnafuli"],
+  "কক্সবাজার": ["Coxsbazar Sadar","Chakaria","Kutubdia","Ukhiya","Moheshkhali","Pekua","Ramu","Teknaf","Eidgaon"],
+  "কুমিল্লা": ["Debidwar","Barura","Brahmanpara","Chandina","Chauddagram","Daudkandi","Homna","Laksam","Muradnagar","Nangalkot","Comilla Sadar","Meghna","Monohargonj","Sadarsouth","Titas","Burichang","Lalmai"],
+  "ব্রাহ্মণবাড়িয়া": ["Brahmanbaria Sadar","Kasba","Nasirnagar","Sarail","Ashuganj","Akhaura","Nabinagar","Bancharampur","Bijoynagar"],
+  "চাঁদপুর": ["Haimchar","Kachua","Shahrasti","Chandpur Sadar","Matlab South","Hajiganj","Matlab North","Faridgonj"],
+  "ফেনী": ["Chhagalnaiya","Feni Sadar","Sonagazi","Fulgazi","Parshuram","Daganbhuiyan"],
+  "খাগড়াছড়ি": ["Khagrachhari Sadar","Dighinala","Panchari","Laxmichhari","Mohalchari","Manikchari","Ramgarh","Matiranga","Guimara"],
+  "লক্ষ্মীপুর": ["Lakshmipur Sadar","Kamalnagar","Raipur","Ramgati","Ramganj"],
+  "নোয়াখালী": ["Noakhali Sadar","Companiganj","Begumganj","Hatia","Subarnachar","Kabirhat","Senbug","Chatkhil","Sonaimori"],
+  "রাঙ্গামাটি": ["Rangamati Sadar","Kaptai","Kawkhali","Baghaichari","Barkal","Langadu","Rajasthali","Belaichari","Juraichari","Naniarchar"],
+  "বান্দরবান": ["Bandarban Sadar","Alikadam","Naikhongchhari","Rowangchhari","Lama","Ruma","Thanchi"],
+  "বাগেরহাট": ["Fakirhat","Bagerhat Sadar","Mollahat","Sarankhola","Rampal","Morrelganj","Kachua","Mongla","Chitalmari"],
+  "চুয়াডাঙ্গা": ["Chuadanga Sadar","Alamdanga","Damurhuda","Jibannagar"],
+  "যশোর": ["Manirampur","Abhaynagar","Bagherpara","Chougachha","Jhikargacha","Keshabpur","Jessore Sadar","Sharsha"],
+  "ঝিনাইদহ": ["Jhenaidah Sadar","Shailkupa","Harinakundu","Kaliganj","Kotchandpur","Moheshpur"],
+  "খুলনা": ["Paikgasa","Fultola","Digholia","Rupsha","Terokhada","Dumuria","Botiaghata","Dakop","Koyra"],
+  "কুষ্টিয়া": ["Kushtia Sadar","Kumarkhali","Khoksa","Mirpur","Daulatpur","Bheramara"],
+  "মাগুরা": ["Shalikha","Sreepur","Magura Sadar","Mohammadpur"],
+  "মেহেরপুর": ["Mujibnagar","Meherpur Sadar","Gangni"],
+  "নড়াইল": ["Narail Sadar","Lohagara","Kalia"],
+  "সাতক্ষীরা": ["Assasuni","Debhata","Kalaroa","Satkhira Sadar","Shyamnagar","Tala","Kaliganj"],
+  "বরগুনা": ["Amtali","Barguna Sadar","Betagi","Bamna","Pathorghata","Taltali"],
+  "বরিশাল": ["Barisal Sadar","Bakerganj","Babuganj","Wazirpur","Banaripara","Gournadi","Agailjhara","Mehendiganj","Muladi","Hizla"],
+  "ভোলা": ["Bhola Sadar","Borhan Sddin","Charfesson","Doulatkhan","Monpura","Tazumuddin","Lalmohan"],
+  "ঝালকাঠি": ["Jhalakathi Sadar","Kathalia","Nalchity","Rajapur"],
+  "পটুয়াখালী": ["Bauphal","Patuakhali Sadar","Dumki","Dashmina","Kalapara","Mirzaganj","Galachipa","Rangabali"],
+  "পিরোজপুর": ["Pirojpur Sadar","Nazirpur","Kawkhali","Zianagar","Bhandaria","Mathbaria","Nesarabad"],
+  "জামালপুর": ["Jamalpur Sadar","Melandah","Islampur","Dewangonj","Sarishabari","Madarganj","Bokshiganj"],
+  "ময়মনসিংহ": ["Fulbaria","Trishal","Bhaluka","Muktagacha","Mymensingh Sadar","Dhobaura","Phulpur","Haluaghat","Gouripur","Gafargaon","Iswarganj","Nandail","Tarakanda"],
+  "নেত্রকোণা": ["Barhatta","Durgapur","Kendua","Atpara","Madan","Khaliajuri","Kalmakanda","Mohongonj","Purbadhala","Netrokona Sadar"],
+  "শেরপুর": ["Sherpur Sadar","Nalitabari","Sreebordi","Nokla","Jhenaigati"],
+  "বগুড়া": ["Kahaloo","Bogra Sadar","Shariakandi","Shajahanpur","Dupchanchia","Adamdighi","Nondigram","Sonatala","Dhunot","Gabtali","Sherpur","Shibganj"],
+  "জয়পুরহাট": ["Akkelpur","Kalai","Khetlal","Panchbibi","Joypurhat Sadar"],
+  "নওগাঁ": ["Mohadevpur","Badalgachi","Patnitala","Dhamoirhat","Niamatpur","Manda","Atrai","Raninagar","Naogaon Sadar","Porsha","Sapahar"],
+  "নাটোর": ["Natore Sadar","Singra","Baraigram","Bagatipara","Lalpur","Gurudaspur","Naldanga"],
+  "চাঁপাইনবাবগঞ্জ": ["Chapainawabganj Sadar","Gomostapur","Nachol","Bholahat","Shibganj"],
+  "পাবনা": ["Sujanagar","Ishurdi","Bhangura","Pabna Sadar","Bera","Atghoria","Chatmohar","Santhia","Faridpur"],
+  "রাজশাহী": ["Paba","Durgapur","Mohonpur","Charghat","Puthia","Bagha","Godagari","Tanore","Bagmara"],
+  "সিরাজগঞ্জ": ["Belkuchi","Chauhali","Kamarkhand","Kazipur","Raigonj","Shahjadpur","Sirajganj Sadar","Tarash","Ullapara"],
+  "দিনাজপুর": ["Nawabganj","Birganj","Ghoraghat","Birampur","Parbatipur","Bochaganj","Kaharol","Fulbari","Dinajpur Sadar","Hakimpur","Khansama","Birol","Chirirbandar"],
+  "গাইবান্ধা": ["Sadullapur","Gaibandha Sadar","Palashbari","Saghata","Gobindaganj","Sundarganj","Phulchari"],
+  "কুড়িগ্রাম": ["Kurigram Sadar","Nageshwari","Bhurungamari","Phulbari","Rajarhat","Ulipur","Chilmari","Rowmari","Charrajibpur"],
+  "লালমনিরহাট": ["Lalmonirhat Sadar","Kaliganj","Hatibandha","Patgram","Aditmari"],
+  "নীলফামারী": ["Syedpur","Domar","Dimla","Jaldhaka","Kishorganj","Nilphamari Sadar"],
+  "পঞ্চগড়": ["Panchagarh Sadar","Debiganj","Boda","Atwari","Tetulia"],
+  "রংপুর": ["Rangpur Sadar","Gangachara","Taragonj","Badargonj","Mithapukur","Pirgonj","Kaunia","Pirgacha"],
+  "ঠাকুরগাঁও": ["Thakurgaon Sadar","Pirganj","Ranisankail","Haripur","Baliadangi"],
+  "হবিগঞ্জ": ["Nabiganj","Bahubal","Ajmiriganj","Baniachong","Lakhai","Chunarughat","Habiganj Sadar","Madhabpur"],
+  "মৌলভীবাজার": ["Barlekha","Kamolganj","Kulaura","Moulvibazar Sadar","Rajnagar","Sreemangal","Juri"],
+  "সুনামগঞ্জ": ["Sunamganj Sadar","South Sunamganj","Bishwambarpur","Chhatak","Jagannathpur","Dowarabazar","Tahirpur","Dharmapasha","Jamalganj","Shalla","Derai","Madhyanagar"],
+  "সিলেট": ["Balaganj","Beanibazar","Bishwanath","Companiganj","Fenchuganj","Golapganj","Gowainghat","Jaintiapur","Kanaighat","Sylhet Sadar","Zakiganj","Dakshinsurma","Osmaninagar"],
+};
+
+// insertion-order অনুযায়ী জেলার তালিকা (ব্যবহারকারীর দেওয়া ৬৪ জেলার ক্রম অনুসারে)
+const BD_DISTRICTS = Object.keys(DISTRICT_UPAZILA_DATA);
+
+function districtOptionsHTML(selected){
+  return `<option value="">জেলা নির্বাচন করুন</option>` +
+    BD_DISTRICTS.map(d => `<option value="${escHtml(d)}" ${selected===d?'selected':''}>${escHtml(d)}</option>`).join('');
+}
+function upazilaOptionsHTML(district, selected){
+  const list = DISTRICT_UPAZILA_DATA[district] || [];
+  if(!list.length) return `<option value="">আগে জেলা নির্বাচন করুন</option>`;
+  return `<option value="">উপজেলা নির্বাচন করুন</option>` +
+    list.map(u => `<option value="${escHtml(u)}" ${selected===u?'selected':''}>${escHtml(u)}</option>`).join('');
+}
+// District select পরিবর্তন হলে সংশ্লিষ্ট Upazila select স্বয়ংক্রিয়ভাবে reload হয়
+function wireDistrictUpazila(districtSelId, upazilaSelId){
+  const dSel = document.getElementById(districtSelId);
+  const uSel = document.getElementById(upazilaSelId);
+  if(!dSel || !uSel) return;
+  dSel.onchange = () => { uSel.innerHTML = upazilaOptionsHTML(dSel.value, ''); };
+}
+
+
 /* ---- Dealer Register ---- */
 ROUTES.dealerRegister = function(){
   const app = document.getElementById('app');
@@ -1156,6 +1250,19 @@ ROUTES.dealerRegister = function(){
               <option value="mechanic">মেকানিক</option>
             </select>
           </div>
+          <div id="dealerAddressFields">
+            <div class="field"><label>জেলা <span style="color:#e53e3e">*</span></label>
+              <select id="regDistrict">${districtOptionsHTML('')}</select>
+            </div>
+            <div class="field"><label>উপজেলা <span style="color:#e53e3e">*</span></label>
+              <select id="regUpazila">${upazilaOptionsHTML('', '')}</select>
+            </div>
+          </div>
+          <div id="mechanicTerritoryField" style="display:none">
+            <div class="field"><label>মেকানিক টেরিটরি <span style="color:#e53e3e">*</span></label>
+              <input type="text" id="regTerritory" placeholder="মেকানিকের টেরিটরি লিখুন">
+            </div>
+          </div>
           <div class="field"><label>পাসওয়ার্ড</label><input type="password" id="pw" placeholder="পাসওয়ার্ড দিন"></div>
           <div class="field"><label>পাসওয়ার্ড নিশ্চিত করুন</label><input type="password" id="pw2" placeholder="আবার পাসওয়ার্ড দিন"></div>
           <button class="btn btn-primary btn-block" id="submit">রেজিস্ট্রেশন করুন</button>
@@ -1169,19 +1276,41 @@ ROUTES.dealerRegister = function(){
   `));
   document.getElementById('back').onclick = ()=> go('landing');
   document.getElementById('toLogin').onclick = ()=> go('dealerLogin');
+  wireDistrictUpazila('regDistrict', 'regUpazila');
+  // role অনুযায়ী District/Upazila (Dealer) বা Territory (Mechanic) ফিল্ড টগল করা হয়
+  const roleSel = document.getElementById('role');
+  const dealerFields = document.getElementById('dealerAddressFields');
+  const mechField = document.getElementById('mechanicTerritoryField');
+  const toggleRoleFields = () => {
+    if(roleSel.value === 'mechanic'){ dealerFields.style.display='none'; mechField.style.display='block'; }
+    else { dealerFields.style.display='block'; mechField.style.display='none'; }
+  };
+  roleSel.onchange = toggleRoleFields;
+  toggleRoleFields();
   document.getElementById('submit').onclick = async ()=>{
     const name = document.getElementById('name').value.trim();
     const phone = document.getElementById('phone').value.trim();
     const role = document.getElementById('role').value;
+    const district = document.getElementById('regDistrict').value;
+    const upazila = document.getElementById('regUpazila').value;
+    const territory = document.getElementById('regTerritory').value.trim();
     const pw = document.getElementById('pw').value;
     const pw2 = document.getElementById('pw2').value;
     const e = document.getElementById('err');
     if(!name || !phone || !pw || !pw2){ e.style.display='block'; e.textContent='সব ঘর পূরণ করুন'; return; }
+    if(role === 'dealer'){
+      if(!district){ e.style.display='block'; e.textContent='দয়া করে জেলা নির্বাচন করুন'; return; }
+      if(!upazila){ e.style.display='block'; e.textContent='দয়া করে উপজেলা নির্বাচন করুন'; return; }
+    } else if(role === 'mechanic'){
+      if(!territory){ e.style.display='block'; e.textContent='দয়া করে মেকানিকের টেরিটরি লিখুন'; return; }
+    }
     if(pw !== pw2){ e.style.display='block'; e.textContent='পাসওয়ার্ড দুটো মিলছে না'; return; }
     if(DB.users.some(u=>u.phone===phone)){ e.style.display='block'; e.textContent='এই মোবাইল নম্বর দিয়ে আগেই রেজিস্ট্রেশন করা আছে'; return; }
     if(DB.partsEngineers.some(p=>p.phone===phone)){ e.style.display='block'; e.textContent='এই মোবাইল নম্বরটি ইতিমধ্যে একটি Parts Engineer অ্যাকাউন্টে ব্যবহৃত আছে। একই ব্যক্তি দুটি ভিন্ন role-এ থাকতে পারবেন না।'; return; }
     // pending=true — অ্যাডমিন অনুমোদন না দেওয়া পর্যন্ত লগইন করতে পারবে না
     const newUser = {id: nextUserId++, name, phone, password: pw, active:false, pending:true, role};
+    if(role === 'dealer'){ newUser.district = district; newUser.upazila = upazila; }
+    if(role === 'mechanic'){ newUser.territory = territory; }
     const btn = document.getElementById('submit'); btn.disabled = true; btn.textContent = 'রেজিস্ট্রেশন হচ্ছে...';
     try{
       await fbEnsureAuth(newUser, pw, 'dealer');
@@ -2809,23 +2938,62 @@ function openPeUserModal(user){
         <option value="mechanic" ${user&&user.role==='mechanic'?'selected':''}>মেকানিক</option>
       </select>
     </div>
+    <div id="mPUDealerFields">
+      <div class="field"><label>জেলা <span style="color:#e53e3e">*</span></label>
+        <select id="mPUDistrict">${districtOptionsHTML(user?user.district:'')}</select>
+      </div>
+      <div class="field"><label>উপজেলা <span style="color:#e53e3e">*</span></label>
+        <select id="mPUUpazila">${upazilaOptionsHTML(user?user.district:'', user?user.upazila:'')}</select>
+      </div>
+    </div>
+    <div id="mPUMechField" style="display:none">
+      <div class="field"><label>মেকানিক টেরিটরি <span style="color:#e53e3e">*</span></label>
+        <input type="text" id="mPUTerritory" placeholder="মেকানিকের টেরিটরি লিখুন" value="${user&&user.territory?escHtml(user.territory):''}">
+      </div>
+    </div>
     <p class="hint" style="margin:0">এই ইউজার স্বয়ংক্রিয়ভাবে আপনার (${pe.name} — ${pe.region||'-'}) অধীনে যুক্ত হবে।</p>
+    <div class="err" id="mPUErr" style="display:none"></div>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal()">বাতিল</button>
       <button class="btn btn-primary" id="savePeUser">সংরক্ষণ করুন</button>
     </div>
   `);
+  wireDistrictUpazila('mPUDistrict', 'mPUUpazila');
+  const mPURoleSel = document.getElementById('mPURole');
+  const mPUDealerFields = document.getElementById('mPUDealerFields');
+  const mPUMechField = document.getElementById('mPUMechField');
+  const toggleMPURoleFields = () => {
+    if(mPURoleSel.value === 'mechanic'){ mPUDealerFields.style.display='none'; mPUMechField.style.display='block'; }
+    else { mPUDealerFields.style.display='block'; mPUMechField.style.display='none'; }
+  };
+  mPURoleSel.onchange = toggleMPURoleFields;
+  toggleMPURoleFields();
   document.getElementById('savePeUser').onclick = ()=>{
     const name = document.getElementById('mPUName').value.trim();
     const phone = document.getElementById('mPUPhone').value.trim();
     const password = document.getElementById('mPUPw').value.trim();
     const role = document.getElementById('mPURole').value;
+    const district = document.getElementById('mPUDistrict').value;
+    const upazila = document.getElementById('mPUUpazila').value;
+    const territory = document.getElementById('mPUTerritory').value.trim();
+    const errBox = document.getElementById('mPUErr');
+    errBox.style.display = 'none';
     if(!name || !phone || !password) return;
+    if(role === 'dealer'){
+      if(!district){ errBox.style.display='block'; errBox.textContent='দয়া করে জেলা নির্বাচন করুন'; return; }
+      if(!upazila){ errBox.style.display='block'; errBox.textContent='দয়া করে উপজেলা নির্বাচন করুন'; return; }
+    } else if(role === 'mechanic'){
+      if(!territory){ errBox.style.display='block'; errBox.textContent='দয়া করে মেকানিকের টেরিটরি লিখুন'; return; }
+    }
     if(isEdit){
       Object.assign(user, {name,phone,password,role,peId:pe.id,peName:pe.name,region:pe.region});
+      if(role === 'dealer'){ user.district = district; user.upazila = upazila; delete user.territory; }
+      if(role === 'mechanic'){ user.territory = territory; delete user.district; delete user.upazila; }
       logHistory(`Parts Engineer ${pe.name} তার ${role==='dealer'?'ডিলার':'মেকানিক'} ${name}-এর তথ্য আপডেট করেছেন`);
     } else {
       const newUser = {id: nextUserId++, name, phone, password, role, active:true, peId:pe.id, peName:pe.name, region:pe.region};
+      if(role === 'dealer'){ newUser.district = district; newUser.upazila = upazila; }
+      if(role === 'mechanic'){ newUser.territory = territory; }
       DB.users.push(newUser);
       logHistory(`Parts Engineer ${pe.name} নতুন ${role==='dealer'?'ডিলার':'মেকানিক'} যোগ করেছেন: ${name}`);
     }
@@ -3449,35 +3617,74 @@ function openUserModal(user){
         <option value="mechanic" ${user&&user.role==='mechanic'?'selected':''}>মেকানিক</option>
       </select>
     </div>
+    <div id="mUDealerFields">
+      <div class="field"><label>জেলা <span style="color:#e53e3e">*</span></label>
+        <select id="mUDistrict">${districtOptionsHTML(user?user.district:'')}</select>
+      </div>
+      <div class="field"><label>উপজেলা <span style="color:#e53e3e">*</span></label>
+        <select id="mUUpazila">${upazilaOptionsHTML(user?user.district:'', user?user.upazila:'')}</select>
+      </div>
+    </div>
+    <div id="mUMechField" style="display:none">
+      <div class="field"><label>মেকানিক টেরিটরি <span style="color:#e53e3e">*</span></label>
+        <input type="text" id="mUTerritory" placeholder="মেকানিকের টেরিটরি লিখুন" value="${user&&user.territory?escHtml(user.territory):''}">
+      </div>
+    </div>
     <div class="field"><label>Parts Engineer (অ্যাসাইন/ট্রান্সফার)</label>
       <select id="mUPeId">
         <option value="">— কোনো Parts Engineer না (Unassigned) —</option>
         ${activesPe.map(p=>`<option value="${p.id}" ${user&&Number(user.peId)===p.id?'selected':''}>${p.name} (${p.region})</option>`).join('')}
       </select>
     </div>
+    <div class="err" id="mUErr" style="display:none"></div>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal()">বাতিল</button>
       <button class="btn btn-primary" id="saveUser">সংরক্ষণ করুন</button>
     </div>
   `);
+  wireDistrictUpazila('mUDistrict', 'mUUpazila');
+  const mURoleSel = document.getElementById('mURole');
+  const mUDealerFields = document.getElementById('mUDealerFields');
+  const mUMechField = document.getElementById('mUMechField');
+  const toggleMURoleFields = () => {
+    if(mURoleSel.value === 'mechanic'){ mUDealerFields.style.display='none'; mUMechField.style.display='block'; }
+    else { mUDealerFields.style.display='block'; mUMechField.style.display='none'; }
+  };
+  mURoleSel.onchange = toggleMURoleFields;
+  toggleMURoleFields();
   document.getElementById('saveUser').onclick = ()=>{
     const name = document.getElementById('mUName').value.trim();
     const phone = document.getElementById('mUPhone').value.trim();
     const password = document.getElementById('mUPw').value.trim();
     const role = document.getElementById('mURole').value;
+    const district = document.getElementById('mUDistrict').value;
+    const upazila = document.getElementById('mUUpazila').value;
+    const territory = document.getElementById('mUTerritory').value.trim();
     const peIdRaw = document.getElementById('mUPeId').value;
     const pe = peIdRaw ? DB.partsEngineers.find(p=>p.id===Number(peIdRaw)) : null;
     const peId = pe ? pe.id : null;
     const peName = pe ? pe.name : '';
     const region = pe ? pe.region : '';
+    const errBox = document.getElementById('mUErr');
+    errBox.style.display = 'none';
     if(!name || !phone || !password) return;
+    if(role === 'dealer'){
+      if(!district){ errBox.style.display='block'; errBox.textContent='দয়া করে জেলা নির্বাচন করুন'; return; }
+      if(!upazila){ errBox.style.display='block'; errBox.textContent='দয়া করে উপজেলা নির্বাচন করুন'; return; }
+    } else if(role === 'mechanic'){
+      if(!territory){ errBox.style.display='block'; errBox.textContent='দয়া করে মেকানিকের টেরিটরি লিখুন'; return; }
+    }
     if(isEdit){
       const prevPeName = user.peName || 'Unassigned';
       Object.assign(user, {name,phone,password,role,peId,peName,region});
-      syncPush('editUser', {id:user.id, name,phone,password,role,peId,peName,region});
+      if(role === 'dealer'){ user.district = district; user.upazila = upazila; delete user.territory; }
+      if(role === 'mechanic'){ user.territory = territory; delete user.district; delete user.upazila; }
+      syncPush('editUser', {id:user.id, name,phone,password,role,peId,peName,region,district:user.district,upazila:user.upazila,territory:user.territory});
       if(prevPeName !== (peName||'Unassigned')) logHistory(`${name}-কে ${prevPeName} থেকে ${peName||'Unassigned'}-এ ট্রান্সফার করা হয়েছে`);
     } else {
       const newUser = {id: nextUserId++, name, phone, password, role, active:true, peId, peName, region};
+      if(role === 'dealer'){ newUser.district = district; newUser.upazila = upazila; }
+      if(role === 'mechanic'){ newUser.territory = territory; }
       DB.users.push(newUser);
       syncPush('addUser', newUser);
       if(peName) logHistory(`${name}-কে ${peName} (${region})-এর অধীনে অ্যাসাইন করা হয়েছে`);
