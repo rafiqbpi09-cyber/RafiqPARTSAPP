@@ -380,6 +380,85 @@ window.APP_VERSION = '2026-08-11.1';
   .memo-print-sheet{max-width:820px;margin:0 auto;background:#fff;color:#111;padding:24px;border:1px solid #ddd;}
   .memo-print-sheet table{font-size:12px;}
   .memo-print-sheet th,.memo-print-sheet td{border-bottom:1px solid #ddd;padding:7px;}
+
+  /* ---------- Sales Memo (Create Memo) redesign — green/white professional theme ---------- */
+  .memo2-wrap{background:#fff;border:1px solid #dfeee3;border-radius:16px;padding:20px 22px 26px;}
+  .memo2-header{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;}
+  .memo2-header-left{display:flex;align-items:center;gap:12px;}
+  .memo2-logo-icon{width:50px;height:50px;border-radius:14px;background:#eaf7ef;display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0;}
+  .memo2-title{margin:0;font-size:21px;font-weight:800;color:#123f24;letter-spacing:.3px;line-height:1.25;}
+  .memo2-subtitle{font-size:13px;font-weight:700;color:#1c6b3f;margin-top:2px;}
+  .memo2-tagline{font-size:11.5px;color:var(--muted);margin-top:1px;}
+  .memo2-header-right{display:flex;flex-direction:column;align-items:flex-end;gap:6px;}
+  .memo2-badge{background:#123f24;color:#fff;font-weight:800;font-size:13px;padding:9px 16px;border-radius:10px;letter-spacing:.4px;white-space:nowrap;}
+  .memo2-status{font-size:11.5px;color:var(--muted);font-weight:600;}
+  .memo2-divider{height:3px;background:linear-gradient(90deg,#1c6b3f,#8fd3a8,transparent);border-radius:3px;margin:14px 0 18px;}
+
+  .memo2-info-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;}
+  .memo2-box{border:1.5px solid #dfeee3;border-radius:12px;overflow:hidden;background:#fff;}
+  .memo2-box-head{background:#1c6b3f;color:#fff;font-size:12.5px;font-weight:800;padding:9px 14px;letter-spacing:.3px;}
+  .memo2-box-body{padding:12px 14px;}
+  .memo2-row{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px dashed #e4eee7;}
+  .memo2-row:last-child{border-bottom:none;}
+  .memo2-row-top{align-items:flex-start;}
+  .memo2-row .memo2-ic{font-size:14px;width:18px;flex-shrink:0;}
+  .memo2-row label{font-size:12px;color:var(--muted);font-weight:700;width:96px;flex-shrink:0;}
+  .memo2-row input,.memo2-row textarea{flex:1;min-width:0;border:none;border-bottom:1.5px dotted #c8dcce;background:transparent;padding:4px 2px;font-size:14.5px;font-family:inherit;color:var(--text);resize:none;}
+  .memo2-row input:focus,.memo2-row textarea:focus{outline:none;border-bottom-color:#1c6b3f;}
+  .memo2-row input[readonly]{color:#123f24;font-weight:700;}
+
+  .memo2-search-box{margin-bottom:14px;}
+  .memo2-search-box label{display:block;font-size:12.5px;font-weight:700;color:#1c6b3f;margin-bottom:6px;}
+  .memo2-search-box input{width:100%;padding:11px 13px;border:1.5px solid #dfeee3;border-radius:10px;font-size:15px;font-family:inherit;}
+  .memo2-search-box input:focus{outline:none;border-color:#1c6b3f;box-shadow:0 0 0 3px rgba(28,107,63,.12);}
+
+  .memo2-table-wrap{overflow-x:auto;border:1.5px solid #dfeee3;border-radius:12px;margin-bottom:16px;}
+  .memo2-table{width:100%;min-width:640px;border-collapse:collapse;}
+  .memo2-table thead th{background:#1c6b3f;color:#fff;font-size:12px;font-weight:800;padding:10px 8px;text-align:left;white-space:nowrap;}
+  .memo2-table thead th:first-child{text-align:center;width:36px;}
+  .memo2-table td{padding:8px;border-bottom:1px solid #eaf3ec;font-size:14px;vertical-align:middle;}
+  .memo2-table tbody tr:nth-child(even){background:#f7fcf9;}
+  .memo2-table tbody tr:hover{background:#eef8f1;}
+  .memo2-sl{text-align:center;font-weight:700;color:#1c6b3f;}
+  .memo2-part-cell .nm{font-weight:600;}
+  .memo2-part-cell .source-badge{margin-top:3px;}
+
+  .memo2-bottom-grid{display:grid;grid-template-columns:1.1fr 1fr;gap:14px;align-items:start;margin-bottom:8px;}
+  .memo2-note-box{border:1.5px solid #dfeee3;border-radius:12px;overflow:hidden;}
+  .memo2-note-body{padding:12px 14px;}
+  .memo2-note-body input{width:100%;padding:9px 11px;border:1.5px solid #e4eee7;border-radius:8px;font-size:14px;font-family:inherit;margin-bottom:8px;}
+  .memo2-note-hint{font-size:11.5px;color:var(--muted);line-height:1.5;}
+  .memo2-total-box{border:1.5px solid #dfeee3;border-radius:12px;overflow:hidden;background:#fff;}
+  .memo2-total-row{display:flex;justify-content:space-between;align-items:center;padding:11px 16px;font-size:14.5px;border-bottom:1px solid #eaf3ec;}
+  .memo2-total-row b{font-size:15px;}
+  .memo2-discount-wrap{display:flex;align-items:center;gap:3px;font-weight:700;}
+  .memo2-discount-wrap input{width:90px;border:none;border-bottom:1.5px dotted #c8dcce;background:transparent;padding:2px 4px;font-size:14.5px;font-family:inherit;text-align:right;font-weight:700;color:var(--text);}
+  .memo2-discount-wrap input:focus{outline:none;border-bottom-color:#1c6b3f;}
+  .memo2-total-row.memo2-grand{background:#123f24;border-bottom:none;padding:14px 16px;}
+  .memo2-total-row.memo2-grand span{color:#fff;font-weight:800;font-size:15.5px;}
+  .memo2-total-row.memo2-grand b{color:#fff;font-size:22px;}
+
+  .memo2-actions{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-top:6px;}
+  .memo2-autosave-hint{margin-top:8px;text-align:right;}
+
+  .memo2-footer{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-top:26px;padding-top:16px;border-top:1.5px dashed #dfeee3;flex-wrap:wrap;}
+  .memo2-sign{font-size:13px;color:var(--muted);text-align:center;}
+  .memo2-sign-line{width:150px;border-bottom:1.5px solid #b9c6bd;margin-bottom:6px;}
+  .memo2-thankyou{text-align:center;font-size:22px;color:#1c6b3f;}
+  .memo2-thankyou b{font-size:16px;color:#123f24;}
+  .memo2-thankyou div{font-size:12px;color:var(--muted);font-weight:600;}
+  .memo2-contact{font-size:12.5px;color:var(--muted);font-weight:600;}
+
+  @media(max-width:760px){
+    .memo2-info-grid{grid-template-columns:1fr;}
+    .memo2-bottom-grid{grid-template-columns:1fr;}
+    .memo2-header{flex-direction:column;align-items:flex-start;}
+    .memo2-header-right{align-items:flex-start;width:100%;}
+    .memo2-badge{align-self:flex-start;}
+    .memo2-title{font-size:18px;}
+    .memo2-footer{flex-direction:column;text-align:center;}
+    .memo2-sign-line{width:120px;margin:0 auto 6px;}
+  }
   @media(max-width:760px){
     .dealer-management-grid{grid-template-columns:1fr;}
     .dealer-tabs{overflow-x:auto;flex-wrap:nowrap;-webkit-overflow-scrolling:touch;}
@@ -2118,41 +2197,91 @@ function memoEditorHTML(draft=null){
   const d=draft||null;
   const memoNumber=d?.memoNo || ''; // নতুন Memo হলে খালি — Firebase transaction দিয়ে allocate হওয়ার পর wireMemoPage() এটা বসাবে
   const dateValue=d?.date || new Date().toLocaleString('bn-BD');
+  const dtParts=dateValue.includes(',')?dateValue.split(','):[dateValue,''];
+  const dateOnly=(dtParts[0]||'').trim();
+  const timeOnly=dtParts.slice(1).join(',').trim();
   const status=d?'DRAFT':'NEW';
-  return `<div class="card-head"><h3>🧾 Create Memo</h3><span class="badge ${d?'pending':'active'}">${status}${d?' • '+escHtml(d.memoNo):' • Automatic Memo No.'}</span></div>
-  <div class="card">
-    <div class="dealer-management-grid">
-      <div class="field"><label>Customer Name</label><input id="memoCustomerName" value="${escHtml(d?.customerName||'')}" placeholder="কাস্টমারের নাম" style="background:#fff9ec;border-color:#f0dfb8"></div>
-      <div class="field"><label>Customer Mobile</label><input id="memoCustomerMobile" value="${escHtml(d?.customerMobile||'')}" placeholder="01XXXXXXXXX" inputmode="tel" style="background:#fff9ec;border-color:#f0dfb8"></div>
-      <div class="field"><label>Memo Number</label><input id="memoNumber" value="${escHtml(memoNumber)}" placeholder="${d?'':'তৈরি হচ্ছে...'}" readonly></div>
-      <div class="field"><label>Date</label><input id="memoDate" value="${escHtml(dateValue)}" readonly></div>
-      <div class="field"><label>Payment Status</label><select id="memoPaymentStatus"><option value="Paid" ${d?.paymentStatus==='Paid'?'selected':''}>Paid / পরিশোধিত</option><option value="Due" ${d?.paymentStatus==='Due'?'selected':''}>Due / বাকি</option><option value="Partial" ${d?.paymentStatus==='Partial'?'selected':''}>Partial / আংশিক</option></select></div>
-      <div class="field"><label>Payment Method / Note</label><input id="memoPaymentInfo" value="${escHtml(d?.paymentInfo||'')}" placeholder="Cash / bKash / Due note"></div>
-    </div>
-    <div class="field"><label>Part Search</label>
-      <input id="memoPartSearch" type="text" placeholder="Part Number / Name / শেষের সংখ্যা লিখুন..." style="width:100%;padding:11px;border:1px solid var(--line);border-radius:9px;font-size:16px;">
-      <div id="memoPartSuggestions" style="margin-top:8px"></div>
-    </div>
-    <div class="memo-items-wrap"><table class="memo-items-table"><thead><tr><th>Source</th><th>Part</th><th>Part Number</th><th>Qty</th><th>Unit Price</th><th>Total</th><th></th></tr></thead><tbody id="memoItemsBody"></tbody></table></div>
-    <div class="dealer-management-grid" style="margin-top:12px">
-      <div class="field"><label>Discount</label><input id="memoDiscount" type="number" min="0" step="0.01" value="${Number(d?.discount||0)}"></div>
-      <div class="field"><label>Customer / Payment Information</label><input id="memoNote" value="${escHtml(d?.note||'')}" placeholder="Optional note"></div>
-    </div>
-    <div style="margin-top:16px;padding:16px 18px;background:linear-gradient(135deg,#eef6ff,#f8fbff);border:1.5px solid #cfe0f5;border-radius:14px">
-      <div style="display:flex;justify-content:space-between;padding:3px 0;font-size:14.5px;color:var(--steel,#425466)"><span>Subtotal</span><b id="memoSubtotal">৳0.00</b></div>
-      <div style="display:flex;justify-content:space-between;padding:3px 0;font-size:14.5px;color:var(--steel,#425466)"><span>Discount / Adjustment</span><b id="memoDiscountView" style="color:#c0392b">৳0.00</b></div>
-      <div style="border-top:2px dashed #b9cfe8;margin:10px 0"></div>
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <span style="font-size:15.5px;font-weight:700;color:var(--navy,#12233d)">Grand Total</span>
-        <b id="memoGrandTotal" style="font-size:26px;color:#0d7a3f">৳0.00</b>
+  const u=currentDealer();
+  return `<div class="memo2-wrap">
+    <div class="memo2-header">
+      <div class="memo2-header-left">
+        <div class="memo2-logo-icon">🚜</div>
+        <div>
+          <h1 class="memo2-title">${escHtml(DB.settings.companyName||'METAL PARTS LIMITED')}</h1>
+          <div class="memo2-subtitle">SBU2 Parts – Barishal Region</div>
+          <div class="memo2-tagline">Tractor &amp; Machinery Parts Supplier</div>
+        </div>
+      </div>
+      <div class="memo2-header-right">
+        <div class="memo2-badge">🧾 SALES MEMO</div>
+        <div class="memo2-status">${status}${d?' • '+escHtml(d.memoNo):' • Automatic Memo No.'}</div>
       </div>
     </div>
-    <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-top:14px">
+    <div class="memo2-divider"></div>
+
+    <div class="memo2-info-grid">
+      <div class="memo2-box">
+        <div class="memo2-box-head">👤 CUSTOMER INFORMATION</div>
+        <div class="memo2-box-body">
+          <div class="memo2-row"><span class="memo2-ic">👤</span><label>Customer Name</label><input id="memoCustomerName" value="${escHtml(d?.customerName||'')}" placeholder="কাস্টমারের নাম"></div>
+          <div class="memo2-row"><span class="memo2-ic">📞</span><label>Mobile Number</label><input id="memoCustomerMobile" value="${escHtml(d?.customerMobile||'')}" placeholder="01XXXXXXXXX" inputmode="tel"></div>
+          <div class="memo2-row memo2-row-top"><span class="memo2-ic">📍</span><label>Address</label><textarea id="memoCustomerAddress" rows="2" placeholder="কাস্টমারের ঠিকানা">${escHtml(d?.customerAddress||'')}</textarea></div>
+        </div>
+      </div>
+      <div class="memo2-box">
+        <div class="memo2-box-head">📄 MEMO INFORMATION</div>
+        <div class="memo2-box-body">
+          <div class="memo2-row"><span class="memo2-ic">📄</span><label>Memo Number</label><input id="memoNumber" value="${escHtml(memoNumber)}" placeholder="${d?'':'তৈরি হচ্ছে...'}" readonly></div>
+          <div class="memo2-row"><span class="memo2-ic">📅</span><label>Date</label><input id="memoDateDisplay" value="${escHtml(dateOnly)}" readonly></div>
+          <div class="memo2-row"><span class="memo2-ic">🕐</span><label>Time</label><input id="memoTimeDisplay" value="${escHtml(timeOnly)}" readonly></div>
+        </div>
+      </div>
+    </div>
+
+    <input type="hidden" id="memoDate" value="${escHtml(dateValue)}">
+    <div style="display:none" aria-hidden="true">
+      <select id="memoPaymentStatus"><option value="Paid" ${(!d?.paymentStatus||d.paymentStatus==='Paid')?'selected':''}>Paid / পরিশোধিত</option><option value="Due" ${d?.paymentStatus==='Due'?'selected':''}>Due / বাকি</option><option value="Partial" ${d?.paymentStatus==='Partial'?'selected':''}>Partial / আংশিক</option></select>
+      <input id="memoPaymentInfo" value="${escHtml(d?.paymentInfo||'')}">
+    </div>
+
+    <div class="memo2-search-box">
+      <label>🔍 Part Search</label>
+      <input id="memoPartSearch" type="text" placeholder="Part Number / Name / শেষের সংখ্যা লিখুন...">
+      <div id="memoPartSuggestions" style="margin-top:8px"></div>
+    </div>
+
+    <div class="memo2-table-wrap">
+      <table class="memo2-table"><thead><tr><th>SL</th><th>PART NO.</th><th>PART NAME / DESCRIPTION</th><th>QTY.</th><th>UNIT PRICE (৳)</th><th>TOTAL PRICE (৳)</th><th></th></tr></thead><tbody id="memoItemsBody"></tbody></table>
+    </div>
+
+    <div class="memo2-bottom-grid">
+      <div class="memo2-note-box">
+        <div class="memo2-box-head">📝 NOTE</div>
+        <div class="memo2-note-body">
+          <input id="memoNote" value="${escHtml(d?.note||'')}" placeholder="Optional note">
+          <div class="memo2-note-hint">★ পণ্য ভালোভাবে যাচাই করে নিন।<br>★ বিক্রি হওয়া পণ্য ফেরত নেওয়া হবে না।</div>
+        </div>
+      </div>
+      <div class="memo2-total-box">
+        <div class="memo2-total-row"><span>Subtotal</span><b id="memoSubtotal">৳0.00</b></div>
+        <div class="memo2-total-row"><span>Discount / Adjustment</span><span class="memo2-discount-wrap">৳<input id="memoDiscount" type="number" min="0" step="0.01" value="${Number(d?.discount||0)}"></span></div>
+        <b id="memoDiscountView" style="display:none">৳0.00</b>
+        <div class="memo2-total-row memo2-grand"><span>GRAND TOTAL</span><b id="memoGrandTotal">৳0.00</b></div>
+      </div>
+    </div>
+
+    <div class="memo2-actions">
       <button class="btn btn-ghost" id="memoClear">🔄 Clear</button>
       <button class="btn btn-warning" id="memoSaveDraft" ${d?'':'disabled'}>🟡 SAVE DRAFT</button>
       <button class="btn btn-primary" id="memoFinalSubmit" ${d?'':'disabled'}>🟢 FINAL SUBMIT</button>
     </div>
-    <div id="memoAutosaveStatus" class="hint" style="margin-top:8px;text-align:right">${d?'Draft loaded — Continue editing':'Memo Number তৈরি হচ্ছে...'}</div>
+    <div id="memoAutosaveStatus" class="hint memo2-autosave-hint">${d?'Draft loaded — Continue editing':'Memo Number তৈরি হচ্ছে...'}</div>
+
+    <div class="memo2-footer">
+      <div class="memo2-sign"><div class="memo2-sign-line"></div>Customer Signature</div>
+      <div class="memo2-thankyou">🚜<div><b>Thank You!</b></div><div>We Appreciate Your Business</div></div>
+      <div class="memo2-contact">${u?`📞 ${escHtml(u.phone||'')}${u.name?' • '+escHtml(u.name):''}`:''}</div>
+    </div>
   </div>`;
 }
 function draftListForDealer(){
@@ -2174,11 +2303,11 @@ function renderMemoRows(rows){
   body.innerHTML = rows.length ? rows.map((it,i)=>{
     const rowTotal=Number(it.qty||0)*Number(it.unitPrice||0);
     return `<tr>
-      <td><span class="source-badge ${it.source==='dealer'?'source-dealer':'source-company'}">${escHtml(it.sourceLabel||(it.source==='dealer'?'Dealer':'Company'))}</span></td>
-      <td>${escHtml(it.name||'')}</td>
+      <td class="memo2-sl">${i+1}</td>
       <td class="mono">${escHtml(displayPartNo(it.partNo))}</td>
-      <td><input type="number" min="0" step="1" class="memo-qty" data-i="${i}" value="${Number(it.qty||0)}" style="width:64px;padding:7px;border:1.5px solid var(--line);border-radius:8px;font-size:14.5px"></td>
-      <td><input type="number" min="0" step="0.01" class="memo-price" data-i="${i}" value="${Number(it.unitPrice||0)}" style="width:88px;padding:7px;border:1.5px solid var(--line);border-radius:8px;font-size:14.5px"></td>
+      <td class="memo2-part-cell"><div class="nm">${escHtml(it.name||'')}</div><span class="source-badge ${it.source==='dealer'?'source-dealer':'source-company'}">${escHtml(it.sourceLabel||(it.source==='dealer'?'Dealer':'Company'))}</span></td>
+      <td><input type="number" min="0" step="1" class="memo-qty" data-i="${i}" value="${Number(it.qty||0)}" style="width:56px;padding:6px;border:1.5px solid var(--line);border-radius:8px;font-size:14px"></td>
+      <td><input type="number" min="0" step="0.01" class="memo-price" data-i="${i}" value="${Number(it.unitPrice||0)}" style="width:80px;padding:6px;border:1.5px solid var(--line);border-radius:8px;font-size:14px"></td>
       <td><b class="memo-row-total" data-i="${i}">৳${money(rowTotal)}</b></td>
       <td><button type="button" class="btn btn-danger btn-sm memo-remove" data-i="${i}" title="Remove">🗑️</button></td>
     </tr>`;
@@ -2188,6 +2317,7 @@ function draftAutosaveKey(){const u=currentDealer();return u?'dlr_memo_autosave_
 function buildMemoState(rows){
   const customerName=document.getElementById('memoCustomerName')?.value.trim()||'';
   const customerMobile=document.getElementById('memoCustomerMobile')?.value.trim()||'';
+  const customerAddress=document.getElementById('memoCustomerAddress')?.value.trim()||'';
   const memoNo=document.getElementById('memoNumber')?.value||'';
   const date=document.getElementById('memoDate')?.value||new Date().toLocaleString('bn-BD');
   const paymentStatus=document.getElementById('memoPaymentStatus')?.value||'Paid';
@@ -2195,7 +2325,7 @@ function buildMemoState(rows){
   const discount=Math.max(0,Number(document.getElementById('memoDiscount')?.value||0));
   const note=document.getElementById('memoNote')?.value.trim()||'';
   const subtotal=rows.reduce((s,it)=>s+Number(it.qty||0)*Number(it.unitPrice||0),0);
-  return {memoNo,date,customerName,customerMobile,paymentStatus,paymentInfo,discount,note,items:rows.map(x=>({...x})),subtotal,grandTotal:Math.max(0,subtotal-discount)};
+  return {memoNo,date,customerName,customerMobile,customerAddress,paymentStatus,paymentInfo,discount,note,items:rows.map(x=>({...x})),subtotal,grandTotal:Math.max(0,subtotal-discount)};
 }
 function persistDraftLocal(state){
   try{const k=draftAutosaveKey();if(k)localStorage.setItem(k,JSON.stringify({...state,autosavedAt:new Date().toISOString()}));}catch(e){}
@@ -2249,7 +2379,7 @@ function wireMemoPage(existingDraft=null){
   };
   const showSuggest=()=>{const found=dealerPartSearch(search.value).slice(0,8);suggest.innerHTML=found.map((p,i)=>`<div class="part-card" data-pidx="${i}" style="cursor:pointer"><div style="flex:1"><b>${escHtml(displayPartNo(p.partNo))}</b><div class="nm">${escHtml(p.name)}</div></div><div><span class="source-badge ${p._source==='dealer'?'source-dealer':'source-company'}">${p._sourceLabel}</span><br><b>৳${money(p._price)}</b>${p._source==='dealer'?`<div class="hint">Stock: ${Number(p.currentStock||0)}</div>`:''}</div></div>`).join('');suggest.querySelectorAll('[data-pidx]').forEach(el=>el.onclick=()=>add(found[Number(el.dataset.pidx)]));};
   search.oninput=()=>{if(search.value.trim().length>=2)showSuggest();else suggest.innerHTML='';autoSave();};
-  ['memoCustomerName','memoCustomerMobile','memoPaymentInfo','memoNote'].forEach(id=>{document.getElementById(id).oninput=autoSave;});
+  ['memoCustomerName','memoCustomerMobile','memoCustomerAddress','memoPaymentInfo','memoNote'].forEach(id=>{document.getElementById(id).oninput=autoSave;});
   document.getElementById('memoPaymentStatus').onchange=autoSave;
   document.getElementById('memoDiscount').oninput=()=>{recalc();autoSave();};
   document.getElementById('memoClear').onclick=()=>{if(confirm('Memo form clear করবেন?')){clearDraftLocal();dealerManageTab='search';go('dealerPortal');}};
@@ -2291,7 +2421,7 @@ function wireMemoPage(existingDraft=null){
     }
     if(!confirm(`Memo ${st.memoNo} FINAL SUBMIT করবেন?\nFinal Submit-এর পর এটি Draft থাকবে না।`))return;
     const now=new Date();
-    const memo={id:Date.now()+Math.random(),dealerId:u.id,dealerName:u.name,dealerPhone:u.phone,memoNo:st.memoNo,date:now.toLocaleString('bn-BD'),dateISO:now.toISOString(),customerName:st.customerName,customerMobile:st.customerMobile,paymentStatus:st.paymentStatus,paymentInfo:st.paymentInfo,note:st.note,items:st.items.map(x=>({...x})),subtotal:st.subtotal,discount:st.discount,grandTotal:st.grandTotal,status:'SUBMITTED'};
+    const memo={id:Date.now()+Math.random(),dealerId:u.id,dealerName:u.name,dealerPhone:u.phone,memoNo:st.memoNo,date:now.toLocaleString('bn-BD'),dateISO:now.toISOString(),customerName:st.customerName,customerMobile:st.customerMobile,customerAddress:st.customerAddress,paymentStatus:st.paymentStatus,paymentInfo:st.paymentInfo,note:st.note,items:st.items.map(x=>({...x})),subtotal:st.subtotal,discount:st.discount,grandTotal:st.grandTotal,status:'SUBMITTED'};
     // Search-ইনডেক্সে লেখা (Firebase transaction) — এটা fail করলে stock deduction/finalize কিছুই হবে না,
     // যাতে ডেটা কখনো অর্ধেক-সেভ অবস্থায় না থাকে।
     try{ await writeFinalMemoToIndex(memo); }catch(e){ alert(e.message||'Memo সেভ করা যায়নি — ইন্টারনেট সংযোগ চেক করে আবার চেষ্টা করুন।'); return; }
@@ -2307,7 +2437,7 @@ function wireMemoPage(existingDraft=null){
     try{const raw=localStorage.getItem(draftAutosaveKey());if(raw){const a=JSON.parse(raw);if(a&&Array.isArray(a.items)&&a.items.length){
       rows=a.items.map(x=>({...x}));
       ['memoCustomerName','memoCustomerMobile','memoPaymentInfo','memoNote'].forEach(id=>{const key=id.replace('memo','').replace(/^[A-Z]/,c=>c.toLowerCase());});
-      document.getElementById('memoCustomerName').value=a.customerName||'';document.getElementById('memoCustomerMobile').value=a.customerMobile||'';document.getElementById('memoPaymentInfo').value=a.paymentInfo||'';document.getElementById('memoNote').value=a.note||'';document.getElementById('memoDiscount').value=Number(a.discount||0);if(a.paymentStatus)document.getElementById('memoPaymentStatus').value=a.paymentStatus;redraw();
+      document.getElementById('memoCustomerName').value=a.customerName||'';document.getElementById('memoCustomerMobile').value=a.customerMobile||'';document.getElementById('memoCustomerAddress').value=a.customerAddress||'';document.getElementById('memoPaymentInfo').value=a.paymentInfo||'';document.getElementById('memoNote').value=a.note||'';document.getElementById('memoDiscount').value=Number(a.discount||0);if(a.paymentStatus)document.getElementById('memoPaymentStatus').value=a.paymentStatus;redraw();
       document.getElementById('memoAutosaveStatus').textContent='Local auto-save restored ✓ — SAVE DRAFT চাপুন';
     }}}catch(e){}
   }
@@ -2333,7 +2463,7 @@ function memoHistoryHTML(){
 }
 function memoDetailsHTML(m){
   return `<div class="memo-print-sheet"><div style="text-align:center;border-bottom:2px solid #12233d;padding-bottom:10px;margin-bottom:12px"><h2 style="margin:0">${escHtml(m.dealerName||DB.settings.companyName)}</h2><div>Dealer Memo / Invoice</div></div>
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:13px"><div><b>Memo No:</b> ${escHtml(m.memoNo)}</div><div><b>Date:</b> ${escHtml(m.date)}</div><div><b>Customer:</b> ${escHtml(m.customerName)}</div><div><b>Mobile:</b> ${escHtml(m.customerMobile||'-')}</div><div><b>Payment:</b> ${escHtml(m.paymentStatus)}</div><div><b>Payment Info:</b> ${escHtml(m.paymentInfo||'-')}</div></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:13px"><div><b>Memo No:</b> ${escHtml(m.memoNo)}</div><div><b>Date:</b> ${escHtml(m.date)}</div><div><b>Customer:</b> ${escHtml(m.customerName)}</div><div><b>Mobile:</b> ${escHtml(m.customerMobile||'-')}</div><div><b>Payment:</b> ${escHtml(m.paymentStatus)}</div><div><b>Payment Info:</b> ${escHtml(m.paymentInfo||'-')}</div>${m.customerAddress?`<div style="grid-column:1/-1"><b>Address:</b> ${escHtml(m.customerAddress)}</div>`:''}</div>
   <div style="overflow-x:auto;margin-top:14px"><table style="width:100%;border-collapse:collapse"><thead><tr><th>SL</th><th>Source</th><th>Part Name</th><th>Part No.</th><th>Qty</th><th>Unit Price</th><th>Total</th></tr></thead><tbody>${m.items.map((it,i)=>`<tr><td>${i+1}</td><td>${it.source==='dealer'?'Dealer':'Company'}</td><td>${escHtml(it.name)}</td><td class="mono">${escHtml(displayPartNo(it.partNo))}</td><td>${it.qty}</td><td>৳${money(it.unitPrice)}</td><td>৳${money(Number(it.qty)*Number(it.unitPrice))}</td></tr>`).join('')}</tbody></table></div>
   <div style="margin-left:auto;max-width:300px;margin-top:12px"><div style="display:flex;justify-content:space-between"><b>Subtotal</b><b>৳${money(m.subtotal)}</b></div><div style="display:flex;justify-content:space-between"><b>Discount</b><b>৳${money(m.discount)}</b></div><div style="display:flex;justify-content:space-between;font-size:18px;border-top:2px solid #12233d;margin-top:5px;padding-top:5px"><b>Grand Total</b><b>৳${money(m.grandTotal)}</b></div></div>
   ${m.note?`<div style="margin-top:12px;font-size:13px"><b>Note:</b> ${escHtml(m.note)}</div>`:''}
