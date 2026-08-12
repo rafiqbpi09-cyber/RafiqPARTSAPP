@@ -867,8 +867,31 @@ function showSplash(callback){
   }, 2000);
 }
 
+// ================= ROLE-BASED ROUTE PROTECTION =================
+// যেকোনো route render হওয়ার আগে এখানে চেক করা হয় — সঠিক role না থাকলে
+// সাথে সাথে redirect করে দেওয়া হয়। শুধু UI-তে menu লুকানো যথেষ্ট না,
+// তাই প্রতিটি sensitive route নিজে থেকেই session.role যাচাই করে (defense in depth)।
+const ROUTE_ROLES = {
+  adminDashboard: ['admin'],
+  peDashboard: ['partsEngineer'],
+  dealerPortal: ['dealer'],
+  dealerRequisition: ['dealer'],
+  dealerVehicleSearch: ['dealer'],
+  mechanicDashboard: ['mechanic']
+};
+function requireRole(roles, fallback){
+  fallback = fallback || 'landing';
+  const role = DB.session && DB.session.role;
+  if(!role || !roles.includes(role)){ go(fallback); return false; }
+  return true;
+}
 function go(route){ 
   if(DEALER_ONLY && (route === 'adminLogin' || route === 'adminDashboard' || route === 'adminForgotPassword' || route === 'peLogin' || route === 'peDashboard')){ route = 'landing'; }
+  // Role-based access control: sensitive route হলে সঠিক role না থাকলে সরাসরি redirect করা হয়
+  const allowedRoles = ROUTE_ROLES[route];
+  if(allowedRoles && !(DB.session && allowedRoles.includes(DB.session.role))){
+    route = (DB.session && DB.session.role === 'mechanic') ? 'mechanicDashboard' : 'landing';
+  }
   currentRoute = route; 
   const entryRoutes = ['landing', 'adminLogin', 'dealerLogin', 'dealerRegister'];
   if(entryRoutes.includes(route) && !splashShown){
@@ -1379,11 +1402,116 @@ ROUTES.dealerLogin = function(){
     }catch(err){
       console.warn('Firebase dealer auth skipped (offline/network issue), continuing with local login:', err);
     }
-    DB.session = {role:'dealer', user:u};
-    recordLogin(u.name, u.role, u.phone);
-    dealerManageTab = 'search';
-    go('dealerPortal');
+    // Role অনুযায়ী আলাদা ড্যাশবোর্ডে পাঠানো হয়: Mechanic -> সীমিত Mechanic Dashboard,
+    // Dealer -> পূর্ণ Dealer Portal। Mechanic কোনোভাবেই Dealer Portal-এ ঢুকতে পারবে না।
+    if(u.role === 'mechanic'){
+      DB.session = {role:'mechanic', user:u};
+      recordLogin(u.name, u.role, u.phone);
+      go('mechanicDashboard');
+    } else {
+      DB.session = {role:'dealer', user:u};
+      recordLogin(u.name, u.role, u.phone);
+      dealerManageTab = 'search';
+      go('dealerPortal');
+    }
   };
+};
+
+/* ============================================================= */
+/* ==================== MECHANIC DASHBOARD ====================== */
+/* ============================================================= */
+// Mechanic-এর জন্য আপাতত শুধু: Parts Search (company parts, read-only), My Profile, Logout।
+// Dealer/Admin/Customer/Requisition/Stock/Memo — কোনো তথ্যই এখানে load বা দেখানো হয় না।
+function currentMechanic(){
+  return DB.session && DB.session.role === 'mechanic' ? DB.session.user : null;
+}
+function mechanicPartSearch(q){
+  const raw = String(q||'').trim().toLowerCase();
+  if(!raw) return [];
+  const digits = digitsOnly(raw);
+  const exact = [], near = [];
+  // শুধুই company-এর Parts database — Dealer-এর own parts/stock এখানে কখনো fetch হয় না
+  DB.parts.forEach(p=>{
+    const pn = String(p.partNo||'').toLowerCase();
+    const nm = String(p.name||'').toLowerCase();
+    const core = String(p.core||coreOf(p.partNo||''));
+    if((digits && core===digits) || (!digits && pn===raw)){ near.push({...p,_exact:true}); return; }
+    if((digits && (core.includes(digits)||digits.includes(core))) || pn.includes(raw) || nm.includes(raw)){ near.push({...p,_exact:false}); }
+  });
+  exact.push(...near.filter(p=>p._exact));
+  const rest = near.filter(p=>!p._exact).slice(0,30);
+  return [...exact,...rest].slice(0,40);
+}
+function mechanicSearchHTML(){
+  return `<div class="search-hero">
+    <h2>🔍 Parts Search</h2>
+    <p>Part Number অথবা Part Name দিয়ে খুঁজুন। শেষের ৩-৫ সংখ্যাও ব্যবহার করা যাবে।</p>
+    <div class="big-search"><input type="text" id="mechSearch" placeholder="যেমনঃ 97200754 বা Oil Filter"><button class="btn btn-primary" id="mechSearchBtn">সার্চ</button></div>
+  </div><div id="mechResults"></div>`;
+}
+function renderMechanicSearch(){
+  const q = document.getElementById('mechSearch').value.trim();
+  const out = document.getElementById('mechResults');
+  if(!q){ out.innerHTML=''; return; }
+  if(q.length<2){ out.innerHTML = '<div class="empty">অন্তত ২ অক্ষর/সংখ্যা লিখুন</div>'; return; }
+  const found = mechanicPartSearch(q);
+  if(!found.length){ out.innerHTML = '<div class="empty">😕 কোনো Part পাওয়া যায়নি</div>'; return; }
+  const highlightQuery = digitsOnly(q);
+  out.innerHTML = found.map(p=>{
+    const shownPartNo = highlightQuery ? highlightMatch(displayPartNo(p.partNo), highlightQuery) : displayPartNo(p.partNo);
+    return `<div class="part-card search-hit${p._exact?' exact':''}">
+      <div style="flex:1"><div class="pn" style="font-weight:700">${shownPartNo}</div><div class="nm" style="font-weight:700;color:var(--text);margin-top:3px">${escHtml(p.name||'-')}</div></div>
+      <div class="pr">৳${money(p.price)}</div>
+    </div>`;
+  }).join('');
+}
+function mechanicProfileHTML(){
+  const u = currentMechanic();
+  if(!u) return '';
+  return `<div class="card">
+    <h3>👤 আমার প্রোফাইল</h3>
+    <div class="field"><label>নাম</label><input type="text" value="${escHtml(u.name)}" readonly style="background:#f2f4f7;"></div>
+    <div class="field"><label>মোবাইল</label><input type="text" value="${escHtml(u.phone)}" readonly style="background:#f2f4f7;"></div>
+    <div class="field"><label>টেরিটরি</label><input type="text" value="${escHtml(u.territory||'-')}" readonly style="background:#f2f4f7;"></div>
+    <div class="field"><label>Role</label><input type="text" value="Mechanic" readonly style="background:#f2f4f7;"></div>
+  </div>`;
+}
+let mechanicTab = 'search';
+ROUTES.mechanicDashboard = function(){
+  if(!requireRole(['mechanic'], 'dealerLogin')) return;
+  const u = currentMechanic();
+  const app = document.getElementById('app');
+  const content = mechanicTab === 'profile' ? mechanicProfileHTML() : mechanicSearchHTML();
+  app.appendChild(el(`<div>
+    <div class="topbar">
+      <div class="topbar-brand">
+        <div class="brand-logo">${DB.settings.logo ? `<img src="${DB.settings.logo}" style="width:100%;height:100%;object-fit:cover;border-radius:9px">` : '🔧'}</div>
+        <div><div class="brand-name">${escHtml(DB.settings.companyName)}</div><div class="brand-sub">Mechanic Portal</div></div>
+      </div>
+      <div class="topbar-right">
+        <button class="btn btn-ghost btn-sm theme-toggle" onclick="toggleTheme()" style="color:#fff;border-color:rgba(255,255,255,.3)">🌙</button>
+        <span class="pill">${escHtml(u?u.name:'')}</span>
+        <button class="btn btn-ghost btn-sm" style="color:#fff;border-color:rgba(255,255,255,.3)" id="mechLogout">লগআউট</button>
+      </div>
+    </div>
+    <div class="wrap has-bottom-nav">
+      <div class="dealer-tabs">
+        <button class="tab ${mechanicTab==='search'?'active':''}" onclick="mechanicTab='search';go('mechanicDashboard')">🔍 Parts Search</button>
+        <button class="tab ${mechanicTab==='profile'?'active':''}" onclick="mechanicTab='profile';go('mechanicDashboard')">👤 My Profile</button>
+      </div>
+      ${content}
+    </div>
+    ${bottomNavHTML([
+      {key:'search',icon:'🔍',label:'Parts Search',onclick:"mechanicTab='search';go('mechanicDashboard')"},
+      {key:'profile',icon:'👤',label:'My Profile',onclick:"mechanicTab='profile';go('mechanicDashboard')"},
+      {key:'logout',icon:'🚪',label:'লগআউট',onclick:"if(confirm('লগআউট করবেন?')){DB.session={role:null,user:null};go('dealerLogin');}"}
+    ], mechanicTab)}
+  </div>`));
+  document.getElementById('mechLogout').onclick = ()=>{ DB.session = {role:null, user:null}; go('dealerLogin'); };
+  if(mechanicTab === 'search'){
+    document.getElementById('mechSearch').addEventListener('input', ()=>{ clearTimeout(window._mechSearchTimer); window._mechSearchTimer = setTimeout(renderMechanicSearch, 180); });
+    document.getElementById('mechSearchBtn').onclick = renderMechanicSearch;
+  }
 };
 
 /* ---- Parts Engineer Login ---- */
@@ -2430,6 +2558,7 @@ ROUTES.dealerVehicleSearch = function(){
 /* ---- Dealer Requisition (পার্টস রিকুইজিশন) ---- */
 const REQ_ROWS = 50;
 ROUTES.dealerRequisition = function(){
+  if(!requireRole(['dealer'])) return;
   const app = document.getElementById('app');
   let rowsHTML = '';
   for(let i=1; i<=REQ_ROWS; i++){
@@ -2865,7 +2994,7 @@ function peShell(innerHTML){
 
 ROUTES.peDashboard = function(){
   const pe = DB.session.user;
-  if(!pe || DB.session.role !== 'partsEngineer'){ go('landing'); return; }
+  if(!requireRole(['partsEngineer']) || !pe){ go('landing'); return; }
   if(peTab === 'search'){ peShell(peSearchTabHTML()); wirePeSearchTab(); }
   else if(peTab === 'requisitions'){ peShell(peRequisitionsTabHTML()); wirePeRequisitionsTab(); }
   else if(peTab === 'report'){ peShell(peReportTabHTML()); }
@@ -3118,6 +3247,7 @@ function peReportTabHTML(){
 }
 
 ROUTES.adminDashboard = function(){
+  if(!requireRole(['admin'])) return;
   // যদি adminTab সেট না থাকে তাহলে menu grid দেখাই
   if(!adminTab || adminTab === 'menu'){
     const app = document.getElementById('app');
