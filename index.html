@@ -390,6 +390,7 @@ window.APP_VERSION = '2026-08-11.1';
   .memo2-subtitle{font-size:13px;font-weight:700;color:#1c6b3f;margin-top:2px;}
   .memo2-tagline{font-size:11.5px;color:var(--muted);margin-top:1px;}
   .memo2-header-right{display:flex;flex-direction:column;align-items:flex-end;gap:6px;}
+  .memo2-mobile-line{font-size:12.5px;color:var(--muted);font-weight:600;margin-top:1px;}
   .memo2-badge{background:#123f24;color:#fff;font-weight:800;font-size:13px;padding:9px 16px;border-radius:10px;letter-spacing:.4px;white-space:nowrap;}
   .memo2-status{font-size:11.5px;color:var(--muted);font-weight:600;}
   .memo2-divider{height:3px;background:linear-gradient(90deg,#1c6b3f,#8fd3a8,transparent);border-radius:3px;margin:14px 0 18px;}
@@ -452,9 +453,9 @@ window.APP_VERSION = '2026-08-11.1';
   @media(max-width:760px){
     .memo2-info-grid{grid-template-columns:1fr;}
     .memo2-bottom-grid{grid-template-columns:1fr;}
-    .memo2-header{flex-direction:column;align-items:flex-start;}
-    .memo2-header-right{align-items:flex-start;width:100%;}
-    .memo2-badge{align-self:flex-start;}
+    .memo2-header{flex-direction:column;align-items:center;}
+    .memo2-header-right{align-items:center;width:100%;}
+    .memo2-badge{align-self:center;}
     .memo2-title{font-size:18px;}
     .memo2-footer{flex-direction:column;text-align:center;}
     .memo2-sign-line{width:120px;margin:0 auto 6px;}
@@ -990,7 +991,7 @@ function applyMemoLang(){
   const box=document.querySelector('.memo2-wrap'); if(!box) return;
   const m=MEMO_I18N[getMemoLang()];
   const set=(id,val)=>{const e=document.getElementById(id); if(e) e.textContent=val;};
-  set('memoLblBadge', m.badge); set('memoLblSubtitle', m.subtitle); set('memoLblTagline', m.tagline);
+  set('memoLblBadge', m.badge); set('memoLblTagline', m.tagline);
   set('memoLblCustomerInfoHead', m.customerInfoHead); set('memoLblCustomerName', m.customerName);
   set('memoLblMobileNumber', m.mobileNumber); set('memoLblAddress', m.address);
   set('memoLblMemoInfoHead', m.memoInfoHead); set('memoLblMemoNumber', m.memoNumber);
@@ -1000,7 +1001,6 @@ function applyMemoLang(){
   set('memoLblNoteHead', m.noteHead); set('memoLblSubtotalText', m.subtotal); set('memoLblDiscountText', m.discount);
   set('memoLblGrandTotalText', m.grandTotal); set('memoBtnClear', m.clear); set('memoBtnSaveDraft', m.saveDraft);
   set('memoBtnFinalSubmit', m.finalSubmit); set('memoLblCustSign', m.custSign);
-  set('memoLblDealerName', m.dealerName); set('memoLblDealerMobile', m.dealerMobile); set('memoLblDealerAddress', m.dealerAddress);
   const langInput=document.getElementById('memoLang'); if(langInput) langInput.value=getMemoLang();
   document.querySelectorAll('.memo-lang-toggle button').forEach(btn=>{
     const active = btn.dataset.lang===getMemoLang();
@@ -2342,20 +2342,19 @@ function memoEditorHTML(draft=null){
   const dateOnly=(dtParts[0]||'').trim();
   const timeOnly=dtParts.slice(1).join(',').trim();
   const status=d?'DRAFT':'NEW';
-  const u=currentDealer();
   const ml=MEMO_I18N[getMemoLang()];
-  const dh=dealerHeaderInfo(u);
   return `<div class="memo2-wrap">
     <div class="memo-lang-toggle" style="display:flex;justify-content:flex-end;gap:4px;margin-bottom:10px;">
       <button type="button" data-lang="bn" onclick="setMemoLang('bn')" style="border:1.5px solid #123f24;border-radius:8px 0 0 8px;padding:5px 14px;font-size:13px;font-weight:700;cursor:pointer;">বাংলা</button>
       <button type="button" data-lang="en" onclick="setMemoLang('en')" style="border:1.5px solid #123f24;border-left:none;border-radius:0 8px 8px 0;padding:5px 14px;font-size:13px;font-weight:700;cursor:pointer;">English</button>
     </div>
-    <div class="memo2-header">
-      <div class="memo2-header-left">
+    <div class="memo2-header" style="justify-content:center;text-align:center;">
+      <div class="memo2-header-left" style="flex-direction:column;align-items:center;text-align:center;">
         <div class="memo2-logo-icon">🚜</div>
         <div>
-          <h1 class="memo2-title">${escHtml(DB.settings.companyName||'METAL PARTS LIMITED')}</h1>
-          <div class="memo2-subtitle" id="memoLblSubtitle">${ml.subtitle}</div>
+          <h1 class="memo2-title">M/S Nasima Traders</h1>
+          <div class="memo2-subtitle" id="memoLblSubtitle">Barishal Sadar</div>
+          <div class="memo2-mobile-line">Mobile……………</div>
           <div class="memo2-tagline" id="memoLblTagline">${ml.tagline}</div>
         </div>
       </div>
@@ -2365,11 +2364,6 @@ function memoEditorHTML(draft=null){
       </div>
     </div>
 
-    <div class="memo2-dealer-info" style="margin-top:10px;padding:10px 14px;background:#f4f8f5;border:1px solid #d7e4da;border-radius:10px;display:flex;flex-wrap:wrap;gap:14px;font-size:13px;">
-      <div><b id="memoLblDealerName">${ml.dealerName}:</b> ${escHtml(dh.name)}</div>
-      <div><b id="memoLblDealerMobile">${ml.dealerMobile}:</b> ${escHtml(dh.mobile)}</div>
-      <div><b id="memoLblDealerAddress">${ml.dealerAddress}:</b> ${escHtml(dh.address)}</div>
-    </div>
     <div class="memo2-divider"></div>
 
     <div class="memo2-info-grid">
@@ -2431,10 +2425,13 @@ function memoEditorHTML(draft=null){
     </div>
     <div id="memoAutosaveStatus" class="hint memo2-autosave-hint">${d?'Draft loaded — Continue editing':'Memo Number তৈরি হচ্ছে...'}</div>
 
-    <div class="memo2-footer">
-      <div class="memo2-sign"><div class="memo2-sign-line"></div><span id="memoLblCustSign">${ml.custSign}</span></div>
-      <div class="memo2-thankyou">🚜<div><b>Thank You!</b></div><div>We Appreciate Your Business</div></div>
-      <div class="memo2-contact">${u?`📞 ${escHtml(u.phone||'')}${u.name?' • '+escHtml(u.name):''}`:''}</div>
+    <div class="memo2-footer" style="flex-direction:column;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-end;width:100%;">
+        <div class="memo2-sign"><div class="memo2-sign-line"></div><span>Dealer Signature</span></div>
+        <div class="memo2-thankyou">🚜<div><b>Thank You!</b></div><div>We Appreciate Your Business</div></div>
+        <div class="memo2-sign"><div class="memo2-sign-line"></div><span id="memoLblCustSign">${ml.custSign}</span></div>
+      </div>
+      <div class="memo2-powered-by" style="margin-top:1in;text-align:center;font-size:11px;color:#6b7280;width:100%;">Powered by Engr. Rafiqul Islam — 01712-86-31-83</div>
     </div>
   </div>`;
 }
@@ -2619,15 +2616,19 @@ function memoHistoryHTML(){
 }
 function memoDetailsHTML(m){
   const ml = MEMO_I18N[m.lang==='en'?'en':'bn'];
-  const dealerAddr = m.dealerAddress || '';
-  return `<div class="memo-print-sheet"><div style="text-align:center;border-bottom:2px solid #12233d;padding-bottom:10px;margin-bottom:12px"><h2 style="margin:0">${escHtml(m.dealerName||DB.settings.companyName)}</h2><div>${ml.badge}</div></div>
-  <div style="text-align:center;font-size:12px;color:#5c6b82;margin-bottom:10px">${ml.subtitle} — ${ml.tagline}</div>
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:13px;background:#f4f8f5;border:1px solid #d7e4da;border-radius:8px;padding:8px 10px;margin-bottom:10px"><div><b>${ml.dealerName}:</b> ${escHtml(m.dealerName||'-')}</div><div><b>${ml.dealerMobile}:</b> ${escHtml(m.dealerPhone||'-')}</div>${dealerAddr?`<div style="grid-column:1/-1"><b>${ml.dealerAddress}:</b> ${escHtml(dealerAddr)}</div>`:''}</div>
+  return `<div class="memo-print-sheet"><div style="text-align:center;border-bottom:2px solid #12233d;padding-bottom:10px;margin-bottom:12px">
+  <h2 style="margin:0">M/S Nasima Traders</h2>
+  <div style="font-size:12px;color:#5c6b82;margin-top:2px">Barishal Sadar</div>
+  <div style="font-size:12px;color:#5c6b82">Mobile……………</div>
+  <div style="font-size:12px;color:#5c6b82;margin-top:2px">${ml.tagline}</div>
+  <div style="margin-top:6px">${ml.badge}</div></div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:13px"><div><b>${ml.memoNumber}:</b> ${escHtml(m.memoNo)}</div><div><b>${ml.date}:</b> ${escHtml(m.date)}</div><div><b>${ml.customerName}:</b> ${escHtml(m.customerName)}</div><div><b>${ml.mobileNumber}:</b> ${escHtml(m.customerMobile||'-')}</div><div><b>Payment:</b> ${escHtml(m.paymentStatus)}</div><div><b>Payment Info:</b> ${escHtml(m.paymentInfo||'-')}</div>${m.customerAddress?`<div style="grid-column:1/-1"><b>${ml.address}:</b> ${escHtml(m.customerAddress)}</div>`:''}</div>
   <div style="overflow-x:auto;margin-top:14px"><table style="width:100%;border-collapse:collapse"><thead><tr><th>${ml.thSl}</th><th>Source</th><th>${ml.thPartName}</th><th>${ml.thPartNo}</th><th>${ml.thQty}</th><th>${ml.thUnitPrice}</th><th>${ml.thTotalPrice}</th></tr></thead><tbody>${m.items.map((it,i)=>`<tr><td>${i+1}</td><td>${it.source==='dealer'?'Dealer':'Company'}</td><td>${escHtml(it.name)}</td><td class="mono">${escHtml(displayPartNo(it.partNo))}</td><td>${it.qty}</td><td>৳${money(it.unitPrice)}</td><td>৳${money(Number(it.qty)*Number(it.unitPrice))}</td></tr>`).join('')}</tbody></table></div>
   <div style="margin-left:auto;max-width:300px;margin-top:12px"><div style="display:flex;justify-content:space-between"><b>${ml.subtotal}</b><b>৳${money(m.subtotal)}</b></div><div style="display:flex;justify-content:space-between"><b>${ml.discount}</b><b>৳${money(m.discount)}</b></div><div style="display:flex;justify-content:space-between;font-size:18px;border-top:2px solid #12233d;margin-top:5px;padding-top:5px"><b>${ml.grandTotal}</b><b>৳${money(m.grandTotal)}</b></div></div>
   ${m.note?`<div style="margin-top:12px;font-size:13px"><b>${ml.noteHead}:</b> ${escHtml(m.note)}</div>`:''}
-  <div style="margin-top:28px;display:flex;justify-content:space-between;font-size:12px"><span>${ml.custSign}</span><span>Dealer Signature</span></div></div>`;
+  <div style="margin-top:28px;display:flex;justify-content:space-between;font-size:12px"><span>Dealer Signature</span><span>${ml.custSign}</span></div>
+  <div style="margin-top:1in;text-align:center;font-size:11px;color:#6b7280;">Powered by Engr. Rafiqul Islam — 01712-86-31-83</div>
+  </div>`;
 }
 function viewDealerMemo(id){
   const m=dealerMemos().find(x=>String(x.id)===String(id));if(!m)return;
