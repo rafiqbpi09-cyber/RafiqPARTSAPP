@@ -1011,9 +1011,15 @@ function applyMemoLang(){
 // currentDealer()-এর নিজের প্রোফাইল থেকে Name/Mobile/Address বের করে —
 // অন্য কোনো Dealer-এর তথ্য কখনো এখানে আসে না (session-bound)।
 function dealerHeaderInfo(u){
-  if(!u) return {name:'-', mobile:'-', address:'-'};
+  if(!u) return {name:'-', mobile:'-', address:''};
   const addr = u.address ? u.address : [u.upazila, u.district].filter(Boolean).join(', ');
-  return {name:u.name||'-', mobile:u.phone||'-', address:addr||'-'};
+  return {name:u.name||'-', mobile:u.phone||'-', address:addr||''};
+}
+// ডিলারের নামের শুরুতে আগে থেকে "M/S" থাকলে দ্বিতীয়বার যোগ করবে না (M/S M/S বাগ ঠিক করার জন্য)
+function withMS(name){
+  const n=(name||'').trim();
+  if(!n) return '-';
+  return /^m\/?s\.?\s/i.test(n) ? n : ('M/S '+n);
 }
 
 function render(){ document.getElementById('app').innerHTML = ''; ROUTES[currentRoute](); }
@@ -2353,8 +2359,8 @@ function memoEditorHTML(draft=null){
       <div class="memo2-header-left" style="flex-direction:column;align-items:center;text-align:center;">
         <div class="memo2-logo-icon">🚜</div>
         <div>
-          <h1 class="memo2-title">M/S ${escHtml(dh.name)}</h1>
-          <div class="memo2-subtitle" id="memoLblSubtitle">${escHtml(dh.address)}</div>
+          <h1 class="memo2-title">${escHtml(withMS(dh.name))}</h1>
+          ${dh.address?`<div class="memo2-subtitle" id="memoLblSubtitle">${escHtml(dh.address)}</div>`:''}
           <div class="memo2-mobile-line">Mobile: ${escHtml(dh.mobile)}</div>
           <div class="memo2-tagline" id="memoLblTagline">${ml.tagline}</div>
         </div>
@@ -2618,8 +2624,8 @@ function memoHistoryHTML(){
 function memoDetailsHTML(m){
   const ml = MEMO_I18N[m.lang==='en'?'en':'bn'];
   return `<div class="memo-print-sheet"><div style="text-align:center;border-bottom:2px solid #12233d;padding-bottom:10px;margin-bottom:12px">
-  <h2 style="margin:0">M/S ${escHtml(m.dealerName||'-')}</h2>
-  <div style="font-size:12px;color:#5c6b82;margin-top:2px">${escHtml(m.dealerAddress||'')}</div>
+  <h2 style="margin:0">${escHtml(withMS(m.dealerName))}</h2>
+  ${m.dealerAddress?`<div style="font-size:12px;color:#5c6b82;margin-top:2px">${escHtml(m.dealerAddress)}</div>`:''}
   <div style="font-size:12px;color:#5c6b82">Mobile: ${escHtml(m.dealerPhone||'-')}</div>
   <div style="font-size:12px;color:#5c6b82;margin-top:2px">${ml.tagline}</div>
   <div style="margin-top:6px">${ml.badge}</div></div>
@@ -2638,7 +2644,10 @@ function viewDealerMemo(id){
 function printDealerMemo(id){
   const m=dealerMemos().find(x=>String(x.id)===String(id));if(!m)return;
   const area=document.createElement('div');area.id='memoPrintArea';area.innerHTML=memoDetailsHTML(m);document.body.appendChild(area);
+  const origTitle=document.title;
+  document.title=m.memoNo||''; // ব্রাউজারের Print Header/Footer-এ যাতে "Metal Parts Price List" না দেখায়
   document.body.classList.add('print-memo-only');window.print();document.body.classList.remove('print-memo-only');area.remove();
+  document.title=origTitle;
 }
 function dealerPortalRender(){
   const u=currentDealer();
