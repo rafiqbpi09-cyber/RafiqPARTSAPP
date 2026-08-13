@@ -2019,10 +2019,10 @@ function dealerNavHTML(){
   return `<div class="dealer-tabs">${tabs.map(([id,label])=>
     `<button class="tab ${dealerManageTab===id?'active':''}" onclick="dealerManageTab='${id}';go('dealerPortal')">${label}</button>`).join('')}</div>`;
 }
-function dealerTopbar(sub='ডিলার পোর্টাল'){
+function dealerTopbar(sub='ডিলার পোর্টাল', hideBrand=false){
   const u=currentDealer();
   return `<div class="topbar">
-    <div class="topbar-brand">
+    <div class="topbar-brand" style="${hideBrand?'display:none;':''}">
       <div class="brand-logo">${DB.settings.logo ? `<img src="${DB.settings.logo}" style="width:100%;height:100%;object-fit:cover;border-radius:9px">` : '🔧'}</div>
       <div><div class="brand-name">${escHtml(DB.settings.companyName)}</div><div class="brand-sub">${sub}</div></div>
     </div>
@@ -2343,6 +2343,7 @@ function memoEditorHTML(draft=null){
   const timeOnly=dtParts.slice(1).join(',').trim();
   const status=d?'DRAFT':'NEW';
   const ml=MEMO_I18N[getMemoLang()];
+  const dh=dealerHeaderInfo(currentDealer());
   return `<div class="memo2-wrap">
     <div class="memo-lang-toggle" style="display:flex;justify-content:flex-end;gap:4px;margin-bottom:10px;">
       <button type="button" data-lang="bn" onclick="setMemoLang('bn')" style="border:1.5px solid #123f24;border-radius:8px 0 0 8px;padding:5px 14px;font-size:13px;font-weight:700;cursor:pointer;">বাংলা</button>
@@ -2352,9 +2353,9 @@ function memoEditorHTML(draft=null){
       <div class="memo2-header-left" style="flex-direction:column;align-items:center;text-align:center;">
         <div class="memo2-logo-icon">🚜</div>
         <div>
-          <h1 class="memo2-title">M/S Nasima Traders</h1>
-          <div class="memo2-subtitle" id="memoLblSubtitle">Barishal Sadar</div>
-          <div class="memo2-mobile-line">Mobile……………</div>
+          <h1 class="memo2-title">M/S ${escHtml(dh.name)}</h1>
+          <div class="memo2-subtitle" id="memoLblSubtitle">${escHtml(dh.address)}</div>
+          <div class="memo2-mobile-line">Mobile: ${escHtml(dh.mobile)}</div>
           <div class="memo2-tagline" id="memoLblTagline">${ml.tagline}</div>
         </div>
       </div>
@@ -2431,7 +2432,7 @@ function memoEditorHTML(draft=null){
         <div class="memo2-thankyou">🚜<div><b>Thank You!</b></div><div>We Appreciate Your Business</div></div>
         <div class="memo2-sign"><div class="memo2-sign-line"></div><span id="memoLblCustSign">${ml.custSign}</span></div>
       </div>
-      <div class="memo2-powered-by" style="margin-top:1in;text-align:center;font-size:11px;color:#6b7280;width:100%;">Powered by Engr. Rafiqul Islam — 01712-86-31-83</div>
+      <div class="memo2-powered-by" style="margin-top:1in;text-align:left;font-size:11px;color:#6b7280;width:100%;">Powered by Engr. Rafiqul Islam — 01712-86-31-83</div>
     </div>
   </div>`;
 }
@@ -2617,9 +2618,9 @@ function memoHistoryHTML(){
 function memoDetailsHTML(m){
   const ml = MEMO_I18N[m.lang==='en'?'en':'bn'];
   return `<div class="memo-print-sheet"><div style="text-align:center;border-bottom:2px solid #12233d;padding-bottom:10px;margin-bottom:12px">
-  <h2 style="margin:0">M/S Nasima Traders</h2>
-  <div style="font-size:12px;color:#5c6b82;margin-top:2px">Barishal Sadar</div>
-  <div style="font-size:12px;color:#5c6b82">Mobile……………</div>
+  <h2 style="margin:0">M/S ${escHtml(m.dealerName||'-')}</h2>
+  <div style="font-size:12px;color:#5c6b82;margin-top:2px">${escHtml(m.dealerAddress||'')}</div>
+  <div style="font-size:12px;color:#5c6b82">Mobile: ${escHtml(m.dealerPhone||'-')}</div>
   <div style="font-size:12px;color:#5c6b82;margin-top:2px">${ml.tagline}</div>
   <div style="margin-top:6px">${ml.badge}</div></div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:13px"><div><b>${ml.memoNumber}:</b> ${escHtml(m.memoNo)}</div><div><b>${ml.date}:</b> ${escHtml(m.date)}</div><div><b>${ml.customerName}:</b> ${escHtml(m.customerName)}</div><div><b>${ml.mobileNumber}:</b> ${escHtml(m.customerMobile||'-')}</div><div><b>Payment:</b> ${escHtml(m.paymentStatus)}</div><div><b>Payment Info:</b> ${escHtml(m.paymentInfo||'-')}</div>${m.customerAddress?`<div style="grid-column:1/-1"><b>${ml.address}:</b> ${escHtml(m.customerAddress)}</div>`:''}</div>
@@ -2627,7 +2628,7 @@ function memoDetailsHTML(m){
   <div style="margin-left:auto;max-width:300px;margin-top:12px"><div style="display:flex;justify-content:space-between"><b>${ml.subtotal}</b><b>৳${money(m.subtotal)}</b></div><div style="display:flex;justify-content:space-between"><b>${ml.discount}</b><b>৳${money(m.discount)}</b></div><div style="display:flex;justify-content:space-between;font-size:18px;border-top:2px solid #12233d;margin-top:5px;padding-top:5px"><b>${ml.grandTotal}</b><b>৳${money(m.grandTotal)}</b></div></div>
   ${m.note?`<div style="margin-top:12px;font-size:13px"><b>${ml.noteHead}:</b> ${escHtml(m.note)}</div>`:''}
   <div style="margin-top:28px;display:flex;justify-content:space-between;font-size:12px"><span>Dealer Signature</span><span>${ml.custSign}</span></div>
-  <div style="margin-top:1in;text-align:center;font-size:11px;color:#6b7280;">Powered by Engr. Rafiqul Islam — 01712-86-31-83</div>
+  <div style="margin-top:1in;text-align:left;font-size:11px;color:#6b7280;">Powered by Engr. Rafiqul Islam — 01712-86-31-83</div>
   </div>`;
 }
 function viewDealerMemo(id){
@@ -2651,7 +2652,7 @@ function dealerPortalRender(){
   else if(dealerManageTab==='stock')content=stockHTML();
   else if(dealerManageTab==='stockHistory')content=stockHistoryHTML();
   else content=dealerPortalSearchHTML();
-  document.getElementById('app').appendChild(el(`<div>${dealerTopbar()}<div class="wrap has-bottom-nav">${dealerDashboardCards()}${dealerNavHTML()}${content}</div>${dealerBottomNavHTML()}</div><div class="modal-bg" id="modalBg"><div class="modal" id="modalBody"></div></div>`));
+  document.getElementById('app').appendChild(el(`<div>${dealerTopbar('ডিলার পোর্টাল', dealerManageTab==='memo')}<div class="wrap has-bottom-nav">${dealerDashboardCards()}${dealerNavHTML()}${content}</div>${dealerBottomNavHTML()}</div><div class="modal-bg" id="modalBg"><div class="modal" id="modalBody"></div></div>`));
   document.getElementById('dealerLogout').onclick=()=>{DB.session={role:null,user:null};go('landing');};
   document.getElementById('modalBg').addEventListener('click',ev=>{if(ev.target.id==='modalBg')closeModal();});
   if(dealerManageTab==='memo'){ const ed=window._memoDraftForWire||null; window._memoDraftForWire=null; wireMemoPage(ed); }
