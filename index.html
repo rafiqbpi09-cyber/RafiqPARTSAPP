@@ -127,6 +127,35 @@ window.APP_VERSION = '2026-08-11.1';
     body{background:#fff;}
     .part-card{break-inside:avoid;border:1px solid #ccc !important;}
   }
+  /* ================= TOUR BILL (Company Original Format) ================= */
+  .tb-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  .tb-table{border-collapse:collapse;width:100%;min-width:1180px;background:#fff;color:#111;}
+  .tb-table th,.tb-table td{border:1px solid #333;padding:4px;font-size:12px;text-align:center;vertical-align:middle;}
+  .tb-table th{background:#eef1f6;font-weight:700;line-height:1.3;}
+  .tb-table td input{width:100%;border:none;background:transparent;text-align:center;font-size:12px;font-family:'Hind Siliguri',sans-serif;color:#111;padding:2px;}
+  .tb-table td textarea{width:100%;border:none;background:transparent;font-size:12px;font-family:'Hind Siliguri',sans-serif;color:#111;padding:2px;resize:vertical;min-height:32px;}
+  .tb-table td input:focus,.tb-table td textarea:focus{outline:2px solid var(--amber);background:#fff8ec;}
+  .tb-table .tb-daycell{min-width:150px;text-align:left;}
+  .tb-table .tb-fs{min-width:110px;}
+  .tb-head-title{text-align:center;margin:0 0 4px;}
+  .tb-head-title h3{margin:0;color:var(--navy);}
+  .tb-head-title .tb-code{float:right;border:2px solid var(--navy);border-radius:999px;padding:2px 12px;font-weight:700;color:var(--navy);}
+  .tb-toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px;}
+  .tb-savebar{font-size:13px;color:var(--ok);display:none;margin-left:6px;}
+  .tb-sig{margin-top:10px;}
+  .tb-sig input{border:none;border-bottom:1px solid #333;background:transparent;text-align:center;font-size:13px;padding:4px;width:260px;}
+  @media(max-width:600px){
+    .tb-table{min-width:1000px;}
+  }
+  body.printing-tourbill *{visibility:hidden !important;}
+  body.printing-tourbill #tourBillPrintArea,body.printing-tourbill #tourBillPrintArea *{visibility:visible !important;}
+  body.printing-tourbill #tourBillPrintArea{position:absolute;left:0;top:0;width:100%;padding:10px;}
+  @media print{
+    body.printing-tourbill .tb-toolbar{display:none !important;}
+    body.printing-tourbill .tb-table{min-width:0;width:100%;}
+    body.printing-tourbill .tb-table th,body.printing-tourbill .tb-table td{font-size:9px;padding:2px;}
+    @page{size:landscape;margin:8mm;}
+  }
   *{box-sizing:border-box;}
   body{
     margin:0;
@@ -1896,12 +1925,224 @@ function mechanicProfileHTML(){
     <div class="field"><label>Role</label><input type="text" value="Mechanic" readonly style="background:#f2f4f7;"></div>
   </div>`;
 }
+/* ================= TOUR BILL (Company Original CS-02 Format) =================
+   কোম্পানির অরিজিনাল কাগজের ফরম্যাট (মেটাল ফার্মটেক লিমিটেড — দৈনিক বিলের বিবরণ, CS-02)
+   অনুযায়ী Digital Form। এই ফিচার সম্পূর্ণভাবে LOCAL — শুধুমাত্র এই মেকানিকের নিজের
+   ডিভাইসের localStorage-এ সংরক্ষিত থাকে (Firebase/অন্য কোনো ডিভাইস/অ্যাডমিন থেকে দেখা যায় না)।
+   Column/Heading/Field কোনোটাই পরিবর্তন করা হয়নি — শুধু কাগজের ফরম্যাটকে ইনপুট-যোগ্য করা হয়েছে। */
+const TB_STORE_KEY = 'metalTourBill_v1';
+const TB_BN_MONTHS = ['জানুয়ারি','ফেব্রুয়ারি','মার্চ','এপ্রিল','মে','জুন','জুলাই','আগস্ট','সেপ্টেম্বর','অক্টোবর','নভেম্বর','ডিসেম্বর'];
+let tbCurrentMonth = null; // 'YYYY-MM'
+function tbGetStore(){
+  try{ return JSON.parse(localStorage.getItem(TB_STORE_KEY) || '{}'); }catch(e){ return {}; }
+}
+function tbSaveStore(store){
+  try{ localStorage.setItem(TB_STORE_KEY, JSON.stringify(store)); return true; }catch(e){ return false; }
+}
+function tbDaysInMonth(year, month){ return new Date(year, month, 0).getDate(); }
+function tbBlankRow(day){
+  return {day, col1:'', col2:'', from:'', to:'', medium:'', kmStart:'', kmEnd:'', kmTotal:'', taka:'', foodMorning:'', foodNoon:'', foodNight:'', stay:'', total:''};
+}
+function tbEnsureMonth(mechId, monthKey){
+  const store = tbGetStore();
+  const key = String(mechId);
+  if(!store[key]) store[key] = {};
+  if(!store[key][monthKey]){
+    const [y,m] = monthKey.split('-').map(Number);
+    const days = tbDaysInMonth(y, m);
+    const rows = [];
+    for(let d=1; d<=days; d++) rows.push(tbBlankRow(d));
+    store[key][monthKey] = {rows, signature:''};
+    tbSaveStore(store);
+  }
+  return store[key][monthKey];
+}
+function tbListMonths(mechId){
+  const store = tbGetStore();
+  const key = String(mechId);
+  const months = Object.keys(store[key] || {});
+  months.sort().reverse();
+  return months;
+}
+function tbCurrentMonthKey(){
+  const now = new Date();
+  return now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0');
+}
+function tbMonthLabel(monthKey){
+  const [y,m] = monthKey.split('-').map(Number);
+  return (TB_BN_MONTHS[m-1]||'') + ' ' + y;
+}
+function tbGetData(){
+  const u = currentMechanic();
+  if(!u || !tbCurrentMonth) return {rows:[], signature:''};
+  return tbEnsureMonth(u.id, tbCurrentMonth);
+}
+function mechanicTourBillHTML(){
+  const u = currentMechanic();
+  if(!u) return '';
+  if(!tbCurrentMonth) tbCurrentMonth = tbCurrentMonthKey();
+  tbEnsureMonth(u.id, tbCurrentMonth);
+  const months = tbListMonths(u.id);
+  if(!months.includes(tbCurrentMonthKey())) months.unshift(tbCurrentMonthKey());
+  const data = tbGetData();
+  return `<div class="card" id="tourBillPrintArea">
+    <div class="tb-head-title"><span class="tb-code">CS-02</span><h3>মেটাল ফার্মটেক লিমিটেড</h3><div style="color:var(--muted);font-size:13px">দৈনিক বিলের বিবরণ</div></div>
+    <div class="tb-toolbar">
+      <div class="field" style="margin:0;min-width:180px"><label>মাস নির্বাচন করুন</label>
+        <select id="tbMonthSelect">${months.map(mk=>`<option value="${mk}" ${mk===tbCurrentMonth?'selected':''}>${tbMonthLabel(mk)}${mk===tbCurrentMonthKey()?' (বর্তমান মাস)':''}</option>`).join('')}</select>
+      </div>
+      <button class="btn btn-primary btn-sm" id="tbSaveBtn">💾 সেভ করুন</button>
+      <button class="btn btn-ghost btn-sm" id="tbExportBtn">📊 Excel Export</button>
+      <button class="btn btn-ghost btn-sm" id="tbPrintBtn">🖨️ প্রিন্ট</button>
+      <span class="tb-savebar" id="tbSaveOk">✅ সেভ হয়েছে</span>
+    </div>
+    <div class="tb-wrap">
+      <table class="tb-table">
+        <thead>
+          <tr>
+            <th rowspan="2">তারিখ, প্রোগ্রাম/কাস্টমারের নাম, মোবাইল নম্বর, যে প্রোগ্রাম/কাজ করা হয়েছে তা লিখুন</th>
+            <th rowspan="2">ফ্রি সার্ভিস হলে FS এবং পেইড সার্ভিস হলে OFS লিখে ইনকাম লিখুন</th>
+            <th colspan="3">যাতায়াতের বিবরণ</th>
+            <th colspan="3">মোটর সাইকেল / বাইকের জন্য প্রযোজ্য</th>
+            <th rowspan="2">টাকা</th>
+            <th colspan="3">খাবারের বিবরণ<br>(খাবারের সময় উল্লেখ করুন)</th>
+            <th rowspan="2">রাত্রিযাপন<br>(যদি থাকে)</th>
+            <th rowspan="2">মোট<br>টাকা</th>
+          </tr>
+          <tr>
+            <th>হইতে</th><th>পর্যন্ত</th><th>মাধ্যম</th>
+            <th>শুরুর কি.মি.</th><th>শেষের কি.মি.</th><th>কি.মি.</th>
+            <th>সকাল</th><th>দুপুর</th><th>রাত</th>
+          </tr>
+        </thead>
+        <tbody id="tbBody">
+          ${data.rows.map(r=>tbRowHTML(r)).join('')}
+        </tbody>
+      </table>
+    </div>
+    <div class="tb-sig">বিল প্রস্তুতকারীর স্বাক্ষর: <input type="text" id="tbSignature" value="${escHtml(data.signature||'')}"></div>
+  </div>`;
+}
+function tbRowHTML(r){
+  return `<tr data-day="${r.day}">
+    <td class="tb-daycell"><textarea data-field="col1" rows="2" placeholder="তারিখ: ${r.day}, নাম/মোবাইল/কাজের বিবরণ">${escHtml(r.col1||'')}</textarea></td>
+    <td class="tb-fs"><input type="text" data-field="col2" value="${escHtml(r.col2||'')}"></td>
+    <td><input type="text" data-field="from" value="${escHtml(r.from||'')}"></td>
+    <td><input type="text" data-field="to" value="${escHtml(r.to||'')}"></td>
+    <td><input type="text" data-field="medium" value="${escHtml(r.medium||'')}"></td>
+    <td><input type="text" data-field="kmStart" value="${escHtml(r.kmStart||'')}"></td>
+    <td><input type="text" data-field="kmEnd" value="${escHtml(r.kmEnd||'')}"></td>
+    <td><input type="text" data-field="kmTotal" value="${escHtml(r.kmTotal||'')}"></td>
+    <td><input type="text" data-field="taka" value="${escHtml(r.taka||'')}"></td>
+    <td><input type="text" data-field="foodMorning" value="${escHtml(r.foodMorning||'')}"></td>
+    <td><input type="text" data-field="foodNoon" value="${escHtml(r.foodNoon||'')}"></td>
+    <td><input type="text" data-field="foodNight" value="${escHtml(r.foodNight||'')}"></td>
+    <td><input type="text" data-field="stay" value="${escHtml(r.stay||'')}"></td>
+    <td><input type="text" data-field="total" value="${escHtml(r.total||'')}"></td>
+  </tr>`;
+}
+function tbPersist(showOk){
+  const u = currentMechanic();
+  if(!u || !tbCurrentMonth) return;
+  const store = tbGetStore();
+  const key = String(u.id);
+  if(!store[key]) store[key] = {};
+  const monthData = tbEnsureMonth(u.id, tbCurrentMonth);
+  const body = document.getElementById('tbBody');
+  if(body){
+    const rowsByDay = {};
+    monthData.rows.forEach(r=> rowsByDay[r.day] = r);
+    body.querySelectorAll('tr[data-day]').forEach(tr=>{
+      const day = Number(tr.dataset.day);
+      const row = rowsByDay[day] || tbBlankRow(day);
+      tr.querySelectorAll('[data-field]').forEach(inp=>{ row[inp.dataset.field] = inp.value; });
+      rowsByDay[day] = row;
+    });
+    monthData.rows = Object.values(rowsByDay).sort((a,b)=>a.day-b.day);
+  }
+  const sigInput = document.getElementById('tbSignature');
+  if(sigInput) monthData.signature = sigInput.value;
+  store[key][tbCurrentMonth] = monthData;
+  tbSaveStore(store);
+  if(showOk){
+    const ok = document.getElementById('tbSaveOk');
+    if(ok){ ok.style.display='inline'; setTimeout(()=>{ ok.style.display='none'; }, 2500); }
+  }
+}
+function bindTourBillEvents(){
+  const monthSel = document.getElementById('tbMonthSelect');
+  if(monthSel){
+    monthSel.onchange = ()=>{ tbPersist(false); tbCurrentMonth = monthSel.value; go('mechanicDashboard'); };
+  }
+  const body = document.getElementById('tbBody');
+  if(body){
+    body.addEventListener('change', ()=> tbPersist(false));
+  }
+  const sigInput = document.getElementById('tbSignature');
+  if(sigInput){
+    sigInput.addEventListener('change', ()=> tbPersist(false));
+  }
+  const saveBtn = document.getElementById('tbSaveBtn');
+  if(saveBtn) saveBtn.onclick = ()=> tbPersist(true);
+  const printBtn = document.getElementById('tbPrintBtn');
+  if(printBtn) printBtn.onclick = ()=>{
+    tbPersist(false);
+    document.body.classList.add('printing-tourbill');
+    window.print();
+    setTimeout(()=> document.body.classList.remove('printing-tourbill'), 500);
+  };
+  const exportBtn = document.getElementById('tbExportBtn');
+  if(exportBtn) exportBtn.onclick = ()=>{ tbPersist(false); tbExportExcel(); };
+}
+function tbExportExcel(){
+  const u = currentMechanic();
+  if(!u || !tbCurrentMonth) return;
+  const data = tbGetData();
+  const aoa = [];
+  // Row 0: কোম্পানির নাম + CS-02
+  const row0 = new Array(14).fill('');
+  row0[0] = 'মেটাল ফার্মটেক লিমিটেড';
+  row0[13] = 'CS-02';
+  aoa.push(row0);
+  // Row 1: সাবটাইটেল
+  const row1 = new Array(14).fill('');
+  row1[0] = 'দৈনিক বিলের বিবরণ';
+  aoa.push(row1);
+  // Row 2 (top header) & Row 3 (sub header) — অরিজিনাল ফরম্যাটের হুবহু হেডিং
+  aoa.push(['তারিখ, প্রোগ্রাম/কাস্টমারের নাম, মোবাইল নম্বর, যে প্রোগ্রাম/কাজ করা হয়েছে তা লিখুন','ফ্রি সার্ভিস হলে FS এবং পেইড সার্ভিস হলে OFS লিখে ইনকাম লিখুন','যাতায়াতের বিবরণ','','','মোটর সাইকেল / বাইকের জন্য প্রযোজ্য','','','টাকা','খাবারের বিবরণ (খাবারের সময় উল্লেখ করুন)','','','রাত্রিযাপন (যদি থাকে)','মোট টাকা']);
+  aoa.push(['','','হইতে','পর্যন্ত','মাধ্যম','শুরুর কি.মি.','শেষের কি.মি.','কি.মি.','','সকাল','দুপুর','রাত','','']);
+  data.rows.forEach(r=>{
+    aoa.push([r.col1||'', r.col2||'', r.from||'', r.to||'', r.medium||'', r.kmStart||'', r.kmEnd||'', r.kmTotal||'', r.taka||'', r.foodMorning||'', r.foodNoon||'', r.foodNight||'', r.stay||'', r.total||'']);
+  });
+  const sigRowIdx = aoa.length;
+  const sigRow = new Array(14).fill('');
+  sigRow[0] = 'বিল প্রস্তুতকারীর স্বাক্ষর: ' + (data.signature||'');
+  aoa.push(sigRow);
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws['!merges'] = [
+    {s:{r:0,c:0}, e:{r:0,c:12}},
+    {s:{r:1,c:0}, e:{r:1,c:12}},
+    {s:{r:2,c:0}, e:{r:3,c:0}},
+    {s:{r:2,c:1}, e:{r:3,c:1}},
+    {s:{r:2,c:2}, e:{r:2,c:4}},
+    {s:{r:2,c:5}, e:{r:2,c:7}},
+    {s:{r:2,c:8}, e:{r:3,c:8}},
+    {s:{r:2,c:9}, e:{r:2,c:11}},
+    {s:{r:2,c:12}, e:{r:3,c:12}},
+    {s:{r:2,c:13}, e:{r:3,c:13}},
+    {s:{r:sigRowIdx,c:0}, e:{r:sigRowIdx,c:13}}
+  ];
+  ws['!cols'] = [{wch:26},{wch:16},{wch:9},{wch:9},{wch:9},{wch:10},{wch:10},{wch:8},{wch:8},{wch:7},{wch:7},{wch:7},{wch:10},{wch:9}];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Tour Bill');
+  XLSX.writeFile(wb, `TourBill_${escHtml(u.name).replace(/\s+/g,'_')}_${tbCurrentMonth}.xlsx`);
+}
 let mechanicTab = 'search';
 ROUTES.mechanicDashboard = function(){
   if(!requireRole(['mechanic'], 'dealerLogin')) return;
   const u = currentMechanic();
   const app = document.getElementById('app');
-  const content = mechanicTab === 'profile' ? mechanicProfileHTML() : mechanicSearchHTML();
+  const content = mechanicTab === 'profile' ? mechanicProfileHTML() : (mechanicTab === 'tourbill' ? mechanicTourBillHTML() : mechanicSearchHTML());
   app.appendChild(el(`<div>
     <div class="topbar">
       <div class="topbar-brand">
@@ -1917,12 +2158,14 @@ ROUTES.mechanicDashboard = function(){
     <div class="wrap has-bottom-nav">
       <div class="dealer-tabs">
         <button class="tab ${mechanicTab==='search'?'active':''}" onclick="mechanicTab='search';go('mechanicDashboard')">🔍 Parts Search</button>
+        <button class="tab ${mechanicTab==='tourbill'?'active':''}" onclick="mechanicTab='tourbill';go('mechanicDashboard')">🧾 Tour Bill</button>
         <button class="tab ${mechanicTab==='profile'?'active':''}" onclick="mechanicTab='profile';go('mechanicDashboard')">👤 My Profile</button>
       </div>
       ${content}
     </div>
     ${bottomNavHTML([
       {key:'search',icon:'🔍',label:'Parts Search',onclick:"mechanicTab='search';go('mechanicDashboard')"},
+      {key:'tourbill',icon:'🧾',label:'Tour Bill',onclick:"mechanicTab='tourbill';go('mechanicDashboard')"},
       {key:'profile',icon:'👤',label:'My Profile',onclick:"mechanicTab='profile';go('mechanicDashboard')"},
       {key:'logout',icon:'🚪',label:'লগআউট',onclick:"if(confirm('লগআউট করবেন?')){DB.session={role:null,user:null};go('dealerLogin');}"}
     ], mechanicTab)}
@@ -1931,6 +2174,9 @@ ROUTES.mechanicDashboard = function(){
   if(mechanicTab === 'search'){
     document.getElementById('mechSearch').addEventListener('input', ()=>{ clearTimeout(window._mechSearchTimer); window._mechSearchTimer = setTimeout(renderMechanicSearch, 180); });
     document.getElementById('mechSearchBtn').onclick = renderMechanicSearch;
+  }
+  if(mechanicTab === 'tourbill'){
+    bindTourBillEvents();
   }
 };
 
