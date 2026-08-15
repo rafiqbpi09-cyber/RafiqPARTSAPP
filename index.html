@@ -503,6 +503,40 @@ window.APP_VERSION = '2026-08-11.1';
   .home-card .hc-title{font-size:15px;font-weight:700;color:#1a2233;}
   .home-card .hc-sub{font-size:11.5px;color:#6b7280;margin-top:3px;}
 
+  /* ================= MOBILE SCROLL FIX (Desktop অপরিবর্তিত) =================
+     সমস্যা: মোবাইলে কিছু Page/Form উপর-নিচে Scroll করা যাচ্ছিল না এবং
+     Form-এর নিচের Confirm/Save/Submit বাটন বটম Navigation Bar-এর আড়ালে
+     আটকে থাকছিল। নিচের রুলগুলো শুধুমাত্র max-width:768px (মোবাইল/ট্যাবলেট)
+     স্ক্রিনে কাজ করবে — ডেস্কটপ ডিজাইন/ফাংশনালিটি সম্পূর্ণ অপরিবর্তিত থাকবে। */
+  @media (max-width:768px){
+    html, body{
+      height:auto !important;
+      min-height:100%;
+      overflow-y:auto !important;
+      -webkit-overflow-scrolling:touch;
+      touch-action:pan-y;
+      overscroll-behavior-y:auto;
+    }
+    #app{
+      min-height:100vh;
+      min-height:100dvh;
+      height:auto !important;
+      overflow-y:visible !important;
+      touch-action:pan-y;
+    }
+    .center-screen{min-height:100vh;min-height:100dvh;align-items:flex-start;padding-top:32px;padding-bottom:32px;}
+    /* Bottom Navigation Bar থাকা পেজে যথেষ্ট নিচের প্যাডিং যোগ করা হলো,
+       যাতে Form-এর একদম শেষের বাটন নেভিগেশন বারের নিচে চাপা না পড়ে */
+    .has-bottom-nav{padding-bottom:calc(76px + env(safe-area-inset-bottom,0px) + 28px) !important;}
+    .wrap.has-bottom-nav, .admin-outer.has-bottom-nav, .dash-bleed-top.has-bottom-nav{padding-bottom:calc(76px + env(safe-area-inset-bottom,0px) + 28px) !important;}
+    /* Keyboard খোলা অবস্থায় স্ক্রল করে নিচের বাটনে পৌঁছানোর জন্য অতিরিক্ত স্পেস */
+    body.kb-open #app{padding-bottom:var(--kb-height,0px);}
+    /* Modal-ও যেন মোবাইলে সম্পূর্ণ Scroll করা যায় এবং Keyboard-এর জন্য জায়গা রাখে */
+    .modal{max-height:88dvh;-webkit-overflow-scrolling:touch;}
+    .modal-bg{align-items:flex-start;padding-top:5vh;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+    /* মোবাইল bottom-nav আইকন সাইজ: উচ্চতা 0.45" x প্রস্থ 0.45" */
+    .bottom-nav-item .bn-icon{width:0.45in;height:0.45in;}
+  }
 </style>
 </head>
 <body>
@@ -5265,6 +5299,47 @@ if(SYNC_ON){
   document.getElementById('app').innerHTML = `<div class="center-screen"><div style="text-align:center;color:var(--muted)">🔄 ডেটা লোড হচ্ছে...</div></div>`;
   loadDB().then(()=>{ ensureCores(); splashShown = true; showSplash(render); migrateOldMemosToIndex(); initQuickSearchFAB(); backfillPhoneRegistry(); });
 }
+
+/* ================= MOBILE SCROLL / KEYBOARD FIX =================
+   শুধুমাত্র মোবাইল/টাচ স্ক্রিনে কাজ করে — ডেস্কটপে কোনো প্রভাব পড়বে না।
+   লক্ষ্য: Keyboard ওঠার পর ব্যবহারকারী যেন Page Scroll করে নিচের
+   Confirm/Save/Submit বাটনে সহজেই পৌঁছাতে পারে, এবং পুরো Page যেন
+   সবসময় Vertical Scroll করা যায় (Desktop Design/Functionality অপরিবর্তিত)। */
+(function(){
+  const isMobile = window.matchMedia('(max-width:768px)').matches;
+  if(!isMobile) return;
+
+  // visualViewport সাপোর্ট থাকলে Keyboard খোলা/বন্ধ হওয়া detect করে
+  // body-তে প্রয়োজনীয় bottom padding (কীবোর্ডের উচ্চতা) সেট করা হয়,
+  // যাতে ফোকাসড ইনপুট/বাটন কীবোর্ডের আড়ালে চাপা না পড়ে।
+  if(window.visualViewport){
+    const vv = window.visualViewport;
+    function onVVResize(){
+      const kbHeight = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+      if(kbHeight > 80){
+        document.body.classList.add('kb-open');
+        document.documentElement.style.setProperty('--kb-height', kbHeight + 'px');
+      } else {
+        document.body.classList.remove('kb-open');
+        document.documentElement.style.setProperty('--kb-height', '0px');
+      }
+    }
+    vv.addEventListener('resize', onVVResize);
+    vv.addEventListener('scroll', onVVResize);
+  }
+
+  // যেকোনো input/select/textarea ফোকাস হলে সামান্য দেরিতে (কীবোর্ড ওঠার পর)
+  // সেটিকে স্ক্রিনের মাঝামাঝি scrollIntoView করা হয়, যাতে ফিল্ড এবং তার
+  // আশেপাশের Submit/Save বাটন দুটোই সহজে দেখা ও ব্যবহার করা যায়।
+  document.addEventListener('focusin', function(e){
+    const tag = e.target && e.target.tagName;
+    if(tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT'){
+      setTimeout(function(){
+        try{ e.target.scrollIntoView({block:'center', behavior:'smooth'}); }catch(err){}
+      }, 300);
+    }
+  }, true);
+})();
 </script>
 </body>
 </html>
