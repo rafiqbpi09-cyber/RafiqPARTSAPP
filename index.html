@@ -531,9 +531,13 @@ window.APP_VERSION = '2026-08-11.1';
     .wrap.has-bottom-nav, .admin-outer.has-bottom-nav, .dash-bleed-top.has-bottom-nav{padding-bottom:calc(76px + env(safe-area-inset-bottom,0px) + 28px) !important;}
     /* Keyboard খোলা অবস্থায় স্ক্রল করে নিচের বাটনে পৌঁছানোর জন্য অতিরিক্ত স্পেস */
     body.kb-open #app{padding-bottom:var(--kb-height,0px);}
-    /* Modal-ও যেন মোবাইলে সম্পূর্ণ Scroll করা যায় এবং Keyboard-এর জন্য জায়গা রাখে */
-    .modal{max-height:88dvh;-webkit-overflow-scrolling:touch;}
-    .modal-bg{align-items:flex-start;padding-top:5vh;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+    /* Modal-ও যেন মোবাইলে সম্পূর্ণ Scroll করা যায় এবং Keyboard-এর জন্য জায়গা রাখে,
+       এবং বটম Navigation Bar (fixed, উপরে থাকা z-index) Modal-এর Save/বাতিল
+       বাটনকে যেন কখনোই ঢেকে না ফেলে বা ছুঁয়ে না থাকে — তাই Modal-bg-তে
+       নেভ বারের সমান+অতিরিক্ত bottom padding দেওয়া হলো */
+    .modal{max-height:calc(88dvh - 76px - env(safe-area-inset-bottom,0px));-webkit-overflow-scrolling:touch;}
+    .modal-bg{align-items:flex-start;padding-top:5vh;padding-bottom:calc(76px + env(safe-area-inset-bottom,0px) + 24px) !important;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+    .modal-actions{margin-bottom:8px;}
     /* মোবাইল bottom-nav আইকন সাইজ: উচ্চতা 0.45" x প্রস্থ 0.45" */
     .bottom-nav-item .bn-icon{width:0.45in;height:0.45in;}
     /* সব পেজে (Bottom-nav থাকুক বা না থাকুক) Scroll-এর শেষে আরও 0.04 ইঞ্চি
