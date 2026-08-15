@@ -439,9 +439,6 @@ window.APP_VERSION = '2026-08-11.1';
   .memo-print-sheet .mp-info-col{display:flex;flex-direction:column;gap:5px;}
   .memo-print-sheet .mp-info-col div{display:flex;gap:5px;overflow-wrap:anywhere;font-size:12.5px;}
   .memo-print-sheet .mp-info-col b{flex-shrink:0;color:#12233d;}
-  .memo-print-sheet .mp-payment-row{display:flex;justify-content:space-between;gap:14px;font-size:12.5px;margin-bottom:14px;flex-wrap:wrap;padding-top:8px;border-top:1px dashed #dfe3ea;}
-  .memo-print-sheet .mp-payment-row div{display:flex;gap:5px;}
-  .memo-print-sheet .mp-payment-row b{color:#12233d;}
 
   .memo-print-sheet table.mp-table{width:100%;border-collapse:collapse;margin-bottom:12px;table-layout:fixed;}
   .memo-print-sheet table.mp-table th{background:#1c6b3f;color:#fff;font-size:11px;font-weight:800;padding:7px 6px;text-align:center;}
@@ -3129,9 +3126,6 @@ const MEMO_PRINT_CSS = `
   .memo-print-sheet .mp-info-col{display:flex;flex-direction:column;gap:5px;}
   .memo-print-sheet .mp-info-col div{display:flex;gap:5px;overflow-wrap:anywhere;font-size:12.5px;}
   .memo-print-sheet .mp-info-col b{flex-shrink:0;color:#12233d;}
-  .memo-print-sheet .mp-payment-row{display:flex;justify-content:space-between;gap:14px;font-size:12.5px;margin-bottom:14px;flex-wrap:wrap;padding-top:8px;border-top:1px dashed #dfe3ea;}
-  .memo-print-sheet .mp-payment-row div{display:flex;gap:5px;}
-  .memo-print-sheet .mp-payment-row b{color:#12233d;}
   .memo-print-sheet table.mp-table{width:100%;border-collapse:collapse;margin-bottom:12px;table-layout:fixed;}
   .memo-print-sheet table.mp-table th{background:#1c6b3f;color:#fff;font-size:11px;font-weight:800;padding:7px 6px;text-align:center;}
   .memo-print-sheet table.mp-table td{border-bottom:1px solid #e2e6ec;padding:6px;font-size:12px;vertical-align:top;word-break:break-word;}
@@ -3195,11 +3189,6 @@ function memoDetailsHTML(m){
       <div><b>${ml.date}:</b><span>${escHtml(dateOnly)}</span></div>
       <div><b>${ml.time}:</b><span>${escHtml(timeOnly)}</span></div>
     </div>
-  </div>
-
-  <div class="mp-payment-row">
-    <div><b>Payment:</b><span>${escHtml(m.paymentStatus)}</span></div>
-    <div><b>Payment Info:</b><span>${escHtml(m.paymentInfo||'-')}</span></div>
   </div>
 
   <table class="mp-table"><thead><tr>
