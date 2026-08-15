@@ -821,6 +821,39 @@ function coreOf(partNo){
   return groups.reduce((a,b)=> b.length > a.length ? b : a, groups[0]);
 }
 function digitsOnly(s){ return (s||'').replace(/\D/g,''); }
+/* ================= PHONE NUMBER UNIQUENESS (validation + Firebase-level lock) =================
+   ১) মোবাইল নম্বর অবশ্যই ঠিক ১১ সংখ্যার হতে হবে (কম/বেশি নয়)।
+   ২) শুধু Frontend-এ array চেক (DB.users.some(...)) যথেষ্ট নয় — দুইজন একই সময়ে রেজিস্ট্রেশন করলে race condition
+      হতে পারে। তাই Firebase Realtime Database-এর transaction() ব্যবহার করে সার্ভার-সাইড atomic লক নেওয়া হয়
+      (phoneRegistry/<digits-only-phone>) — এটি সত্যিকারের Database-level uniqueness enforcement।
+   ৩) Account Delete করলে releasePhoneNumber() কল করে লক সরিয়ে ফেলা হয়, ফলে নম্বরটি আবার Free হয়ে যায়। */
+function isValidPhone11(phone){ return digitsOnly(phone).length === 11; }
+function phoneRegistryRef(phone){ return fbDb.ref('phoneRegistry/' + digitsOnly(phone)); }
+// একটি ফোন নম্বর atomically claim করার চেষ্টা করে — শুধুমাত্র তখনই সফল হয় যখন নম্বরটি আগে থেকে কারো claim করা নেই।
+// রিটার্ন করে true/false — সার্ভার নিজেই (Firebase) নিশ্চিত করে যে দুইটা concurrent request একসাথে জিতে যেতে পারবে না।
+async function claimPhoneNumber(phone, meta){
+  try{
+    const result = await phoneRegistryRef(phone).transaction(current => {
+      if(current !== null) return; // ইতিমধ্যে claim করা আছে — transaction abort (undefined রিটার্ন)
+      return Object.assign({claimedAt: Date.now()}, meta || {});
+    });
+    return !!(result && result.committed);
+  }catch(err){
+    console.error('Phone claim failed (Firebase transaction):', err);
+    return false;
+  }
+}
+// Account Delete/বাতিল হলে লক রিলিজ করে নম্বরটি আবার Free করে দেয়।
+async function releasePhoneNumber(phone){
+  try{ await phoneRegistryRef(phone).remove(); }catch(err){ console.error('Phone release failed:', err); }
+}
+// পুরনো (আগে থেকে থাকা) ইউজার/Parts Engineer-দের নম্বরগুলো ব্যাকফিল করে রেজিস্ট্রিতে বসিয়ে দেয় (fire-and-forget, no-op যদি আগে থেকেই থাকে)।
+function backfillPhoneRegistry(){
+  try{
+    (DB.users||[]).forEach(u=>{ if(u && u.phone) claimPhoneNumber(u.phone, {role:u.role||'dealer', name:u.name||''}); });
+    (DB.partsEngineers||[]).forEach(p=>{ if(p && p.phone) claimPhoneNumber(p.phone, {role:'partsEngineer', name:p.name||''}); });
+  }catch(err){ console.error('Phone registry backfill failed:', err); }
+}
 function highlightMatch(text, digitsQuery){
   if(!digitsQuery || digitsQuery.length < 3 || !text) return text;
   const idx = text.indexOf(digitsQuery);
@@ -1592,7 +1625,7 @@ ROUTES.dealerRegister = function(){
         <div class="gate-body">
           <div class="err" id="err"></div>
           <div class="field"><label>${t('name')}</label><input type="text" id="name" placeholder="আপনার নাম / দোকানের নাম"></div>
-          <div class="field"><label>${t('mobileNumber')}</label><input type="text" id="phone" placeholder="01XXXXXXXXX"></div>
+          <div class="field"><label>${t('mobileNumber')}</label><input type="text" id="phone" placeholder="01XXXXXXXXX" maxlength="11" inputmode="numeric"></div>
           <div class="field"><label>ধরন নির্বাচন করুন</label>
             <select id="role">
               <option value="dealer">ডিলার</option>
@@ -1651,6 +1684,7 @@ ROUTES.dealerRegister = function(){
     const pw2 = document.getElementById('pw2').value;
     const e = document.getElementById('err');
     if(!name || !phone || !pw || !pw2){ e.style.display='block'; e.textContent='সব ঘর পূরণ করুন'; return; }
+    if(!isValidPhone11(phone)){ e.style.display='block'; e.textContent='মোবাইল নম্বর অবশ্যই ঠিক ১১ সংখ্যার হতে হবে'; return; }
     if(role === 'dealer'){
       if(!district){ e.style.display='block'; e.textContent='দয়া করে জেলা নির্বাচন করুন'; return; }
       if(!upazila){ e.style.display='block'; e.textContent='দয়া করে উপজেলা নির্বাচন করুন'; return; }
@@ -1665,10 +1699,19 @@ ROUTES.dealerRegister = function(){
     if(role === 'dealer'){ newUser.district = district; newUser.upazila = upazila; newUser.address = address; }
     if(role === 'mechanic'){ newUser.territory = territory; }
     const btn = document.getElementById('submit'); btn.disabled = true; btn.textContent = 'রেজিস্ট্রেশন হচ্ছে...';
+    // Database-level (Firebase) atomic লক — নিশ্চিত করে দুইজন একই মোবাইল নম্বর দিয়ে একসাথে রেজিস্ট্রেশন করলেও একজনই সফল হবে
+    let phoneClaimed = false;
     try{
+      phoneClaimed = await claimPhoneNumber(phone, {role, name});
+      if(!phoneClaimed){
+        btn.disabled = false; btn.textContent = t('register');
+        e.style.display='block'; e.textContent='এই মোবাইল নম্বর দিয়ে আগেই রেজিস্ট্রেশন করা আছে';
+        return;
+      }
       await fbEnsureAuth(newUser, pw, 'dealer');
     }catch(err){
       console.error('Firebase registration auth failed:', err);
+      if(phoneClaimed) await releasePhoneNumber(phone);
       btn.disabled = false; btn.textContent = 'রেজিস্ট্রেশন করুন';
       e.style.display='block'; e.textContent='সার্ভারে সংযোগে সমস্যা হয়েছে, আবার চেষ্টা করুন';
       return;
@@ -1906,7 +1949,7 @@ ROUTES.peRegister = function(){
           <div class="err" id="err"></div>
           <div class="field"><label>Full Name</label><input type="text" id="peName" placeholder="আপনার পূর্ণ নাম"></div>
           <div class="field"><label>Employee ID / Engineer ID</label><input type="text" id="peEngineerId" placeholder="যেমন: ENG-1024"></div>
-          <div class="field"><label>মোবাইল নম্বর</label><input type="text" id="pePhone" placeholder="01XXXXXXXXX"></div>
+          <div class="field"><label>মোবাইল নম্বর</label><input type="text" id="pePhone" placeholder="01XXXXXXXXX" maxlength="11" inputmode="numeric"></div>
           <div class="field"><label>Region</label>
             <select id="peRegion">
               <option value="">— একটি Region নির্বাচন করুন —</option>
@@ -1935,6 +1978,7 @@ ROUTES.peRegister = function(){
     const accessCode = document.getElementById('peAccessCode').value.trim();
     const e = document.getElementById('err');
     if(!name || !engineerId || !phone || !region || !pw || !pw2 || !accessCode){ e.style.display='block'; e.textContent='সব ঘর পূরণ করুন'; return; }
+    if(!isValidPhone11(phone)){ e.style.display='block'; e.textContent='মোবাইল নম্বর অবশ্যই ঠিক ১১ সংখ্যার হতে হবে'; return; }
     if(pw !== pw2){ e.style.display='block'; e.textContent='পাসওয়ার্ড দুটো মিলছে না'; return; }
     if(!PARTS_ENGINEER_REGIONS.includes(region)){ e.style.display='block'; e.textContent='অনুগ্রহ করে তালিকা থেকে একটি বৈধ Region নির্বাচন করুন।'; return; }
     if(accessCode !== DB.settings.peAccessCode){ e.style.display='block'; e.textContent='Access Code সঠিক নয়। এটি শুধুমাত্র অ্যাডমিনের কাছ থেকে পাওয়া যাবে — ডিলার/মেকানিক এখানে রেজিস্ট্রেশন করতে পারবেন না।'; return; }
@@ -1947,10 +1991,19 @@ ROUTES.peRegister = function(){
     const now = new Date();
     const newPe = {id: nextPeId++, name, phone, password: pw, region, active:true, engineerId, source:'self', registeredAt: now.toISOString(), registeredAtDisplay: now.toLocaleString('bn-BD')};
     const btn = document.getElementById('submit'); btn.disabled = true; btn.textContent = 'রেজিস্ট্রেশন হচ্ছে...';
+    // Database-level (Firebase) atomic লক — একই মোবাইল নম্বর দিয়ে দুইজন একসাথে রেজিস্ট্রেশন করলেও একজনই সফল হবে
+    let phoneClaimed = false;
     try{
+      phoneClaimed = await claimPhoneNumber(phone, {role:'partsEngineer', name});
+      if(!phoneClaimed){
+        btn.disabled = false; btn.textContent = 'রেজিস্ট্রেশন করুন';
+        e.style.display='block'; e.textContent='এই মোবাইল নম্বর দিয়ে আগেই রেজিস্ট্রেশন করা আছে';
+        return;
+      }
       await fbEnsureAuth(newPe, pw, 'pe');
     }catch(err){
       console.error('Firebase PE registration auth failed:', err);
+      if(phoneClaimed) await releasePhoneNumber(phone);
       btn.disabled = false; btn.textContent = 'রেজিস্ট্রেশন করুন';
       e.style.display='block'; e.textContent='সার্ভারে সংযোগে সমস্যা হয়েছে, আবার চেষ্টা করুন';
       return;
@@ -4133,6 +4186,8 @@ function deleteUser(id){
   if(!u) return;
   if(confirm(`"${u.name}" (${u.phone}) ডিলিট করতে চান?`)){
     DB.users = DB.users.filter(x=>x.id!==id);
+    releasePhoneNumber(u.phone); // মোবাইল নম্বরটি লক থেকে মুক্ত করা হলো — এখন এই নম্বর দিয়ে নতুন রেজিস্ট্রেশন করা যাবে
+    syncPush('deleteUser', {id});
     saveDB();
     go('adminDashboard');
   }
@@ -4197,7 +4252,7 @@ function openUserModal(user){
   };
   mURoleSel.onchange = toggleMURoleFields;
   toggleMURoleFields();
-  document.getElementById('saveUser').onclick = ()=>{
+  document.getElementById('saveUser').onclick = async ()=>{
     const name = document.getElementById('mUName').value.trim();
     const phone = document.getElementById('mUPhone').value.trim();
     const password = document.getElementById('mUPw').value.trim();
@@ -4214,19 +4269,39 @@ function openUserModal(user){
     const errBox = document.getElementById('mUErr');
     errBox.style.display = 'none';
     if(!name || !phone || !password) return;
+    if(!isValidPhone11(phone)){ errBox.style.display='block'; errBox.textContent='মোবাইল নম্বর অবশ্যই ঠিক ১১ সংখ্যার হতে হবে'; return; }
     if(role === 'dealer'){
       if(!district){ errBox.style.display='block'; errBox.textContent='দয়া করে জেলা নির্বাচন করুন'; return; }
       if(!upazila){ errBox.style.display='block'; errBox.textContent='দয়া করে উপজেলা নির্বাচন করুন'; return; }
     } else if(role === 'mechanic'){
       if(!territory){ errBox.style.display='block'; errBox.textContent='দয়া করে মেকানিকের টেরিটরি লিখুন'; return; }
     }
+    const phoneChanged = !isEdit || (user && user.phone !== phone);
+    if(phoneChanged){
+      if(DB.users.some(u=>u.phone===phone && (!isEdit || u.id!==user.id))){ errBox.style.display='block'; errBox.textContent='এই মোবাইল নম্বর দিয়ে আগেই একটি অ্যাকাউন্ট আছে'; return; }
+      if(DB.partsEngineers.some(p=>p.phone===phone)){ errBox.style.display='block'; errBox.textContent='এই মোবাইল নম্বরটি ইতিমধ্যে একটি Parts Engineer অ্যাকাউন্টে ব্যবহৃত আছে'; return; }
+    }
+    const saveBtn = document.getElementById('saveUser');
+    saveBtn.disabled = true;
+    let phoneClaimed = false;
+    if(phoneChanged){
+      // Database-level (Firebase) atomic লক
+      phoneClaimed = await claimPhoneNumber(phone, {role, name});
+      if(!phoneClaimed){
+        saveBtn.disabled = false;
+        errBox.style.display='block'; errBox.textContent='এই মোবাইল নম্বর দিয়ে আগেই রেজিস্ট্রেশন করা আছে';
+        return;
+      }
+    }
     if(isEdit){
+      const prevPhone = user.phone;
       const prevPeName = user.peName || 'Unassigned';
       Object.assign(user, {name,phone,password,role,peId,peName,region});
       if(role === 'dealer'){ user.district = district; user.upazila = upazila; user.address = address; delete user.territory; }
       if(role === 'mechanic'){ user.territory = territory; delete user.district; delete user.upazila; delete user.address; }
       syncPush('editUser', {id:user.id, name,phone,password,role,peId,peName,region,district:user.district,upazila:user.upazila,address:user.address,territory:user.territory});
       if(prevPeName !== (peName||'Unassigned')) logHistory(`${name}-কে ${prevPeName} থেকে ${peName||'Unassigned'}-এ ট্রান্সফার করা হয়েছে`);
+      if(phoneChanged && prevPhone) releasePhoneNumber(prevPhone);
     } else {
       const newUser = {id: nextUserId++, name, phone, password, role, active:true, peId, peName, region};
       if(role === 'dealer'){ newUser.district = district; newUser.upazila = upazila; newUser.address = address; }
@@ -4318,16 +4393,36 @@ function openPeModal(pe){
       <button class="btn btn-primary" id="savePe">সংরক্ষণ করুন</button>
     </div>
   `);
-  document.getElementById('savePe').onclick = ()=>{
+  document.getElementById('savePe').onclick = async ()=>{
     const name = document.getElementById('mPeName').value.trim();
     const phone = document.getElementById('mPePhone').value.trim();
     const password = document.getElementById('mPePw').value.trim();
     const region = document.getElementById('mPeRegion').value;
     if(!name || !phone || !password || !region) { alert('সব ঘর পূরণ করুন — নাম, মোবাইল, পাসওয়ার্ড, রিজিয়ন নির্বাচন করুন।'); return; }
+    if(!isValidPhone11(phone)) { alert('মোবাইল নম্বর অবশ্যই ঠিক ১১ সংখ্যার হতে হবে'); return; }
     if(!PARTS_ENGINEER_REGIONS.includes(region)) { alert('অনুগ্রহ করে তালিকা থেকে একটি বৈধ Region নির্বাচন করুন।'); return; }
+    const phoneChanged = !isEdit || (pe && pe.phone !== phone);
+    if(phoneChanged){
+      if(DB.partsEngineers.some(p=>p.phone===phone && (!isEdit || p.id!==pe.id))){ alert('এই মোবাইল নম্বর দিয়ে আগেই একটি Parts Engineer অ্যাকাউন্ট আছে'); return; }
+      if(DB.users.some(u=>u.phone===phone)){ alert('এই মোবাইল নম্বরটি ইতিমধ্যে একটি ডিলার/মেকানিক অ্যাকাউন্টে ব্যবহৃত আছে'); return; }
+    }
+    const saveBtn = document.getElementById('savePe');
+    saveBtn.disabled = true;
+    let phoneClaimed = false;
+    if(phoneChanged){
+      // Database-level (Firebase) atomic লক
+      phoneClaimed = await claimPhoneNumber(phone, {role:'partsEngineer', name});
+      if(!phoneClaimed){
+        saveBtn.disabled = false;
+        alert('এই মোবাইল নম্বর দিয়ে আগেই রেজিস্ট্রেশন করা আছে');
+        return;
+      }
+    }
     if(isEdit){
+      const prevPhone = pe.phone;
       Object.assign(pe, {name,phone,password,region});
       logHistory(`Parts Engineer আপডেট: ${name} (${region})`);
+      if(phoneChanged && prevPhone) releasePhoneNumber(prevPhone);
     } else {
       const newPe = {id: nextPeId++, name, phone, password, region, active:true};
       DB.partsEngineers.push(newPe);
@@ -4353,6 +4448,7 @@ function deletePe(id){
   const warn = underCount ? `\n\n⚠️ এই Parts Engineer-এর অধীনে বর্তমানে ${underCount} জন ডিলার/মেকানিক আছে — ডিলিট করলে তারা "Unassigned" হয়ে যাবে।` : '';
   if(confirm(`"${p.name}" (${p.phone}) ডিলিট করতে চান?${warn}`)){
     DB.partsEngineers = DB.partsEngineers.filter(x=>x.id!==id);
+    releasePhoneNumber(p.phone); // মোবাইল নম্বরটি লক থেকে মুক্ত করা হলো — এখন এই নম্বর দিয়ে নতুন রেজিস্ট্রেশন করা যাবে
     logHistory(`Parts Engineer ডিলিট করা হয়েছে: ${p.name}`);
     saveDB();
     go('adminDashboard');
@@ -5164,10 +5260,10 @@ function renderQsResults(q){
 /* ================= INIT ================= */
 if(SYNC_ON){
   document.getElementById('app').innerHTML = `<div class="center-screen"><div style="text-align:center;color:var(--muted)">🔄 Google Sheet থেকে ডেটা লোড হচ্ছে...</div></div>`;
-  loadFromSheet().then(()=>{ splashShown = true; showSplash(render); initQuickSearchFAB(); });
+  loadFromSheet().then(()=>{ splashShown = true; showSplash(render); initQuickSearchFAB(); backfillPhoneRegistry(); });
 } else {
   document.getElementById('app').innerHTML = `<div class="center-screen"><div style="text-align:center;color:var(--muted)">🔄 ডেটা লোড হচ্ছে...</div></div>`;
-  loadDB().then(()=>{ ensureCores(); splashShown = true; showSplash(render); migrateOldMemosToIndex(); initQuickSearchFAB(); });
+  loadDB().then(()=>{ ensureCores(); splashShown = true; showSplash(render); migrateOldMemosToIndex(); initQuickSearchFAB(); backfillPhoneRegistry(); });
 }
 </script>
 </body>
