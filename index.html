@@ -439,6 +439,9 @@ window.APP_VERSION = '2026-08-11.1';
   .memo-print-sheet .mp-info-col{display:flex;flex-direction:column;gap:5px;}
   .memo-print-sheet .mp-info-col div{display:flex;gap:5px;overflow-wrap:anywhere;font-size:12.5px;}
   .memo-print-sheet .mp-info-col b{flex-shrink:0;color:#12233d;}
+  .memo-print-sheet .mp-payment-row{display:flex;justify-content:space-between;gap:14px;font-size:12.5px;margin-bottom:14px;flex-wrap:wrap;padding-top:8px;border-top:1px dashed #dfe3ea;}
+  .memo-print-sheet .mp-payment-row div{display:flex;gap:5px;}
+  .memo-print-sheet .mp-payment-row b{color:#12233d;}
 
   .memo-print-sheet table.mp-table{width:100%;border-collapse:collapse;margin-bottom:12px;table-layout:fixed;}
   .memo-print-sheet table.mp-table th{background:#1c6b3f;color:#fff;font-size:11px;font-weight:800;padding:7px 6px;text-align:center;}
@@ -3126,6 +3129,9 @@ const MEMO_PRINT_CSS = `
   .memo-print-sheet .mp-info-col{display:flex;flex-direction:column;gap:5px;}
   .memo-print-sheet .mp-info-col div{display:flex;gap:5px;overflow-wrap:anywhere;font-size:12.5px;}
   .memo-print-sheet .mp-info-col b{flex-shrink:0;color:#12233d;}
+  .memo-print-sheet .mp-payment-row{display:flex;justify-content:space-between;gap:14px;font-size:12.5px;margin-bottom:14px;flex-wrap:wrap;padding-top:8px;border-top:1px dashed #dfe3ea;}
+  .memo-print-sheet .mp-payment-row div{display:flex;gap:5px;}
+  .memo-print-sheet .mp-payment-row b{color:#12233d;}
   .memo-print-sheet table.mp-table{width:100%;border-collapse:collapse;margin-bottom:12px;table-layout:fixed;}
   .memo-print-sheet table.mp-table th{background:#1c6b3f;color:#fff;font-size:11px;font-weight:800;padding:7px 6px;text-align:center;}
   .memo-print-sheet table.mp-table td{border-bottom:1px solid #e2e6ec;padding:6px;font-size:12px;vertical-align:top;word-break:break-word;}
@@ -3164,6 +3170,11 @@ function openMemoPrintWindow(m){
 function memoDetailsHTML(m){
   const ml = MEMO_I18N[m.lang==='en'?'en':'bn'];
   const itemsRows = m.items.map((it,i)=>`<tr><td class="mp-c">${i+1}</td><td class="mp-c">${it.source==='dealer'?'Dealer':'Company'}</td><td class="mp-l">${escHtml(it.name)}</td><td class="mp-c mono">${escHtml(displayPartNo(it.partNo))}</td><td class="mp-c">${it.qty}</td><td class="mp-r">৳${money(it.unitPrice)}</td><td class="mp-r">৳${money(Number(it.qty)*Number(it.unitPrice))}</td></tr>`).join('');
+  // মেমো-এর সংরক্ষিত তারিখ-সময় (m.date) একটাই কম্বাইন্ড String — Order Date এবং
+  // Order Time আলাদাভাবে দেখানোর জন্য কমা দিয়ে ভাগ করা হলো (Data নিজে অপরিবর্তিত)
+  const dtParts=(m.date||'').includes(',')?m.date.split(','):[m.date||'',''];
+  const dateOnly=(dtParts[0]||'').trim();
+  const timeOnly=dtParts.slice(1).join(',').trim();
   return `<div class="memo-print-sheet">
   <div class="mp-header">
     <h2>${escHtml(withMS(m.dealerName))}</h2>
@@ -3175,16 +3186,20 @@ function memoDetailsHTML(m){
 
   <div class="mp-info">
     <div class="mp-info-col">
-      <div><b>${ml.memoNumber}:</b><span>${escHtml(m.memoNo)}</span></div>
       <div><b>${ml.customerName}:</b><span>${escHtml(m.customerName)}</span></div>
       ${m.customerAddress?`<div><b>${ml.address}:</b><span>${escHtml(m.customerAddress)}</span></div>`:''}
+      <div><b>${ml.mobileNumber}:</b><span>${escHtml(m.customerMobile||'-')}</span></div>
     </div>
     <div class="mp-info-col">
-      <div><b>${ml.date}:</b><span>${escHtml(m.date)}</span></div>
-      <div><b>${ml.mobileNumber}:</b><span>${escHtml(m.customerMobile||'-')}</span></div>
-      <div><b>Payment:</b><span>${escHtml(m.paymentStatus)}</span></div>
-      <div><b>Payment Info:</b><span>${escHtml(m.paymentInfo||'-')}</span></div>
+      <div><b>${ml.memoNumber}:</b><span>${escHtml(m.memoNo)}</span></div>
+      <div><b>${ml.date}:</b><span>${escHtml(dateOnly)}</span></div>
+      <div><b>${ml.time}:</b><span>${escHtml(timeOnly)}</span></div>
     </div>
+  </div>
+
+  <div class="mp-payment-row">
+    <div><b>Payment:</b><span>${escHtml(m.paymentStatus)}</span></div>
+    <div><b>Payment Info:</b><span>${escHtml(m.paymentInfo||'-')}</span></div>
   </div>
 
   <table class="mp-table"><thead><tr>
