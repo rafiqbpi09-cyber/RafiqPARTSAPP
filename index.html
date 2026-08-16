@@ -236,6 +236,60 @@ window.APP_VERSION = '2026-08-11.1';
   .err{background:#fdeceb;color:var(--danger);font-size:13px;padding:9px 12px;border-radius:8px;margin-bottom:14px;display:none;}
   .ok-msg{background:#e9f7ee;color:var(--ok);font-size:13px;padding:9px 12px;border-radius:8px;margin-bottom:14px;display:none;}
 
+  /* ---------- New 3-panel Login Landing (Admin / Engineer / Dealer-Mechanic) ---------- */
+  .l3-screen{min-height:100vh;padding:28px 18px 40px;padding-left:max(18px, env(safe-area-inset-left));padding-right:max(18px, env(safe-area-inset-right));position:relative;}
+  .l3-topbar{max-width:1180px;margin:0 auto 18px;display:flex;justify-content:flex-end;gap:10px;align-items:center;}
+  .l3-grid{max-width:1180px;margin:0 auto;display:grid;grid-template-columns:repeat(3,1fr);gap:22px;align-items:start;}
+  .l3-grid.single{grid-template-columns:minmax(0,380px);justify-content:center;}
+  @media(max-width:980px){ .l3-grid{grid-template-columns:1fr;max-width:420px;} }
+  .l3-card{background:var(--card);border-radius:20px;overflow:hidden;border:1px solid var(--line);box-shadow:0 18px 45px -22px rgba(18,35,61,.35);display:flex;flex-direction:column;}
+  .l3-brand{padding:20px 22px 14px;display:flex;align-items:center;gap:10px;}
+  .l3-brand img{height:34px;width:auto;object-fit:contain;}
+  .l3-brand-text{display:flex;flex-direction:column;line-height:1.2;}
+  .l3-brand-text b{font-size:15.5px;color:var(--navy);letter-spacing:.3px;}
+  [data-theme="dark"] .l3-brand-text b{color:#fff;}
+  .l3-brand-text span{font-size:9.5px;color:var(--muted);font-weight:600;letter-spacing:.3px;}
+  .l3-hero{margin:0 16px;border-radius:14px;height:92px;display:flex;align-items:center;justify-content:center;font-size:40px;position:relative;overflow:hidden;}
+  .l3-badge{width:56px;height:56px;border-radius:50%;background:#fff;box-shadow:0 8px 20px -6px rgba(0,0,0,.25);display:flex;align-items:center;justify-content:center;font-size:24px;margin:-28px auto 0;position:relative;z-index:2;border:3px solid var(--card);}
+  .l3-title{text-align:center;font-size:19px;font-weight:800;letter-spacing:.4px;margin:12px 0 4px;}
+  .l3-title-line{width:34px;height:3px;border-radius:3px;margin:0 auto 16px;}
+  .l3-body{padding:0 22px 20px;flex:1;display:flex;flex-direction:column;}
+  .l3-field{position:relative;margin-bottom:12px;}
+  .l3-field .l3-ic{position:absolute;left:13px;top:50%;transform:translateY(-50%);font-size:15px;opacity:.55;pointer-events:none;}
+  .l3-field input{width:100%;padding:11px 13px 11px 38px;border:1.5px solid var(--line);border-radius:10px;font-size:14px;font-family:inherit;background:#fbfcfe;color:var(--text);transition:.15s;}
+  .l3-field input:focus{outline:none;box-shadow:0 0 0 3px rgba(0,0,0,.06);}
+  .l3-field .l3-eye{position:absolute;right:12px;top:50%;transform:translateY(-50%);cursor:pointer;font-size:14px;opacity:.55;background:none;border:none;padding:2px;color:var(--muted);}
+  .l3-btn{width:100%;border:none;border-radius:10px;padding:12px 16px;font-size:14.5px;font-weight:700;color:#fff;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px;margin:6px 0 14px;transition:.15s;}
+  .l3-btn:hover{filter:brightness(1.06);}
+  .l3-feat{border-radius:12px;padding:14px 14px;margin-bottom:14px;flex:1;}
+  .l3-feat div{display:flex;align-items:center;gap:9px;font-size:13px;font-weight:600;padding:5px 0;color:var(--text);}
+  .l3-feat div span.ic{font-size:14px;width:18px;text-align:center;flex-shrink:0;}
+  .l3-links{display:flex;flex-direction:column;gap:6px;align-items:center;margin-bottom:4px;}
+  .l3-links button{background:none;border:none;font-size:12.5px;cursor:pointer;font-family:inherit;text-decoration:underline;color:var(--muted);}
+  .l3-footer{text-align:center;font-size:11.5px;color:var(--muted);padding:12px 10px 4px;border-top:1px solid var(--line);margin-top:auto;}
+  /* Color themes per role */
+  .l3-admin .l3-hero{background:linear-gradient(135deg,#dce8fb,#eef4fd);}
+  .l3-admin .l3-title-line{background:linear-gradient(90deg,#2f5fd6,#1a3f9e);}
+  .l3-admin .l3-btn{background:linear-gradient(90deg,#2f5fd6,#1a3f9e);box-shadow:0 10px 20px -8px rgba(47,95,214,.55);}
+  .l3-admin .l3-feat{background:#eef3fd;}
+  .l3-admin .l3-feat .ic{color:#2f5fd6;}
+  .l3-admin .l3-title{color:#1a3f9e;}
+  .l3-eng .l3-hero{background:linear-gradient(135deg,#dcf3e4,#eefbf1);}
+  .l3-eng .l3-title-line{background:linear-gradient(90deg,#1f8a4c,#0e5c30);}
+  .l3-eng .l3-btn{background:linear-gradient(90deg,#1f8a4c,#0e5c30);box-shadow:0 10px 20px -8px rgba(31,138,76,.55);}
+  .l3-eng .l3-feat{background:#eaf8ef;}
+  .l3-eng .l3-feat .ic{color:#1f8a4c;}
+  .l3-eng .l3-title{color:#0e5c30;}
+  .l3-dealer .l3-hero{background:linear-gradient(135deg,#fdecd2,#fff6e8);}
+  .l3-dealer .l3-title-line{background:linear-gradient(90deg,var(--amber),var(--amber-dark));}
+  .l3-dealer .l3-btn{background:linear-gradient(90deg,var(--amber),var(--amber-dark));box-shadow:0 10px 20px -8px rgba(226,134,31,.55);}
+  .l3-dealer .l3-feat{background:#fdf3e3;}
+  .l3-dealer .l3-feat .ic{color:var(--amber-dark);}
+  .l3-dealer .l3-title{color:var(--amber-dark);}
+  [data-theme="dark"] .l3-hero{filter:brightness(.35) saturate(1.2);}
+  [data-theme="dark"] .l3-feat{background:rgba(255,255,255,.05);}
+  [data-theme="dark"] .l3-field input{background:#0f1720;}
+
   /* ---------- Search result highlight + pagination ---------- */
   .part-card.search-hit{background:#fff8d6 !important;border:2px solid #e0a100 !important;box-shadow:0 6px 18px rgba(224,161,0,.20);transform:translateY(-1px);}
   .part-card.search-hit.exact{background:#e8f8ee !important;border-color:#1f8a4c !important;box-shadow:0 7px 20px rgba(31,138,76,.20);}
@@ -1369,43 +1423,160 @@ function peBottomNavHTML(){
 const ROUTES = {};
 
 /* ---- Landing ---- */
+function l3Toggle(id){
+  const inp = document.getElementById(id);
+  if(!inp) return;
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+}
 ROUTES.landing = function(){
   const app = document.getElementById('app');
+  const adminCard = `
+    <div class="l3-card l3-admin">
+      <div class="l3-brand"><img src="${METAL_LOGO_IMG}" alt="BIZNIVO"><div class="l3-brand-text"><b>${DB.settings.companyName}</b><span>${t('appTitle')}</span></div></div>
+      <div class="l3-hero">🖥️</div>
+      <div class="l3-badge">🛡️</div>
+      <div class="l3-title">${t('adminLogin').toUpperCase()}</div>
+      <div class="l3-title-line"></div>
+      <div class="l3-body">
+        <div class="err" id="adminErr"></div>
+        <div class="l3-field"><span class="l3-ic">👤</span><input type="text" id="adminUser" placeholder="Username / Email"></div>
+        <div class="l3-field"><span class="l3-ic">🔒</span><input type="password" id="adminPw" placeholder="Password"><button type="button" class="l3-eye" onclick="l3Toggle('adminPw')">👁️</button></div>
+        <button class="l3-btn" id="adminSubmit">Login →</button>
+        <div class="l3-feat">
+          <div><span class="ic">🛡️</span>Full System Access</div>
+          <div><span class="ic">👥</span>User &amp; Role Management</div>
+          <div><span class="ic">📊</span>Reports &amp; Analytics</div>
+          <div><span class="ic">⚙️</span>System Settings</div>
+        </div>
+        <div class="l3-links">
+          <button id="adminForgot">${t('forgotPassword')}</button>
+          <button id="adminQuick">🔍 কুইক সার্চ (শুধু পার্টস)</button>
+        </div>
+      </div>
+      <div class="l3-footer">© ${DB.settings.companyName} – ${t('appTitle')}</div>
+    </div>`;
+  const peCard = `
+    <div class="l3-card l3-eng">
+      <div class="l3-brand"><img src="${METAL_LOGO_IMG}" alt="BIZNIVO"><div class="l3-brand-text"><b>${DB.settings.companyName}</b><span>${t('appTitle')}</span></div></div>
+      <div class="l3-hero">🧑‍🔧</div>
+      <div class="l3-badge">🔧</div>
+      <div class="l3-title">ENGINEER LOGIN</div>
+      <div class="l3-title-line"></div>
+      <div class="l3-body">
+        <div class="err" id="peErr"></div>
+        <div class="l3-field"><span class="l3-ic">👤</span><input type="text" id="peUser" placeholder="Mobile / Engineer ID"></div>
+        <div class="l3-field"><span class="l3-ic">🔒</span><input type="password" id="pePw" placeholder="Password"><button type="button" class="l3-eye" onclick="l3Toggle('pePw')">👁️</button></div>
+        <button class="l3-btn" id="peSubmit">Login →</button>
+        <div class="l3-feat">
+          <div><span class="ic">🔧</span>Parts &amp; Technical Information</div>
+          <div><span class="ic">🚜</span>Vehicle/Model Database</div>
+          <div><span class="ic">🛠️</span>Maintenance Support</div>
+          <div><span class="ic">📄</span>Technical Reports</div>
+        </div>
+        <div class="l3-links">
+          <button id="peToReg">নতুন Parts Engineer? Registration করুন</button>
+        </div>
+      </div>
+      <div class="l3-footer">© ${DB.settings.companyName} – ${t('appTitle')}</div>
+    </div>`;
+  const dealerCard = `
+    <div class="l3-card l3-dealer">
+      <div class="l3-brand"><img src="${METAL_LOGO_IMG}" alt="BIZNIVO"><div class="l3-brand-text"><b>${DB.settings.companyName}</b><span>${t('appTitle')}</span></div></div>
+      <div class="l3-hero">🏪</div>
+      <div class="l3-badge">👥</div>
+      <div class="l3-title">DEALER / MECHANIC LOGIN</div>
+      <div class="l3-title-line"></div>
+      <div class="l3-body">
+        <div class="err" id="dealerErr"></div>
+        <div class="l3-field"><span class="l3-ic">👤</span><input type="text" id="dealerUser" placeholder="Mobile Number"></div>
+        <div class="l3-field"><span class="l3-ic">🔒</span><input type="password" id="dealerPw" placeholder="Password"><button type="button" class="l3-eye" onclick="l3Toggle('dealerPw')">👁️</button></div>
+        <button class="l3-btn" id="dealerSubmit">Login →</button>
+        <div class="l3-feat">
+          <div><span class="ic">🔍</span>Parts Search &amp; Price</div>
+          <div><span class="ic">🧾</span>Create &amp; Manage Memo</div>
+          <div><span class="ic">📦</span>Stock &amp; Requisition</div>
+          <div><span class="ic">👥</span>Account &amp; Due Details</div>
+        </div>
+        <div class="l3-links">
+          <button id="dealerForgot">${t('forgotPassword')}</button>
+          <button id="dealerToReg">${t('newUserRegister')}</button>
+        </div>
+      </div>
+      <div class="l3-footer">© ${DB.settings.companyName} – ${t('appTitle')}</div>
+    </div>`;
   app.appendChild(el(`
-    <div class="center-screen">
+    <div class="l3-screen">
       <button class="theme-toggle" onclick="toggleTheme()" style="position:fixed;top:16px;right:16px;z-index:10;width:40px;height:40px;border-radius:12px;border:1px solid var(--line);background:var(--card);font-size:18px;cursor:pointer;">🌙</button>
-      <div class="gate" style="max-width:400px;">
-        <div class="gate-top">
-          ${langSwitchHTML()}
-          <div class="cog" style="width:1in;height:0.65in;background:transparent;"><img src="${METAL_LOGO_IMG}" alt="BIZNIVO" style="width:100%;height:100%;object-fit:contain;"></div>
-          <h1>${DB.settings.companyName}</h1>
-          <p>${t('appTitle')}</p>
-        </div>
-        <div class="gate-body">
-          <div class="home-card-grid" style="grid-template-columns:1fr;gap:12px;">
-            <div class="home-card" style="text-align:left;display:flex;align-items:center;gap:14px;padding:16px 18px;" id="toDealer">
-              <div class="hc-icon" style="margin:0;flex-shrink:0;">📱</div>
-              <div><div class="hc-title">${t('dealerMechanicLogin')}</div><div class="hc-sub">পার্টস সার্চ, মেমো, স্টক ব্যবস্থাপনা</div></div>
-            </div>
-            ${DEALER_ONLY ? '' : `
-            <div class="home-card" style="text-align:left;display:flex;align-items:center;gap:14px;padding:16px 18px;" id="toPe">
-              <div class="hc-icon" style="margin:0;flex-shrink:0;">🧑‍🔧</div>
-              <div><div class="hc-title">${t('partsEngineerLogin')}</div><div class="hc-sub">রিজিয়ন-ভিত্তিক ডিলার ম্যানেজমেন্ট</div></div>
-            </div>
-            <div class="home-card" style="text-align:left;display:flex;align-items:center;gap:14px;padding:16px 18px;" id="toAdmin">
-              <div class="hc-icon" style="margin:0;flex-shrink:0;">🔑</div>
-              <div><div class="hc-title">${t('adminLogin')}</div><div class="hc-sub">সম্পূর্ণ সিস্টেম নিয়ন্ত্রণ</div></div>
-            </div>`}
-          </div>
-        </div>
+      <div class="l3-topbar">${langSwitchHTML()}</div>
+      <div class="l3-grid${DEALER_ONLY ? ' single' : ''}">
+        ${DEALER_ONLY ? dealerCard : (adminCard + peCard + dealerCard)}
       </div>
     </div>
   `));
-  document.getElementById('toDealer').onclick = ()=> go('dealerLogin');
+
+  // ---- Admin login wiring ----
   if(!DEALER_ONLY){
-    document.getElementById('toAdmin').onclick = ()=> go('adminLogin');
-    document.getElementById('toPe').onclick = ()=> go('peLogin');
+    document.getElementById('adminForgot').onclick = ()=> go('adminForgotPassword');
+    document.getElementById('adminQuick').onclick = ()=> openQuickSearchGate();
+    document.getElementById('adminSubmit').onclick = async ()=>{
+      const pw = document.getElementById('adminPw').value;
+      const e = document.getElementById('adminErr');
+      if(pw === DB.settings.adminPassword){
+        const btn = document.getElementById('adminSubmit'); btn.disabled = true; btn.textContent = 'প্রবেশ করা হচ্ছে...';
+        try{ await fbEnsureAuth(DB.settings, pw, 'admin'); }
+        catch(err){ console.warn('Firebase admin auth skipped (offline/network issue), continuing with local login:', err); }
+        DB.session = {role:'admin', user:{name:'Admin'}};
+        recordLogin('Admin', 'admin', '');
+        go('adminDashboard');
+      } else {
+        e.style.display='block'; e.textContent='পাসওয়ার্ড সঠিক নয়';
+      }
+    };
+
+    // ---- Parts Engineer login wiring ----
+    document.getElementById('peToReg').onclick = ()=> go('peRegister');
+    document.getElementById('peSubmit').onclick = async ()=>{
+      const identifier = document.getElementById('peUser').value.trim();
+      const pw = document.getElementById('pePw').value;
+      const e = document.getElementById('peErr');
+      const pe = DB.partsEngineers.find(x=>(x.phone===identifier || (x.engineerId && String(x.engineerId).trim().toLowerCase()===identifier.toLowerCase())) && x.password===pw);
+      if(!pe){ e.style.display='block'; e.textContent='মোবাইল নম্বর/Engineer ID অথবা পাসওয়ার্ড ভুল'; return; }
+      if(!pe.active){ e.style.display='block'; e.textContent='আপনার অ্যাকাউন্টটি নিষ্ক্রিয় করা হয়েছে, অ্যাডমিনের সাথে যোগাযোগ করুন।'; return; }
+      const btn = document.getElementById('peSubmit'); btn.disabled = true; btn.textContent = 'প্রবেশ করা হচ্ছে...';
+      try{ await fbEnsureAuth(pe, pw, 'pe'); }
+      catch(err){ console.warn('Firebase parts-engineer auth skipped (offline/network issue), continuing with local login:', err); }
+      DB.session = {role:'partsEngineer', user:pe};
+      recordLogin(pe.name, 'partsEngineer', pe.phone);
+      peTab = 'dealers';
+      go('peDashboard');
+    };
   }
+
+  // ---- Dealer / Mechanic login wiring ----
+  document.getElementById('dealerForgot').onclick = ()=> go('dealerForgotPassword');
+  document.getElementById('dealerToReg').onclick = ()=> go('dealerRegister');
+  document.getElementById('dealerSubmit').onclick = async ()=>{
+    const phone = document.getElementById('dealerUser').value.trim();
+    const pw = document.getElementById('dealerPw').value;
+    const e = document.getElementById('dealerErr');
+    const u = DB.users.find(x=>x.phone===phone && x.password===pw);
+    if(!u){ e.style.display='block'; e.textContent='মোবাইল নম্বর অথবা পাসওয়ার্ড ভুল'; return; }
+    if(u.pending){ e.style.display='block'; e.textContent='আপনার অ্যাকাউন্ট এখনও অনুমোদন হয়নি, অ্যাডমিনের সাথে যোগাযোগ করুন'; return; }
+    if(!u.active){ e.style.display='block'; e.textContent='আপনার অ্যাকাউন্টটি নিষ্ক্রিয় করা হয়েছে, অ্যাডমিনের সাথে যোগাযোগ করুন'; return; }
+    const btn = document.getElementById('dealerSubmit'); btn.disabled = true; btn.textContent = 'প্রবেশ করা হচ্ছে...';
+    try{ await fbEnsureAuth(u, pw, 'dealer'); }
+    catch(err){ console.warn('Firebase dealer auth skipped (offline/network issue), continuing with local login:', err); }
+    if(u.role === 'mechanic'){
+      DB.session = {role:'mechanic', user:u};
+      recordLogin(u.name, u.role, u.phone);
+      go('mechanicDashboard');
+    } else {
+      DB.session = {role:'dealer', user:u};
+      recordLogin(u.name, u.role, u.phone);
+      dealerManageTab = 'search';
+      go('dealerPortal');
+    }
+  };
 };
 
 /* ---- Admin Login ---- */
