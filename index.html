@@ -156,6 +156,7 @@ window.APP_VERSION = '2026-08-11.1';
   .tb-table td textarea{width:100%;border:none;background:transparent;font-size:12px;font-family:'Hind Siliguri',sans-serif;color:#111;padding:2px;resize:vertical;min-height:32px;}
   .tb-table td input:focus,.tb-table td textarea:focus{outline:2px solid var(--amber);background:#fff8ec;}
   .tb-table .tb-daycell{min-width:150px;text-align:left !important;}
+  .tb-table .tb-day-num{font-weight:700;font-size:11px;color:var(--navy);margin-bottom:2px;}
   .tb-table .tb-fs{min-width:110px;}
   .tb-head-title{text-align:center;margin:0 0 4px;}
   .tb-head-title h3{margin:0;color:var(--navy);}
@@ -164,6 +165,8 @@ window.APP_VERSION = '2026-08-11.1';
   .tb-savebar{font-size:13px;color:var(--ok);display:none;margin-left:6px;}
   .tb-sig{margin-top:10px;}
   .tb-sig input{border:none;border-bottom:1px solid #333;background:transparent;text-align:center;font-size:13px;padding:4px;width:260px;}
+  .tb-bottombar{margin-top:16px;padding-top:14px;border-top:1px solid var(--line);}
+  .tb-table tfoot td{background:#eef1f6;font-size:13px;}
   @media(max-width:600px){
     .tb-table{min-width:1000px;}
   }
@@ -172,6 +175,7 @@ window.APP_VERSION = '2026-08-11.1';
   body.printing-tourbill #tourBillPrintArea{position:absolute;left:0;top:0;width:100%;padding:10px;}
   @media print{
     body.printing-tourbill .tb-toolbar{display:none !important;}
+    body.printing-tourbill .tb-bottombar{display:none !important;}
     body.printing-tourbill .tb-table{min-width:0;width:100%;table-layout:fixed;}
     body.printing-tourbill .tb-table th,body.printing-tourbill .tb-table td{font-size:9px;padding:2px;}
     /* Same 14-column ratio as the screen widths (2/1.5/1.7/1.7/0.9/1/1/0.9/0.9/1.2/1.2/1.2/1.2/1.2in),
@@ -2343,6 +2347,11 @@ function tbMonthLabel(monthKey){
   const [y,m] = monthKey.split('-').map(Number);
   return (TB_BN_MONTHS[m-1]||'') + ' ' + y;
 }
+function tbNextMonthKey(monthKey){
+  const [y,m] = monthKey.split('-').map(Number);
+  const d = new Date(y, m, 1); // m is already 1-indexed month, so this rolls to the next month
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0');
+}
 function tbGetData(){
   const u = currentMechanic();
   if(!u || !tbCurrentMonth) return {rows:[], signature:''};
@@ -2395,14 +2404,21 @@ function mechanicTourBillHTML(){
         <tbody id="tbBody">
           ${data.rows.map(r=>tbRowHTML(r)).join('')}
         </tbody>
+        <tfoot>
+          <tr>
+            <td colspan="13" style="text-align:right !important;font-weight:700;">সর্বমোট (৳)</td>
+            <td id="tbTotalSum" style="font-weight:700;">0</td>
+          </tr>
+        </tfoot>
       </table>
     </div>
     <div class="tb-sig">বিল প্রস্তুতকারীর স্বাক্ষর: <input type="text" id="tbSignature" value="${escHtml(data.signature||'')}"></div>
+    <div class="tb-bottombar"><button class="btn btn-primary btn-block" id="tbNextBtn">পরবর্তী ➜</button></div>
   </div>`;
 }
 function tbRowHTML(r){
   return `<tr data-day="${r.day}">
-    <td class="tb-daycell"><textarea data-field="col1" rows="2" placeholder="তারিখ: ${r.day}, নাম/মোবাইল/কাজের বিবরণ">${escHtml(r.col1||'')}</textarea></td>
+    <td class="tb-daycell"><div class="tb-day-num">তারিখ: ${r.day}</div><textarea data-field="col1" rows="2" placeholder="নাম/মোবাইল/কাজের বিবরণ">${escHtml(r.col1||'')}</textarea></td>
     <td class="tb-fs"><input type="text" data-field="col2" value="${escHtml(r.col2||'')}"></td>
     <td><input type="text" data-field="from" value="${escHtml(r.from||'')}"></td>
     <td><input type="text" data-field="to" value="${escHtml(r.to||'')}"></td>
@@ -2454,6 +2470,7 @@ function bindTourBillEvents(){
   const body = document.getElementById('tbBody');
   if(body){
     body.addEventListener('change', ()=> tbPersist(false));
+    body.addEventListener('input', (e)=>{ if(e.target && e.target.dataset && e.target.dataset.field==='total') tbUpdateTotalSum(); });
   }
   const sigInput = document.getElementById('tbSignature');
   if(sigInput){
@@ -2470,6 +2487,27 @@ function bindTourBillEvents(){
   };
   const exportBtn = document.getElementById('tbExportBtn');
   if(exportBtn) exportBtn.onclick = ()=>{ tbPersist(false); tbExportExcel(); };
+  const nextBtn = document.getElementById('tbNextBtn');
+  if(nextBtn) nextBtn.onclick = ()=>{
+    tbPersist(true);
+    const u = currentMechanic();
+    const nextKey = tbNextMonthKey(tbCurrentMonth);
+    if(u) tbEnsureMonth(u.id, nextKey);
+    tbCurrentMonth = nextKey;
+    go('mechanicDashboard');
+  };
+  tbUpdateTotalSum();
+}
+function tbUpdateTotalSum(){
+  const body = document.getElementById('tbBody');
+  const sumCell = document.getElementById('tbTotalSum');
+  if(!body || !sumCell) return;
+  let sum = 0;
+  body.querySelectorAll('input[data-field="total"]').forEach(inp=>{
+    const v = parseFloat(String(inp.value||'').replace(/[^0-9.\-]/g,''));
+    if(!isNaN(v)) sum += v;
+  });
+  sumCell.textContent = sum.toLocaleString('en-US', {maximumFractionDigits:2});
 }
 function tbExportExcel(){
   const u = currentMechanic();
