@@ -167,6 +167,12 @@ window.APP_VERSION = '2026-08-11.1';
   .tb-sig input{border:none;border-bottom:1px solid #333;background:transparent;text-align:center;font-size:13px;padding:4px;width:260px;}
   .tb-bottombar{margin-top:16px;padding-top:14px;border-top:1px solid var(--line);}
   .tb-table tfoot td{background:#eef1f6;font-size:13px;}
+  /* পূরণ হওয়া রো হাইলাইট + যেখান থেকে কাজ চালিয়ে যাওয়া যাবে সেই রো'র জন্য সংক্ষিপ্ত ফ্ল্যাশ */
+  .tb-table tr.tb-row-filled td{background:#eaf7ee;}
+  .tb-table tr.tb-row-filled td:first-child{box-shadow:inset 3px 0 0 var(--ok);}
+  .tb-table tr.tb-row-jump-target td{background:#fff3d6 !important;transition:background .6s ease;}
+  .tb-resume-note{width:100%;font-size:12.5px;color:var(--muted);margin:-2px 0 2px;}
+  .tb-resume-note b{color:var(--ok);}
   @media(max-width:600px){
     .tb-table{min-width:1000px;}
   }
@@ -176,6 +182,9 @@ window.APP_VERSION = '2026-08-11.1';
   @media print{
     body.printing-tourbill .tb-toolbar{display:none !important;}
     body.printing-tourbill .tb-bottombar{display:none !important;}
+    /* প্রিন্টে অরিজিনাল কাগজের ফরম্যাট অপরিবর্তিত রাখতে হাইলাইট রঙ বাদ */
+    body.printing-tourbill .tb-table tr.tb-row-filled td,
+    body.printing-tourbill .tb-table tr.tb-row-jump-target td{background:#fff !important;box-shadow:none !important;}
     body.printing-tourbill .tb-table{min-width:0;width:100%;table-layout:fixed;}
     body.printing-tourbill .tb-table th,body.printing-tourbill .tb-table td{font-size:9px;padding:2px;}
     /* Same 14-column ratio as the screen widths (2/1.5/1.7/1.7/0.9/1/1/0.9/0.9/1.2/1.2/1.2/1.2/1.2in),
@@ -2318,6 +2327,17 @@ function tbDaysInMonth(year, month){ return new Date(year, month, 0).getDate(); 
 function tbBlankRow(day){
   return {day, col1:'', col2:'', from:'', to:'', medium:'', kmStart:'', kmEnd:'', kmTotal:'', taka:'', foodMorning:'', foodNoon:'', foodNight:'', stay:'', total:''};
 }
+const TB_FIELD_KEYS = ['col1','col2','from','to','medium','kmStart','kmEnd','kmTotal','taka','foodMorning','foodNoon','foodNight','stay','total'];
+// রো'তে যেকোনো একটা ফিল্ডেও ডেটা থাকলে সেই দিনের রো "পূরণ হয়েছে" ধরা হয় (হাইলাইট + রিজিউম-এর জন্য)
+function tbRowIsFilled(r){
+  return TB_FIELD_KEYS.some(k => String(r && r[k] || '').trim() !== '');
+}
+// যেই দিন থেকে এখনো কাজ শুরু হয়নি তার প্রথমটা — না পেলে মাসের শেষ দিন (রিজিউম ড্রপডাউনের ডিফল্ট)
+function tbFirstUnfilledDay(rows){
+  const r = (rows||[]).find(r=>!tbRowIsFilled(r));
+  if(r) return r.day;
+  return rows && rows.length ? rows[rows.length-1].day : 1;
+}
 function tbEnsureMonth(mechId, monthKey){
   const store = tbGetStore();
   const key = String(mechId);
@@ -2365,16 +2385,24 @@ function mechanicTourBillHTML(){
   const months = tbListMonths(u.id);
   if(!months.includes(tbCurrentMonthKey())) months.unshift(tbCurrentMonthKey());
   const data = tbGetData();
+  const filledCount = data.rows.filter(tbRowIsFilled).length;
+  const resumeDay = tbFirstUnfilledDay(data.rows);
+  const allDone = filledCount === data.rows.length;
   return `<div class="card" id="tourBillPrintArea">
     <div class="tb-head-title"><span class="tb-code">CS-02</span><h3>মেটাল ফার্মটেক লিমিটেড</h3><div style="color:var(--muted);font-size:13px">দৈনিক বিলের বিবরণ</div></div>
     <div class="tb-toolbar">
       <div class="field" style="margin:0;min-width:180px"><label>মাস নির্বাচন করুন</label>
         <select id="tbMonthSelect">${months.map(mk=>`<option value="${mk}" ${mk===tbCurrentMonth?'selected':''}>${tbMonthLabel(mk)}${mk===tbCurrentMonthKey()?' (বর্তমান মাস)':''}</option>`).join('')}</select>
       </div>
+      <div class="field" style="margin:0;min-width:170px"><label>যে দিন থেকে কাজ চালিয়ে যাবেন</label>
+        <select id="tbJumpSelect">${data.rows.map(r=>`<option value="${r.day}" ${r.day===resumeDay?'selected':''}>দিন ${r.day}${tbRowIsFilled(r)?' ✅ পূরণ হয়েছে':''}</option>`).join('')}</select>
+      </div>
+      <button class="btn btn-ghost btn-sm" id="tbJumpBtn">🔎 এই দিনে যান</button>
       <button class="btn btn-primary btn-sm" id="tbSaveBtn">💾 সেভ করুন</button>
       <button class="btn btn-ghost btn-sm" id="tbExportBtn">📊 Excel Export</button>
       <button class="btn btn-ghost btn-sm" id="tbPrintBtn">🖨️ প্রিন্ট</button>
       <span class="tb-savebar" id="tbSaveOk">✅ সেভ হয়েছে</span>
+      <div class="tb-resume-note">${allDone ? `সবগুলো দিন পূরণ হয়ে গেছে (${filledCount}/${data.rows.length})` : `এখন পর্যন্ত পূরণ হয়েছে <b>${filledCount}/${data.rows.length}</b> দিন — নিচে <b>দিন ${resumeDay}</b> থেকে কাজ চালিয়ে যাওয়ার জন্য রেডি করা আছে`}</div>
     </div>
     <div class="tb-wrap">
       <table class="tb-table">
@@ -2417,7 +2445,7 @@ function mechanicTourBillHTML(){
   </div>`;
 }
 function tbRowHTML(r){
-  return `<tr data-day="${r.day}">
+  return `<tr data-day="${r.day}" class="${tbRowIsFilled(r) ? 'tb-row-filled' : ''}">
     <td class="tb-daycell"><div class="tb-day-num">তারিখ: ${r.day}</div><textarea data-field="col1" rows="2" placeholder="নাম/মোবাইল/কাজের বিবরণ">${escHtml(r.col1||'')}</textarea></td>
     <td class="tb-fs"><input type="text" data-field="col2" value="${escHtml(r.col2||'')}"></td>
     <td><input type="text" data-field="from" value="${escHtml(r.from||'')}"></td>
@@ -2470,14 +2498,27 @@ function bindTourBillEvents(){
   const body = document.getElementById('tbBody');
   if(body){
     body.addEventListener('change', ()=> tbPersist(false));
-    body.addEventListener('input', (e)=>{ if(e.target && e.target.dataset && e.target.dataset.field==='total') tbUpdateTotalSum(); });
+    body.addEventListener('input', (e)=>{
+      if(e.target && e.target.dataset && e.target.dataset.field==='total') tbUpdateTotalSum();
+      // যে রো'তে টাইপ করা হচ্ছে সেটা সাথে সাথে হাইলাইট (ডেটা থাকলে) — পুরো টেবিল রি-রেন্ডার ছাড়াই
+      const tr = e.target.closest && e.target.closest('tr[data-day]');
+      if(tr){
+        const hasData = Array.from(tr.querySelectorAll('[data-field]')).some(inp=>String(inp.value||'').trim()!=='');
+        tr.classList.toggle('tb-row-filled', hasData);
+      }
+    });
   }
   const sigInput = document.getElementById('tbSignature');
   if(sigInput){
     sigInput.addEventListener('change', ()=> tbPersist(false));
   }
+  const jumpBtn = document.getElementById('tbJumpBtn');
+  if(jumpBtn) jumpBtn.onclick = ()=> tbJumpToDay(true);
+  // ট্যাব খোলার সাথে সাথে যেই দিন থেকে কাজ চালিয়ে যাওয়া দরকার সেই রো অটো-স্ক্রল করে দেখিয়ে দেওয়া হয়
+  // (কীবোর্ড হুট করে না খুলতে ফোকাস ছাড়াই — শুধু চোখে দেখিয়ে দেওয়া, চাইলে ইউজার ট্যাপ করে লিখবেন)
+  tbJumpToDay(false);
   const saveBtn = document.getElementById('tbSaveBtn');
-  if(saveBtn) saveBtn.onclick = ()=> tbPersist(true);
+  if(saveBtn) saveBtn.onclick = ()=>{ tbPersist(true); tbRefreshProgressUI(); };
   const printBtn = document.getElementById('tbPrintBtn');
   if(printBtn) printBtn.onclick = ()=>{
     tbPersist(false);
@@ -2508,6 +2549,36 @@ function tbUpdateTotalSum(){
     if(!isNaN(v)) sum += v;
   });
   sumCell.textContent = sum.toLocaleString('en-US', {maximumFractionDigits:2});
+}
+// tbJumpSelect-এ বাছাই করা দিনের রো'তে স্ক্রল করে সংক্ষিপ্ত সময়ের জন্য হাইলাইট ফ্ল্যাশ করে;
+// focusInput=true হলে (বাটনে ট্যাপ করলে) প্রথম ফিল্ডেও কার্সর/কীবোর্ড নিয়ে যায়, ট্যাব ওপেন হওয়ার
+// সময় অটো-কল হলে (focusInput=false) শুধু স্ক্রল করে দেখায়, হুট করে কীবোর্ড খোলে না
+function tbJumpToDay(focusInput){
+  const sel = document.getElementById('tbJumpSelect');
+  const body = document.getElementById('tbBody');
+  if(!sel || !body) return;
+  const day = Number(sel.value);
+  const tr = body.querySelector(`tr[data-day="${day}"]`);
+  if(!tr) return;
+  tr.scrollIntoView({block:'center', behavior:'smooth'});
+  tr.classList.add('tb-row-jump-target');
+  setTimeout(()=> tr.classList.remove('tb-row-jump-target'), 1600);
+  if(focusInput){
+    const firstField = tr.querySelector('[data-field]');
+    if(firstField) firstField.focus();
+  }
+}
+// সেভ করার পর উপরের "কতদিন পূরণ হয়েছে" নোটটা তাৎক্ষণিক আপডেট করে (পুরো টেবিল রি-রেন্ডার ছাড়াই)
+function tbRefreshProgressUI(){
+  const body = document.getElementById('tbBody');
+  const note = document.querySelector('.tb-resume-note');
+  if(!body || !note) return;
+  const rows = Array.from(body.querySelectorAll('tr[data-day]'));
+  const total = rows.length;
+  const filled = rows.filter(tr=>tr.classList.contains('tb-row-filled')).length;
+  note.innerHTML = filled===total
+    ? `সবগুলো দিন পূরণ হয়ে গেছে (${filled}/${total})`
+    : `এখন পর্যন্ত পূরণ হয়েছে <b>${filled}/${total}</b> দিন`;
 }
 function tbExportExcel(){
   const u = currentMechanic();
