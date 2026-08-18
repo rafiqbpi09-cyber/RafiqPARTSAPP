@@ -1186,16 +1186,19 @@ function phoneRegistryRef(phone){ return fbDb.ref('phoneRegistry/' + digitsOnly(
 // একটি ফোন নম্বর atomically claim করার চেষ্টা করে — শুধুমাত্র তখনই সফল হয় যখন নম্বরটি আগে থেকে কারো claim করা নেই।
 // রিটার্ন করে true/false — সার্ভার নিজেই (Firebase) নিশ্চিত করে যে দুইটা concurrent request একসাথে জিতে যেতে পারবে না।
 async function claimPhoneNumber(phone, meta){
-  try{
-    const result = await phoneRegistryRef(phone).transaction(current => {
-      if(current !== null) return; // ইতিমধ্যে claim করা আছে — transaction abort (undefined রিটার্ন)
-      return Object.assign({claimedAt: Date.now()}, meta || {});
-    });
-    return !!(result && result.committed);
-  }catch(err){
-    console.error('Phone claim failed (Firebase transaction):', err);
-    return false;
-  }
+  // গুরুত্বপূর্ণ ফিক্স: আগে এখানে try/catch দিয়ে যেকোনো error গিলে ফেলে false রিটার্ন করা হতো —
+  // কিন্তু "নম্বরটা আগেই claim করা আছে" (transaction নিজেই abort করে, কোনো error থ্রো করে না) আর
+  // "permission-denied/network error" (transaction throw করে, যেমন — নতুন ইউজার তখনও Firebase Auth-এ
+  // sign-in করেনি) — এই দুইটা সম্পূর্ণ ভিন্ন কেস। দুটোকেই false ধরায়, Firebase rules-এর কারণে write
+  // ব্যর্থ হলে ব্যবহারকারীকে ভুলভাবে "এই মোবাইল নম্বর দিয়ে আগেই রেজিস্ট্রেশন করা আছে" দেখানো হতো,
+  // যদিও নম্বরটা আসলে ফাঁকা ছিল। এখন সত্যিকারের error caller-এর কাছে throw হয়ে যাবে (caller-এর
+  // try/catch সেটা "সার্ভারে সংযোগে সমস্যা হয়েছে" হিসেবে দেখায়), আর false তখনই রিটার্ন হবে যখন
+  // transaction সফলভাবে চলেছে কিন্তু নম্বরটা সত্যিই আগে থেকে claim করা।
+  const result = await phoneRegistryRef(phone).transaction(current => {
+    if(current !== null) return; // ইতিমধ্যে claim করা আছে — transaction abort (undefined রিটার্ন)
+    return Object.assign({claimedAt: Date.now()}, meta || {});
+  });
+  return !!(result && result.committed);
 }
 // Account Delete/বাতিল হলে লক রিলিজ করে নম্বরটি আবার Free করে দেয়।
 async function releasePhoneNumber(phone){
@@ -1204,8 +1207,8 @@ async function releasePhoneNumber(phone){
 // পুরনো (আগে থেকে থাকা) ইউজার/Parts Engineer-দের নম্বরগুলো ব্যাকফিল করে রেজিস্ট্রিতে বসিয়ে দেয় (fire-and-forget, no-op যদি আগে থেকেই থাকে)।
 function backfillPhoneRegistry(){
   try{
-    (DB.users||[]).forEach(u=>{ if(u && u.phone) claimPhoneNumber(u.phone, {role:u.role||'dealer', name:u.name||''}); });
-    (DB.partsEngineers||[]).forEach(p=>{ if(p && p.phone) claimPhoneNumber(p.phone, {role:'partsEngineer', name:p.name||''}); });
+    (DB.users||[]).forEach(u=>{ if(u && u.phone) claimPhoneNumber(u.phone, {role:u.role||'dealer', name:u.name||''}).catch(err=>console.error('Phone registry backfill (user) failed:', err)); });
+    (DB.partsEngineers||[]).forEach(p=>{ if(p && p.phone) claimPhoneNumber(p.phone, {role:'partsEngineer', name:p.name||''}).catch(err=>console.error('Phone registry backfill (PE) failed:', err)); });
   }catch(err){ console.error('Phone registry backfill failed:', err); }
 }
 function highlightMatch(text, digitsQuery){
