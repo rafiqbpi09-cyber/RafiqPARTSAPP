@@ -44,7 +44,7 @@ document.currentScript.parentNode.insertBefore(manifestLink, document.currentScr
 // প্রতিটি নতুন deployment/update দেওয়ার আগে এই APP_VERSION ভ্যালুটা পরিবর্তন করুন
 // (যেকোনো ইউনিক স্ট্রিং — তারিখ/সময় বা running number)। এই ভ্যালুর ভিত্তিতেই
 // সব ডিভাইস স্বয়ংক্রিয়ভাবে নতুন version detect করে reload হবে।
-window.APP_VERSION = '2026-09-02-tourbill.1';
+window.APP_VERSION = '2026-09-02-registration-fix.1';
 
 (function(){
   // পুরনো/legacy blob-based service worker ও পুরনো Cache Storage সম্পূর্ণ পরিষ্কার করে দেওয়া হয়,
@@ -142,49 +142,39 @@ window.APP_VERSION = '2026-09-02-tourbill.1';
   .tb-col-3{width:1.70in;}
   .tb-col-4{width:1.70in;}
   .tb-col-5{width:0.90in;}
-  .tb-col-6{width:1.00in;}
-  .tb-col-7{width:1.00in;}
-  .tb-col-8{width:0.90in;}
-  .tb-col-9{width:0.90in;}
-  .tb-col-10{width:1.20in;}
-  .tb-col-11{width:1.20in;}
-  .tb-col-12{width:1.20in;}
-  .tb-col-13{width:1.20in;}
-  .tb-col-14{width:1.20in;}
-  .tb-table th{background:#eef1f6;font-weight:700;line-height:1.3;}
-  .tb-table td input{width:100%;border:none;background:transparent;text-align:center;font-size:12px;font-family:'Hind Siliguri',sans-serif;color:#111;padding:2px;}
-  .tb-table td textarea{width:100%;border:none;background:transparent;font-size:12px;font-family:'Hind Siliguri',sans-serif;color:#111;padding:2px;resize:vertical;min-height:32px;}
-  .tb-table td input:focus,.tb-table td textarea:focus{outline:2px solid var(--amber);background:#fff8ec;}
-  .tb-table .tb-daycell{min-width:150px;text-align:left !important;}
-  .tb-table .tb-day-num{font-weight:700;font-size:11px;color:var(--navy);margin-bottom:2px;}
-  .tb-table .tb-fs{min-width:110px;}
-  .tb-head-title{text-align:center;margin:0 0 4px;}
-  .tb-head-title h3{margin:0;color:var(--navy);}
-  .tb-head-title .tb-code{float:right;border:2px solid var(--navy);border-radius:999px;padding:2px 12px;font-weight:700;color:var(--navy);}
-  .tb-toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px;}
-  .tb-savebar{font-size:13px;color:var(--ok);display:none;margin-left:6px;}
-  .tb-sig{margin-top:10px;}
-  .tb-sig input{border:none;border-bottom:1px solid #333;background:transparent;text-align:center;font-size:13px;padding:4px;width:260px;}
-  .tb-bottombar{margin-top:16px;padding-top:14px;border-top:1px solid var(--line);}
-  .tb-table tfoot td{background:#eef1f6;font-size:13px;}
-  /* পূরণ হওয়া রো হাইলাইট + যেখান থেকে কাজ চালিয়ে যাওয়া যাবে সেই রো'র জন্য সংক্ষিপ্ত ফ্ল্যাশ */
-  .tb-table tr.tb-row-filled td{background:#eaf7ee;}
-  .tb-table tr.tb-row-filled td:first-child{box-shadow:inset 3px 0 0 var(--ok);}
-  .tb-table tr.tb-row-jump-target td{background:#fff3d6 !important;transition:background .6s ease;}
-  .tb-resume-note{width:100%;font-size:12.5px;color:var(--muted);margin:-2px 0 2px;}
-  .tb-resume-note b{color:var(--ok);}
-  @media(max-width:600px){
-    .tb-table{min-width:1000px;}
-  }
+  /* Daily Tour Bill — keep the original CS-02 paper proportions and wording */
+  .tb-paper{background:#fff;color:#111;padding:0;overflow:visible;}
+  .tb-head-title{position:relative;text-align:center;margin:0 0 8px;min-height:54px;}
+  .tb-head-title h3{margin:0;color:#173d7a;font-family:'Noto Serif Bengali','Noto Sans Bengali','Hind Siliguri',sans-serif;font-size:21px;font-weight:700;line-height:1.45;}
+  .tb-head-title>div{font-family:'Noto Serif Bengali','Noto Sans Bengali','Hind Siliguri',sans-serif;color:#111;font-size:16px;line-height:1.35;}
+  .tb-head-title .tb-code{position:absolute;right:1%;top:0;float:none;border:1.5px solid #111;border-radius:50%;width:94px;height:42px;display:flex;align-items:center;justify-content:center;padding:0;font-size:19px;font-weight:700;color:#6d329a;background:#fff;}
+  .tb-wrap{width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  .tb-table{border-collapse:collapse;border-spacing:0;width:100%;min-width:980px;table-layout:fixed;background:#fff;}
+  .tb-col-1{width:15.45%;}.tb-col-2{width:8.31%;}.tb-col-3{width:9.79%;}.tb-col-4{width:9.42%;}.tb-col-5{width:5.52%;}
+  .tb-col-6{width:7.72%;}.tb-col-7{width:7.72%;}.tb-col-8{width:4.93%;}.tb-col-9{width:5.08%;}.tb-col-10{width:4.86%;}
+  .tb-col-11{width:5.52%;}.tb-col-12{width:5.00%;}.tb-col-13{width:6.11%;}.tb-col-14{width:4.56%;}
+  .tb-table th,.tb-table td{border:1px solid #111;background:#fff;color:#111;text-align:center;vertical-align:middle;box-sizing:border-box;}
+  .tb-table th{font-family:'Noto Serif Bengali','Noto Sans Bengali','Hind Siliguri',sans-serif;font-size:13px;font-weight:700;line-height:1.25;padding:4px 2px;height:42px;}
+  .tb-table td{height:27px;padding:0;}
+  .tb-table td input,.tb-table td textarea{display:block;width:100%;height:27px;box-sizing:border-box;border:0;outline:0;background:transparent;color:#111;font-family:'Noto Sans Bengali','Hind Siliguri',Arial,sans-serif;font-size:12px;text-align:center;padding:2px 3px;border-radius:0;resize:none;}
+  .tb-table td textarea{text-align:left;overflow:hidden;line-height:1.15;}
+  .tb-table td input:focus,.tb-table td textarea:focus{background:#fffdf5;box-shadow:inset 0 0 0 1px #999;}
+  .tb-table tr.tb-row-filled td{background:#fff;}
+  .tb-table tr.tb-row-filled td:first-child{box-shadow:none;}
+  .tb-table tfoot{display:none;}
+  .tb-save-area{display:flex;align-items:center;gap:10px;margin-top:12px;flex-wrap:wrap;}
+  .tb-save-area .btn{min-height:42px;padding:8px 22px;}
+  .tb-savebar{font-size:13px;color:var(--ok);display:none;}
+  .tb-sig{margin-top:22px;font-family:'Noto Serif Bengali','Noto Sans Bengali','Hind Siliguri',sans-serif;font-size:14px;}
+  .tb-sig input{border:0;border-bottom:1px solid #111;background:transparent;text-align:center;font-size:13px;padding:2px 4px;width:220px;font-family:inherit;outline:0;}
+  .tb-admin-paper{background:#fff;color:#111;}
+  @media(max-width:600px){.tb-paper{overflow:hidden}.tb-head-title{min-width:980px}.tb-table{min-width:980px}.tb-save-area{padding-left:2px}.tb-sig{padding-left:2px}}
   body.printing-tourbill *{visibility:hidden !important;}
   body.printing-tourbill #tourBillPrintArea,body.printing-tourbill #tourBillPrintArea *{visibility:visible !important;}
   body.printing-tourbill #tourBillPrintArea{position:absolute;left:0;top:0;width:100%;padding:10px;}
   @media print{
-    body.printing-tourbill .tb-toolbar{display:none !important;}
-    body.printing-tourbill .tb-bottombar{display:none !important;}
-    /* প্রিন্টে অরিজিনাল কাগজের ফরম্যাট অপরিবর্তিত রাখতে হাইলাইট রঙ বাদ */
-    body.printing-tourbill .tb-table tr.tb-row-filled td,
-    body.printing-tourbill .tb-table tr.tb-row-jump-target td{background:#fff !important;box-shadow:none !important;}
+    body.printing-tourbill .tb-save-area{display:none !important;}
+    body.printing-tourbill .tb-table tr.tb-row-filled td{background:#fff !important;box-shadow:none !important;}
     body.printing-tourbill .tb-table{min-width:0;width:100%;table-layout:fixed;}
     body.printing-tourbill .tb-table th,body.printing-tourbill .tb-table td{font-size:9px;padding:2px;}
     /* Same 14-column ratio as the screen widths (2/1.5/1.7/1.7/0.9/1/1/0.9/0.9/1.2/1.2/1.2/1.2/1.2in),
@@ -988,9 +978,19 @@ function fbPw(pw){
 
 // admin/dealer/partsEngineer লগইনের সময় কল হয় — legacy পাসওয়ার্ড যাচাই ইতিমধ্যে হয়ে গেছে ধরে নিয়ে,
 // এই ফাংশন Firebase Auth-এ সাইন-ইন করে (প্রথমবার হলে অ্যাকাউন্ট বানিয়ে, পাসওয়ার্ড বদলালে নতুন অ্যাকাউন্টে rotate করে)।
-async function fbEnsureAuth(record, pw, prefix){
-  const digits = (record.phone || 'admin').replace(/[^0-9]/g,'') || 'admin';
+async function fbEnsureAuth(record, pw, prefix, options={}){
+  const digits = normalizePhoneNumber(record.phone) || 'admin';
   const password = fbPw(pw);
+
+  // New registration gets a fresh Auth identity. A deleted legacy account may
+  // still have an old authEmail; never sign a new registration into that identity.
+  if(options.registration){
+    const newEmail = `${digits}.${Date.now()}.${Math.random().toString(36).slice(2,8)}@${prefix}.metal-parts-app.local`;
+    await fbAuth.createUserWithEmailAndPassword(newEmail, password);
+    record.authEmail = newEmail;
+    return;
+  }
+
   if(record.authEmail){
     try{
       await fbAuth.signInWithEmailAndPassword(record.authEmail, password);
@@ -1058,6 +1058,16 @@ async function saveDB(){
     // Firebase না হলে localStorage এ সেভ
     try{ localStorage.setItem(LS_KEY, JSON.stringify({users:DB.users,history:DB.history.slice(0,50),settings:DB.settings,parts:DB.parts,nextPartId,partsSaved:true,requisitions:DB.requisitions.slice(0,200),nextReqNo,drafts:DB.drafts.slice(0,200),partsEngineers:DB.partsEngineers,nextPeId,dealerShopParts:DB.dealerShopParts,dealerMemos:DB.dealerMemos,dealerMemoDrafts:DB.dealerMemoDrafts,stockHistory:DB.stockHistory,nextMemoNo:DB.nextMemoNo||1})); }catch(e2){}
   }
+}
+async function saveDBAndVerifyRegistration(record, collectionName){
+  await saveDB();
+  const snap=await fbDb.ref('appdata/' + collectionName).once('value');
+  const savedList=snap.val();
+  const list=Array.isArray(savedList) ? savedList : [];
+  const found=list.some(u=>u && String(u.id)===String(record.id) &&
+    normalizePhoneNumber(u.phone)===normalizePhoneNumber(record.phone) &&
+    !isDeletedAccount(u));
+  if(!found) throw new Error('PROFILE_WRITE_FAILED');
 }
 async function loadDB(){
   try{
@@ -1208,42 +1218,72 @@ function coreOf(partNo){
   if(groups.length === 0) return partNo.replace(/\D/g,'');
   return groups.reduce((a,b)=> b.length > a.length ? b : a, groups[0]);
 }
-function digitsOnly(s){ return (s||'').replace(/\D/g,''); }
-/* ================= PHONE NUMBER UNIQUENESS (validation + Firebase-level lock) =================
-   ১) মোবাইল নম্বর অবশ্যই ঠিক ১১ সংখ্যার হতে হবে (কম/বেশি নয়)।
-   ২) শুধু Frontend-এ array চেক (DB.users.some(...)) যথেষ্ট নয় — দুইজন একই সময়ে রেজিস্ট্রেশন করলে race condition
-      হতে পারে। তাই Firebase Realtime Database-এর transaction() ব্যবহার করে সার্ভার-সাইড atomic লক নেওয়া হয়
-      (phoneRegistry/<digits-only-phone>) — এটি সত্যিকারের Database-level uniqueness enforcement।
-   ৩) Account Delete করলে releasePhoneNumber() কল করে লক সরিয়ে ফেলা হয়, ফলে নম্বরটি আবার Free হয়ে যায়। */
-function isValidPhone11(phone){ return digitsOnly(phone).length === 11; }
-function phoneRegistryRef(phone){ return fbDb.ref('phoneRegistry/' + digitsOnly(phone)); }
-// একটি ফোন নম্বর atomically claim করার চেষ্টা করে — শুধুমাত্র তখনই সফল হয় যখন নম্বরটি আগে থেকে কারো claim করা নেই।
-// রিটার্ন করে true/false — সার্ভার নিজেই (Firebase) নিশ্চিত করে যে দুইটা concurrent request একসাথে জিতে যেতে পারবে না।
+function digitsOnly(s){
+  const bn='০১২৩৪৫৬৭৮৯';
+  return String(s||'').replace(/[০-৯]/g,ch=>String(bn.indexOf(ch))).replace(/\D/g,'');
+}
+/* ================= PHONE NUMBER UNIQUENESS (registration-safe) =================
+   Normalize Bangladesh mobile formats before validation/duplicate checks:
+   017XXXXXXXX / +88017XXXXXXXX / 88017XXXXXXXX -> 017XXXXXXXX.
+   Deleted accounts do not block a new registration.
+   Firebase phoneRegistry remains the atomic cross-device uniqueness guard. */
+function normalizePhoneNumber(phone){
+  let d=digitsOnly(phone);
+  if(d.startsWith('00880')) d=d.slice(2);
+  if(d.startsWith('880')) d='0'+d.slice(3);
+  if(/^1[3-9]\d{9}$/.test(d)) d='0'+d;
+  return d;
+}
+function isValidPhone11(phone){ return /^01[3-9]\d{8}$/.test(normalizePhoneNumber(phone)); }
+function isDeletedAccount(record){
+  if(!record) return false;
+  const status=String(record.status||'').trim().toLowerCase();
+  return record.deleted===true || record.isDeleted===true || status==='deleted';
+}
+function hasExistingUserPhone(phone, excludeId){
+  const n=normalizePhoneNumber(phone);
+  return DB.users.some(u=>u && !isDeletedAccount(u) && normalizePhoneNumber(u.phone)===n &&
+    (excludeId==null || u.id!==excludeId));
+}
+function hasExistingPartsEngineerPhone(phone, excludeId){
+  const n=normalizePhoneNumber(phone);
+  return DB.partsEngineers.some(p=>p && !isDeletedAccount(p) && normalizePhoneNumber(p.phone)===n &&
+    (excludeId==null || p.id!==excludeId));
+}
+function phoneRegistryRef(phone){ return fbDb.ref('phoneRegistry/' + normalizePhoneNumber(phone)); }
+
+async function clearStalePhoneClaim(phone){
+  const n=normalizePhoneNumber(phone);
+  if(!n) return;
+  if(hasExistingUserPhone(n) || hasExistingPartsEngineerPhone(n)) return;
+  const ref=phoneRegistryRef(n);
+  const snap=await ref.once('value');
+  if(!snap.exists()) return;
+  const current=snap.val()||{};
+  if(current.deleted===true || String(current.status||'').toLowerCase()==='deleted' || (!current.ownerId && !current.uid)){
+    await ref.remove();
+  }
+}
+
+// IMPORTANT: this runs after Firebase Auth succeeds, so secured RTDB rules
+// requiring auth != null are respected during a new registration.
 async function claimPhoneNumber(phone, meta){
-  // গুরুত্বপূর্ণ ফিক্স: আগে এখানে try/catch দিয়ে যেকোনো error গিলে ফেলে false রিটার্ন করা হতো —
-  // কিন্তু "নম্বরটা আগেই claim করা আছে" (transaction নিজেই abort করে, কোনো error থ্রো করে না) আর
-  // "permission-denied/network error" (transaction throw করে, যেমন — নতুন ইউজার তখনও Firebase Auth-এ
-  // sign-in করেনি) — এই দুইটা সম্পূর্ণ ভিন্ন কেস। দুটোকেই false ধরায়, Firebase rules-এর কারণে write
-  // ব্যর্থ হলে ব্যবহারকারীকে ভুলভাবে "এই মোবাইল নম্বর দিয়ে আগেই রেজিস্ট্রেশন করা আছে" দেখানো হতো,
-  // যদিও নম্বরটা আসলে ফাঁকা ছিল। এখন সত্যিকারের error caller-এর কাছে throw হয়ে যাবে (caller-এর
-  // try/catch সেটা "সার্ভারে সংযোগে সমস্যা হয়েছে" হিসেবে দেখায়), আর false তখনই রিটার্ন হবে যখন
-  // transaction সফলভাবে চলেছে কিন্তু নম্বরটা সত্যিই আগে থেকে claim করা।
-  const result = await phoneRegistryRef(phone).transaction(current => {
-    if(current !== null) return; // ইতিমধ্যে claim করা আছে — transaction abort (undefined রিটার্ন)
-    return Object.assign({claimedAt: Date.now()}, meta || {});
+  const n=normalizePhoneNumber(phone);
+  if(!isValidPhone11(n)) throw new Error('INVALID_PHONE');
+  const result=await phoneRegistryRef(n).transaction(current=>{
+    if(current!==null) return;
+    return Object.assign({claimedAt:Date.now(),phone:n,state:'active'},meta||{});
   });
   return !!(result && result.committed);
 }
-// Account Delete/বাতিল হলে লক রিলিজ করে নম্বরটি আবার Free করে দেয়।
 async function releasePhoneNumber(phone){
   try{ await phoneRegistryRef(phone).remove(); }catch(err){ console.error('Phone release failed:', err); }
 }
-// পুরনো (আগে থেকে থাকা) ইউজার/Parts Engineer-দের নম্বরগুলো ব্যাকফিল করে রেজিস্ট্রিতে বসিয়ে দেয় (fire-and-forget, no-op যদি আগে থেকেই থাকে)।
 function backfillPhoneRegistry(){
   try{
-    (DB.users||[]).forEach(u=>{ if(u && u.phone) claimPhoneNumber(u.phone, {role:u.role||'dealer', name:u.name||''}).catch(err=>console.error('Phone registry backfill (user) failed:', err)); });
-    (DB.partsEngineers||[]).forEach(p=>{ if(p && p.phone) claimPhoneNumber(p.phone, {role:'partsEngineer', name:p.name||''}).catch(err=>console.error('Phone registry backfill (PE) failed:', err)); });
-  }catch(err){ console.error('Phone registry backfill failed:', err); }
+    (DB.users||[]).forEach(u=>{ if(u && u.phone && !isDeletedAccount(u)) claimPhoneNumber(u.phone,{role:u.role||'dealer',name:u.name||'',ownerId:u.id}).catch(err=>console.error('Phone registry backfill (user) failed:',err)); });
+    (DB.partsEngineers||[]).forEach(p=>{ if(p && p.phone && !isDeletedAccount(p)) claimPhoneNumber(p.phone,{role:'partsEngineer',name:p.name||'',ownerId:p.id}).catch(err=>console.error('Phone registry backfill (PE) failed:',err)); });
+  }catch(err){ console.error('Phone registry backfill failed:',err); }
 }
 function highlightMatch(text, digitsQuery){
   if(!digitsQuery || digitsQuery.length < 3 || !text) return text;
@@ -1258,6 +1298,12 @@ function highlightMatch(text, digitsQuery){
 function deriveCategory(partNo){
   const segs = String(partNo||'').split('.');
   return segs.length >= 2 ? segs[1] : '';
+}
+function normalizeLoadedAccountPhones(){
+  try{
+    (DB.users||[]).forEach(u=>{ if(u && u.phone){ const n=normalizePhoneNumber(u.phone); if(n) u.phone=n; }});
+    (DB.partsEngineers||[]).forEach(p=>{ if(p && p.phone){ const n=normalizePhoneNumber(p.phone); if(n) p.phone=n; }});
+  }catch(err){ console.error('Account phone normalization failed:',err); }
 }
 function ensureCores(){
   let categoryFixed = false;
@@ -1754,7 +1800,8 @@ async function slSubmitLogin(role){
   if(role === 'engineer'){
     const pe = DB.partsEngineers.find(x=>(x.phone===identifier || (x.engineerId && String(x.engineerId).trim().toLowerCase()===identifier.toLowerCase())) && x.password===pw);
     if(!pe){ showErr('মোবাইল নম্বর/Engineer ID অথবা পাসওয়ার্ড ভুল'); return; }
-    if(!pe.active){ showErr('আপনার অ্যাকাউন্টটি নিষ্ক্রিয় করা হয়েছে, অ্যাডমিনের সাথে যোগাযোগ করুন।'); return; }
+    if(isDeletedAccount(pe)){ showErr('আপনার অ্যাকাউন্টটি ডিলিট করা হয়েছে। নতুন করে রেজিস্ট্রেশন করুন।'); return; }
+  if(!pe.active){ showErr('আপনার অ্যাকাউন্টটি নিষ্ক্রিয় করা হয়েছে, অ্যাডমিনের সাথে যোগাযোগ করুন।'); return; }
     btn.disabled = true; btn.textContent = 'প্রবেশ করা হচ্ছে...';
     try{ await fbEnsureAuth(pe, pw, 'pe'); }
     catch(err){ console.warn('Firebase parts-engineer auth skipped (offline/network issue), continuing with local login:', err); }
@@ -1768,6 +1815,7 @@ async function slSubmitLogin(role){
   // role === 'dealer'  (Dealer / Mechanic উভয়ই এই একই ফর্ম দিয়ে লগইন করে, DB.users.role অনুযায়ী পোর্টাল ঠিক হয়)
   const u = DB.users.find(x=>x.phone===identifier && x.password===pw);
   if(!u){ showErr('মোবাইল নম্বর অথবা পাসওয়ার্ড ভুল'); return; }
+  if(isDeletedAccount(u)){ showErr('আপনার অ্যাকাউন্টটি ডিলিট করা হয়েছে। নতুন করে রেজিস্ট্রেশন করুন।'); return; }
   if(u.pending){ showErr('আপনার অ্যাকাউন্ট এখনও অনুমোদন হয়নি, অ্যাডমিনের সাথে যোগাযোগ করুন'); return; }
   if(!u.active){ showErr('আপনার অ্যাকাউন্টটি নিষ্ক্রিয় করা হয়েছে, অ্যাডমিনের সাথে যোগাযোগ করুন'); return; }
   btn.disabled = true; btn.textContent = 'প্রবেশ করা হচ্ছে...';
@@ -2171,7 +2219,7 @@ ROUTES.dealerRegister = function(){
   toggleRoleFields();
   document.getElementById('submit').onclick = async ()=>{
     const name = document.getElementById('name').value.trim();
-    const phone = document.getElementById('phone').value.trim();
+    const phone = normalizePhoneNumber(document.getElementById('phone').value.trim());
     const role = document.getElementById('role').value;
     const district = document.getElementById('regDistrict').value;
     const upazila = document.getElementById('regUpazila').value;
@@ -2189,43 +2237,70 @@ ROUTES.dealerRegister = function(){
       if(!territory){ e.style.display='block'; e.textContent='দয়া করে মেকানিকের টেরিটরি লিখুন'; return; }
     }
     if(pw !== pw2){ e.style.display='block'; e.textContent='পাসওয়ার্ড দুটো মিলছে না'; return; }
-    if(DB.users.some(u=>u.phone===phone)){ e.style.display='block'; e.textContent='এই মোবাইল নম্বর দিয়ে আগেই রেজিস্ট্রেশন করা আছে'; return; }
-    if(DB.partsEngineers.some(p=>p.phone===phone)){ e.style.display='block'; e.textContent='এই মোবাইল নম্বরটি ইতিমধ্যে একটি Parts Engineer অ্যাকাউন্টে ব্যবহৃত আছে। একই ব্যক্তি দুটি ভিন্ন role-এ থাকতে পারবেন না।'; return; }
-    // pending=true — অ্যাডমিন অনুমোদন না দেওয়া পর্যন্ত লগইন করতে পারবে না
+
+    if(hasExistingUserPhone(phone) || hasExistingPartsEngineerPhone(phone)){
+      e.style.display='block'; e.textContent='এই মোবাইল নম্বর দিয়ে আগেই রেজিস্ট্রেশন করা আছে'; return;
+    }
+
+    const btn = document.getElementById('submit');
+    if(btn.disabled) return;
+    btn.disabled = true; btn.textContent = 'রেজিস্ট্রেশন হচ্ছে...';
+
     const newUser = {id: nextUserId++, name, phone, password: pw, active:false, pending:true, role};
     if(role === 'dealer'){ newUser.district = district; newUser.upazila = upazila; newUser.address = address; }
     if(role === 'mechanic'){ newUser.territory = territory; }
-    const btn = document.getElementById('submit'); btn.disabled = true; btn.textContent = 'রেজিস্ট্রেশন হচ্ছে...';
-    // Database-level (Firebase) atomic লক — নিশ্চিত করে দুইজন একই মোবাইল নম্বর দিয়ে একসাথে রেজিস্ট্রেশন করলেও একজনই সফল হবে
+
     let phoneClaimed = false;
+    let authCreated = false;
     try{
-      phoneClaimed = await claimPhoneNumber(phone, {role, name});
+      await fbEnsureAuth(newUser, pw, 'dealer', {registration:true});
+      authCreated = true;
+
+      await clearStalePhoneClaim(phone);
+      phoneClaimed = await claimPhoneNumber(phone, {role, name, ownerId:newUser.id});
       if(!phoneClaimed){
+        if(authCreated && fbAuth.currentUser) await fbAuth.currentUser.delete().catch(cleanErr=>console.error('Registration Auth cleanup failed:',cleanErr));
         btn.disabled = false; btn.textContent = t('register');
         e.style.display='block'; e.textContent='এই মোবাইল নম্বর দিয়ে আগেই রেজিস্ট্রেশন করা আছে';
         return;
       }
-      await fbEnsureAuth(newUser, pw, 'dealer');
+
+      const insertedIndex=DB.users.length;
+      DB.users.push(newUser);
+      try{
+        await saveDBAndVerifyRegistration(newUser,'users');
+      }catch(profileErr){
+        DB.users.splice(insertedIndex,1);
+        if(phoneClaimed) await releasePhoneNumber(phone);
+        if(authCreated && fbAuth.currentUser) await fbAuth.currentUser.delete().catch(cleanErr=>console.error('Registration Auth cleanup failed:',cleanErr));
+        throw profileErr;
+      }
+      syncPush('addUser', newUser);
+
+      app.innerHTML = `<div class="center-screen">
+        <div class="gate">
+          <div class="gate-top"><div class="cog">✅</div><h1>Registration Successful</h1><p>অনুমোদনের অপেক্ষায়</p></div>
+          <div class="gate-body">
+            <div class="ok-msg" style="display:block">Registration Successful — আপনার রেজিস্ট্রেশন সফল হয়েছে। অ্যাডমিন অনুমোদন দিলে আপনি লগইন করতে পারবেন।</div>
+            <button class="btn btn-primary btn-block" onclick="go('dealerLogin')">লগইন পেজে যান</button>
+          </div>
+        </div>
+      </div>`;
+      return;
     }catch(err){
-      console.error('Firebase registration auth failed:', err);
+      console.error('Dealer/Mechanic registration failed:', err);
       if(phoneClaimed) await releasePhoneNumber(phone);
-      btn.disabled = false; btn.textContent = 'রেজিস্ট্রেশন করুন';
-      e.style.display='block'; e.textContent='সার্ভারে সংযোগে সমস্যা হয়েছে, আবার চেষ্টা করুন';
+      if(authCreated && fbAuth.currentUser) await fbAuth.currentUser.delete().catch(cleanErr=>console.error('Registration Auth cleanup failed:',cleanErr));
+      btn.disabled = false; btn.textContent = t('register');
+      e.style.display='block';
+      const code=err && err.code;
+      if(code==='auth/network-request-failed') e.textContent='ইন্টারনেট সংযোগে সমস্যা হয়েছে। সংযোগ ঠিক করে আবার চেষ্টা করুন।';
+      else if(code==='PERMISSION_DENIED') e.textContent='নিরাপদ ডাটাবেস সংযোগ অনুমোদিত হয়নি। অনুগ্রহ করে আবার চেষ্টা করুন।';
+      else if(err && err.message==='INVALID_PHONE') e.textContent='মোবাইল নম্বর সঠিক নয়।';
+      else if(err && err.message==='PROFILE_WRITE_FAILED') e.textContent='অ্যাকাউন্ট তৈরি হয়েছে, কিন্তু প্রোফাইল সেভ হয়নি। আবার চেষ্টা করুন।';
+      else e.textContent='রেজিস্ট্রেশন সম্পন্ন করা যায়নি। কিছুক্ষণ পর আবার চেষ্টা করুন।';
       return;
     }
-    DB.users.push(newUser);
-    syncPush('addUser', newUser);
-    saveDB();
-    // সফল মেসেজ দেখাই
-    app.innerHTML = `<div class="center-screen">
-      <div class="gate">
-        <div class="gate-top"><div class="cog">✅</div><h1>রেজিস্ট্রেশন সম্পন্ন</h1><p>অনুমোদনের অপেক্ষায়</p></div>
-        <div class="gate-body">
-          <div class="ok-msg" style="display:block">আপনার রেজিস্ট্রেশন সফল হয়েছে। অ্যাডমিন অনুমোদন দিলে আপনি লগইন করতে পারবেন।</div>
-          <button class="btn btn-primary btn-block" onclick="go('dealerLogin')">লগইন পেজে যান</button>
-        </div>
-      </div>
-    </div>`;
   };
 };
 
@@ -2357,6 +2432,7 @@ const TOUR_BILL_COLLECTION = 'TourBills';
 let tourBillDbPromise = null;
 let tbRows = [tbBlankRow(1)];
 let tbSaveBusy = false;
+let tbDraftId = crypto.randomUUID ? crypto.randomUUID() : ('tb-' + Date.now() + '-' + Math.random().toString(36).slice(2));
 
 function tbBlankRow(index){
   return {rowNo:index, col1:'', col2:'', from:'', to:'', medium:'', kmStart:'', kmEnd:'', kmTotal:'', taka:'', foodMorning:'', foodNoon:'', foodNight:'', stay:'', total:''};
@@ -2454,8 +2530,8 @@ function tbRemoveRow(button){
 function tbRowHTML(r, readOnly=false){
   const dis = readOnly ? ' readonly' : '';
   return `<tr data-row-index="${Number(r.rowNo)||1}">
-    <td class="tb-daycell"><div class="tb-row-no">${Number(r.rowNo)||1}</div><textarea data-field="col1" rows="3" placeholder="তারিখ, প্রোগ্রাম/কাস্টমারের নাম, মোবাইল নম্বর, কাজের বিবরণ"${dis}>${escHtml(r.col1||'')}</textarea></td>
-    <td class="tb-fs"><input type="text" data-field="col2" value="${escHtml(r.col2||'')}"${dis}></td>
+    <td><textarea data-field="col1" rows="1"${dis}>${escHtml(r.col1||'')}</textarea></td>
+    <td><input type="text" data-field="col2" value="${escHtml(r.col2||'')}"${dis}></td>
     <td><input type="text" data-field="from" value="${escHtml(r.from||'')}"${dis}></td>
     <td><input type="text" data-field="to" value="${escHtml(r.to||'')}"${dis}></td>
     <td><input type="text" data-field="medium" value="${escHtml(r.medium||'')}"${dis}></td>
@@ -2468,19 +2544,17 @@ function tbRowHTML(r, readOnly=false){
     <td><input type="text" data-field="foodNight" value="${escHtml(r.foodNight||'')}"${dis}></td>
     <td><input type="text" data-field="stay" value="${escHtml(r.stay||'')}"${dis}></td>
     <td><input type="text" data-field="total" value="${escHtml(r.total||'')}"${dis}></td>
-    ${readOnly ? '' : '<td class="tb-action-cell"><button type="button" class="tb-remove-row" title="এই row মুছুন">×</button></td>'}
   </tr>`;
 }
 
 function tbTableHTML(rows, readOnly=false){
+  const safeRows = (rows && rows.length) ? rows : [tbBlankRow(1)];
   return `<div class="tb-wrap">
     <table class="tb-table ${readOnly?'tb-readonly':''}">
       <colgroup>
-        <col class="tb-col-1"><col class="tb-col-2"><col class="tb-col-3"><col class="tb-col-4">
-        <col class="tb-col-5"><col class="tb-col-6"><col class="tb-col-7"><col class="tb-col-8">
-        <col class="tb-col-9"><col class="tb-col-10"><col class="tb-col-11"><col class="tb-col-12">
-        <col class="tb-col-13"><col class="tb-col-14">
-        ${readOnly?'':'<col class="tb-col-action">'}
+        <col class="tb-col-1"><col class="tb-col-2"><col class="tb-col-3"><col class="tb-col-4"><col class="tb-col-5">
+        <col class="tb-col-6"><col class="tb-col-7"><col class="tb-col-8"><col class="tb-col-9"><col class="tb-col-10">
+        <col class="tb-col-11"><col class="tb-col-12"><col class="tb-col-13"><col class="tb-col-14">
       </colgroup>
       <thead>
         <tr>
@@ -2492,7 +2566,6 @@ function tbTableHTML(rows, readOnly=false){
           <th colspan="3">খাবারের বিবরণ<br>(খাবারের সময় উল্লেখ করুন)</th>
           <th rowspan="2">রাত্রিযাপন<br>(যদি থাকে)</th>
           <th rowspan="2">মোট<br>টাকা</th>
-          ${readOnly?'':'<th rowspan="2">✕</th>'}
         </tr>
         <tr>
           <th>হইতে</th><th>পর্যন্ত</th><th>মাধ্যম</th>
@@ -2501,15 +2574,8 @@ function tbTableHTML(rows, readOnly=false){
         </tr>
       </thead>
       <tbody id="${readOnly?'tbViewBody':'tbBody'}">
-        ${(rows||[]).map(r=>tbRowHTML(r,readOnly)).join('')}
+        ${safeRows.map(r=>tbRowHTML(r,readOnly)).join('')}
       </tbody>
-      <tfoot>
-        <tr>
-          <td colspan="13" style="text-align:right !important;font-weight:700;">সর্বমোট (৳)</td>
-          <td id="${readOnly?'tbViewTotalSum':'tbTotalSum'}" style="font-weight:700;">0</td>
-          ${readOnly?'':'<td></td>'}
-        </tr>
-      </tfoot>
     </table>
   </div>`;
 }
@@ -2519,16 +2585,16 @@ function mechanicTourBillHTML(){
   if(!u) return '';
   if(!tbRows || !tbRows.length) tbRows = [tbBlankRow(1)];
   return `<div class="card" id="tourBillPrintArea">
-    <div class="tb-head-title"><span class="tb-code">CS-02</span><h3>মেটাল ফার্মটেক লিমিটেড</h3><div style="color:var(--muted);font-size:13px">দৈনিক বিলের বিবরণ</div></div>
-    <div class="tb-mechanic-meta">মেকানিক: <b>${escHtml(u.name||'')}</b> &nbsp; | &nbsp; মোবাইল: <b>${escHtml(u.phone||'')}</b> &nbsp; | &nbsp; টেরিটরি: <b>${escHtml(u.territory||'-')}</b></div>
-    <div class="tb-toolbar">
-      <button class="btn btn-primary btn-sm" id="tbSaveBtn">💾 সেভ করুন</button>
-      <button class="btn btn-ghost btn-sm" id="tbClearBtn">↻ নতুন বিল</button>
-      <button class="btn btn-ghost btn-sm" id="tbPrintBtn">🖨️ প্রিন্ট / PDF</button>
-      <span class="tb-savebar" id="tbSaveOk">✅ অ্যাডমিনে জমা হয়েছে</span>
+    <div class="tb-paper">
+      <div class="tb-head-title"><span class="tb-code">CS-02</span><h3>মেটাল ফার্মটেক লিমিটেড</h3><div>দৈনিক বিলের বিবরণ</div></div>
+      ${tbTableHTML(tbRows,false)}
+      <div class="tb-save-area">
+        <button class="btn btn-primary" id="tbSaveBtn">💾 Save</button>
+        <button class="btn btn-ghost" id="tbPrintBtn">🖨️ Print / PDF</button>
+        <span class="tb-savebar" id="tbSaveOk">সফলভাবে অ্যাডমিনে জমা হয়েছে</span>
+      </div>
+      <div class="tb-sig">বিল প্রস্তুতকারীর স্বাক্ষর <input type="text" id="tbSignature" value="" aria-label="বিল প্রস্তুতকারীর স্বাক্ষর"></div>
     </div>
-    ${tbTableHTML(tbRows,false)}
-    <div class="tb-sig">বিল প্রস্তুতকারীর স্বাক্ষর: <input type="text" id="tbSignature" value=""></div>
   </div>`;
 }
 
@@ -2553,17 +2619,16 @@ function tbSetSavingState(saving){
 
 function tbPrintHtml(bill, title='Tour Bill'){
   const rows = tbNormalizeRows(bill.rows||[]).filter(tbRowIsFilled);
+  if(!rows.length){ alert('প্রিন্ট করার মতো কোনো Tour Bill তথ্য নেই।'); return; }
   const sig = bill.signature||'';
-  const totalDisplay = Number(bill.total || rows.reduce((sum,r)=>sum+(parseFloat(String(r.total||'').replace(/[^0-9.\-]/g,''))||0),0)).toLocaleString('en-US',{maximumFractionDigits:2});
-  const tableHtml = tbTableHTML(rows,true).replace('>0</td>','>'+totalDisplay+'</td>');
+  const tableHtml = tbTableHTML(rows,true);
   const html = `<!doctype html><html lang="bn"><head><meta charset="utf-8"><title>${escHtml(title)}</title><style>
-    @page{size:A4 landscape;margin:8mm}body{font-family:'Noto Sans Bengali','Hind Siliguri',Arial,sans-serif;color:#111;margin:0}.tb-head-title{text-align:center;position:relative;margin-bottom:5px}.tb-head-title h3{margin:0;font-size:18px}.tb-head-title>div{font-size:12px}.tb-code{position:absolute;right:8px;top:0;border:1.5px solid #111;border-radius:999px;padding:2px 12px;font-weight:700}.tb-mechanic-meta{font-size:10px;margin-bottom:4px}.tb-wrap{overflow:visible}.tb-table{border-collapse:collapse;width:100%;table-layout:fixed}.tb-table th,.tb-table td{border:1px solid #333;padding:2px;font-size:8px;text-align:center;vertical-align:middle;word-break:break-word}.tb-table th{font-weight:700;line-height:1.25}.tb-table td input,.tb-table td textarea{border:0;width:100%;box-sizing:border-box;background:transparent;font:inherit;text-align:center;padding:1px;color:#111}.tb-table td textarea{resize:none}.tb-table input,.tb-table textarea{outline:none}.tb-table td:first-child{text-align:left}.tb-table td:first-child textarea{text-align:left}.tb-table .tb-row-no{font-size:7px;font-weight:700}.tb-col-1{width:13%}.tb-col-2{width:9%}.tb-col-3{width:7%}.tb-col-4{width:7%}.tb-col-5{width:5%}.tb-col-6{width:7%}.tb-col-7{width:7%}.tb-col-8{width:5%}.tb-col-9{width:5%}.tb-col-10{width:6%}.tb-col-11{width:6%}.tb-col-12{width:6%}.tb-col-13{width:6%}.tb-col-14{width:6%}.tb-table tfoot td{font-weight:700}.tb-sig{margin-top:10px;font-size:10px}.tb-actions{margin-bottom:8px}.tb-actions button{padding:7px 12px}.tb-table .tb-remove-row,.tb-actions{display:none}@media print{.tb-actions{display:none!important}}
+    @page{size:A4 landscape;margin:7mm}*{box-sizing:border-box}body{font-family:'Noto Serif Bengali','Noto Sans Bengali','Hind Siliguri',Arial,sans-serif;color:#111;margin:0;background:#fff}.tb-head-title{position:relative;text-align:center;margin:0 0 7px;min-height:49px}.tb-head-title h3{margin:0;color:#173d7a;font-size:21px;line-height:1.35}.tb-head-title>div{font-size:15px;line-height:1.25}.tb-code{position:absolute;right:1%;top:0;border:1.5px solid #111;border-radius:50%;width:94px;height:40px;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#6d329a;background:#fff}.tb-wrap{overflow:visible}.tb-table{border-collapse:collapse;width:100%;table-layout:fixed}.tb-table th,.tb-table td{border:1px solid #111;background:#fff;color:#111;text-align:center;vertical-align:middle}.tb-table th{font-size:11.5px;font-weight:700;line-height:1.2;padding:3px 1px}.tb-table td{height:27px;padding:0}.tb-table td input,.tb-table td textarea{display:block;width:100%;height:27px;box-sizing:border-box;border:0;background:transparent;color:#111;font:inherit;font-size:10px;text-align:center;padding:2px;outline:0;resize:none}.tb-table td textarea{text-align:left}.tb-col-1{width:15.45%}.tb-col-2{width:8.31%}.tb-col-3{width:9.79%}.tb-col-4{width:9.42%}.tb-col-5{width:5.52%}.tb-col-6{width:7.72%}.tb-col-7{width:7.72%}.tb-col-8{width:4.93%}.tb-col-9{width:5.08%}.tb-col-10{width:4.86%}.tb-col-11{width:5.52%}.tb-col-12{width:5%}.tb-col-13{width:6.11%}.tb-col-14{width:4.56%}.tb-sig{margin-top:28px;font-size:13px}.tb-actions{margin-bottom:7px}.tb-actions button{padding:7px 12px}.tb-table .tb-remove-row,.tb-table tfoot{display:none}@media print{.tb-actions{display:none!important}}
   </style></head><body>
   <div class="tb-actions"><button onclick="window.print()">Print / Save PDF</button></div>
   <div class="tb-head-title"><span class="tb-code">CS-02</span><h3>মেটাল ফার্মটেক লিমিটেড</h3><div>দৈনিক বিলের বিবরণ</div></div>
-  <div class="tb-mechanic-meta">মেকানিক: <b>${escHtml(bill.mechanicName||'')}</b> &nbsp; | &nbsp; মোবাইল: <b>${escHtml(bill.mechanicPhone||'')}</b> &nbsp; | &nbsp; টেরিটরি: <b>${escHtml(bill.territory||'-')}</b></div>
   ${tableHtml}
-  <div class="tb-sig">বিল প্রস্তুতকারীর স্বাক্ষর: ${escHtml(sig)}</div>
+  <div class="tb-sig">বিল প্রস্তুতকারীর স্বাক্ষর ${escHtml(sig)}</div>
   </body></html>`;
   const w=window.open('','_blank','width=1400,height=900');
   if(!w){ alert('Popup blocked. Browser popup allow করুন।'); return; }
@@ -2581,15 +2646,16 @@ async function saveTourBill(){
   try{
     if(!firebase.auth().currentUser) throw new Error('AUTH_REQUIRED');
     const db = await getTourBillDb();
-    const {collection,addDoc,serverTimestamp} = await import('https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js');
+    const {collection,doc,setDoc,serverTimestamp} = await import('https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js');
     const now = new Date();
     const total = rows.reduce((sum,r)=>sum+(parseFloat(String(r.total||'').replace(/[^0-9.\-]/g,''))||0),0);
-    await addDoc(collection(db,TOUR_BILL_COLLECTION),{
+    await setDoc(doc(collection(db,TOUR_BILL_COLLECTION),tbDraftId),{
       mechanicId: String(u.id), mechanicName: String(u.name||''), mechanicPhone: String(u.phone||''), territory: String(u.territory||''),
       rows, signature, total, status:'Pending', createdAt:serverTimestamp(), submittedAtIso:now.toISOString()
     });
     const ok=document.getElementById('tbSaveOk'); if(ok){ok.style.display='inline';setTimeout(()=>ok.style.display='none',3000);}
     tbRows=[tbBlankRow(1)];
+    tbDraftId = crypto.randomUUID ? crypto.randomUUID() : ('tb-' + Date.now() + '-' + Math.random().toString(36).slice(2));
     mechanicTab='tourbill'; go('mechanicDashboard');
   }catch(err){
     if(err && err.message==='AUTH_REQUIRED') alert('আপনার লগইন সেশন শেষ হয়েছে। আবার লগইন করুন।');
@@ -2601,20 +2667,17 @@ function bindTourBillEvents(){
   const body=document.getElementById('tbBody');
   if(body){
     body.addEventListener('input',(e)=>{
-      if(e.target?.dataset?.field==='total') tbUpdateTotalSum();
-      const tr=e.target.closest('tr[data-row-index]');
+      const tr=e.target?.closest('tr[data-row-index]');
       if(tr){
         const filled=Array.from(tr.querySelectorAll('[data-field]')).some(x=>String(x.value||'').trim()!=='');
         tr.classList.toggle('tb-row-filled',filled);
         if(tr===body.lastElementChild && filled) tbAddBlankRowIfNeeded();
       }
     });
-    body.addEventListener('click',(e)=>{if(e.target.closest('.tb-remove-row'))tbRemoveRow(e.target.closest('.tb-remove-row'));});
   }
   const saveBtn=document.getElementById('tbSaveBtn'); if(saveBtn) saveBtn.onclick=saveTourBill;
-  const clearBtn=document.getElementById('tbClearBtn'); if(clearBtn) clearBtn.onclick=()=>{if(confirm('বর্তমান লেখা মুছে নতুন বিল শুরু করবেন?')){tbRows=[tbBlankRow(1)];mechanicTab='tourbill';go('mechanicDashboard');}};
-  const printBtn=document.getElementById('tbPrintBtn'); if(printBtn) printBtn.onclick=()=>{const u=tbCurrentUser();tbPrintHtml({mechanicName:u?.name,mechanicPhone:u?.phone,territory:u?.territory,rows:tbCollectRows(),signature:document.getElementById('tbSignature')?.value||''},'Daily Tour Bill');};
-  tbUpdateTotalSum();
+  const printBtn=document.getElementById('tbPrintBtn');
+  if(printBtn) printBtn.onclick=()=>{const u=tbCurrentUser();tbPrintHtml({mechanicName:u?.name,mechanicPhone:u?.phone,territory:u?.territory,rows:tbCollectRows(),signature:document.getElementById('tbSignature')?.value||''},'Daily Tour Bill');};
 }
 
 /* ================= ADMIN TOUR BILL RECEIVE REPORT ================= */
@@ -2685,7 +2748,7 @@ function viewTourBill(id){
 }
 function tbAdminBillPreviewHTML(b){
   const rows=tbNormalizeRows(b.rows||[]).filter(tbRowIsFilled);
-  return `<div class="tb-head-title"><span class="tb-code">CS-02</span><h3>মেটাল ফার্মটেক লিমিটেড</h3><div style="color:var(--muted);font-size:13px">দৈনিক বিলের বিবরণ</div></div><div class="tb-mechanic-meta">মেকানিক: <b>${escHtml(b.mechanicName||'')}</b> &nbsp; | &nbsp; মোবাইল: <b>${escHtml(b.mechanicPhone||'')}</b> &nbsp; | &nbsp; টেরিটরি: <b>${escHtml(b.territory||'-')}</b> &nbsp; | &nbsp; Status: <b>${escHtml(b.status||'Pending')}</b></div>${tbTableHTML(rows,true)}<div class="tb-sig">বিল প্রস্তুতকারীর স্বাক্ষর: ${escHtml(b.signature||'')}</div>`;
+  return `<div class="tb-admin-paper">${tbTableHTML(rows,true)}<div class="tb-sig">বিল প্রস্তুতকারীর স্বাক্ষর ${escHtml(b.signature||'')}</div></div>`;
 }
 function tbPrintAdminBill(id){const b=tbAdminBills.find(x=>x.id===id);if(b)tbPrintHtml(b,'Tour Bill - '+id);}
 async function changeTourBillStatus(id,status){
@@ -2835,7 +2898,7 @@ ROUTES.peRegister = function(){
   document.getElementById('submit').onclick = async ()=>{
     const name = document.getElementById('peName').value.trim();
     const engineerId = document.getElementById('peEngineerId').value.trim();
-    const phone = document.getElementById('pePhone').value.trim();
+    const phone = normalizePhoneNumber(document.getElementById('pePhone').value.trim());
     const region = document.getElementById('peRegion').value;
     const pw = document.getElementById('pePw').value;
     const pw2 = document.getElementById('pePw2').value;
@@ -2846,35 +2909,54 @@ ROUTES.peRegister = function(){
     if(pw !== pw2){ e.style.display='block'; e.textContent='পাসওয়ার্ড দুটো মিলছে না'; return; }
     if(!PARTS_ENGINEER_REGIONS.includes(region)){ e.style.display='block'; e.textContent='অনুগ্রহ করে তালিকা থেকে একটি বৈধ Region নির্বাচন করুন।'; return; }
     if(accessCode !== DB.settings.peAccessCode){ e.style.display='block'; e.textContent='Access Code সঠিক নয়। এটি শুধুমাত্র অ্যাডমিনের কাছ থেকে পাওয়া যাবে — ডিলার/মেকানিক এখানে রেজিস্ট্রেশন করতে পারবেন না।'; return; }
-    if(DB.users.some(u=>u.phone===phone)){ e.style.display='block'; e.textContent='এই মোবাইল নম্বরটি ইতিমধ্যে ডিলার/মেকানিক হিসেবে রেজিস্ট্রেশন করা আছে। একই ব্যক্তি দুটি ভিন্ন role-এ থাকতে পারবেন না — অ্যাডমিনের সাথে যোগাযোগ করুন।'; return; }
+    if(hasExistingUserPhone(phone)){ e.style.display='block'; e.textContent='এই মোবাইল নম্বরটি ইতিমধ্যে ডিলার/মেকানিক হিসেবে রেজিস্ট্রেশন করা আছে। একই ব্যক্তি দুটি ভিন্ন role-এ থাকতে পারবেন না — অ্যাডমিনের সাথে যোগাযোগ করুন।'; return; }
     if(DB.partsEngineers.some(p=>String(p.engineerId||'').trim().toLowerCase()===engineerId.toLowerCase())){
       e.style.display='block'; e.textContent='This Engineer ID is already registered. Please Login. (এই Engineer ID দিয়ে আগেই রেজিস্ট্রেশন করা আছে — লগইন করুন)';
       return;
     }
-    if(DB.partsEngineers.some(p=>p.phone===phone)){ e.style.display='block'; e.textContent='এই মোবাইল নম্বর দিয়ে আগেই একটি Parts Engineer অ্যাকাউন্ট আছে।'; return; }
+    if(hasExistingPartsEngineerPhone(phone)){ e.style.display='block'; e.textContent='এই মোবাইল নম্বর দিয়ে আগেই একটি Parts Engineer অ্যাকাউন্ট আছে।'; return; }
     const now = new Date();
     const newPe = {id: nextPeId++, name, phone, password: pw, region, active:true, engineerId, source:'self', registeredAt: now.toISOString(), registeredAtDisplay: now.toLocaleString('bn-BD')};
-    const btn = document.getElementById('submit'); btn.disabled = true; btn.textContent = 'রেজিস্ট্রেশন হচ্ছে...';
-    // Database-level (Firebase) atomic লক — একই মোবাইল নম্বর দিয়ে দুইজন একসাথে রেজিস্ট্রেশন করলেও একজনই সফল হবে
+    const btn = document.getElementById('submit');
+    if(btn.disabled) return;
+    btn.disabled = true; btn.textContent = 'রেজিস্ট্রেশন হচ্ছে...';
     let phoneClaimed = false;
+    let authCreated = false;
     try{
-      phoneClaimed = await claimPhoneNumber(phone, {role:'partsEngineer', name});
+      await fbEnsureAuth(newPe, pw, 'pe', {registration:true});
+      authCreated = true;
+      await clearStalePhoneClaim(phone);
+      phoneClaimed = await claimPhoneNumber(phone, {role:'partsEngineer', name, ownerId:newPe.id});
       if(!phoneClaimed){
+        if(authCreated && fbAuth.currentUser) await fbAuth.currentUser.delete().catch(cleanErr=>console.error('PE Auth cleanup failed:',cleanErr));
         btn.disabled = false; btn.textContent = 'রেজিস্ট্রেশন করুন';
         e.style.display='block'; e.textContent='এই মোবাইল নম্বর দিয়ে আগেই রেজিস্ট্রেশন করা আছে';
         return;
       }
-      await fbEnsureAuth(newPe, pw, 'pe');
     }catch(err){
-      console.error('Firebase PE registration auth failed:', err);
+      console.error('Firebase PE registration failed:', err);
       if(phoneClaimed) await releasePhoneNumber(phone);
+      if(authCreated && fbAuth.currentUser) await fbAuth.currentUser.delete().catch(cleanErr=>console.error('PE Auth cleanup failed:',cleanErr));
       btn.disabled = false; btn.textContent = 'রেজিস্ট্রেশন করুন';
-      e.style.display='block'; e.textContent='সার্ভারে সংযোগে সমস্যা হয়েছে, আবার চেষ্টা করুন';
+      e.style.display='block';
+      e.textContent = err && err.code==='auth/network-request-failed'
+        ? 'ইন্টারনেট সংযোগে সমস্যা হয়েছে। সংযোগ ঠিক করে আবার চেষ্টা করুন।'
+        : 'রেজিস্ট্রেশন সম্পন্ন করা যায়নি। কিছুক্ষণ পর আবার চেষ্টা করুন।';
       return;
     }
+    const peInsertedIndex=DB.partsEngineers.length;
     DB.partsEngineers.push(newPe);
+    try{
+      await saveDBAndVerifyRegistration(newPe,'partsEngineers');
+    }catch(profileErr){
+      DB.partsEngineers.splice(peInsertedIndex,1);
+      if(phoneClaimed) await releasePhoneNumber(phone);
+      if(authCreated && fbAuth.currentUser) await fbAuth.currentUser.delete().catch(cleanErr=>console.error('PE Registration Auth cleanup failed:',cleanErr));
+      btn.disabled = false; btn.textContent = 'রেজিস্ট্রেশন করুন';
+      e.style.display='block'; e.textContent='অ্যাকাউন্ট তৈরি হয়েছে, কিন্তু প্রোফাইল সেভ হয়নি। আবার চেষ্টা করুন।';
+      return;
+    }
     logHistory(`নতুন Parts Engineer সেলফ-রেজিস্ট্রেশন: ${name} (${region}) — Engineer ID: ${engineerId}`);
-    await saveDB();
     DB.session = {role:'partsEngineer', user:newPe};
     recordLogin(newPe.name, 'partsEngineer', newPe.phone);
     peTab = 'dealers';
@@ -5090,8 +5172,9 @@ function resolveResetRequest(id){
 }
 function usersTable(peFilter){
   if(DB.users.length===0) return `<div class="empty">কোনো ইউজার নেই</div>`;
-  const pending = DB.users.filter(u=>u.pending);
-  let approved = DB.users.filter(u=>!u.pending);
+  const pending = DB.users.filter(u=>u.pending && !isDeletedAccount(u));
+  let approved = DB.users.filter(u=>!u.pending && !isDeletedAccount(u));
+  const deleted = DB.users.filter(u=>isDeletedAccount(u));
   if(peFilter === 'unassigned') approved = approved.filter(u=>!u.peId);
   else if(peFilter) approved = approved.filter(u=>Number(u.peId)===Number(peFilter));
   let html = '';
@@ -5126,6 +5209,15 @@ function usersTable(peFilter){
   } else if(!pending.length) {
     html += `<div class="empty">এই ফিল্টারে কোনো ইউজার পাওয়া যায়নি</div>`;
   }
+  if(deleted.length){
+    html += `<div class="card" style="margin-top:14px;background:#fff7f7;border:1.5px solid #efcaca;">
+      <div style="font-weight:700;color:#9b2c2c;margin-bottom:8px;">🗑️ Deleted Users (${deleted.length})</div>
+      ${deleted.map(u=>`<div style="display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid #f0d8d8;">
+        <span>${u.name} · <span class="mono">${u.phone}</span></span>
+        <span class="badge inactive">Deleted</span>
+      </div>`).join('')}
+    </div>`;
+  }
   return html || `<div class="empty">কোনো ইউজার নেই</div>`;
 }
 function approveUser(id){
@@ -5140,9 +5232,14 @@ function deleteUser(id){
   const u = DB.users.find(x=>x.id===id);
   if(!u) return;
   if(confirm(`"${u.name}" (${u.phone}) ডিলিট করতে চান?`)){
-    DB.users = DB.users.filter(x=>x.id!==id);
-    releasePhoneNumber(u.phone); // মোবাইল নম্বরটি লক থেকে মুক্ত করা হলো — এখন এই নম্বর দিয়ে নতুন রেজিস্ট্রেশন করা যাবে
-    syncPush('deleteUser', {id});
+    u.deleted = true;
+    u.isDeleted = true;
+    u.status = 'deleted';
+    u.active = false;
+    u.pending = false;
+    u.deletedAt = new Date().toISOString();
+    releasePhoneNumber(u.phone);
+    syncPush('deleteUser', {id, softDelete:true, phone:u.phone});
     saveDB();
     go('adminDashboard');
   }
@@ -5209,7 +5306,7 @@ function openUserModal(user){
   toggleMURoleFields();
   document.getElementById('saveUser').onclick = async ()=>{
     const name = document.getElementById('mUName').value.trim();
-    const phone = document.getElementById('mUPhone').value.trim();
+    const phone = normalizePhoneNumber(document.getElementById('mUPhone').value.trim());
     const password = document.getElementById('mUPw').value.trim();
     const role = document.getElementById('mURole').value;
     const district = document.getElementById('mUDistrict').value;
@@ -5233,8 +5330,8 @@ function openUserModal(user){
     }
     const phoneChanged = !isEdit || (user && user.phone !== phone);
     if(phoneChanged){
-      if(DB.users.some(u=>u.phone===phone && (!isEdit || u.id!==user.id))){ errBox.style.display='block'; errBox.textContent='এই মোবাইল নম্বর দিয়ে আগেই একটি অ্যাকাউন্ট আছে'; return; }
-      if(DB.partsEngineers.some(p=>p.phone===phone)){ errBox.style.display='block'; errBox.textContent='এই মোবাইল নম্বরটি ইতিমধ্যে একটি Parts Engineer অ্যাকাউন্টে ব্যবহৃত আছে'; return; }
+      if(hasExistingUserPhone(phone, isEdit ? user.id : null)){ errBox.style.display='block'; errBox.textContent='এই মোবাইল নম্বর দিয়ে আগেই একটি অ্যাকাউন্ট আছে'; return; }
+      if(hasExistingPartsEngineerPhone(phone)){ errBox.style.display='block'; errBox.textContent='এই মোবাইল নম্বরটি ইতিমধ্যে একটি Parts Engineer অ্যাকাউন্টে ব্যবহৃত আছে'; return; }
     }
     const saveBtn = document.getElementById('saveUser');
     saveBtn.disabled = true;
@@ -5350,7 +5447,7 @@ function openPeModal(pe){
   `);
   document.getElementById('savePe').onclick = async ()=>{
     const name = document.getElementById('mPeName').value.trim();
-    const phone = document.getElementById('mPePhone').value.trim();
+    const phone = normalizePhoneNumber(document.getElementById('mPePhone').value.trim());
     const password = document.getElementById('mPePw').value.trim();
     const region = document.getElementById('mPeRegion').value;
     if(!name || !phone || !password || !region) { alert('সব ঘর পূরণ করুন — নাম, মোবাইল, পাসওয়ার্ড, রিজিয়ন নির্বাচন করুন।'); return; }
@@ -5358,8 +5455,8 @@ function openPeModal(pe){
     if(!PARTS_ENGINEER_REGIONS.includes(region)) { alert('অনুগ্রহ করে তালিকা থেকে একটি বৈধ Region নির্বাচন করুন।'); return; }
     const phoneChanged = !isEdit || (pe && pe.phone !== phone);
     if(phoneChanged){
-      if(DB.partsEngineers.some(p=>p.phone===phone && (!isEdit || p.id!==pe.id))){ alert('এই মোবাইল নম্বর দিয়ে আগেই একটি Parts Engineer অ্যাকাউন্ট আছে'); return; }
-      if(DB.users.some(u=>u.phone===phone)){ alert('এই মোবাইল নম্বরটি ইতিমধ্যে একটি ডিলার/মেকানিক অ্যাকাউন্টে ব্যবহৃত আছে'); return; }
+      if(hasExistingPartsEngineerPhone(phone, isEdit ? pe.id : null)){ alert('এই মোবাইল নম্বর দিয়ে আগেই একটি Parts Engineer অ্যাকাউন্ট আছে'); return; }
+      if(hasExistingUserPhone(phone)){ alert('এই মোবাইল নম্বরটি ইতিমধ্যে একটি ডিলার/মেকানিক অ্যাকাউন্টে ব্যবহৃত আছে'); return; }
     }
     const saveBtn = document.getElementById('savePe');
     saveBtn.disabled = true;
@@ -5399,11 +5496,11 @@ function togglePe(id){
 function deletePe(id){
   const p = DB.partsEngineers.find(x=>x.id===id);
   if(!p) return;
-  const underCount = DB.users.filter(u=>u.peId===id).length;
+  const underCount = DB.users.filter(u=>u.peId===id && !isDeletedAccount(u)).length;
   const warn = underCount ? `\n\n⚠️ এই Parts Engineer-এর অধীনে বর্তমানে ${underCount} জন ডিলার/মেকানিক আছে — ডিলিট করলে তারা "Unassigned" হয়ে যাবে।` : '';
   if(confirm(`"${p.name}" (${p.phone}) ডিলিট করতে চান?${warn}`)){
-    DB.partsEngineers = DB.partsEngineers.filter(x=>x.id!==id);
-    releasePhoneNumber(p.phone); // মোবাইল নম্বরটি লক থেকে মুক্ত করা হলো — এখন এই নম্বর দিয়ে নতুন রেজিস্ট্রেশন করা যাবে
+    p.deleted = true; p.isDeleted = true; p.status = 'deleted'; p.active = false; p.deletedAt = new Date().toISOString();
+    releasePhoneNumber(p.phone);
     logHistory(`Parts Engineer ডিলিট করা হয়েছে: ${p.name}`);
     saveDB();
     go('adminDashboard');
@@ -6215,10 +6312,10 @@ function renderQsResults(q){
 /* ================= INIT ================= */
 if(SYNC_ON){
   document.getElementById('app').innerHTML = `<div class="dl-screen"><div><div class="dl-loading-text">Google Sheet থেকে ডেটা লোড হচ্ছে</div><div class="dl-dots"><span></span><span></span><span></span><span></span><span></span></div></div></div>`;
-  loadFromSheet().then(()=>{ splashShown = true; showSplash(render); initQuickSearchFAB(); backfillPhoneRegistry(); });
+  loadFromSheet().then(()=>{ normalizeLoadedAccountPhones(); splashShown = true; showSplash(render); initQuickSearchFAB(); backfillPhoneRegistry(); });
 } else {
   document.getElementById('app').innerHTML = `<div class="dl-screen"><div><div class="dl-loading-text">ডেটা লোড হচ্ছে</div><div class="dl-dots"><span></span><span></span><span></span><span></span><span></span></div></div></div>`;
-  loadDB().then(()=>{ ensureCores(); splashShown = true; showSplash(render); migrateOldMemosToIndex(); initQuickSearchFAB(); backfillPhoneRegistry(); });
+  loadDB().then(()=>{ normalizeLoadedAccountPhones(); ensureCores(); splashShown = true; showSplash(render); migrateOldMemosToIndex(); initQuickSearchFAB(); backfillPhoneRegistry(); });
 }
 
 /* ================= MOBILE SCROLL / KEYBOARD FIX =================
