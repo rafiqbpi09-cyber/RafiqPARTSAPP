@@ -1,0 +1,20 @@
+{
+  "rules": {
+
+    "tourBills": {
+      ".indexOn": ["submittedBy", "status", "createdAt"],
+
+      "$billId": {
+        ".read": "auth != null && (data.child('submittedBy').val() === auth.uid || root.child('tourBillAdmins').child(auth.uid).exists())",
+
+        ".write": "auth != null && ( (!data.exists() && newData.child('submittedBy').val() === auth.uid) || root.child('tourBillAdmins').child(auth.uid).exists() )"
+      }
+    },
+
+    "tourBillAdmins": {
+      ".read": "auth != null",
+      ".write": "!root.child('tourBillAdmins').hasChildren() || root.child('tourBillAdmins').child(auth.uid).exists()"
+    }
+
+  }
+}
