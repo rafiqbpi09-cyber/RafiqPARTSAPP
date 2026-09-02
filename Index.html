@@ -1276,8 +1276,22 @@ async function claimPhoneNumber(phone, meta){
   const n=normalizePhoneNumber(phone);
   if(!isValidPhone11(n)) throw new Error('INVALID_PHONE');
   const result=await phoneRegistryRef(n).transaction(current=>{
-    if(current!==null) return;
-    return Object.assign({claimedAt:Date.now(),phone:n,state:'active'},meta||{});
+    if(current===null){
+      return Object.assign({claimedAt:Date.now(),phone:n,state:'active'},meta||{});
+    }
+    const ownerId=current.ownerId ?? current.uid ?? null;
+    const ownerDeleted = ownerId!=null && (
+      DB.users.some(u=>u && String(u.id)===String(ownerId) && isDeletedAccount(u)) ||
+      DB.partsEngineers.some(pe=>pe && String(pe.id)===String(ownerId) && isDeletedAccount(pe))
+    );
+    const staleLegacy = !current.ownerId && !current.uid;
+    const markedDeleted = current.deleted===true || String(current.status||'').toLowerCase()==='deleted';
+    // Deleted/stale locks are replaced atomically by this new registration.
+    // Active locks are never overwritten, so mobile uniqueness is preserved.
+    if(ownerDeleted || staleLegacy || markedDeleted){
+      return Object.assign({claimedAt:Date.now(),phone:n,state:'active'},meta||{});
+    }
+    return;
   });
   return !!(result && result.committed);
 }
@@ -2261,7 +2275,7 @@ ROUTES.dealerRegister = function(){
       await fbEnsureAuth(newUser, pw, 'dealer', {registration:true});
       authCreated = true;
 
-      await clearStalePhoneClaim(phone);
+      // claimPhoneNumber() atomically replaces only deleted/stale locks; active users remain protected.
       phoneClaimed = await claimPhoneNumber(phone, {role, name, ownerId:newUser.id});
       if(!phoneClaimed){
         if(authCreated && fbAuth.currentUser) await fbAuth.currentUser.delete().catch(cleanErr=>console.error('Registration Auth cleanup failed:',cleanErr));
