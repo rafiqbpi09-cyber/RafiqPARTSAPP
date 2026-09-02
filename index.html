@@ -44,7 +44,7 @@ document.currentScript.parentNode.insertBefore(manifestLink, document.currentScr
 // প্রতিটি নতুন deployment/update দেওয়ার আগে এই APP_VERSION ভ্যালুটা পরিবর্তন করুন
 // (যেকোনো ইউনিক স্ট্রিং — তারিখ/সময় বা running number)। এই ভ্যালুর ভিত্তিতেই
 // সব ডিভাইস স্বয়ংক্রিয়ভাবে নতুন version detect করে reload হবে।
-window.APP_VERSION = '2026-08-11.1';
+window.APP_VERSION = '2026-09-02-tourbill.1';
 
 (function(){
   // পুরনো/legacy blob-based service worker ও পুরনো Cache Storage সম্পূর্ণ পরিষ্কার করে দেওয়া হয়,
@@ -132,16 +132,69 @@ window.APP_VERSION = '2026-08-11.1';
     body{background:#fff;}
     .part-card{break-inside:avoid;border:1px solid #ccc !important;}
   }
-  /* ================= TOUR BILL (New Dynamic Single-Column System) ================= */
-  .tb-head-title{text-align:center;margin:0 0 10px;}
-  .tb-head-title h3{margin:0;color:var(--navy);}
-  .tb-lines{display:flex;flex-direction:column;gap:8px;}
-  .tb-line-row{display:flex;align-items:center;gap:8px;}
-  .tb-line-no{min-width:26px;text-align:right;color:var(--muted);font-weight:700;font-size:13px;}
-  .tb-line-input{flex:1;padding:10px 12px;border:1px solid var(--line);border-radius:10px;font-size:14px;font-family:'Hind Siliguri',sans-serif;background:var(--card);color:var(--text);}
-  .tb-line-input:focus{outline:2px solid var(--amber);}
-  .tb-toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px;}
-  .tb-savebar{font-size:13px;color:var(--ok);display:none;margin-left:6px;}
+  /* ================= TOUR BILL (Company Original Format) ================= */
+  .tb-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  .tb-table{border-collapse:collapse;width:100%;min-width:1180px;background:#fff;color:#111;table-layout:fixed;}
+  .tb-table th,.tb-table td{border:1px solid #333;padding:4px;font-size:12px;text-align:center !important;vertical-align:middle;white-space:normal !important;word-wrap:break-word;overflow-wrap:break-word;}
+  /* ==== Tour Bill: exact 14-column widths (screen/edit view) ==== */
+  .tb-col-1{width:2.00in;}
+  .tb-col-2{width:1.50in;}
+  .tb-col-3{width:1.70in;}
+  .tb-col-4{width:1.70in;}
+  .tb-col-5{width:0.90in;}
+  /* Daily Tour Bill — keep the original CS-02 paper proportions and wording */
+  .tb-paper{background:#fff;color:#111;padding:0;overflow:visible;}
+  .tb-head-title{position:relative;text-align:center;margin:0 0 8px;min-height:54px;}
+  .tb-head-title h3{margin:0;color:#173d7a;font-family:'Noto Serif Bengali','Noto Sans Bengali','Hind Siliguri',sans-serif;font-size:21px;font-weight:700;line-height:1.45;}
+  .tb-head-title>div{font-family:'Noto Serif Bengali','Noto Sans Bengali','Hind Siliguri',sans-serif;color:#111;font-size:16px;line-height:1.35;}
+  .tb-head-title .tb-code{position:absolute;right:1%;top:0;float:none;border:1.5px solid #111;border-radius:50%;width:94px;height:42px;display:flex;align-items:center;justify-content:center;padding:0;font-size:19px;font-weight:700;color:#6d329a;background:#fff;}
+  .tb-wrap{width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  .tb-table{border-collapse:collapse;border-spacing:0;width:100%;min-width:980px;table-layout:fixed;background:#fff;}
+  .tb-col-1{width:15.45%;}.tb-col-2{width:8.31%;}.tb-col-3{width:9.79%;}.tb-col-4{width:9.42%;}.tb-col-5{width:5.52%;}
+  .tb-col-6{width:7.72%;}.tb-col-7{width:7.72%;}.tb-col-8{width:4.93%;}.tb-col-9{width:5.08%;}.tb-col-10{width:4.86%;}
+  .tb-col-11{width:5.52%;}.tb-col-12{width:5.00%;}.tb-col-13{width:6.11%;}.tb-col-14{width:4.56%;}
+  .tb-table th,.tb-table td{border:1px solid #111;background:#fff;color:#111;text-align:center;vertical-align:middle;box-sizing:border-box;}
+  .tb-table th{font-family:'Noto Serif Bengali','Noto Sans Bengali','Hind Siliguri',sans-serif;font-size:13px;font-weight:700;line-height:1.25;padding:4px 2px;height:42px;}
+  .tb-table td{height:27px;padding:0;}
+  .tb-table td input,.tb-table td textarea{display:block;width:100%;height:27px;box-sizing:border-box;border:0;outline:0;background:transparent;color:#111;font-family:'Noto Sans Bengali','Hind Siliguri',Arial,sans-serif;font-size:12px;text-align:center;padding:2px 3px;border-radius:0;resize:none;}
+  .tb-table td textarea{text-align:left;overflow:hidden;line-height:1.15;}
+  .tb-table td input:focus,.tb-table td textarea:focus{background:#fffdf5;box-shadow:inset 0 0 0 1px #999;}
+  .tb-table tr.tb-row-filled td{background:#fff;}
+  .tb-table tr.tb-row-filled td:first-child{box-shadow:none;}
+  .tb-table tfoot{display:none;}
+  .tb-save-area{display:flex;align-items:center;gap:10px;margin-top:12px;flex-wrap:wrap;}
+  .tb-save-area .btn{min-height:42px;padding:8px 22px;}
+  .tb-savebar{font-size:13px;color:var(--ok);display:none;}
+  .tb-sig{margin-top:22px;font-family:'Noto Serif Bengali','Noto Sans Bengali','Hind Siliguri',sans-serif;font-size:14px;}
+  .tb-sig input{border:0;border-bottom:1px solid #111;background:transparent;text-align:center;font-size:13px;padding:2px 4px;width:220px;font-family:inherit;outline:0;}
+  .tb-admin-paper{background:#fff;color:#111;}
+  @media(max-width:600px){.tb-paper{overflow:hidden}.tb-head-title{min-width:980px}.tb-table{min-width:980px}.tb-save-area{padding-left:2px}.tb-sig{padding-left:2px}}
+  body.printing-tourbill *{visibility:hidden !important;}
+  body.printing-tourbill #tourBillPrintArea,body.printing-tourbill #tourBillPrintArea *{visibility:visible !important;}
+  body.printing-tourbill #tourBillPrintArea{position:absolute;left:0;top:0;width:100%;padding:10px;}
+  @media print{
+    body.printing-tourbill .tb-save-area{display:none !important;}
+    body.printing-tourbill .tb-table tr.tb-row-filled td{background:#fff !important;box-shadow:none !important;}
+    body.printing-tourbill .tb-table{min-width:0;width:100%;table-layout:fixed;}
+    body.printing-tourbill .tb-table th,body.printing-tourbill .tb-table td{font-size:9px;padding:2px;}
+    /* Same 14-column ratio as the screen widths (2/1.5/1.7/1.7/0.9/1/1/0.9/0.9/1.2/1.2/1.2/1.2/1.2in),
+       expressed as % of page width so every column still fits on one printed page. */
+    body.printing-tourbill .tb-col-1{width:11.3636%;}
+    body.printing-tourbill .tb-col-2{width:8.5227%;}
+    body.printing-tourbill .tb-col-3{width:9.6591%;}
+    body.printing-tourbill .tb-col-4{width:9.6591%;}
+    body.printing-tourbill .tb-col-5{width:5.1136%;}
+    body.printing-tourbill .tb-col-6{width:5.6818%;}
+    body.printing-tourbill .tb-col-7{width:5.6818%;}
+    body.printing-tourbill .tb-col-8{width:5.1136%;}
+    body.printing-tourbill .tb-col-9{width:5.1136%;}
+    body.printing-tourbill .tb-col-10{width:6.8182%;}
+    body.printing-tourbill .tb-col-11{width:6.8182%;}
+    body.printing-tourbill .tb-col-12{width:6.8182%;}
+    body.printing-tourbill .tb-col-13{width:6.8182%;}
+    body.printing-tourbill .tb-col-14{width:6.8182%;}
+    @page{size:landscape;margin:8mm;}
+  }
   *{box-sizing:border-box;}
   body{
     margin:0;
@@ -176,6 +229,21 @@ window.APP_VERSION = '2026-08-11.1';
   /* ---------- Layout shells ---------- */
   #app{min-height:100vh;position:relative;width:100%;max-width:100%;}
   .center-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;}
+
+  /* ---------- Data Loading Screen (initial DB/Sheet load, before splash) ---------- */
+  .dl-screen{position:fixed;inset:0;background:linear-gradient(135deg,var(--navy),var(--navy-2));display:flex;align-items:center;justify-content:center;z-index:9999;padding:24px;padding-left:max(24px, env(safe-area-inset-left));padding-right:max(24px, env(safe-area-inset-right));text-align:center;}
+  .dl-loading-text{color:#fff;font-family:'Hind Siliguri',sans-serif;font-size:18px;font-weight:600;letter-spacing:.2px;margin-bottom:16px;}
+  .dl-dots{display:flex;align-items:center;justify-content:center;gap:6px;}
+  .dl-dots span{width:8px;height:8px;border-radius:50%;background:var(--amber);opacity:.3;animation:dlDotPulse 1.2s ease-in-out infinite;}
+  .dl-dots span:nth-child(2){animation-delay:.15s;}
+  .dl-dots span:nth-child(3){animation-delay:.3s;}
+  .dl-dots span:nth-child(4){animation-delay:.45s;}
+  .dl-dots span:nth-child(5){animation-delay:.6s;}
+  @keyframes dlDotPulse{0%,80%,100%{opacity:.25;transform:scale(.8);}40%{opacity:1;transform:scale(1.2);}}
+  @media(max-width:600px){
+    .dl-loading-text{font-size:16px;margin-bottom:14px;}
+    .dl-dots span{width:7px;height:7px;}
+  }
 
   .gate{width:100%;max-width:380px;background:var(--card);border-radius:18px;box-shadow:0 20px 50px -20px rgba(18,35,61,.35);overflow:hidden;border:1px solid var(--line);}
   .gate-top{background:linear-gradient(135deg,var(--navy),var(--navy-2));padding:34px 28px 26px;position:relative;}
@@ -680,6 +748,25 @@ window.APP_VERSION = '2026-08-11.1';
     .center-screen{padding-bottom:calc(32px + 0.04in);}
     .modal{padding-bottom:calc(24px + 0.04in);}
   }
+
+  .tb-mechanic-meta{font-size:12px;color:var(--muted);margin:4px 0 8px;padding:7px 9px;background:#f7f9fb;border:1px solid var(--line);border-radius:8px;}
+  .tb-row-no{font-size:10px;font-weight:700;color:var(--muted);margin-bottom:2px;text-align:left;}
+  .tb-action-cell{width:28px;min-width:28px;}
+  .tb-remove-row{width:24px;height:24px;border:1px solid #e2a2a2;border-radius:50%;background:#fff;color:#c23b3b;font-size:18px;line-height:20px;cursor:pointer;padding:0;}
+  .tb-remove-row:hover{background:#fff0f0;}
+  .tb-admin-tools{display:grid;grid-template-columns:1fr 180px;gap:10px;margin-bottom:14px;}
+  .tb-admin-tools input,.tb-admin-tools select{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:9px;box-sizing:border-box;background:#fff;color:var(--text);font:inherit;}
+  .tb-admin-table-wrap{overflow:auto;}
+  .tb-admin-table{width:100%;border-collapse:collapse;min-width:900px;font-size:13px;}
+  .tb-admin-table th,.tb-admin-table td{padding:10px 8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:middle;}
+  .tb-admin-table th{background:#f4f6f8;white-space:nowrap;}
+  .tb-status{display:inline-block;padding:4px 9px;border-radius:999px;font-size:11px;font-weight:700;}
+  .tb-status-pending{background:#fff4d6;color:#8a5a00}.tb-status-approved{background:#e4f6eb;color:#176b3b}.tb-status-rejected{background:#fde7e7;color:#a22}.tb-status-paid{background:#e4efff;color:#1857a4}
+  .tb-status-select{padding:5px 7px;border:1px solid var(--line);border-radius:7px;font:inherit;background:#fff;}
+  .tb-admin-view{max-width:1200px;}
+  .tb-admin-view .tb-wrap{max-height:60vh;overflow:auto;}
+  @media(max-width:768px){.tb-admin-tools{grid-template-columns:1fr}.tb-admin-table{min-width:0}.tb-admin-table thead{display:none}.tb-admin-table,.tb-admin-table tbody,.tb-admin-table tr,.tb-admin-table td{display:block;width:100%;box-sizing:border-box}.tb-admin-table tr{margin-bottom:12px;border:1px solid var(--line);border-radius:10px;padding:8px}.tb-admin-table td{border:0;border-bottom:1px solid #eef1f4;padding:8px 4px;display:flex;justify-content:space-between;gap:10px}.tb-admin-table td:last-child{border-bottom:0}.tb-admin-table td::before{content:attr(data-label);font-weight:700;color:var(--muted);}.tb-table{min-width:1180px}.tb-toolbar{position:sticky;top:0;z-index:3;background:var(--card);padding:5px 0}.tb-mechanic-meta{font-size:11px;}}
+  @media print{.tb-toolbar,.tb-remove-row,.tb-action-cell{display:none!important}.tb-table{min-width:0;width:100%}.tb-table th,.tb-table td{font-size:9px;padding:2px}.tb-mechanic-meta{background:#fff;border:0;padding:0}.tb-table tr.tb-row-filled td{background:#fff!important;box-shadow:none!important}}
 </style>
 </head>
 <body>
@@ -1123,16 +1210,19 @@ function phoneRegistryRef(phone){ return fbDb.ref('phoneRegistry/' + digitsOnly(
 // একটি ফোন নম্বর atomically claim করার চেষ্টা করে — শুধুমাত্র তখনই সফল হয় যখন নম্বরটি আগে থেকে কারো claim করা নেই।
 // রিটার্ন করে true/false — সার্ভার নিজেই (Firebase) নিশ্চিত করে যে দুইটা concurrent request একসাথে জিতে যেতে পারবে না।
 async function claimPhoneNumber(phone, meta){
-  try{
-    const result = await phoneRegistryRef(phone).transaction(current => {
-      if(current !== null) return; // ইতিমধ্যে claim করা আছে — transaction abort (undefined রিটার্ন)
-      return Object.assign({claimedAt: Date.now()}, meta || {});
-    });
-    return !!(result && result.committed);
-  }catch(err){
-    console.error('Phone claim failed (Firebase transaction):', err);
-    return false;
-  }
+  // গুরুত্বপূর্ণ ফিক্স: আগে এখানে try/catch দিয়ে যেকোনো error গিলে ফেলে false রিটার্ন করা হতো —
+  // কিন্তু "নম্বরটা আগেই claim করা আছে" (transaction নিজেই abort করে, কোনো error থ্রো করে না) আর
+  // "permission-denied/network error" (transaction throw করে, যেমন — নতুন ইউজার তখনও Firebase Auth-এ
+  // sign-in করেনি) — এই দুইটা সম্পূর্ণ ভিন্ন কেস। দুটোকেই false ধরায়, Firebase rules-এর কারণে write
+  // ব্যর্থ হলে ব্যবহারকারীকে ভুলভাবে "এই মোবাইল নম্বর দিয়ে আগেই রেজিস্ট্রেশন করা আছে" দেখানো হতো,
+  // যদিও নম্বরটা আসলে ফাঁকা ছিল। এখন সত্যিকারের error caller-এর কাছে throw হয়ে যাবে (caller-এর
+  // try/catch সেটা "সার্ভারে সংযোগে সমস্যা হয়েছে" হিসেবে দেখায়), আর false তখনই রিটার্ন হবে যখন
+  // transaction সফলভাবে চলেছে কিন্তু নম্বরটা সত্যিই আগে থেকে claim করা।
+  const result = await phoneRegistryRef(phone).transaction(current => {
+    if(current !== null) return; // ইতিমধ্যে claim করা আছে — transaction abort (undefined রিটার্ন)
+    return Object.assign({claimedAt: Date.now()}, meta || {});
+  });
+  return !!(result && result.committed);
 }
 // Account Delete/বাতিল হলে লক রিলিজ করে নম্বরটি আবার Free করে দেয়।
 async function releasePhoneNumber(phone){
@@ -1141,8 +1231,8 @@ async function releasePhoneNumber(phone){
 // পুরনো (আগে থেকে থাকা) ইউজার/Parts Engineer-দের নম্বরগুলো ব্যাকফিল করে রেজিস্ট্রিতে বসিয়ে দেয় (fire-and-forget, no-op যদি আগে থেকেই থাকে)।
 function backfillPhoneRegistry(){
   try{
-    (DB.users||[]).forEach(u=>{ if(u && u.phone) claimPhoneNumber(u.phone, {role:u.role||'dealer', name:u.name||''}); });
-    (DB.partsEngineers||[]).forEach(p=>{ if(p && p.phone) claimPhoneNumber(p.phone, {role:'partsEngineer', name:p.name||''}); });
+    (DB.users||[]).forEach(u=>{ if(u && u.phone) claimPhoneNumber(u.phone, {role:u.role||'dealer', name:u.name||''}).catch(err=>console.error('Phone registry backfill (user) failed:', err)); });
+    (DB.partsEngineers||[]).forEach(p=>{ if(p && p.phone) claimPhoneNumber(p.phone, {role:'partsEngineer', name:p.name||''}).catch(err=>console.error('Phone registry backfill (PE) failed:', err)); });
   }catch(err){ console.error('Phone registry backfill failed:', err); }
 }
 function highlightMatch(text, digitsQuery){
@@ -1493,16 +1583,16 @@ function adminSidebarHTML(activeKey){
     ['users','👥','ইউজার ম্যানেজমেন্ট', "adminTab='users';go('adminDashboard')"],
     ['history','📅','আপডেট হিস্টরি', "adminTab='history';go('adminDashboard')"],
     ['requisitions','📝','রিকুইজিশন হিস্টরি', "adminTab='requisitions';go('adminDashboard')"],
-    ['tourBills','📋','Tour Bill Receive', "adminTab='tourBills';go('adminDashboard')"],
     ['loginActivity','📶','লগইন অ্যাক্টিভিটি', "adminTab='loginActivity';go('adminDashboard')"],
     ['vehicleDb','🚗','Vehicle Model DB', "adminTab='vehicleDb';go('adminDashboard')"],
     ['partsEngineers','🧑‍🔧','Parts Engineer', "adminTab='partsEngineers';go('adminDashboard')"],
-    ['settings','🔧','সেটিংস', "adminTab='settings';go('adminDashboard')"]
+    ['settings','🔧','সেটিংস', "adminTab='settings';go('adminDashboard')"],
+    ['tourBills','🧾','Tour Bill Receive Report', "adminTab='tourBills';go('adminDashboard')"]
   ];
   return `<div class="admin-sidebar">
     <div class="admin-sidebar-logo"><img src="${METAL_LOGO_IMG}" alt="BIZNIVO"></div>
     <div class="admin-sidebar-nav">${items.map(([key,icon,label,onclick])=>
-      `<button type="button" class="${activeKey===key?'active':''}" onclick="${onclick}">${icon} ${label}${key==='tourBills' && tourBillPendingCount>0 ? ` <span style="background:#e11d48;color:#fff;border-radius:999px;padding:1px 8px;font-size:11px;margin-left:4px;">${tourBillPendingCount}</span>` : ''}</button>`
+      `<button type="button" class="${activeKey===key?'active':''}" onclick="${onclick}">${icon} ${label}</button>`
     ).join('')}</div>
   </div>`;
 }
@@ -1520,7 +1610,6 @@ function showAdminMoreMenu(){
     <div class="modal-actions" style="flex-direction:column;align-items:stretch;gap:8px;">
       <button class="btn btn-ghost btn-block" onclick="closeModal();adminTab='dashboard';go('adminDashboard')">📊 ড্যাশবোর্ড</button>
       <button class="btn btn-ghost btn-block" onclick="closeModal();adminTab='requisitions';go('adminDashboard')">📝 রিকুইজিশন হিস্টরি</button>
-      <button class="btn btn-ghost btn-block" onclick="closeModal();adminTab='tourBills';go('adminDashboard')">📋 Tour Bill Receive${tourBillPendingCount>0?` (${tourBillPendingCount})`:''}</button>
       <button class="btn btn-ghost btn-block" onclick="closeModal();adminTab='loginActivity';go('adminDashboard')">📶 লগইন অ্যাক্টিভিটি</button>
       <button class="btn btn-ghost btn-block" onclick="closeModal();adminTab='vehicleDb';go('adminDashboard')">🚗 Vehicle Model Database</button>
       <button class="btn btn-ghost btn-block" onclick="closeModal();adminTab='partsEngineers';go('adminDashboard')">🧑‍🔧 Parts Engineer</button>
@@ -2248,260 +2337,356 @@ function mechanicProfileHTML(){
     <div class="field"><label>Role</label><input type="text" value="Mechanic" readonly style="background:#f2f4f7;"></div>
   </div>`;
 }
-/* ================= TOUR BILL (New Dynamic Single-Line System) =================
-   ব্যবহারকারী একটির পর একটি লাইন লিখে যান — প্রথমে শুধু ১টি ফাঁকা ইনপুট থাকে, একটি
-   লাইন সম্পূর্ণ হলে (Enter চাপলে অথবা টেক্সট লিখে অন্য জায়গায় ক্লিক করলে) তার নিচে
-   স্বয়ংক্রিয়ভাবে নতুন একটি ফাঁকা লাইন তৈরি হয়। SAVE করলে পুরো Tour Bill একটি রেকর্ড
-   হিসেবে Firebase Realtime Database-এর /tourBills নোডে সংরক্ষিত হয় এবং সরাসরি
-   Admin-এর Tour Bill Receive তালিকায় (status: pending) চলে যায়। */
-let tbDraftLines = [''];      // মেকানিকের বর্তমানে লেখা (এখনো Save হয়নি এমন) লাইনগুলো
-let tbSaving = false;          // duplicate submit আটকানোর জন্য
-let tbHistoryCache = null;     // এই মেকানিকের আগের জমাকৃত Tour Bill-এর তালিকা (cache)
-let tbHistoryLoadedFor = null; // কোন user id-এর জন্য history load করা হয়েছে
+/* ================= TOUR BILL (Company Original CS-02 Format) =================
+   Digital Tour Bill using the original CS-02 structure.
+   Data is stored in Firestore collection: TourBills.
+   Mechanic entry rows are dynamic: one blank row starts, and a new blank row
+   appears automatically when the last row receives input.
+*/
+const TOUR_BILL_COLLECTION = 'TourBills';
+let tourBillDbPromise = null;
+let tbRows = [tbBlankRow(1)];
+let tbSaveBusy = false;
+let tbDraftId = crypto.randomUUID ? crypto.randomUUID() : ('tb-' + Date.now() + '-' + Math.random().toString(36).slice(2));
 
-function tbStatusLabel(s){
-  return s==='reviewed' ? '✅ Reviewed' : (s==='received' ? '📥 Received' : '⏳ Pending');
-}
-function tbFmtDateTime(ts){
-  if(!ts) return '-';
-  try{ return new Date(ts).toLocaleString('bn-BD'); }catch(e){ return new Date(ts).toLocaleString(); }
+function tbBlankRow(index){
+  return {rowNo:index, col1:'', col2:'', from:'', to:'', medium:'', kmStart:'', kmEnd:'', kmTotal:'', taka:'', foodMorning:'', foodNoon:'', foodNight:'', stay:'', total:''};
 }
 
-/* ---- Mechanic: নতুন Tour Bill লেখার ফর্ম + নিজের জমাকৃত Tour Bill-এর তালিকা ---- */
-function mechanicTourBillHTML(){
+const TB_FIELD_KEYS = ['col1','col2','from','to','medium','kmStart','kmEnd','kmTotal','taka','foodMorning','foodNoon','foodNight','stay','total'];
+
+function tbRowIsFilled(r){
+  return TB_FIELD_KEYS.some(k => String(r && r[k] || '').trim() !== '');
+}
+
+function tbNormalizeRows(rows){
+  const source = Array.isArray(rows) ? rows : [];
+  const cleaned = source.filter(tbRowIsFilled).map((r,i)=>({
+    ...tbBlankRow(i+1),
+    ...r,
+    rowNo:i+1
+  }));
+  return cleaned.length ? cleaned : [tbBlankRow(1)];
+}
+
+async function getTourBillDb(){
+  if(tourBillDbPromise) return tourBillDbPromise;
+  tourBillDbPromise = import('https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js')
+    .then(async ({initializeApp, getApps, getApp})=>{
+      const {getFirestore} = await import('https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js');
+      const options = firebase.app().options;
+      let secondary;
+      try{
+        secondary = getApp('tourBillFirestore');
+      }catch(e){
+        secondary = initializeApp(options, 'tourBillFirestore');
+      }
+      return getFirestore(secondary);
+    });
+  return tourBillDbPromise;
+}
+
+function tbCurrentUser(){
   const u = currentMechanic();
-  if(!u) return '';
-  return `<div class="card" id="tourBillWriteArea">
-    <div class="tb-head-title"><h3>🧾 Tour Bill</h3><div style="color:var(--muted);font-size:13px">প্রতিটি লাইনে আপনার প্রোগ্রাম/কাস্টমার/খরচের বিবরণ লিখুন। একটি লাইন লেখা শেষ হলে (Enter চাপুন) নিচে স্বয়ংক্রিয়ভাবে নতুন লাইন আসবে।</div></div>
-    <div class="tb-lines" id="tbLines">
-      ${tbDraftLines.map((v,i)=>tbLineRowHTML(v,i)).join('')}
-    </div>
-    <div class="err" id="tbErr" style="display:none;color:#e11d48;margin-top:10px;font-size:13px;"></div>
-    <div class="tb-toolbar" style="margin-top:16px;">
-      <button class="btn btn-primary" id="tbSaveBtn">💾 SAVE</button>
-      <span class="tb-savebar" id="tbSaveOk">✅ সফলভাবে জমা হয়েছে</span>
-    </div>
-  </div>
-  <div class="card" style="margin-top:16px;">
-    <div class="card-head"><h3 style="margin:0">📜 আমার জমাকৃত Tour Bill সমূহ</h3><button class="btn btn-ghost btn-sm" id="tbRefreshHistory">🔄</button></div>
-    <div id="tbHistoryBox">${tbHistoryHTML()}</div>
-  </div>`;
-}
-function tbLineRowHTML(v, i){
-  return `<div class="tb-line-row" data-idx="${i}">
-    <span class="tb-line-no">${i+1}.</span>
-    <input type="text" class="tb-line-input" data-idx="${i}" value="${escHtml(v||'')}" placeholder="[ এখানে লিখুন... ]">
-  </div>`;
-}
-function tbHistoryHTML(){
-  const list = tbHistoryCache;
-  if(list === null) return '<div class="empty">লোড হচ্ছে...</div>';
-  if(!list.length) return '<div class="empty">এখনো কোনো Tour Bill জমা দেওয়া হয়নি।</div>';
-  return `<div style="overflow:auto"><table class="users-table">
-    <thead><tr><th>জমার তারিখ ও সময়</th><th>লাইন সংখ্যা</th><th>স্ট্যাটাস</th></tr></thead>
-    <tbody>${list.map(x=>`<tr>
-      <td data-label="তারিখ">${tbFmtDateTime(x.createdAt)}</td>
-      <td data-label="লাইন">${(x.lines||[]).length}</td>
-      <td data-label="স্ট্যাটাস">${tbStatusLabel(x.status)}</td>
-    </tr>`).join('')}</tbody></table></div>`;
+  if(!u || DB.session?.role !== 'mechanic') return null;
+  return u;
 }
 
-/* ---- Mechanic: dynamic line-writing behaviour ---- */
-function wireTbLineInputs(){
-  const box = document.getElementById('tbLines');
-  if(!box) return;
-  box.querySelectorAll('.tb-line-input').forEach(inp=>{
-    inp.oninput = (e)=>{ tbDraftLines[Number(e.target.dataset.idx)] = e.target.value; };
-    inp.onkeydown = (e)=>{
-      if(e.key === 'Enter'){ e.preventDefault(); tbCompleteLine(Number(e.target.dataset.idx)); }
-    };
-    inp.onblur = (e)=>{
-      tbDraftLines[Number(e.target.dataset.idx)] = e.target.value;
-      tbCompleteLine(Number(e.target.dataset.idx));
-    };
-  });
-}
-// একটি লাইন লেখা "সম্পূর্ণ" হলে (Enter/blur) — যদি সেটাই শেষ লাইন হয় এবং খালি না হয়,
-// তার নিচে ঠিক একটি নতুন ফাঁকা ইনপুট-লাইন তৈরি করে (একসাথে একাধিক ফাঁকা লাইন দেখানো হয় না)।
-function tbCompleteLine(i){
-  const box = document.getElementById('tbLines');
-  if(!box) return;
-  const inp = box.querySelector(`.tb-line-input[data-idx="${i}"]`);
-  const val = inp ? inp.value : (tbDraftLines[i]||'');
-  tbDraftLines[i] = val;
-  if(!val.trim()) return;
-  if(i === tbDraftLines.length - 1){
-    tbDraftLines.push('');
-    const newIdx = tbDraftLines.length - 1;
-    box.appendChild(el(tbLineRowHTML('', newIdx)));
-    wireTbLineInputs();
-    const newInp = box.querySelector(`.tb-line-input[data-idx="${newIdx}"]`);
-    if(newInp) newInp.focus();
-  }
+function tbCollectRows(){
+  const body = document.getElementById('tbBody');
+  if(!body) return [];
+  return Array.from(body.querySelectorAll('tr[data-row-index]')).map((tr,i)=>{
+    const row = tbBlankRow(i+1);
+    tr.querySelectorAll('[data-field]').forEach(input=>{ row[input.dataset.field] = String(input.value || '').trim(); });
+    return row;
+  }).filter(tbRowIsFilled);
 }
 
-/* ---- Mechanic: SAVE — Firebase-এ একটি Tour Bill রেকর্ড হিসেবে জমা দেয় ---- */
-async function tbSubmit(){
-  const u = currentMechanic();
-  if(!u || tbSaving) return;
-  const box = document.getElementById('tbLines');
-  if(box) box.querySelectorAll('.tb-line-input').forEach(inp=>{ tbDraftLines[Number(inp.dataset.idx)] = inp.value; });
-  const lines = tbDraftLines.map(v=>String(v||'').trim()).filter(v=>v.length>0); // খালি লাইন বাদ
-  const errBox = document.getElementById('tbErr');
-  if(!lines.length){
-    if(errBox){ errBox.style.display='block'; errBox.textContent = 'অন্তত একটি লাইন লিখুন — খালি Tour Bill জমা দেওয়া যাবে না।'; }
+function tbAddBlankRowIfNeeded(){
+  const body = document.getElementById('tbBody');
+  if(!body) return;
+  const rows = Array.from(body.querySelectorAll('tr[data-row-index]'));
+  if(!rows.length){
+    body.insertAdjacentHTML('beforeend', tbRowHTML(tbBlankRow(1)));
     return;
   }
-  if(errBox) errBox.style.display = 'none';
-  tbSaving = true;
-  const saveBtn = document.getElementById('tbSaveBtn');
-  if(saveBtn){ saveBtn.disabled = true; saveBtn.textContent = 'জমা হচ্ছে...'; }
-  try{
-    const ref = fbDb.ref('tourBills').push();
-    const now = firebase.database.ServerValue.TIMESTAMP;
-    const record = {
-      tourBillId: ref.key,
-      submittedBy: u.id,
-      submittedByName: u.name || '',
-      submittedByPhone: u.phone || '',
-      lines: lines,
-      createdAt: now,
-      updatedAt: now,
-      status: 'pending',
-      receivedAt: null, receivedBy: null,
-      reviewedAt: null, reviewedBy: null
-    };
-    await ref.set(record);
-    tbDraftLines = ['']; // পরবর্তী নতুন Tour Bill-এর জন্য ফাঁকা ফর্ম
-    tbHistoryLoadedFor = null; // পরের বার history আবার লোড হবে
-    go('mechanicDashboard');
-    const ok = document.getElementById('tbSaveOk');
-    if(ok){ ok.style.display = 'inline'; setTimeout(()=>{ if(ok) ok.style.display='none'; }, 3000); }
-  }catch(err){
-    console.error('Tour Bill save failed:', err);
-    const eb = document.getElementById('tbErr');
-    if(eb){ eb.style.display = 'block'; eb.textContent = 'সেভ করা যায়নি — ইন্টারনেট/Firebase সংযোগ চেক করে আবার চেষ্টা করুন। আপনার লেখা তথ্য হারায়নি।'; }
-  }finally{
-    tbSaving = false;
-    const btn = document.getElementById('tbSaveBtn');
-    if(btn){ btn.disabled = false; btn.textContent = '💾 SAVE'; }
+  const last = rows[rows.length-1];
+  const hasData = Array.from(last.querySelectorAll('[data-field]')).some(input=>String(input.value||'').trim()!=='');
+  if(hasData){
+    body.insertAdjacentHTML('beforeend', tbRowHTML(tbBlankRow(rows.length+1)));
   }
-}
-async function tbLoadHistory(force){
-  const u = currentMechanic();
-  if(!u) return;
-  if(!force && tbHistoryLoadedFor === u.id) return;
-  try{
-    const snap = await fbDb.ref('tourBills').orderByChild('submittedBy').equalTo(u.id).once('value');
-    const list = [];
-    snap.forEach(ch=> list.push(ch.val()));
-    list.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
-    tbHistoryCache = list;
-    tbHistoryLoadedFor = u.id;
-  }catch(err){
-    console.error('Tour Bill history load failed:', err);
-    tbHistoryCache = tbHistoryCache || [];
-  }
-  const box = document.getElementById('tbHistoryBox');
-  if(box) box.innerHTML = tbHistoryHTML();
-}
-function bindTourBillEvents(){
-  wireTbLineInputs();
-  const saveBtn = document.getElementById('tbSaveBtn');
-  if(saveBtn) saveBtn.onclick = ()=> tbSubmit();
-  const refreshBtn = document.getElementById('tbRefreshHistory');
-  if(refreshBtn) refreshBtn.onclick = ()=> tbLoadHistory(true);
-  tbLoadHistory(false);
 }
 
-/* ================= TOUR BILL — ADMIN (Tour Bill Receiver) SIDE ================= */
-let adminTourBills = [];              // Admin-এর দেখা সব Tour Bill-এর cache
-let tourBillPendingCount = 0;         // Pending সংখ্যা (Dashboard আইকনে badge দেখাতে)
-let _tbAdminListenerAttached = false;
-// Admin লগইন করার পর একবার attach হয় — pending count রিয়েল-টাইমে আপডেট হতে থাকে
-function attachTourBillAdminListener(){
-  if(_tbAdminListenerAttached) return;
-  _tbAdminListenerAttached = true;
+function tbUpdateRowNumbers(){
+  const body = document.getElementById('tbBody');
+  if(!body) return;
+  Array.from(body.querySelectorAll('tr[data-row-index]')).forEach((tr,i)=>{
+    tr.dataset.rowIndex = String(i+1);
+    const n = tr.querySelector('.tb-row-no');
+    if(n) n.textContent = String(i+1);
+  });
+}
+
+function tbRemoveRow(button){
+  const tr = button.closest('tr[data-row-index]');
+  if(!tr) return;
+  const body = document.getElementById('tbBody');
+  const rows = body ? body.querySelectorAll('tr[data-row-index]') : [];
+  if(rows.length === 1){
+    tr.querySelectorAll('[data-field]').forEach(input=>input.value='');
+  }else{
+    tr.remove();
+  }
+  tbUpdateRowNumbers();
+  tbAddBlankRowIfNeeded();
+  tbUpdateTotalSum();
+}
+
+function tbRowHTML(r, readOnly=false){
+  const dis = readOnly ? ' readonly' : '';
+  return `<tr data-row-index="${Number(r.rowNo)||1}">
+    <td><textarea data-field="col1" rows="1"${dis}>${escHtml(r.col1||'')}</textarea></td>
+    <td><input type="text" data-field="col2" value="${escHtml(r.col2||'')}"${dis}></td>
+    <td><input type="text" data-field="from" value="${escHtml(r.from||'')}"${dis}></td>
+    <td><input type="text" data-field="to" value="${escHtml(r.to||'')}"${dis}></td>
+    <td><input type="text" data-field="medium" value="${escHtml(r.medium||'')}"${dis}></td>
+    <td><input type="text" data-field="kmStart" value="${escHtml(r.kmStart||'')}"${dis}></td>
+    <td><input type="text" data-field="kmEnd" value="${escHtml(r.kmEnd||'')}"${dis}></td>
+    <td><input type="text" data-field="kmTotal" value="${escHtml(r.kmTotal||'')}"${dis}></td>
+    <td><input type="text" data-field="taka" value="${escHtml(r.taka||'')}"${dis}></td>
+    <td><input type="text" data-field="foodMorning" value="${escHtml(r.foodMorning||'')}"${dis}></td>
+    <td><input type="text" data-field="foodNoon" value="${escHtml(r.foodNoon||'')}"${dis}></td>
+    <td><input type="text" data-field="foodNight" value="${escHtml(r.foodNight||'')}"${dis}></td>
+    <td><input type="text" data-field="stay" value="${escHtml(r.stay||'')}"${dis}></td>
+    <td><input type="text" data-field="total" value="${escHtml(r.total||'')}"${dis}></td>
+  </tr>`;
+}
+
+function tbTableHTML(rows, readOnly=false){
+  const safeRows = (rows && rows.length) ? rows : [tbBlankRow(1)];
+  return `<div class="tb-wrap">
+    <table class="tb-table ${readOnly?'tb-readonly':''}">
+      <colgroup>
+        <col class="tb-col-1"><col class="tb-col-2"><col class="tb-col-3"><col class="tb-col-4"><col class="tb-col-5">
+        <col class="tb-col-6"><col class="tb-col-7"><col class="tb-col-8"><col class="tb-col-9"><col class="tb-col-10">
+        <col class="tb-col-11"><col class="tb-col-12"><col class="tb-col-13"><col class="tb-col-14">
+      </colgroup>
+      <thead>
+        <tr>
+          <th rowspan="2">তারিখ, প্রোগ্রাম/কাস্টমারের নাম,<br>মোবাইল নম্বর, যে প্রোগ্রাম/কাজ<br>করা হয়েছে তা লিখুন</th>
+          <th rowspan="2">ফ্রি সার্ভিস হলে FS<br>এবং পেইড সার্ভিস হলে OFS লিখে<br>ইনকাম লিখুন</th>
+          <th colspan="3">যাতায়াতের বিবরণ</th>
+          <th colspan="3">মোটর সাইকেল / বাইকের জন্য প্রযোজ্য</th>
+          <th rowspan="2">টাকা</th>
+          <th colspan="3">খাবারের বিবরণ<br>(খাবারের সময় উল্লেখ করুন)</th>
+          <th rowspan="2">রাত্রিযাপন<br>(যদি থাকে)</th>
+          <th rowspan="2">মোট<br>টাকা</th>
+        </tr>
+        <tr>
+          <th>হইতে</th><th>পর্যন্ত</th><th>মাধ্যম</th>
+          <th>শুরুর কি.মি.</th><th>শেষের কি.মি.</th><th>কি.মি.</th>
+          <th>সকাল</th><th>দুপুর</th><th>রাত</th>
+        </tr>
+      </thead>
+      <tbody id="${readOnly?'tbViewBody':'tbBody'}">
+        ${safeRows.map(r=>tbRowHTML(r,readOnly)).join('')}
+      </tbody>
+    </table>
+  </div>`;
+}
+
+function mechanicTourBillHTML(){
+  const u = tbCurrentUser();
+  if(!u) return '';
+  if(!tbRows || !tbRows.length) tbRows = [tbBlankRow(1)];
+  return `<div class="card" id="tourBillPrintArea">
+    <div class="tb-paper">
+      <div class="tb-head-title"><span class="tb-code">CS-02</span><h3>মেটাল ফার্মটেক লিমিটেড</h3><div>দৈনিক বিলের বিবরণ</div></div>
+      ${tbTableHTML(tbRows,false)}
+      <div class="tb-save-area">
+        <button class="btn btn-primary" id="tbSaveBtn">💾 Save</button>
+        <button class="btn btn-ghost" id="tbPrintBtn">🖨️ Print / PDF</button>
+        <span class="tb-savebar" id="tbSaveOk">সফলভাবে অ্যাডমিনে জমা হয়েছে</span>
+      </div>
+      <div class="tb-sig">বিল প্রস্তুতকারীর স্বাক্ষর <input type="text" id="tbSignature" value="" aria-label="বিল প্রস্তুতকারীর স্বাক্ষর"></div>
+    </div>
+  </div>`;
+}
+
+function tbUpdateTotalSum(){
+  const body = document.getElementById('tbBody');
+  const sumCell = document.getElementById('tbTotalSum');
+  if(!body || !sumCell) return;
+  let sum = 0;
+  body.querySelectorAll('input[data-field="total"]').forEach(inp=>{
+    const v = parseFloat(String(inp.value||'').replace(/[^0-9.\-]/g,''));
+    if(!Number.isNaN(v)) sum += v;
+  });
+  sumCell.textContent = sum.toLocaleString('en-US',{maximumFractionDigits:2});
+}
+
+function tbSetSavingState(saving){
+  const btn = document.getElementById('tbSaveBtn');
+  if(!btn) return;
+  btn.disabled = saving;
+  btn.textContent = saving ? 'সেভ হচ্ছে...' : '💾 সেভ করুন';
+}
+
+function tbPrintHtml(bill, title='Tour Bill'){
+  const rows = tbNormalizeRows(bill.rows||[]).filter(tbRowIsFilled);
+  if(!rows.length){ alert('প্রিন্ট করার মতো কোনো Tour Bill তথ্য নেই।'); return; }
+  const sig = bill.signature||'';
+  const tableHtml = tbTableHTML(rows,true);
+  const html = `<!doctype html><html lang="bn"><head><meta charset="utf-8"><title>${escHtml(title)}</title><style>
+    @page{size:A4 landscape;margin:7mm}*{box-sizing:border-box}body{font-family:'Noto Serif Bengali','Noto Sans Bengali','Hind Siliguri',Arial,sans-serif;color:#111;margin:0;background:#fff}.tb-head-title{position:relative;text-align:center;margin:0 0 7px;min-height:49px}.tb-head-title h3{margin:0;color:#173d7a;font-size:21px;line-height:1.35}.tb-head-title>div{font-size:15px;line-height:1.25}.tb-code{position:absolute;right:1%;top:0;border:1.5px solid #111;border-radius:50%;width:94px;height:40px;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#6d329a;background:#fff}.tb-wrap{overflow:visible}.tb-table{border-collapse:collapse;width:100%;table-layout:fixed}.tb-table th,.tb-table td{border:1px solid #111;background:#fff;color:#111;text-align:center;vertical-align:middle}.tb-table th{font-size:11.5px;font-weight:700;line-height:1.2;padding:3px 1px}.tb-table td{height:27px;padding:0}.tb-table td input,.tb-table td textarea{display:block;width:100%;height:27px;box-sizing:border-box;border:0;background:transparent;color:#111;font:inherit;font-size:10px;text-align:center;padding:2px;outline:0;resize:none}.tb-table td textarea{text-align:left}.tb-col-1{width:15.45%}.tb-col-2{width:8.31%}.tb-col-3{width:9.79%}.tb-col-4{width:9.42%}.tb-col-5{width:5.52%}.tb-col-6{width:7.72%}.tb-col-7{width:7.72%}.tb-col-8{width:4.93%}.tb-col-9{width:5.08%}.tb-col-10{width:4.86%}.tb-col-11{width:5.52%}.tb-col-12{width:5%}.tb-col-13{width:6.11%}.tb-col-14{width:4.56%}.tb-sig{margin-top:28px;font-size:13px}.tb-actions{margin-bottom:7px}.tb-actions button{padding:7px 12px}.tb-table .tb-remove-row,.tb-table tfoot{display:none}@media print{.tb-actions{display:none!important}}
+  </style></head><body>
+  <div class="tb-actions"><button onclick="window.print()">Print / Save PDF</button></div>
+  <div class="tb-head-title"><span class="tb-code">CS-02</span><h3>মেটাল ফার্মটেক লিমিটেড</h3><div>দৈনিক বিলের বিবরণ</div></div>
+  ${tableHtml}
+  <div class="tb-sig">বিল প্রস্তুতকারীর স্বাক্ষর ${escHtml(sig)}</div>
+  </body></html>`;
+  const w=window.open('','_blank','width=1400,height=900');
+  if(!w){ alert('Popup blocked. Browser popup allow করুন।'); return; }
+  w.document.open();w.document.write(html);w.document.close();
+}
+
+async function saveTourBill(){
+  if(tbSaveBusy) return;
+  const u = tbCurrentUser();
+  if(!u) return;
+  const rows = tbCollectRows();
+  if(!rows.length){ alert('কমপক্ষে একটি row-তে Tour Bill-এর তথ্য লিখুন।'); return; }
+  const signature = String(document.getElementById('tbSignature')?.value||'').trim();
+  tbSaveBusy = true; tbSetSavingState(true);
   try{
-    fbDb.ref('tourBills').orderByChild('status').equalTo('pending').on('value', snap=>{
-      const n = snap.numChildren();
-      if(n !== tourBillPendingCount){
-        tourBillPendingCount = n;
-        if(DB.session && DB.session.role === 'admin' && currentRoute === 'adminDashboard') render();
+    if(!firebase.auth().currentUser) throw new Error('AUTH_REQUIRED');
+    const db = await getTourBillDb();
+    const {collection,doc,setDoc,serverTimestamp} = await import('https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js');
+    const now = new Date();
+    const total = rows.reduce((sum,r)=>sum+(parseFloat(String(r.total||'').replace(/[^0-9.\-]/g,''))||0),0);
+    await setDoc(doc(collection(db,TOUR_BILL_COLLECTION),tbDraftId),{
+      mechanicId: String(u.id), mechanicName: String(u.name||''), mechanicPhone: String(u.phone||''), territory: String(u.territory||''),
+      rows, signature, total, status:'Pending', createdAt:serverTimestamp(), submittedAtIso:now.toISOString()
+    });
+    const ok=document.getElementById('tbSaveOk'); if(ok){ok.style.display='inline';setTimeout(()=>ok.style.display='none',3000);}
+    tbRows=[tbBlankRow(1)];
+    tbDraftId = crypto.randomUUID ? crypto.randomUUID() : ('tb-' + Date.now() + '-' + Math.random().toString(36).slice(2));
+    mechanicTab='tourbill'; go('mechanicDashboard');
+  }catch(err){
+    if(err && err.message==='AUTH_REQUIRED') alert('আপনার লগইন সেশন শেষ হয়েছে। আবার লগইন করুন।');
+    else alert('Tour Bill Save করা যায়নি। Firebase/ইন্টারনেট সংযোগ পরীক্ষা করুন।');
+  }finally{tbSaveBusy=false;tbSetSavingState(false);}
+}
+
+function bindTourBillEvents(){
+  const body=document.getElementById('tbBody');
+  if(body){
+    body.addEventListener('input',(e)=>{
+      const tr=e.target?.closest('tr[data-row-index]');
+      if(tr){
+        const filled=Array.from(tr.querySelectorAll('[data-field]')).some(x=>String(x.value||'').trim()!=='');
+        tr.classList.toggle('tb-row-filled',filled);
+        if(tr===body.lastElementChild && filled) tbAddBlankRowIfNeeded();
       }
     });
-  }catch(e){ console.warn('Tour Bill pending-count listener attach ব্যর্থ:', e); }
+  }
+  const saveBtn=document.getElementById('tbSaveBtn'); if(saveBtn) saveBtn.onclick=saveTourBill;
+  const printBtn=document.getElementById('tbPrintBtn');
+  if(printBtn) printBtn.onclick=()=>{const u=tbCurrentUser();tbPrintHtml({mechanicName:u?.name,mechanicPhone:u?.phone,territory:u?.territory,rows:tbCollectRows(),signature:document.getElementById('tbSignature')?.value||''},'Daily Tour Bill');};
 }
-async function loadAdminTourBills(){
-  try{
-    const snap = await fbDb.ref('tourBills').orderByChild('createdAt').once('value');
-    const list = [];
-    snap.forEach(ch=> list.push(ch.val()));
-    list.reverse(); // নতুনতম আগে
-    adminTourBills = list;
-  }catch(e){ console.error('Admin Tour Bill list load ব্যর্থ:', e); }
-}
-function tourBillsTabHTML(){
-  return `<div class="card-head" style="margin-bottom:10px"><h3 style="margin:0">📋 Tour Bill Receive (${adminTourBills.length})</h3><button class="btn btn-ghost btn-sm" id="tbAdminRefresh">🔄</button></div>
-  <div id="tbAdminListBox">${tourBillsListHTML()}</div>`;
-}
-function tourBillsListHTML(){
-  if(!adminTourBills.length) return '<div class="empty">এখনো কোনো Tour Bill জমা পড়েনি।</div>';
-  return `<div style="overflow:auto"><table class="users-table">
-    <thead><tr><th>কর্মীর নাম</th><th>মোবাইল নম্বর</th><th>জমার তারিখ ও সময়</th><th>স্ট্যাটাস</th><th>বিস্তারিত</th></tr></thead>
-    <tbody>${adminTourBills.map(x=>`<tr>
-      <td data-label="নাম">${escHtml(x.submittedByName||'-')}</td>
-      <td class="mono" data-label="মোবাইল">${escHtml(x.submittedByPhone||'-')}</td>
-      <td data-label="তারিখ">${tbFmtDateTime(x.createdAt)}</td>
-      <td data-label="স্ট্যাটাস"><span class="badge ${x.status==='pending'?'inactive':'active'}">${tbStatusLabel(x.status)}</span></td>
-      <td data-label="বিস্তারিত" style="text-align:center"><button class="btn btn-primary btn-sm" onclick="openTourBillDetail('${x.tourBillId}')">👁️ দেখুন</button></td>
-    </tr>`).join('')}</tbody></table></div>`;
-}
-function wireTourBillsTab(){
-  loadAdminTourBills().then(()=>{
-    const box = document.getElementById('tbAdminListBox');
-    if(box) box.innerHTML = tourBillsListHTML();
-    const head = document.querySelector('#app .card-head h3');
-    if(head) head.textContent = `📋 Tour Bill Receive (${adminTourBills.length})`;
-  });
-  const r = document.getElementById('tbAdminRefresh');
-  if(r) r.onclick = ()=> loadAdminTourBills().then(()=>{
-    const box = document.getElementById('tbAdminListBox');
-    if(box) box.innerHTML = tourBillsListHTML();
-  });
-}
-// Admin কোনো একটি Tour Bill খুললে — original submitted sequence-এ (পরিবর্তন ছাড়াই) দেখায়
-function openTourBillDetail(id){
-  const x = adminTourBills.find(t=>t.tourBillId===id);
-  if(!x) return;
-  openModal(`
-    <h3>🧾 Tour Bill — ${escHtml(x.submittedByName||'')}</h3>
-    <p class="hint" style="margin:2px 0 10px">জমার তারিখ/সময়: ${tbFmtDateTime(x.createdAt)} &nbsp;|&nbsp; মোবাইল: ${escHtml(x.submittedByPhone||'-')} &nbsp;|&nbsp; স্ট্যাটাস: <b>${tbStatusLabel(x.status)}</b></p>
-    <ol style="padding-left:20px;line-height:1.9;margin:0 0 14px;">${(x.lines||[]).map(l=>`<li>${escHtml(l)}</li>`).join('')}</ol>
-    <div class="modal-actions" style="flex-wrap:wrap;gap:8px;">
-      ${x.status==='pending' ? `<button class="btn btn-navy btn-sm" onclick="tbAdminSetStatus('${x.tourBillId}','received')">📥 Received হিসেবে চিহ্নিত করুন</button>` : ''}
-      ${x.status!=='reviewed' ? `<button class="btn btn-primary btn-sm" onclick="tbAdminSetStatus('${x.tourBillId}','reviewed')">✅ Reviewed হিসেবে চিহ্নিত করুন</button>` : ''}
-      <button class="btn btn-ghost btn-sm" onclick="closeModal()">বন্ধ করুন</button>
+
+/* ================= ADMIN TOUR BILL RECEIVE REPORT ================= */
+let tbAdminBills = [];
+let tbAdminFilter = 'All';
+let tbAdminQuery = '';
+
+function tbAdminReportHTML(){
+  return `<div class="card tb-admin-card">
+    <div class="card-head"><div><h3>🧾 TOUR BILL RECEIVE REPORT</h3><div class="hint">Mechanicদের জমা দেওয়া Tour Bill</div></div><button class="btn btn-ghost btn-sm" id="tbAdminRefresh">🔄 Refresh</button></div>
+    <div class="tb-admin-tools">
+      <input id="tbAdminSearch" type="search" placeholder="Mechanic / Mobile / Program / Bill ID দিয়ে Search করুন" value="${escHtml(tbAdminQuery)}">
+      <select id="tbAdminStatus"><option value="All">All</option><option value="Pending">Pending</option><option value="Approved">Approved</option><option value="Rejected">Rejected</option><option value="Paid">Paid</option></select>
     </div>
-  `);
+    <div id="tbAdminList"><div class="empty">লোড হচ্ছে...</div></div>
+  </div>`;
 }
-// Original submitted টেক্সট এখানে কখনো পরিবর্তন হয় না — শুধু status/receivedAt/reviewedAt আপডেট হয়
-async function tbAdminSetStatus(id, status){
+
+function tbTimestampMs(v){
+  if(!v) return 0;
+  if(typeof v.toMillis==='function') return v.toMillis();
+  const n=Date.parse(v); return Number.isNaN(n)?0:n;
+}
+function tbFormatDate(v){
+  const ms=tbTimestampMs(v); return ms?new Date(ms).toLocaleString('bn-BD'):String(v||'-');
+}
+function tbAdminFiltered(){
+  const q=tbAdminQuery.trim().toLowerCase();
+  return tbAdminBills.filter(b=>{
+    if(tbAdminFilter!=='All' && String(b.status||'Pending')!==tbAdminFilter) return false;
+    if(!q) return true;
+    const hay=[b.id,b.mechanicName,b.mechanicPhone,b.territory,b.status,b.submittedAtIso].map(x=>String(x||'').toLowerCase()).join(' ');
+    const rowHay=(b.rows||[]).map(r=>Object.values(r||{}).join(' ')).join(' ').toLowerCase();
+    return hay.includes(q)||rowHay.includes(q);
+  }).sort((a,b)=>tbTimestampMs(b.createdAt||b.submittedAtIso)-tbTimestampMs(a.createdAt||a.submittedAtIso));
+}
+function tbAdminRender(){
+  const box=document.getElementById('tbAdminList'); if(!box)return;
+  const list=tbAdminFiltered();
+  if(!list.length){box.innerHTML='<div class="empty">কোনো Tour Bill পাওয়া যায়নি।</div>';return;}
+  box.innerHTML=`<div class="tb-admin-table-wrap"><table class="tb-admin-table"><thead><tr><th>Date</th><th>Mechanic</th><th>Mobile</th><th>Program / Customer</th><th>Total</th><th>Status</th><th>Action</th></tr></thead><tbody>${list.map(b=>{
+    const first=(b.rows||[]).find(tbRowIsFilled); const status=String(b.status||'Pending');
+    return `<tr><td data-label="Date">${escHtml(tbFormatDate(b.createdAt||b.submittedAtIso))}</td><td data-label="Mechanic"><b>${escHtml(b.mechanicName||'-')}</b><div class="hint">${escHtml(b.territory||'')}</div></td><td data-label="Mobile">${escHtml(b.mechanicPhone||'-')}</td><td data-label="Program / Customer">${escHtml(first?.col1||'-')}</td><td data-label="Total">৳${escHtml(b.total||0)}</td><td data-label="Status"><span class="tb-status tb-status-${status.toLowerCase()}">${escHtml(status)}</span></td><td data-label="Action"><div class="row-actions"><button class="btn btn-primary btn-sm" onclick="viewTourBill('${escHtml(b.id)}')">VIEW</button><select class="tb-status-select" onchange="changeTourBillStatus('${escHtml(b.id)}',this.value)"><option ${status==='Pending'?'selected':''}>Pending</option><option ${status==='Approved'?'selected':''}>Approved</option><option ${status==='Rejected'?'selected':''}>Rejected</option><option ${status==='Paid'?'selected':''}>Paid</option></select></div></td></tr>`;
+  }).join('')}</tbody></table></div>`;
+}
+
+async function loadTourBillsAdmin(){
+  const box=document.getElementById('tbAdminList'); if(box)box.innerHTML='<div class="empty">লোড হচ্ছে...</div>';
   try{
-    const patch = { status: status, updatedAt: firebase.database.ServerValue.TIMESTAMP };
-    if(status === 'received'){ patch.receivedAt = firebase.database.ServerValue.TIMESTAMP; patch.receivedBy = (DB.session && DB.session.user && DB.session.user.name) || 'Admin'; }
-    if(status === 'reviewed'){ patch.reviewedAt = firebase.database.ServerValue.TIMESTAMP; patch.reviewedBy = (DB.session && DB.session.user && DB.session.user.name) || 'Admin'; }
-    await fbDb.ref('tourBills/'+id).update(patch);
-    const idx = adminTourBills.findIndex(t=>t.tourBillId===id);
-    if(idx>=0) adminTourBills[idx] = Object.assign({}, adminTourBills[idx], patch);
-    closeModal();
-    const box = document.getElementById('tbAdminListBox');
-    if(box) box.innerHTML = tourBillsListHTML();
-  }catch(e){
-    console.error('Tour Bill status update ব্যর্থ:', e);
-    alert('স্ট্যাটাস আপডেট করা যায়নি — ইন্টারনেট সংযোগ চেক করুন।');
+    if(!firebase.auth().currentUser) throw new Error('AUTH_REQUIRED');
+    const db=await getTourBillDb();
+    const {collection,getDocs}=await import('https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js');
+    const snap=await getDocs(collection(db,TOUR_BILL_COLLECTION));
+    tbAdminBills=snap.docs.map(d=>({id:d.id,...d.data()}));
+    tbAdminRender();
+  }catch(err){
+    if(box)box.innerHTML='<div class="empty" style="color:#c23b3b">Tour Bill load করা যায়নি। Firebase Auth/Firestore Rules পরীক্ষা করুন।</div>';
   }
 }
+
+function viewTourBill(id){
+  const b=tbAdminBills.find(x=>x.id===id); if(!b)return;
+  openModal(`<div class="tb-admin-view"><div class="card-head"><div><h3>Tour Bill</h3><div class="hint">Bill ID: ${escHtml(b.id)}</div></div><div class="row-actions"><button class="btn btn-primary btn-sm" onclick="tbPrintAdminBill('${escHtml(b.id)}')">🖨️ Print / PDF</button><button class="btn btn-ghost btn-sm" onclick="closeModal()">Close</button></div></div>${tbAdminBillPreviewHTML(b)}</div>`);
+  setTimeout(()=>{
+    const el=document.querySelector('.tb-admin-view #tbAdminViewTotal'); if(!el)return;
+    el.textContent=Number(b.total||0).toLocaleString('en-US',{maximumFractionDigits:2});
+  },0);
+}
+function tbAdminBillPreviewHTML(b){
+  const rows=tbNormalizeRows(b.rows||[]).filter(tbRowIsFilled);
+  return `<div class="tb-admin-paper">${tbTableHTML(rows,true)}<div class="tb-sig">বিল প্রস্তুতকারীর স্বাক্ষর ${escHtml(b.signature||'')}</div></div>`;
+}
+function tbPrintAdminBill(id){const b=tbAdminBills.find(x=>x.id===id);if(b)tbPrintHtml(b,'Tour Bill - '+id);}
+async function changeTourBillStatus(id,status){
+  const b=tbAdminBills.find(x=>x.id===id); if(!b)return;
+  try{
+    const db=await getTourBillDb();
+    const {doc,updateDoc,serverTimestamp}=await import('https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js');
+    await updateDoc(doc(db,TOUR_BILL_COLLECTION,id),{status,updatedAt:serverTimestamp()});
+    b.status=status;
+    tbAdminRender();
+  }catch(err){ alert('Status update করা যায়নি।'); loadTourBillsAdmin(); }
+}
+
+function adminTourBillTabHTML(){return tbAdminReportHTML();}
+function wireTourBillAdminTab(){
+  const q=document.getElementById('tbAdminSearch'); const st=document.getElementById('tbAdminStatus');
+  if(st)st.value=tbAdminFilter;
+  if(q)q.oninput=()=>{tbAdminQuery=q.value;tbAdminRender();};
+  if(st)st.onchange=()=>{tbAdminFilter=st.value;tbAdminRender();};
+  const r=document.getElementById('tbAdminRefresh'); if(r)r.onclick=loadTourBillsAdmin;
+  loadTourBillsAdmin();
+}
+
 let mechanicTab = 'search';
 ROUTES.mechanicDashboard = function(){
   if(!requireRole(['mechanic'], 'dealerLogin')) return;
@@ -4454,7 +4639,6 @@ function peReportTabHTML(){
 
 ROUTES.adminDashboard = function(){
   if(!requireRole(['admin'])) return;
-  attachTourBillAdminListener(); // Tour Bill pending count রিয়েল-টাইম badge-এর জন্য
   // যদি adminTab সেট না থাকে তাহলে menu grid দেখাই
   if(!adminTab || adminTab === 'menu'){
     const app = document.getElementById('app');
@@ -4504,13 +4688,6 @@ ROUTES.adminDashboard = function(){
               <div style="font-size:10.5px;color:#6b7280;margin-top:3px;">ডিলারদের পাঠানো পার্টস চাহিদা</div>
             </div>
 
-            <div style="background:#fff;border-radius:14px;padding:22px 11px;text-align:center;cursor:pointer;transition:all 0.25s;box-shadow:0 3px 11px rgba(0,0,0,0.16);position:relative;" onclick="adminTab='tourBills';go('adminDashboard');" onmouseover="this.style.transform='translateY(-6px)'" onmouseout="this.style.transform='translateY(0)'">
-              ${tourBillPendingCount ? `<div style="position:absolute;top:10px;right:10px;background:#e11d48;color:#fff;border-radius:999px;min-width:22px;height:22px;padding:0 6px;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;">${tourBillPendingCount}</div>` : ''}
-              <div style="width:48px;height:48px;border-radius:13px;background:#e3ddc4;display:flex;align-items:center;justify-content:center;font-size:24px;margin:0 auto 11px;">📋</div>
-              <div style="font-size:13px;font-weight:700;color:#1a2233;">Tour Bill Receive</div>
-              <div style="font-size:10.5px;color:#6b7280;margin-top:3px;">মেকানিকদের জমাকৃত Tour Bill</div>
-            </div>
-
             <div style="background:#fff;border-radius:14px;padding:22px 11px;text-align:center;cursor:pointer;transition:all 0.25s;box-shadow:0 3px 11px rgba(0,0,0,0.16);position:relative;" onclick="adminTab='loginActivity';go('adminDashboard');" onmouseover="this.style.transform='translateY(-6px)'" onmouseout="this.style.transform='translateY(0)'">
               <div style="width:48px;height:48px;border-radius:13px;background:#e3ddc4;display:flex;align-items:center;justify-content:center;font-size:24px;margin:0 auto 11px;">📶</div>
               <div style="font-size:13px;font-weight:700;color:#1a2233;">লগইন অ্যাক্টিভিটি</div>
@@ -4528,6 +4705,12 @@ ROUTES.adminDashboard = function(){
               <div style="width:48px;height:48px;border-radius:13px;background:#e3ddc4;display:flex;align-items:center;justify-content:center;font-size:24px;margin:0 auto 11px;">🧑‍🔧</div>
               <div style="font-size:13px;font-weight:700;color:#1a2233;">Parts Engineer</div>
               <div style="font-size:10.5px;color:#6b7280;margin-top:3px;">রিজিয়ন-ভিত্তিক ইঞ্জিনিয়ার ম্যানেজমেন্ট</div>
+            </div>
+
+            <div style="background:#fff;border-radius:14px;padding:22px 11px;text-align:center;cursor:pointer;transition:all 0.25s;box-shadow:0 3px 11px rgba(0,0,0,0.16);" onclick="adminTab='tourBills';go('adminDashboard');" onmouseover="this.style.transform='translateY(-6px)'" onmouseout="this.style.transform='translateY(0)'">
+              <div style="width:48px;height:48px;border-radius:13px;background:#e3ddc4;display:flex;align-items:center;justify-content:center;font-size:24px;margin:0 auto 11px;">🧾</div>
+              <div style="font-size:13px;font-weight:700;color:#1a2233;">TOUR BILL RECEIVE REPORT</div>
+              <div style="font-size:10.5px;color:#6b7280;margin-top:3px;">মেকানিকদের জমা দেওয়া Tour Bill</div>
             </div>
 
             <div style="background:#fff;border-radius:14px;padding:22px 11px;text-align:center;cursor:pointer;transition:all 0.25s;box-shadow:0 3px 11px rgba(0,0,0,0.16);" onclick="adminTab='settings';go('adminDashboard');" onmouseover="this.style.transform='translateY(-6px)'" onmouseout="this.style.transform='translateY(0)'">
@@ -4549,11 +4732,11 @@ ROUTES.adminDashboard = function(){
   else if(adminTab==='users') { adminShell(usersTabHTML()); wireUsersTab(); }
   else if(adminTab==='history') adminShell(historyTabHTML());
   else if(adminTab==='requisitions') { adminShell(requisitionsTabHTML()); wireRequisitionsTab(); }
-  else if(adminTab==='tourBills') { adminShell(tourBillsTabHTML()); wireTourBillsTab(); }
   else if(adminTab==='loginActivity') { adminShell(loginActivityTabHTML()); wireLoginActivityTab(); }
   else if(adminTab==='vehicleDb') { adminShell(vehicleDbTabHTML()); wireVehicleDbTab(); }
   else if(adminTab==='partsEngineers') { adminShell(partsEngineersTabHTML()); wirePartsEngineersTab(); }
   else if(adminTab==='settings') { adminShell(settingsTabHTML()); wireSettingsTab(); }
+  else if(adminTab==='tourBills') { adminShell(adminTourBillTabHTML()); wireTourBillAdminTab(); }
 };
 
 /* ---- Dashboard tab ---- */
@@ -6009,10 +6192,10 @@ function renderQsResults(q){
 
 /* ================= INIT ================= */
 if(SYNC_ON){
-  document.getElementById('app').innerHTML = `<div class="center-screen"><div style="text-align:center;color:var(--muted)">🔄 Google Sheet থেকে ডেটা লোড হচ্ছে...</div></div>`;
+  document.getElementById('app').innerHTML = `<div class="dl-screen"><div><div class="dl-loading-text">Google Sheet থেকে ডেটা লোড হচ্ছে</div><div class="dl-dots"><span></span><span></span><span></span><span></span><span></span></div></div></div>`;
   loadFromSheet().then(()=>{ splashShown = true; showSplash(render); initQuickSearchFAB(); backfillPhoneRegistry(); });
 } else {
-  document.getElementById('app').innerHTML = `<div class="center-screen"><div style="text-align:center;color:var(--muted)">🔄 ডেটা লোড হচ্ছে...</div></div>`;
+  document.getElementById('app').innerHTML = `<div class="dl-screen"><div><div class="dl-loading-text">ডেটা লোড হচ্ছে</div><div class="dl-dots"><span></span><span></span><span></span><span></span><span></span></div></div></div>`;
   loadDB().then(()=>{ ensureCores(); splashShown = true; showSplash(render); migrateOldMemosToIndex(); initQuickSearchFAB(); backfillPhoneRegistry(); });
 }
 
