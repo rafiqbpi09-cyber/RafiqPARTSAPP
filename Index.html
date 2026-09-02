@@ -1260,7 +1260,12 @@ async function clearStalePhoneClaim(phone){
   const snap=await ref.once('value');
   if(!snap.exists()) return;
   const current=snap.val()||{};
-  if(current.deleted===true || String(current.status||'').toLowerCase()==='deleted' || (!current.ownerId && !current.uid)){
+  const ownerId=current.ownerId ?? current.uid ?? null;
+  const deletedOwner = ownerId!=null && (
+    DB.users.some(u=>u && String(u.id)===String(ownerId) && isDeletedAccount(u)) ||
+    DB.partsEngineers.some(pe=>pe && String(pe.id)===String(ownerId) && isDeletedAccount(pe))
+  );
+  if(current.deleted===true || String(current.status||'').toLowerCase()==='deleted' || deletedOwner || (!current.ownerId && !current.uid)){
     await ref.remove();
   }
 }
@@ -5228,7 +5233,7 @@ function approveUser(id){
   saveDB();
   go('adminDashboard');
 }
-function deleteUser(id){
+async function deleteUser(id){
   const u = DB.users.find(x=>x.id===id);
   if(!u) return;
   if(confirm(`"${u.name}" (${u.phone}) ডিলিট করতে চান?`)){
@@ -5238,9 +5243,9 @@ function deleteUser(id){
     u.active = false;
     u.pending = false;
     u.deletedAt = new Date().toISOString();
-    releasePhoneNumber(u.phone);
+    await releasePhoneNumber(u.phone);
     syncPush('deleteUser', {id, softDelete:true, phone:u.phone});
-    saveDB();
+    await saveDB();
     go('adminDashboard');
   }
 }
@@ -5493,16 +5498,16 @@ function togglePe(id){
   saveDB();
   go('adminDashboard');
 }
-function deletePe(id){
+async function deletePe(id){
   const p = DB.partsEngineers.find(x=>x.id===id);
   if(!p) return;
   const underCount = DB.users.filter(u=>u.peId===id && !isDeletedAccount(u)).length;
   const warn = underCount ? `\n\n⚠️ এই Parts Engineer-এর অধীনে বর্তমানে ${underCount} জন ডিলার/মেকানিক আছে — ডিলিট করলে তারা "Unassigned" হয়ে যাবে।` : '';
   if(confirm(`"${p.name}" (${p.phone}) ডিলিট করতে চান?${warn}`)){
     p.deleted = true; p.isDeleted = true; p.status = 'deleted'; p.active = false; p.deletedAt = new Date().toISOString();
-    releasePhoneNumber(p.phone);
+    await releasePhoneNumber(p.phone);
     logHistory(`Parts Engineer ডিলিট করা হয়েছে: ${p.name}`);
-    saveDB();
+    await saveDB();
     go('adminDashboard');
   }
 }
