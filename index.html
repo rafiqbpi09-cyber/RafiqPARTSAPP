@@ -44,7 +44,7 @@ document.currentScript.parentNode.insertBefore(manifestLink, document.currentScr
 // প্রতিটি নতুন deployment/update দেওয়ার আগে এই APP_VERSION ভ্যালুটা পরিবর্তন করুন
 // (যেকোনো ইউনিক স্ট্রিং — তারিখ/সময় বা running number)। এই ভ্যালুর ভিত্তিতেই
 // সব ডিভাইস স্বয়ংক্রিয়ভাবে নতুন version detect করে reload হবে।
-window.APP_VERSION = '2026-09-02-tourbill.1';
+window.APP_VERSION = '2026-09-02-registration-fix.1';
 
 (function(){
   // পুরনো/legacy blob-based service worker ও পুরনো Cache Storage সম্পূর্ণ পরিষ্কার করে দেওয়া হয়,
@@ -978,9 +978,19 @@ function fbPw(pw){
 
 // admin/dealer/partsEngineer লগইনের সময় কল হয় — legacy পাসওয়ার্ড যাচাই ইতিমধ্যে হয়ে গেছে ধরে নিয়ে,
 // এই ফাংশন Firebase Auth-এ সাইন-ইন করে (প্রথমবার হলে অ্যাকাউন্ট বানিয়ে, পাসওয়ার্ড বদলালে নতুন অ্যাকাউন্টে rotate করে)।
-async function fbEnsureAuth(record, pw, prefix){
-  const digits = (record.phone || 'admin').replace(/[^0-9]/g,'') || 'admin';
+async function fbEnsureAuth(record, pw, prefix, options={}){
+  const digits = normalizePhoneNumber(record.phone) || 'admin';
   const password = fbPw(pw);
+
+  // New registration gets a fresh Auth identity. A deleted legacy account may
+  // still have an old authEmail; never sign a new registration into that identity.
+  if(options.registration){
+    const newEmail = `${digits}.${Date.now()}.${Math.random().toString(36).slice(2,8)}@${prefix}.metal-parts-app.local`;
+    await fbAuth.createUserWithEmailAndPassword(newEmail, password);
+    record.authEmail = newEmail;
+    return;
+  }
+
   if(record.authEmail){
     try{
       await fbAuth.signInWithEmailAndPassword(record.authEmail, password);
@@ -1048,6 +1058,16 @@ async function saveDB(){
     // Firebase না হলে localStorage এ সেভ
     try{ localStorage.setItem(LS_KEY, JSON.stringify({users:DB.users,history:DB.history.slice(0,50),settings:DB.settings,parts:DB.parts,nextPartId,partsSaved:true,requisitions:DB.requisitions.slice(0,200),nextReqNo,drafts:DB.drafts.slice(0,200),partsEngineers:DB.partsEngineers,nextPeId,dealerShopParts:DB.dealerShopParts,dealerMemos:DB.dealerMemos,dealerMemoDrafts:DB.dealerMemoDrafts,stockHistory:DB.stockHistory,nextMemoNo:DB.nextMemoNo||1})); }catch(e2){}
   }
+}
+async function saveDBAndVerifyRegistration(record, collectionName){
+  await saveDB();
+  const snap=await fbDb.ref('appdata/' + collectionName).once('value');
+  const savedList=snap.val();
+  const list=Array.isArray(savedList) ? savedList : [];
+  const found=list.some(u=>u && String(u.id)===String(record.id) &&
+    normalizePhoneNumber(u.phone)===normalizePhoneNumber(record.phone) &&
+    !isDeletedAccount(u));
+  if(!found) throw new Error('PROFILE_WRITE_FAILED');
 }
 async function loadDB(){
   try{
@@ -1198,42 +1218,105 @@ function coreOf(partNo){
   if(groups.length === 0) return partNo.replace(/\D/g,'');
   return groups.reduce((a,b)=> b.length > a.length ? b : a, groups[0]);
 }
-function digitsOnly(s){ return (s||'').replace(/\D/g,''); }
-/* ================= PHONE NUMBER UNIQUENESS (validation + Firebase-level lock) =================
-   ১) মোবাইল নম্বর অবশ্যই ঠিক ১১ সংখ্যার হতে হবে (কম/বেশি নয়)।
-   ২) শুধু Frontend-এ array চেক (DB.users.some(...)) যথেষ্ট নয় — দুইজন একই সময়ে রেজিস্ট্রেশন করলে race condition
-      হতে পারে। তাই Firebase Realtime Database-এর transaction() ব্যবহার করে সার্ভার-সাইড atomic লক নেওয়া হয়
-      (phoneRegistry/<digits-only-phone>) — এটি সত্যিকারের Database-level uniqueness enforcement।
-   ৩) Account Delete করলে releasePhoneNumber() কল করে লক সরিয়ে ফেলা হয়, ফলে নম্বরটি আবার Free হয়ে যায়। */
-function isValidPhone11(phone){ return digitsOnly(phone).length === 11; }
-function phoneRegistryRef(phone){ return fbDb.ref('phoneRegistry/' + digitsOnly(phone)); }
-// একটি ফোন নম্বর atomically claim করার চেষ্টা করে — শুধুমাত্র তখনই সফল হয় যখন নম্বরটি আগে থেকে কারো claim করা নেই।
-// রিটার্ন করে true/false — সার্ভার নিজেই (Firebase) নিশ্চিত করে যে দুইটা concurrent request একসাথে জিতে যেতে পারবে না।
+function digitsOnly(s){
+  const bn='০১২৩৪৫৬৭৮৯';
+  return String(s||'').replace(/[০-৯]/g,ch=>String(bn.indexOf(ch))).replace(/\D/g,'');
+}
+/* ================= PHONE NUMBER UNIQUENESS (registration-safe) =================
+   Normalize Bangladesh mobile formats before validation/duplicate checks:
+   017XXXXXXXX / +88017XXXXXXXX / 88017XXXXXXXX -> 017XXXXXXXX.
+   Deleted accounts do not block a new registration.
+   Firebase phoneRegistry remains the atomic cross-device uniqueness guard. */
+function normalizePhoneNumber(phone){
+  let d=digitsOnly(phone);
+  if(d.startsWith('00880')) d=d.slice(2);
+  if(d.startsWith('880')) d='0'+d.slice(3);
+  if(/^1[3-9]\d{9}$/.test(d)) d='0'+d;
+  return d;
+}
+function isValidPhone11(phone){ return /^01[3-9]\d{8}$/.test(normalizePhoneNumber(phone)); }
+function isDeletedAccount(record){
+  if(!record) return false;
+  const status=String(record.status||'').trim().toLowerCase();
+  return record.deleted===true || record.isDeleted===true || status==='deleted';
+}
+function hasExistingUserPhone(phone, excludeId){
+  const n=normalizePhoneNumber(phone);
+  return DB.users.some(u=>u && !isDeletedAccount(u) && normalizePhoneNumber(u.phone)===n &&
+    (excludeId==null || u.id!==excludeId));
+}
+function hasExistingPartsEngineerPhone(phone, excludeId){
+  const n=normalizePhoneNumber(phone);
+  return DB.partsEngineers.some(p=>p && !isDeletedAccount(p) && normalizePhoneNumber(p.phone)===n &&
+    (excludeId==null || p.id!==excludeId));
+}
+function phoneRegistryRef(phone){ return fbDb.ref('phoneRegistry/' + normalizePhoneNumber(phone)); }
+
+// A phoneRegistry lock's owner can be in one of four states:
+//  1. no ownerId was ever recorded (very old/legacy lock)                -> reclaimable
+//  2. ownerId matches a user/PE record that exists AND is soft-deleted   -> reclaimable
+//  3. ownerId matches a user/PE record that exists and is NOT deleted    -> blocks (active/pending account)
+//  4. ownerId is set but matches NO record at all in either collection  -> reclaimable
+// Case 4 covers accounts removed by an older/manual delete that predates
+// the soft-delete fields, or whose releasePhoneNumber() call never reached
+// Firebase (e.g. admin was offline) — without this, that phone number would
+// stay permanently "already registered" even though no account owns it.
+function findPhoneLockOwner(ownerId){
+  if(ownerId==null) return null;
+  return DB.users.find(u=>u && String(u.id)===String(ownerId))
+      || DB.partsEngineers.find(pe=>pe && String(pe.id)===String(ownerId))
+      || null;
+}
+function isPhoneLockReclaimable(current){
+  if(!current) return true;
+  const ownerId=current.ownerId ?? current.uid ?? null;
+  const staleLegacy = ownerId==null;
+  const ownerRecord = findPhoneLockOwner(ownerId);
+  const ownerDeleted = !!ownerRecord && isDeletedAccount(ownerRecord);
+  const ownerMissing = ownerId!=null && !ownerRecord;
+  const markedDeleted = current.deleted===true || String(current.status||'').toLowerCase()==='deleted';
+  return staleLegacy || ownerDeleted || ownerMissing || markedDeleted;
+}
+async function clearStalePhoneClaim(phone){
+  const n=normalizePhoneNumber(phone);
+  if(!n) return;
+  if(hasExistingUserPhone(n) || hasExistingPartsEngineerPhone(n)) return;
+  const ref=phoneRegistryRef(n);
+  const snap=await ref.once('value');
+  if(!snap.exists()) return;
+  const current=snap.val()||{};
+  if(isPhoneLockReclaimable(current)){
+    await ref.remove();
+  }
+}
+
+// IMPORTANT: this runs after Firebase Auth succeeds, so secured RTDB rules
+// requiring auth != null are respected during a new registration.
 async function claimPhoneNumber(phone, meta){
-  // গুরুত্বপূর্ণ ফিক্স: আগে এখানে try/catch দিয়ে যেকোনো error গিলে ফেলে false রিটার্ন করা হতো —
-  // কিন্তু "নম্বরটা আগেই claim করা আছে" (transaction নিজেই abort করে, কোনো error থ্রো করে না) আর
-  // "permission-denied/network error" (transaction throw করে, যেমন — নতুন ইউজার তখনও Firebase Auth-এ
-  // sign-in করেনি) — এই দুইটা সম্পূর্ণ ভিন্ন কেস। দুটোকেই false ধরায়, Firebase rules-এর কারণে write
-  // ব্যর্থ হলে ব্যবহারকারীকে ভুলভাবে "এই মোবাইল নম্বর দিয়ে আগেই রেজিস্ট্রেশন করা আছে" দেখানো হতো,
-  // যদিও নম্বরটা আসলে ফাঁকা ছিল। এখন সত্যিকারের error caller-এর কাছে throw হয়ে যাবে (caller-এর
-  // try/catch সেটা "সার্ভারে সংযোগে সমস্যা হয়েছে" হিসেবে দেখায়), আর false তখনই রিটার্ন হবে যখন
-  // transaction সফলভাবে চলেছে কিন্তু নম্বরটা সত্যিই আগে থেকে claim করা।
-  const result = await phoneRegistryRef(phone).transaction(current => {
-    if(current !== null) return; // ইতিমধ্যে claim করা আছে — transaction abort (undefined রিটার্ন)
-    return Object.assign({claimedAt: Date.now()}, meta || {});
+  const n=normalizePhoneNumber(phone);
+  if(!isValidPhone11(n)) throw new Error('INVALID_PHONE');
+  const result=await phoneRegistryRef(n).transaction(current=>{
+    if(current===null){
+      return Object.assign({claimedAt:Date.now(),phone:n,state:'active'},meta||{});
+    }
+    // Deleted/stale/orphaned locks are replaced atomically by this new
+    // registration. A lock whose owner is a genuinely active/pending
+    // account is never overwritten, so mobile uniqueness is preserved.
+    if(isPhoneLockReclaimable(current)){
+      return Object.assign({claimedAt:Date.now(),phone:n,state:'active'},meta||{});
+    }
+    return;
   });
   return !!(result && result.committed);
 }
-// Account Delete/বাতিল হলে লক রিলিজ করে নম্বরটি আবার Free করে দেয়।
 async function releasePhoneNumber(phone){
   try{ await phoneRegistryRef(phone).remove(); }catch(err){ console.error('Phone release failed:', err); }
 }
-// পুরনো (আগে থেকে থাকা) ইউজার/Parts Engineer-দের নম্বরগুলো ব্যাকফিল করে রেজিস্ট্রিতে বসিয়ে দেয় (fire-and-forget, no-op যদি আগে থেকেই থাকে)।
 function backfillPhoneRegistry(){
   try{
-    (DB.users||[]).forEach(u=>{ if(u && u.phone) claimPhoneNumber(u.phone, {role:u.role||'dealer', name:u.name||''}).catch(err=>console.error('Phone registry backfill (user) failed:', err)); });
-    (DB.partsEngineers||[]).forEach(p=>{ if(p && p.phone) claimPhoneNumber(p.phone, {role:'partsEngineer', name:p.name||''}).catch(err=>console.error('Phone registry backfill (PE) failed:', err)); });
-  }catch(err){ console.error('Phone registry backfill failed:', err); }
+    (DB.users||[]).forEach(u=>{ if(u && u.phone && !isDeletedAccount(u)) claimPhoneNumber(u.phone,{role:u.role||'dealer',name:u.name||'',ownerId:u.id}).catch(err=>console.error('Phone registry backfill (user) failed:',err)); });
+    (DB.partsEngineers||[]).forEach(p=>{ if(p && p.phone && !isDeletedAccount(p)) claimPhoneNumber(p.phone,{role:'partsEngineer',name:p.name||'',ownerId:p.id}).catch(err=>console.error('Phone registry backfill (PE) failed:',err)); });
+  }catch(err){ console.error('Phone registry backfill failed:',err); }
 }
 function highlightMatch(text, digitsQuery){
   if(!digitsQuery || digitsQuery.length < 3 || !text) return text;
@@ -1248,6 +1331,12 @@ function highlightMatch(text, digitsQuery){
 function deriveCategory(partNo){
   const segs = String(partNo||'').split('.');
   return segs.length >= 2 ? segs[1] : '';
+}
+function normalizeLoadedAccountPhones(){
+  try{
+    (DB.users||[]).forEach(u=>{ if(u && u.phone){ const n=normalizePhoneNumber(u.phone); if(n) u.phone=n; }});
+    (DB.partsEngineers||[]).forEach(p=>{ if(p && p.phone){ const n=normalizePhoneNumber(p.phone); if(n) p.phone=n; }});
+  }catch(err){ console.error('Account phone normalization failed:',err); }
 }
 function ensureCores(){
   let categoryFixed = false;
@@ -1744,7 +1833,8 @@ async function slSubmitLogin(role){
   if(role === 'engineer'){
     const pe = DB.partsEngineers.find(x=>(x.phone===identifier || (x.engineerId && String(x.engineerId).trim().toLowerCase()===identifier.toLowerCase())) && x.password===pw);
     if(!pe){ showErr('মোবাইল নম্বর/Engineer ID অথবা পাসওয়ার্ড ভুল'); return; }
-    if(!pe.active){ showErr('আপনার অ্যাকাউন্টটি নিষ্ক্রিয় করা হয়েছে, অ্যাডমিনের সাথে যোগাযোগ করুন।'); return; }
+    if(isDeletedAccount(pe)){ showErr('আপনার অ্যাকাউন্টটি ডিলিট করা হয়েছে। নতুন করে রেজিস্ট্রেশন করুন।'); return; }
+  if(!pe.active){ showErr('আপনার অ্যাকাউন্টটি নিষ্ক্রিয় করা হয়েছে, অ্যাডমিনের সাথে যোগাযোগ করুন।'); return; }
     btn.disabled = true; btn.textContent = 'প্রবেশ করা হচ্ছে...';
     try{ await fbEnsureAuth(pe, pw, 'pe'); }
     catch(err){ console.warn('Firebase parts-engineer auth skipped (offline/network issue), continuing with local login:', err); }
@@ -1758,6 +1848,7 @@ async function slSubmitLogin(role){
   // role === 'dealer'  (Dealer / Mechanic উভয়ই এই একই ফর্ম দিয়ে লগইন করে, DB.users.role অনুযায়ী পোর্টাল ঠিক হয়)
   const u = DB.users.find(x=>x.phone===identifier && x.password===pw);
   if(!u){ showErr('মোবাইল নম্বর অথবা পাসওয়ার্ড ভুল'); return; }
+  if(isDeletedAccount(u)){ showErr('আপনার অ্যাকাউন্টটি ডিলিট করা হয়েছে। নতুন করে রেজিস্ট্রেশন করুন।'); return; }
   if(u.pending){ showErr('আপনার অ্যাকাউন্ট এখনও অনুমোদন হয়নি, অ্যাডমিনের সাথে যোগাযোগ করুন'); return; }
   if(!u.active){ showErr('আপনার অ্যাকাউন্টটি নিষ্ক্রিয় করা হয়েছে, অ্যাডমিনের সাথে যোগাযোগ করুন'); return; }
   btn.disabled = true; btn.textContent = 'প্রবেশ করা হচ্ছে...';
@@ -2161,7 +2252,7 @@ ROUTES.dealerRegister = function(){
   toggleRoleFields();
   document.getElementById('submit').onclick = async ()=>{
     const name = document.getElementById('name').value.trim();
-    const phone = document.getElementById('phone').value.trim();
+    const phone = normalizePhoneNumber(document.getElementById('phone').value.trim());
     const role = document.getElementById('role').value;
     const district = document.getElementById('regDistrict').value;
     const upazila = document.getElementById('regUpazila').value;
@@ -2179,43 +2270,70 @@ ROUTES.dealerRegister = function(){
       if(!territory){ e.style.display='block'; e.textContent='দয়া করে মেকানিকের টেরিটরি লিখুন'; return; }
     }
     if(pw !== pw2){ e.style.display='block'; e.textContent='পাসওয়ার্ড দুটো মিলছে না'; return; }
-    if(DB.users.some(u=>u.phone===phone)){ e.style.display='block'; e.textContent='এই মোবাইল নম্বর দিয়ে আগেই রেজিস্ট্রেশন করা আছে'; return; }
-    if(DB.partsEngineers.some(p=>p.phone===phone)){ e.style.display='block'; e.textContent='এই মোবাইল নম্বরটি ইতিমধ্যে একটি Parts Engineer অ্যাকাউন্টে ব্যবহৃত আছে। একই ব্যক্তি দুটি ভিন্ন role-এ থাকতে পারবেন না।'; return; }
-    // pending=true — অ্যাডমিন অনুমোদন না দেওয়া পর্যন্ত লগইন করতে পারবে না
+
+    if(hasExistingUserPhone(phone) || hasExistingPartsEngineerPhone(phone)){
+      e.style.display='block'; e.textContent='এই মোবাইল নম্বর দিয়ে আগেই রেজিস্ট্রেশন করা আছে'; return;
+    }
+
+    const btn = document.getElementById('submit');
+    if(btn.disabled) return;
+    btn.disabled = true; btn.textContent = 'রেজিস্ট্রেশন হচ্ছে...';
+
     const newUser = {id: nextUserId++, name, phone, password: pw, active:false, pending:true, role};
     if(role === 'dealer'){ newUser.district = district; newUser.upazila = upazila; newUser.address = address; }
     if(role === 'mechanic'){ newUser.territory = territory; }
-    const btn = document.getElementById('submit'); btn.disabled = true; btn.textContent = 'রেজিস্ট্রেশন হচ্ছে...';
-    // Database-level (Firebase) atomic লক — নিশ্চিত করে দুইজন একই মোবাইল নম্বর দিয়ে একসাথে রেজিস্ট্রেশন করলেও একজনই সফল হবে
+
     let phoneClaimed = false;
+    let authCreated = false;
     try{
-      phoneClaimed = await claimPhoneNumber(phone, {role, name});
+      await fbEnsureAuth(newUser, pw, 'dealer', {registration:true});
+      authCreated = true;
+
+      // claimPhoneNumber() atomically replaces only deleted/stale locks; active users remain protected.
+      phoneClaimed = await claimPhoneNumber(phone, {role, name, ownerId:newUser.id});
       if(!phoneClaimed){
+        if(authCreated && fbAuth.currentUser) await fbAuth.currentUser.delete().catch(cleanErr=>console.error('Registration Auth cleanup failed:',cleanErr));
         btn.disabled = false; btn.textContent = t('register');
         e.style.display='block'; e.textContent='এই মোবাইল নম্বর দিয়ে আগেই রেজিস্ট্রেশন করা আছে';
         return;
       }
-      await fbEnsureAuth(newUser, pw, 'dealer');
+
+      const insertedIndex=DB.users.length;
+      DB.users.push(newUser);
+      try{
+        await saveDBAndVerifyRegistration(newUser,'users');
+      }catch(profileErr){
+        DB.users.splice(insertedIndex,1);
+        if(phoneClaimed) await releasePhoneNumber(phone);
+        if(authCreated && fbAuth.currentUser) await fbAuth.currentUser.delete().catch(cleanErr=>console.error('Registration Auth cleanup failed:',cleanErr));
+        throw profileErr;
+      }
+      syncPush('addUser', newUser);
+
+      app.innerHTML = `<div class="center-screen">
+        <div class="gate">
+          <div class="gate-top"><div class="cog">✅</div><h1>Registration Successful</h1><p>অনুমোদনের অপেক্ষায়</p></div>
+          <div class="gate-body">
+            <div class="ok-msg" style="display:block">Registration Successful — আপনার রেজিস্ট্রেশন সফল হয়েছে। অ্যাডমিন অনুমোদন দিলে আপনি লগইন করতে পারবেন।</div>
+            <button class="btn btn-primary btn-block" onclick="go('dealerLogin')">লগইন পেজে যান</button>
+          </div>
+        </div>
+      </div>`;
+      return;
     }catch(err){
-      console.error('Firebase registration auth failed:', err);
+      console.error('Dealer/Mechanic registration failed:', err);
       if(phoneClaimed) await releasePhoneNumber(phone);
-      btn.disabled = false; btn.textContent = 'রেজিস্ট্রেশন করুন';
-      e.style.display='block'; e.textContent='সার্ভারে সংযোগে সমস্যা হয়েছে, আবার চেষ্টা করুন';
+      if(authCreated && fbAuth.currentUser) await fbAuth.currentUser.delete().catch(cleanErr=>console.error('Registration Auth cleanup failed:',cleanErr));
+      btn.disabled = false; btn.textContent = t('register');
+      e.style.display='block';
+      const code=err && err.code;
+      if(code==='auth/network-request-failed') e.textContent='ইন্টারনেট সংযোগে সমস্যা হয়েছে। সংযোগ ঠিক করে আবার চেষ্টা করুন।';
+      else if(code==='PERMISSION_DENIED') e.textContent='নিরাপদ ডাটাবেস সংযোগ অনুমোদিত হয়নি। অনুগ্রহ করে আবার চেষ্টা করুন।';
+      else if(err && err.message==='INVALID_PHONE') e.textContent='মোবাইল নম্বর সঠিক নয়।';
+      else if(err && err.message==='PROFILE_WRITE_FAILED') e.textContent='অ্যাকাউন্ট তৈরি হয়েছে, কিন্তু প্রোফাইল সেভ হয়নি। আবার চেষ্টা করুন।';
+      else e.textContent='রেজিস্ট্রেশন সম্পন্ন করা যায়নি। কিছুক্ষণ পর আবার চেষ্টা করুন।';
       return;
     }
-    DB.users.push(newUser);
-    syncPush('addUser', newUser);
-    saveDB();
-    // সফল মেসেজ দেখাই
-    app.innerHTML = `<div class="center-screen">
-      <div class="gate">
-        <div class="gate-top"><div class="cog">✅</div><h1>রেজিস্ট্রেশন সম্পন্ন</h1><p>অনুমোদনের অপেক্ষায়</p></div>
-        <div class="gate-body">
-          <div class="ok-msg" style="display:block">আপনার রেজিস্ট্রেশন সফল হয়েছে। অ্যাডমিন অনুমোদন দিলে আপনি লগইন করতে পারবেন।</div>
-          <button class="btn btn-primary btn-block" onclick="go('dealerLogin')">লগইন পেজে যান</button>
-        </div>
-      </div>
-    </div>`;
   };
 };
 
@@ -2813,7 +2931,7 @@ ROUTES.peRegister = function(){
   document.getElementById('submit').onclick = async ()=>{
     const name = document.getElementById('peName').value.trim();
     const engineerId = document.getElementById('peEngineerId').value.trim();
-    const phone = document.getElementById('pePhone').value.trim();
+    const phone = normalizePhoneNumber(document.getElementById('pePhone').value.trim());
     const region = document.getElementById('peRegion').value;
     const pw = document.getElementById('pePw').value;
     const pw2 = document.getElementById('pePw2').value;
@@ -2824,35 +2942,54 @@ ROUTES.peRegister = function(){
     if(pw !== pw2){ e.style.display='block'; e.textContent='পাসওয়ার্ড দুটো মিলছে না'; return; }
     if(!PARTS_ENGINEER_REGIONS.includes(region)){ e.style.display='block'; e.textContent='অনুগ্রহ করে তালিকা থেকে একটি বৈধ Region নির্বাচন করুন।'; return; }
     if(accessCode !== DB.settings.peAccessCode){ e.style.display='block'; e.textContent='Access Code সঠিক নয়। এটি শুধুমাত্র অ্যাডমিনের কাছ থেকে পাওয়া যাবে — ডিলার/মেকানিক এখানে রেজিস্ট্রেশন করতে পারবেন না।'; return; }
-    if(DB.users.some(u=>u.phone===phone)){ e.style.display='block'; e.textContent='এই মোবাইল নম্বরটি ইতিমধ্যে ডিলার/মেকানিক হিসেবে রেজিস্ট্রেশন করা আছে। একই ব্যক্তি দুটি ভিন্ন role-এ থাকতে পারবেন না — অ্যাডমিনের সাথে যোগাযোগ করুন।'; return; }
+    if(hasExistingUserPhone(phone)){ e.style.display='block'; e.textContent='এই মোবাইল নম্বরটি ইতিমধ্যে ডিলার/মেকানিক হিসেবে রেজিস্ট্রেশন করা আছে। একই ব্যক্তি দুটি ভিন্ন role-এ থাকতে পারবেন না — অ্যাডমিনের সাথে যোগাযোগ করুন।'; return; }
     if(DB.partsEngineers.some(p=>String(p.engineerId||'').trim().toLowerCase()===engineerId.toLowerCase())){
       e.style.display='block'; e.textContent='This Engineer ID is already registered. Please Login. (এই Engineer ID দিয়ে আগেই রেজিস্ট্রেশন করা আছে — লগইন করুন)';
       return;
     }
-    if(DB.partsEngineers.some(p=>p.phone===phone)){ e.style.display='block'; e.textContent='এই মোবাইল নম্বর দিয়ে আগেই একটি Parts Engineer অ্যাকাউন্ট আছে।'; return; }
+    if(hasExistingPartsEngineerPhone(phone)){ e.style.display='block'; e.textContent='এই মোবাইল নম্বর দিয়ে আগেই একটি Parts Engineer অ্যাকাউন্ট আছে।'; return; }
     const now = new Date();
     const newPe = {id: nextPeId++, name, phone, password: pw, region, active:true, engineerId, source:'self', registeredAt: now.toISOString(), registeredAtDisplay: now.toLocaleString('bn-BD')};
-    const btn = document.getElementById('submit'); btn.disabled = true; btn.textContent = 'রেজিস্ট্রেশন হচ্ছে...';
-    // Database-level (Firebase) atomic লক — একই মোবাইল নম্বর দিয়ে দুইজন একসাথে রেজিস্ট্রেশন করলেও একজনই সফল হবে
+    const btn = document.getElementById('submit');
+    if(btn.disabled) return;
+    btn.disabled = true; btn.textContent = 'রেজিস্ট্রেশন হচ্ছে...';
     let phoneClaimed = false;
+    let authCreated = false;
     try{
-      phoneClaimed = await claimPhoneNumber(phone, {role:'partsEngineer', name});
+      await fbEnsureAuth(newPe, pw, 'pe', {registration:true});
+      authCreated = true;
+      await clearStalePhoneClaim(phone);
+      phoneClaimed = await claimPhoneNumber(phone, {role:'partsEngineer', name, ownerId:newPe.id});
       if(!phoneClaimed){
+        if(authCreated && fbAuth.currentUser) await fbAuth.currentUser.delete().catch(cleanErr=>console.error('PE Auth cleanup failed:',cleanErr));
         btn.disabled = false; btn.textContent = 'রেজিস্ট্রেশন করুন';
         e.style.display='block'; e.textContent='এই মোবাইল নম্বর দিয়ে আগেই রেজিস্ট্রেশন করা আছে';
         return;
       }
-      await fbEnsureAuth(newPe, pw, 'pe');
     }catch(err){
-      console.error('Firebase PE registration auth failed:', err);
+      console.error('Firebase PE registration failed:', err);
       if(phoneClaimed) await releasePhoneNumber(phone);
+      if(authCreated && fbAuth.currentUser) await fbAuth.currentUser.delete().catch(cleanErr=>console.error('PE Auth cleanup failed:',cleanErr));
       btn.disabled = false; btn.textContent = 'রেজিস্ট্রেশন করুন';
-      e.style.display='block'; e.textContent='সার্ভারে সংযোগে সমস্যা হয়েছে, আবার চেষ্টা করুন';
+      e.style.display='block';
+      e.textContent = err && err.code==='auth/network-request-failed'
+        ? 'ইন্টারনেট সংযোগে সমস্যা হয়েছে। সংযোগ ঠিক করে আবার চেষ্টা করুন।'
+        : 'রেজিস্ট্রেশন সম্পন্ন করা যায়নি। কিছুক্ষণ পর আবার চেষ্টা করুন।';
       return;
     }
+    const peInsertedIndex=DB.partsEngineers.length;
     DB.partsEngineers.push(newPe);
+    try{
+      await saveDBAndVerifyRegistration(newPe,'partsEngineers');
+    }catch(profileErr){
+      DB.partsEngineers.splice(peInsertedIndex,1);
+      if(phoneClaimed) await releasePhoneNumber(phone);
+      if(authCreated && fbAuth.currentUser) await fbAuth.currentUser.delete().catch(cleanErr=>console.error('PE Registration Auth cleanup failed:',cleanErr));
+      btn.disabled = false; btn.textContent = 'রেজিস্ট্রেশন করুন';
+      e.style.display='block'; e.textContent='অ্যাকাউন্ট তৈরি হয়েছে, কিন্তু প্রোফাইল সেভ হয়নি। আবার চেষ্টা করুন।';
+      return;
+    }
     logHistory(`নতুন Parts Engineer সেলফ-রেজিস্ট্রেশন: ${name} (${region}) — Engineer ID: ${engineerId}`);
-    await saveDB();
     DB.session = {role:'partsEngineer', user:newPe};
     recordLogin(newPe.name, 'partsEngineer', newPe.phone);
     peTab = 'dealers';
@@ -5068,8 +5205,9 @@ function resolveResetRequest(id){
 }
 function usersTable(peFilter){
   if(DB.users.length===0) return `<div class="empty">কোনো ইউজার নেই</div>`;
-  const pending = DB.users.filter(u=>u.pending);
-  let approved = DB.users.filter(u=>!u.pending);
+  const pending = DB.users.filter(u=>u.pending && !isDeletedAccount(u));
+  let approved = DB.users.filter(u=>!u.pending && !isDeletedAccount(u));
+  const deleted = DB.users.filter(u=>isDeletedAccount(u));
   if(peFilter === 'unassigned') approved = approved.filter(u=>!u.peId);
   else if(peFilter) approved = approved.filter(u=>Number(u.peId)===Number(peFilter));
   let html = '';
@@ -5104,6 +5242,15 @@ function usersTable(peFilter){
   } else if(!pending.length) {
     html += `<div class="empty">এই ফিল্টারে কোনো ইউজার পাওয়া যায়নি</div>`;
   }
+  if(deleted.length){
+    html += `<div class="card" style="margin-top:14px;background:#fff7f7;border:1.5px solid #efcaca;">
+      <div style="font-weight:700;color:#9b2c2c;margin-bottom:8px;">🗑️ Deleted Users (${deleted.length})</div>
+      ${deleted.map(u=>`<div style="display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid #f0d8d8;">
+        <span>${u.name} · <span class="mono">${u.phone}</span></span>
+        <span class="badge inactive">Deleted</span>
+      </div>`).join('')}
+    </div>`;
+  }
   return html || `<div class="empty">কোনো ইউজার নেই</div>`;
 }
 function approveUser(id){
@@ -5114,14 +5261,19 @@ function approveUser(id){
   saveDB();
   go('adminDashboard');
 }
-function deleteUser(id){
+async function deleteUser(id){
   const u = DB.users.find(x=>x.id===id);
   if(!u) return;
   if(confirm(`"${u.name}" (${u.phone}) ডিলিট করতে চান?`)){
-    DB.users = DB.users.filter(x=>x.id!==id);
-    releasePhoneNumber(u.phone); // মোবাইল নম্বরটি লক থেকে মুক্ত করা হলো — এখন এই নম্বর দিয়ে নতুন রেজিস্ট্রেশন করা যাবে
-    syncPush('deleteUser', {id});
-    saveDB();
+    u.deleted = true;
+    u.isDeleted = true;
+    u.status = 'deleted';
+    u.active = false;
+    u.pending = false;
+    u.deletedAt = new Date().toISOString();
+    await releasePhoneNumber(u.phone);
+    syncPush('deleteUser', {id, softDelete:true, phone:u.phone});
+    await saveDB();
     go('adminDashboard');
   }
 }
@@ -5187,7 +5339,7 @@ function openUserModal(user){
   toggleMURoleFields();
   document.getElementById('saveUser').onclick = async ()=>{
     const name = document.getElementById('mUName').value.trim();
-    const phone = document.getElementById('mUPhone').value.trim();
+    const phone = normalizePhoneNumber(document.getElementById('mUPhone').value.trim());
     const password = document.getElementById('mUPw').value.trim();
     const role = document.getElementById('mURole').value;
     const district = document.getElementById('mUDistrict').value;
@@ -5211,8 +5363,8 @@ function openUserModal(user){
     }
     const phoneChanged = !isEdit || (user && user.phone !== phone);
     if(phoneChanged){
-      if(DB.users.some(u=>u.phone===phone && (!isEdit || u.id!==user.id))){ errBox.style.display='block'; errBox.textContent='এই মোবাইল নম্বর দিয়ে আগেই একটি অ্যাকাউন্ট আছে'; return; }
-      if(DB.partsEngineers.some(p=>p.phone===phone)){ errBox.style.display='block'; errBox.textContent='এই মোবাইল নম্বরটি ইতিমধ্যে একটি Parts Engineer অ্যাকাউন্টে ব্যবহৃত আছে'; return; }
+      if(hasExistingUserPhone(phone, isEdit ? user.id : null)){ errBox.style.display='block'; errBox.textContent='এই মোবাইল নম্বর দিয়ে আগেই একটি অ্যাকাউন্ট আছে'; return; }
+      if(hasExistingPartsEngineerPhone(phone)){ errBox.style.display='block'; errBox.textContent='এই মোবাইল নম্বরটি ইতিমধ্যে একটি Parts Engineer অ্যাকাউন্টে ব্যবহৃত আছে'; return; }
     }
     const saveBtn = document.getElementById('saveUser');
     saveBtn.disabled = true;
@@ -5328,7 +5480,7 @@ function openPeModal(pe){
   `);
   document.getElementById('savePe').onclick = async ()=>{
     const name = document.getElementById('mPeName').value.trim();
-    const phone = document.getElementById('mPePhone').value.trim();
+    const phone = normalizePhoneNumber(document.getElementById('mPePhone').value.trim());
     const password = document.getElementById('mPePw').value.trim();
     const region = document.getElementById('mPeRegion').value;
     if(!name || !phone || !password || !region) { alert('সব ঘর পূরণ করুন — নাম, মোবাইল, পাসওয়ার্ড, রিজিয়ন নির্বাচন করুন।'); return; }
@@ -5336,8 +5488,8 @@ function openPeModal(pe){
     if(!PARTS_ENGINEER_REGIONS.includes(region)) { alert('অনুগ্রহ করে তালিকা থেকে একটি বৈধ Region নির্বাচন করুন।'); return; }
     const phoneChanged = !isEdit || (pe && pe.phone !== phone);
     if(phoneChanged){
-      if(DB.partsEngineers.some(p=>p.phone===phone && (!isEdit || p.id!==pe.id))){ alert('এই মোবাইল নম্বর দিয়ে আগেই একটি Parts Engineer অ্যাকাউন্ট আছে'); return; }
-      if(DB.users.some(u=>u.phone===phone)){ alert('এই মোবাইল নম্বরটি ইতিমধ্যে একটি ডিলার/মেকানিক অ্যাকাউন্টে ব্যবহৃত আছে'); return; }
+      if(hasExistingPartsEngineerPhone(phone, isEdit ? pe.id : null)){ alert('এই মোবাইল নম্বর দিয়ে আগেই একটি Parts Engineer অ্যাকাউন্ট আছে'); return; }
+      if(hasExistingUserPhone(phone)){ alert('এই মোবাইল নম্বরটি ইতিমধ্যে একটি ডিলার/মেকানিক অ্যাকাউন্টে ব্যবহৃত আছে'); return; }
     }
     const saveBtn = document.getElementById('savePe');
     saveBtn.disabled = true;
@@ -5374,16 +5526,16 @@ function togglePe(id){
   saveDB();
   go('adminDashboard');
 }
-function deletePe(id){
+async function deletePe(id){
   const p = DB.partsEngineers.find(x=>x.id===id);
   if(!p) return;
-  const underCount = DB.users.filter(u=>u.peId===id).length;
+  const underCount = DB.users.filter(u=>u.peId===id && !isDeletedAccount(u)).length;
   const warn = underCount ? `\n\n⚠️ এই Parts Engineer-এর অধীনে বর্তমানে ${underCount} জন ডিলার/মেকানিক আছে — ডিলিট করলে তারা "Unassigned" হয়ে যাবে।` : '';
   if(confirm(`"${p.name}" (${p.phone}) ডিলিট করতে চান?${warn}`)){
-    DB.partsEngineers = DB.partsEngineers.filter(x=>x.id!==id);
-    releasePhoneNumber(p.phone); // মোবাইল নম্বরটি লক থেকে মুক্ত করা হলো — এখন এই নম্বর দিয়ে নতুন রেজিস্ট্রেশন করা যাবে
+    p.deleted = true; p.isDeleted = true; p.status = 'deleted'; p.active = false; p.deletedAt = new Date().toISOString();
+    await releasePhoneNumber(p.phone);
     logHistory(`Parts Engineer ডিলিট করা হয়েছে: ${p.name}`);
-    saveDB();
+    await saveDB();
     go('adminDashboard');
   }
 }
@@ -5961,6 +6113,13 @@ function settingsTabHTML(){
       <button class="btn btn-navy" id="saveQsCode">আপডেট করুন</button>
     </div>
     <div class="card">
+      <h3>📱 মোবাইল নম্বর রেজিস্ট্রেশন ডায়াগনস্টিক</h3>
+      <p class="hint">কোনো নম্বর "ইতিমধ্যে রেজিস্ট্রেশন করা আছে" দেখালে এখানে নম্বরটি লিখে চেক করুন — Users/Parts Engineer লিস্ট ও Firebase-এর phoneRegistry লক একসাথে দেখাবে, এবং কোনো Active/Pending অ্যাকাউন্ট না থাকলে লকটি রিলিজ করার অপশন দেবে।</p>
+      <div class="field"><label>মোবাইল নম্বর</label><input type="text" id="phoneDiagInput" placeholder="017XXXXXXXX"></div>
+      <button class="btn btn-navy" id="phoneDiagCheck">চেক করুন</button>
+      <div id="phoneDiagResult" style="margin-top:12px;"></div>
+    </div>
+    <div class="card">
       <h3>🔑 অ্যাডমিন পাসওয়ার্ড পরিবর্তন</h3>
       <div class="field"><label>বর্তমান পাসওয়ার্ড</label><input type="password" id="curPw"></div>
       <div class="field"><label>নতুন পাসওয়ার্ড</label><input type="password" id="newPw"></div>
@@ -6062,6 +6221,68 @@ function wireSettingsTab(){
       const ok = document.getElementById('qsCodeOk');
       ok.style.display='block';
       setTimeout(()=>{ ok.style.display='none'; }, 3000);
+    };
+  }
+  const phoneDiagBtn = document.getElementById('phoneDiagCheck');
+  if(phoneDiagBtn){
+    phoneDiagBtn.onclick = async ()=>{
+      const raw = document.getElementById('phoneDiagInput').value.trim();
+      const resultBox = document.getElementById('phoneDiagResult');
+      const n = normalizePhoneNumber(raw);
+      if(!isValidPhone11(n)){ resultBox.innerHTML = `<div class="err" style="display:block;">সঠিক ১১ সংখ্যার মোবাইল নম্বর দিন।</div>`; return; }
+      phoneDiagBtn.disabled = true; const orig = phoneDiagBtn.textContent; phoneDiagBtn.textContent = 'চেক হচ্ছে...';
+      try{
+        const rowsHTML = (label, list) => list.length ? list.map(r=>{
+          const del = isDeletedAccount(r);
+          const st = del ? '<span class="badge inactive">Deleted</span>' : (r.pending ? '<span class="badge" style="background:#fff3cd;color:#8a6d3b;">Pending</span>' : (r.active===false ? '<span class="badge inactive">Inactive</span>' : '<span class="badge active">Active</span>'));
+          return `<div style="display:flex;justify-content:space-between;gap:8px;padding:6px 0;border-bottom:1px solid #eee;"><span>${label} · ${escHtml(r.name||'')} (id:${r.id})</span>${st}</div>`;
+        }).join('') : `<div class="hint">কোনো ${label} রেকর্ড পাওয়া যায়নি (matching normalized করা নম্বর দিয়ে)।</div>`;
+        const matchedUsers = DB.users.filter(u=>u && normalizePhoneNumber(u.phone)===n);
+        const matchedPe = DB.partsEngineers.filter(p=>p && normalizePhoneNumber(p.phone)===n);
+        let lockHTML = '';
+        let reclaimable = false;
+        try{
+          const snap = await phoneRegistryRef(n).once('value');
+          if(snap.exists()){
+            const current = snap.val()||{};
+            reclaimable = isPhoneLockReclaimable(current);
+            const owner = findPhoneLockOwner(current.ownerId ?? current.uid ?? null);
+            lockHTML = `<div style="margin-top:10px;padding:10px;background:#f7f8fa;border-radius:8px;">
+              <b>Firebase phoneRegistry লক:</b> role=${escHtml(current.role||'-')}, name=${escHtml(current.name||'-')}, ownerId=${escHtml(String(current.ownerId ?? current.uid ?? '-'))}<br>
+              ওনার রেকর্ড: ${owner ? (isDeletedAccount(owner)?'পাওয়া গেছে (Deleted)':'পাওয়া গেছে (এখনো Active/Pending)') : 'পাওয়া যায়নি (owner record নেই — orphaned lock)'}<br>
+              <b style="color:${reclaimable?'#2f855a':'#c2041d'}">এই লক এখন ${reclaimable?'স্বয়ংক্রিয়ভাবে পরবর্তী রেজিস্ট্রেশনে reclaim হবে (বা এখনই রিলিজ করতে পারেন)।':'একটি Active/Pending অ্যাকাউন্টকে সুরক্ষা দিচ্ছে — রিলিজ করা উচিত না।'}</b>
+            </div>`;
+          } else {
+            lockHTML = `<div style="margin-top:10px;padding:10px;background:#f0fff4;border-radius:8px;">Firebase phoneRegistry-তে এই নম্বরের কোনো লক নেই — নতুন রেজিস্ট্রেশন সরাসরি হওয়া উচিত।</div>`;
+          }
+        }catch(lockErr){
+          lockHTML = `<div class="err" style="display:block;">phoneRegistry চেক করতে সমস্যা হয়েছে (ইন্টারনেট/অনুমতি চেক করুন)।</div>`;
+        }
+        resultBox.innerHTML = `
+          <div style="padding:10px;background:#fff;border:1px solid #e5e7eb;border-radius:8px;">
+            <b>নরমালাইজড নম্বর:</b> ${n}
+            ${rowsHTML('ডিলার/মেকানিক', matchedUsers)}
+            ${rowsHTML('Parts Engineer', matchedPe)}
+          </div>
+          ${lockHTML}
+          ${reclaimable ? `<button class="btn btn-danger" id="phoneDiagRelease" style="margin-top:10px;">🔓 এই লক রিলিজ করুন</button>` : ''}
+        `;
+        const relBtn = document.getElementById('phoneDiagRelease');
+        if(relBtn){
+          relBtn.onclick = async ()=>{
+            if(!confirm(`${n} নম্বরের phoneRegistry লক রিলিজ করতে চান? এরপর এই নম্বর দিয়ে নতুন রেজিস্ট্রেশন করা যাবে।`)) return;
+            relBtn.disabled = true; relBtn.textContent = 'রিলিজ হচ্ছে...';
+            await releasePhoneNumber(n);
+            logHistory(`মোবাইল নম্বর লক ম্যানুয়ালি রিলিজ করা হয়েছে: ${n}`);
+            phoneDiagBtn.click();
+          };
+        }
+      }catch(err){
+        console.error('Phone diagnostic failed:', err);
+        resultBox.innerHTML = `<div class="err" style="display:block;">চেক করতে সমস্যা হয়েছে, আবার চেষ্টা করুন।</div>`;
+      }finally{
+        phoneDiagBtn.disabled = false; phoneDiagBtn.textContent = orig;
+      }
     };
   }
   document.getElementById('changePw').onclick = ()=>{
@@ -6193,10 +6414,10 @@ function renderQsResults(q){
 /* ================= INIT ================= */
 if(SYNC_ON){
   document.getElementById('app').innerHTML = `<div class="dl-screen"><div><div class="dl-loading-text">Google Sheet থেকে ডেটা লোড হচ্ছে</div><div class="dl-dots"><span></span><span></span><span></span><span></span><span></span></div></div></div>`;
-  loadFromSheet().then(()=>{ splashShown = true; showSplash(render); initQuickSearchFAB(); backfillPhoneRegistry(); });
+  loadFromSheet().then(()=>{ normalizeLoadedAccountPhones(); splashShown = true; showSplash(render); initQuickSearchFAB(); backfillPhoneRegistry(); });
 } else {
   document.getElementById('app').innerHTML = `<div class="dl-screen"><div><div class="dl-loading-text">ডেটা লোড হচ্ছে</div><div class="dl-dots"><span></span><span></span><span></span><span></span><span></span></div></div></div>`;
-  loadDB().then(()=>{ ensureCores(); splashShown = true; showSplash(render); migrateOldMemosToIndex(); initQuickSearchFAB(); backfillPhoneRegistry(); });
+  loadDB().then(()=>{ normalizeLoadedAccountPhones(); ensureCores(); splashShown = true; showSplash(render); migrateOldMemosToIndex(); initQuickSearchFAB(); backfillPhoneRegistry(); });
 }
 
 /* ================= MOBILE SCROLL / KEYBOARD FIX =================
