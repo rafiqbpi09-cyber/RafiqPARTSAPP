@@ -1014,12 +1014,30 @@ async function fbEnsureAuth(record, pw, prefix, options={}){
     await fbAuth.createUserWithEmailAndPassword(newEmail, password);
   }catch(err){
     if(err && err.code === 'auth/email-already-in-use'){
-      await fbAuth.signInWithEmailAndPassword(newEmail, password);
+      try{
+        await fbAuth.signInWithEmailAndPassword(newEmail, password);
+      }catch(err2){
+        // এই ফিক্সড ইমেইলে (যেমন admin@admin.metal-parts-app.local) আগে থেকেই একটা
+        // অ্যাকাউন্ট আছে কিন্তু বর্তমান পাসওয়ার্ড দিয়ে সাইন-ইন হচ্ছে না (পাসওয়ার্ড বদলে
+        // গেছে বা আগের কোনো চেষ্টায় ভিন্ন পাসওয়ার্ডে তৈরি হয়েছিল)। এই পুরনো ইমেইল দিয়ে
+        // আটকে না থেকে, নতুন র‍্যান্ডম-সাফিক্স ইমেইলে rotate করে স্ব-নিরাময় (self-heal) করা হচ্ছে —
+        // নাহলে এই ফিক্সড ইমেইলে বারবার একই এরর হয়ে চলতেই থাকবে।
+        const code2 = err2 && err2.code;
+        if(code2 === 'auth/wrong-password' || code2 === 'auth/invalid-credential' || code2 === 'auth/invalid-login-credentials' || code2 === 'auth/user-not-found'){
+          const rotatedEmail = `${digits}.${Date.now()}@${prefix}.metal-parts-app.local`;
+          await fbAuth.createUserWithEmailAndPassword(rotatedEmail, password);
+          record.authEmail = rotatedEmail;
+          return;
+        }
+        throw err2;
+      }
     } else throw err;
   }
   record.authEmail = newEmail;
 }
 
+let lastSaveError = null;
+let lastAuthError = null;
 async function saveDB(){
   try{
     const payload = {
@@ -1049,17 +1067,30 @@ async function saveDB(){
       const idToken = await fbAuth.currentUser.getIdToken();
       fbUrl += `?auth=${idToken}`;
     }
-    await fetch(fbUrl, {
+    const fbRes = await fetch(fbUrl, {
       method: 'PUT',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify(payload)
     });
+    // fetch() নেটওয়ার্ক এরর ছাড়া HTTP এরর (যেমন Firebase rules-এ permission-denied/401/403)-এ
+    // থ্রো করে না — তাই res.ok চেক না করলে write আসলে ব্যর্থ হলেও কোড ধরে নেয় সেভ সফল হয়েছে,
+    // এবং ইউজারকে ভুলভাবে "সেভ হয়েছে" দেখায় (Firebase-এ পুরনো ডেটাই থেকে যায়, রিফ্রেশে সেটাই ফিরে আসে)।
+    if(!fbRes.ok){
+      const errText = await fbRes.text().catch(()=>String(fbRes.status));
+      throw new Error(`Firebase save failed: ${fbRes.status} ${errText}`);
+    }
     // localStorage এও সেভ (অফলাইন ব্যাকআপ)
     try{ localStorage.setItem(LS_KEY, JSON.stringify(payload)); }catch(e){}
+    lastSaveError = null;
+    return true;
   }catch(e){
+    lastSaveError = (e && e.message) ? e.message : String(e);
     console.error('Firebase save failed:', e);
     // Firebase না হলে localStorage এ সেভ
     try{ localStorage.setItem(LS_KEY, JSON.stringify({users:DB.users,history:DB.history.slice(0,50),settings:DB.settings,parts:DB.parts,nextPartId,partsSaved:true,requisitions:DB.requisitions.slice(0,200),nextReqNo,drafts:DB.drafts.slice(0,200),partsEngineers:DB.partsEngineers,nextPeId,dealerShopParts:DB.dealerShopParts,dealerMemos:DB.dealerMemos,dealerMemoDrafts:DB.dealerMemoDrafts,stockHistory:DB.stockHistory,nextMemoNo:DB.nextMemoNo||1})); }catch(e2){}
+    // Firebase-এ আসল write ব্যর্থ হয়েছে — caller (যেমন Delete History রিসেট) এটা জেনে
+    // ইউজারকে সঠিক সতর্কতা দেখাতে পারে, নাহলে সবকিছু "সেভ হয়েছে" মনে হবে অথচ রিফ্রেশে পুরনো ডেটা ফিরে আসবে
+    return false;
   }
 }
 async function saveDBAndVerifyRegistration(record, collectionName){
@@ -1836,8 +1867,8 @@ async function slSubmitLogin(role){
   if(role === 'admin'){
     if(pw !== DB.settings.adminPassword){ showErr('পাসওয়ার্ড সঠিক নয়'); return; }
     btn.disabled = true; btn.textContent = 'প্রবেশ করা হচ্ছে...';
-    try{ await fbEnsureAuth(DB.settings, pw, 'admin'); }
-    catch(err){ console.warn('Firebase admin auth skipped (offline/network issue), continuing with local login:', err); }
+    try{ await fbEnsureAuth(DB.settings, pw, 'admin'); lastAuthError = null; }
+    catch(err){ lastAuthError = (err && (err.code || err.message)) ? `${err.code||''} ${err.message||err}`.trim() : String(err); console.warn('Firebase admin auth skipped (offline/network issue), continuing with local login:', err); }
     DB.session = {role:'admin', user:{name:'Admin'}};
     recordLogin('Admin', 'admin', '');
     go('adminDashboard');
@@ -1850,8 +1881,8 @@ async function slSubmitLogin(role){
     if(isDeletedAccount(pe)){ showErr('আপনার অ্যাকাউন্টটি ডিলিট করা হয়েছে। নতুন করে রেজিস্ট্রেশন করুন।'); return; }
   if(!pe.active){ showErr('আপনার অ্যাকাউন্টটি নিষ্ক্রিয় করা হয়েছে, অ্যাডমিনের সাথে যোগাযোগ করুন।'); return; }
     btn.disabled = true; btn.textContent = 'প্রবেশ করা হচ্ছে...';
-    try{ await fbEnsureAuth(pe, pw, 'pe'); }
-    catch(err){ console.warn('Firebase parts-engineer auth skipped (offline/network issue), continuing with local login:', err); }
+    try{ await fbEnsureAuth(pe, pw, 'pe'); lastAuthError = null; }
+    catch(err){ lastAuthError = (err && (err.code || err.message)) ? `${err.code||''} ${err.message||err}`.trim() : String(err); console.warn('Firebase parts-engineer auth skipped (offline/network issue), continuing with local login:', err); }
     DB.session = {role:'partsEngineer', user:pe};
     recordLogin(pe.name, 'partsEngineer', pe.phone);
     peTab = 'dealers';
@@ -1866,8 +1897,8 @@ async function slSubmitLogin(role){
   if(u.pending){ showErr('আপনার অ্যাকাউন্ট এখনও অনুমোদন হয়নি, অ্যাডমিনের সাথে যোগাযোগ করুন'); return; }
   if(!u.active){ showErr('আপনার অ্যাকাউন্টটি নিষ্ক্রিয় করা হয়েছে, অ্যাডমিনের সাথে যোগাযোগ করুন'); return; }
   btn.disabled = true; btn.textContent = 'প্রবেশ করা হচ্ছে...';
-  try{ await fbEnsureAuth(u, pw, 'dealer'); }
-  catch(err){ console.warn('Firebase dealer auth skipped (offline/network issue), continuing with local login:', err); }
+  try{ await fbEnsureAuth(u, pw, 'dealer'); lastAuthError = null; }
+  catch(err){ lastAuthError = (err && (err.code || err.message)) ? `${err.code||''} ${err.message||err}`.trim() : String(err); console.warn('Firebase dealer auth skipped (offline/network issue), continuing with local login:', err); }
   if(u.role === 'mechanic'){
     DB.session = {role:'mechanic', user:u};
     recordLogin(u.name, u.role, u.phone);
@@ -1913,7 +1944,9 @@ ROUTES.adminLogin = function(){
       const btn = document.getElementById('submit'); btn.disabled = true; btn.textContent = 'প্রবেশ করা হচ্ছে...';
       try{
         await fbEnsureAuth(DB.settings, pw, 'admin');
+        lastAuthError = null;
       }catch(err){
+        lastAuthError = (err && (err.code || err.message)) ? `${err.code||''} ${err.message||err}`.trim() : String(err);
         console.warn('Firebase admin auth skipped (offline/network issue), continuing with local login:', err);
       }
       DB.session = {role:'admin', user:{name:'Admin'}};
@@ -4888,6 +4921,10 @@ ROUTES.adminDashboard = function(){
             <img src="${TRACTOR_IMG_EICHER}" alt="Eicher" style="width:2in;height:1.5in;max-width:50%;object-fit:contain;">
           </div>
           ${DB.settings.adminPassword === 'admin123' ? `<div style="background:rgba(226,134,31,0.15);border:1px solid var(--amber);color:#fff;padding:12px 16px;border-radius:10px;margin-bottom:20px;font-size:14px;display:flex;align-items:center;gap:10px;">⚠️ <span>ডিফল্ট অ্যাডমিন পাসওয়ার্ড (admin123) এখনো ব্যবহার হচ্ছে — নিরাপত্তার জন্য Settings থেকে পরিবর্তন করুন।</span></div>` : ''}
+          ${!fbAuth.currentUser ? `<div style="background:rgba(220,38,38,0.15);border:1px solid #dc2626;color:#fff;padding:12px 16px;border-radius:10px;margin-bottom:20px;font-size:14px;display:flex;flex-direction:column;gap:6px;">
+            <div style="display:flex;align-items:center;gap:10px;">⚠️ <span>Cloud সাইন-ইন সক্রিয় নেই — এই সেশনে করা পরিবর্তন (যেমন Delete History রিসেট) Firebase-এ সেভ নাও হতে পারে এবং রিফ্রেশে হারিয়ে যেতে পারে। একবার লগআউট করে আবার লগইন করে দেখুন।</span></div>
+            ${lastAuthError ? `<div style="font-size:12px;font-family:monospace;background:rgba(0,0,0,0.25);padding:8px 10px;border-radius:6px;word-break:break-all;">সঠিক এরর: ${lastAuthError}</div>` : ''}
+          </div>` : ''}
           <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:13px;">
             <div style="background:#fff;border-radius:14px;padding:22px 11px;text-align:center;cursor:pointer;transition:all 0.25s;box-shadow:0 3px 11px rgba(0,0,0,0.16);" onclick="adminTab='dashboard';go('adminDashboard');" onmouseover="this.style.transform='translateY(-6px)'" onmouseout="this.style.transform='translateY(0)'">
               <div style="width:48px;height:48px;border-radius:13px;background:#e3ddc4;display:flex;align-items:center;justify-content:center;font-size:24px;margin:0 auto 11px;">📊</div>
@@ -5388,9 +5425,17 @@ async function resetUserDeleteHistory(){
   const deletedList = DB.users.filter(u=>isDeletedAccount(u));
   if(!deletedList.length){ alert('Delete History ইতিমধ্যে খালি।'); return; }
   if(!confirm(`Delete History-তে থাকা ${deletedList.length} জন ডিলিট করা ইউজারের তথ্য স্থায়ীভাবে মুছে ফেলতে চান? এটি ফিরিয়ে আনা যাবে না।`)) return;
+  const backup = DB.users;
   DB.users = DB.users.filter(u=>!isDeletedAccount(u));
+  const ok = await saveDB();
+  if(!ok){
+    // Firebase-এ সেভ ব্যর্থ হয়েছে — মেমোরিতে রোলব্যাক করে ইউজারকে জানানো হচ্ছে,
+    // যাতে রিফ্রেশের পর পুরনো ডেটা "রহস্যজনকভাবে ফিরে আসা"-র বদলে এখনই বোঝা যায় সেভ হয়নি
+    DB.users = backup;
+    alert('❌ Delete History রিসেট করা যায়নি — ইন্টারনেট সংযোগ বা Firebase পারমিশন চেক করুন এবং আবার চেষ্টা করুন।\n\nবিস্তারিত এরর: ' + (lastSaveError || 'অজানা'));
+    return;
+  }
   logHistory(`Delete History রিসেট করা হয়েছে (${deletedList.length} জন ইউজার স্থায়ীভাবে মুছে ফেলা হয়েছে)`);
-  await saveDB();
   showSavedToast('✅ Delete History রিসেট হয়েছে');
   go('adminDashboard');
 }
@@ -5590,9 +5635,15 @@ async function resetPeDeleteHistory(){
   const deletedList = DB.partsEngineers.filter(p=>isDeletedAccount(p));
   if(!deletedList.length){ alert('Delete History ইতিমধ্যে খালি।'); return; }
   if(!confirm(`Delete History-তে থাকা ${deletedList.length} জন ডিলিট করা Parts Engineer-এর তথ্য স্থায়ীভাবে মুছে ফেলতে চান? এটি ফিরিয়ে আনা যাবে না।`)) return;
+  const backup = DB.partsEngineers;
   DB.partsEngineers = DB.partsEngineers.filter(p=>!isDeletedAccount(p));
+  const ok = await saveDB();
+  if(!ok){
+    DB.partsEngineers = backup;
+    alert('❌ Delete History রিসেট করা যায়নি — ইন্টারনেট সংযোগ বা Firebase পারমিশন চেক করুন এবং আবার চেষ্টা করুন।\n\nবিস্তারিত এরর: ' + (lastSaveError || 'অজানা'));
+    return;
+  }
   logHistory(`Parts Engineer Delete History রিসেট করা হয়েছে (${deletedList.length} জন স্থায়ীভাবে মুছে ফেলা হয়েছে)`);
-  await saveDB();
   showSavedToast('✅ Delete History রিসেট হয়েছে');
   go('adminDashboard');
 }
@@ -6555,10 +6606,10 @@ function renderQsResults(q){
 /* ================= INIT ================= */
 if(SYNC_ON){
   document.getElementById('app').innerHTML = `<div class="dl-screen"><div><div class="dl-loading-text">Google Sheet থেকে ডেটা লোড হচ্ছে</div><div class="dl-dots"><span></span><span></span><span></span><span></span><span></span></div></div></div>`;
-  loadFromSheet().then(()=>{ normalizeLoadedAccountPhones(); splashShown = true; showSplash(render); backfillPhoneRegistry(); });
+  loadFromSheet().then(()=>{ normalizeLoadedAccountPhones(); splashShown = true; showSplash(render); backfillPhoneRegistry(); initQuickSearchFAB(); });
 } else {
   document.getElementById('app').innerHTML = `<div class="dl-screen"><div><div class="dl-loading-text">ডেটা লোড হচ্ছে</div><div class="dl-dots"><span></span><span></span><span></span><span></span><span></span></div></div></div>`;
-  loadDB().then(()=>{ normalizeLoadedAccountPhones(); ensureCores(); splashShown = true; showSplash(render); migrateOldMemosToIndex(); backfillPhoneRegistry(); });
+  loadDB().then(()=>{ normalizeLoadedAccountPhones(); ensureCores(); splashShown = true; showSplash(render); migrateOldMemosToIndex(); backfillPhoneRegistry(); initQuickSearchFAB(); });
 }
 
 /* ================= MOBILE SCROLL / KEYBOARD FIX =================
