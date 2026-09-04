@@ -767,10 +767,13 @@ window.APP_VERSION = '2026-09-02-registration-fix.1';
   .tb-admin-view .tb-wrap{max-height:60vh;overflow:auto;}
   @media(max-width:768px){.tb-admin-tools{grid-template-columns:1fr}.tb-admin-table{min-width:0}.tb-admin-table thead{display:none}.tb-admin-table,.tb-admin-table tbody,.tb-admin-table tr,.tb-admin-table td{display:block;width:100%;box-sizing:border-box}.tb-admin-table tr{margin-bottom:12px;border:1px solid var(--line);border-radius:10px;padding:8px}.tb-admin-table td{border:0;border-bottom:1px solid #eef1f4;padding:8px 4px;display:flex;justify-content:space-between;gap:10px}.tb-admin-table td:last-child{border-bottom:0}.tb-admin-table td::before{content:attr(data-label);font-weight:700;color:var(--muted);}.tb-table{min-width:1180px}.tb-toolbar{position:sticky;top:0;z-index:3;background:var(--card);padding:5px 0}.tb-mechanic-meta{font-size:11px;}}
   @media print{.tb-toolbar,.tb-remove-row,.tb-action-cell{display:none!important}.tb-table{min-width:0;width:100%}.tb-table th,.tb-table td{font-size:9px;padding:2px}.tb-mechanic-meta{background:#fff;border:0;padding:0}.tb-table tr.tb-row-filled td{background:#fff!important;box-shadow:none!important}}
+  #saveToast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(20px);background:#1f7a4d;color:#fff;padding:10px 20px;border-radius:30px;font-size:14px;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,.25);z-index:99999;opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;}
+  #saveToast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 </style>
 </head>
 <body>
 <div id="app"></div>
+<div id="saveToast"></div>
 
 <script>
 /* ================= LOGIN SCREEN ICONS (line-style SVGs) ================= */
@@ -1639,6 +1642,16 @@ function go(route){
 }
 
 function el(html){ const t=document.createElement('template'); t.innerHTML=html.trim(); return t.content; }
+// Small confirmation toast shown after an explicit save/update action.
+let _saveToastTimer=null;
+function showSavedToast(msg){
+  const box=document.getElementById('saveToast');
+  if(!box) return;
+  box.textContent = msg || '✅ সেভ হয়েছে';
+  box.classList.add('show');
+  clearTimeout(_saveToastTimer);
+  _saveToastTimer = setTimeout(()=>{ box.classList.remove('show'); }, 2200);
+}
 // Bottom navigation bar (Dealer/PE/Admin) — items: [{key,icon,label,onclick}]
 function bottomNavHTML(items, activeKey){
   return `<div class="bottom-nav">${items.map(it=>`<button type="button" class="bottom-nav-item ${activeKey===it.key?'active':''}" onclick="${it.onclick}"><span class="bn-icon">${it.icon}</span><span>${it.label}</span></button>`).join('')}</div>`;
@@ -1661,6 +1674,7 @@ function showDealerMoreMenu(){
       <button class="btn btn-ghost btn-block" onclick="closeModal();dealerManageTab='shopParts';go('dealerPortal')">🧩 My Shop Parts</button>
       <button class="btn btn-ghost btn-block" onclick="closeModal();dealerManageTab='stockHistory';go('dealerPortal')">↕️ Stock History</button>
       <button class="btn btn-ghost btn-block" onclick="closeModal();go('dealerRequisition')">📝 রিকুইজিশন</button>
+      <button class="btn btn-ghost btn-block" onclick="closeModal();dealerManageTab='profile';go('dealerPortal')">👤 আমার প্রোফাইল</button>
       <button class="btn btn-ghost btn-block" onclick="closeModal()">বাতিল</button>
     </div>`);
 }
@@ -2449,11 +2463,35 @@ function mechanicProfileHTML(){
   if(!u) return '';
   return `<div class="card">
     <h3>👤 আমার প্রোফাইল</h3>
-    <div class="field"><label>নাম</label><input type="text" value="${escHtml(u.name)}" readonly style="background:#f2f4f7;"></div>
-    <div class="field"><label>মোবাইল</label><input type="text" value="${escHtml(u.phone)}" readonly style="background:#f2f4f7;"></div>
+    <div class="field"><label>নাম</label><input type="text" id="selfProfName" value="${escHtml(u.name)}"></div>
+    <div class="field"><label>মোবাইল নম্বর</label><input type="text" value="${escHtml(u.phone)}" readonly style="background:#f2f4f7;"></div>
     <div class="field"><label>টেরিটরি</label><input type="text" value="${escHtml(u.territory||'-')}" readonly style="background:#f2f4f7;"></div>
     <div class="field"><label>Role</label><input type="text" value="Mechanic" readonly style="background:#f2f4f7;"></div>
+    <div class="field"><label>নতুন পাসওয়ার্ড <span class="hint">(পরিবর্তন না করলে খালি রাখুন)</span></label><input type="password" id="selfProfPw" placeholder="••••••••"></div>
+    <div class="err" id="selfProfErr" style="display:none"></div>
+    <button class="btn btn-primary" id="selfProfSave">সেভ করুন</button>
   </div>`;
+}
+// Shared self-service profile save handler for Dealer/Mechanic (DB.users) —
+// only their OWN name/password may change; no other field or record is touched.
+function wireSelfUserProfile(reRenderRoute){
+  const btn = document.getElementById('selfProfSave');
+  if(!btn) return;
+  btn.onclick = async ()=>{
+    const record = DB.users.find(x=>x.id===DB.session.user.id);
+    if(!record) return;
+    const name = document.getElementById('selfProfName').value.trim();
+    const pw = document.getElementById('selfProfPw').value;
+    const errBox = document.getElementById('selfProfErr');
+    errBox.style.display = 'none';
+    if(!name){ errBox.style.display='block'; errBox.textContent='নাম খালি রাখা যাবে না'; return; }
+    record.name = name;
+    if(pw) record.password = pw;
+    DB.session.user = record;
+    await saveDB();
+    showSavedToast('✅ প্রোফাইল আপডেট হয়েছে');
+    go(reRenderRoute);
+  };
 }
 /* ================= TOUR BILL (Company Original CS-02 Format) =================
    Digital Tour Bill using the original CS-02 structure.
@@ -2846,6 +2884,9 @@ ROUTES.mechanicDashboard = function(){
   if(mechanicTab === 'tourbill'){
     bindTourBillEvents();
   }
+  if(mechanicTab === 'profile'){
+    wireSelfUserProfile('mechanicDashboard');
+  }
 };
 
 /* ---- Parts Engineer Login ---- */
@@ -3159,10 +3200,24 @@ function dealerNavHTML(){
     ['memoSearch','🔎 Memo Search'],
     ['shopParts','🧩 My Shop Parts'],
     ['stock','📦 My Stock'],
-    ['stockHistory','↕️ Stock History']
+    ['stockHistory','↕️ Stock History'],
+    ['profile','👤 আমার প্রোফাইল']
   ];
   return `<div class="dealer-tabs">${tabs.map(([id,label])=>
     `<button class="tab ${dealerManageTab===id?'active':''}" onclick="dealerManageTab='${id}';go('dealerPortal')">${label}</button>`).join('')}</div>`;
+}
+function dealerProfileHTML(){
+  const u = currentDealer();
+  if(!u) return '';
+  return `<div class="card">
+    <h3>👤 আমার প্রোফাইল</h3>
+    <div class="field"><label>নাম</label><input type="text" id="selfProfName" value="${escHtml(u.name)}"></div>
+    <div class="field"><label>মোবাইল নম্বর</label><input type="text" value="${escHtml(u.phone)}" readonly style="background:#f2f4f7;"></div>
+    <div class="field"><label>Role</label><input type="text" value="Dealer" readonly style="background:#f2f4f7;"></div>
+    <div class="field"><label>নতুন পাসওয়ার্ড <span class="hint">(পরিবর্তন না করলে খালি রাখুন)</span></label><input type="password" id="selfProfPw" placeholder="••••••••"></div>
+    <div class="err" id="selfProfErr" style="display:none"></div>
+    <button class="btn btn-primary" id="selfProfSave">সেভ করুন</button>
+  </div>`;
 }
 function dealerTopbar(sub='ডিলার পোর্টাল', hideBrand=false){
   const u=currentDealer();
@@ -3883,6 +3938,7 @@ function dealerPortalRender(){
   else if(dealerManageTab==='shopParts')content=dealerShopPartsHTML();
   else if(dealerManageTab==='stock')content=stockHTML();
   else if(dealerManageTab==='stockHistory')content=stockHistoryHTML();
+  else if(dealerManageTab==='profile')content=dealerProfileHTML();
   else content=dealerPortalSearchHTML();
   document.getElementById('app').appendChild(el(`<div>${dealerTopbar('ডিলার পোর্টাল', dealerManageTab==='memo')}<div class="wrap has-bottom-nav">${dealerDashboardCards()}${dealerNavHTML()}${content}</div>${dealerBottomNavHTML()}</div><div class="modal-bg" id="modalBg"><div class="modal" id="modalBody"></div></div>`));
   document.getElementById('dealerLogout').onclick=()=>{DB.session={role:null,user:null};go('landing');};
@@ -3890,6 +3946,7 @@ function dealerPortalRender(){
   if(dealerManageTab==='memo'){ const ed=window._memoDraftForWire||null; window._memoDraftForWire=null; wireMemoPage(ed); }
   if(dealerManageTab==='memoSearch')wireMemoSearch();
   if(dealerManageTab==='shopParts')wireDealerShopParts();
+  if(dealerManageTab==='profile')wireSelfUserProfile('dealerPortal');
   if(dealerManageTab==='search'){
     document.getElementById('dealerUnifiedSearch').addEventListener('input',()=>{clearTimeout(window._dealerSearchTimer);window._dealerSearchTimer=setTimeout(renderDealerUnifiedSearch,180);});
     document.getElementById('dealerUnifiedSearchBtn').onclick=renderDealerUnifiedSearch;
@@ -4503,6 +4560,7 @@ function peShell(innerHTML){
           <button class="btn ${peTab==='search'?'btn-primary':'btn-ghost'} btn-sm" onclick="peTab='search';go('peDashboard')" style="${peTab!=='search'?'color:#fff;border-color:rgba(255,255,255,0.3);':''}">🔍 পার্টস সার্চ</button>
           <button class="btn ${peTab==='requisitions'?'btn-primary':'btn-ghost'} btn-sm" onclick="peTab='requisitions';go('peDashboard')" style="${peTab!=='requisitions'?'color:#fff;border-color:rgba(255,255,255,0.3);':''}">📝 রিকুইজিশন</button>
           <button class="btn ${peTab==='report'?'btn-primary':'btn-ghost'} btn-sm" onclick="peTab='report';go('peDashboard')" style="${peTab!=='report'?'color:#fff;border-color:rgba(255,255,255,0.3);':''}">📊 রিপোর্ট</button>
+          <button class="btn ${peTab==='profile'?'btn-primary':'btn-ghost'} btn-sm" onclick="peTab='profile';go('peDashboard')" style="${peTab!=='profile'?'color:#fff;border-color:rgba(255,255,255,0.3);':''}">👤 আমার প্রোফাইল</button>
         </div>
         <div class="admin-content" style="background:rgba(255,255,255,0.05);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.15);color:#fff;">
           ${innerHTML}
@@ -4522,8 +4580,45 @@ ROUTES.peDashboard = function(){
   if(peTab === 'search'){ peShell(peSearchTabHTML()); wirePeSearchTab(); }
   else if(peTab === 'requisitions'){ peShell(peRequisitionsTabHTML()); wirePeRequisitionsTab(); }
   else if(peTab === 'report'){ peShell(peReportTabHTML()); }
+  else if(peTab === 'profile'){ peShell(peProfileHTML()); wirePeProfileTab(); }
   else { peShell(peUsersTabHTML()); wirePeUsersTab(); }
 };
+function peProfileHTML(){
+  const pe = DB.session.user;
+  return `<div class="card" style="background:transparent;box-shadow:none;">
+    <h3 style="margin-top:0">👤 আমার প্রোফাইল</h3>
+    <div class="field"><label>নাম</label><input type="text" id="selfProfName" value="${escHtml(pe.name)}"></div>
+    <div class="field"><label>Engineer ID</label><input type="text" id="selfProfEngId" value="${escHtml(pe.engineerId||'')}"></div>
+    <div class="field"><label>মোবাইল নম্বর</label><input type="text" value="${escHtml(pe.phone)}" readonly style="background:rgba(255,255,255,0.1);"></div>
+    <div class="field"><label>রিজিয়ন</label><input type="text" value="${escHtml(pe.region||'-')}" readonly style="background:rgba(255,255,255,0.1);"></div>
+    <div class="field"><label>নতুন পাসওয়ার্ড <span class="hint">(পরিবর্তন না করলে খালি রাখুন)</span></label><input type="password" id="selfProfPw" placeholder="••••••••"></div>
+    <div class="err" id="selfProfErr" style="display:none"></div>
+    <button class="btn btn-primary" id="selfProfSave">সেভ করুন</button>
+  </div>`;
+}
+// Self-service profile save for Parts Engineer (DB.partsEngineers) — only
+// their OWN name/Engineer ID/password may change; no other record is touched.
+function wirePeProfileTab(){
+  const btn = document.getElementById('selfProfSave');
+  if(!btn) return;
+  btn.onclick = async ()=>{
+    const record = DB.partsEngineers.find(x=>x.id===DB.session.user.id);
+    if(!record) return;
+    const name = document.getElementById('selfProfName').value.trim();
+    const engineerId = document.getElementById('selfProfEngId').value.trim();
+    const pw = document.getElementById('selfProfPw').value;
+    const errBox = document.getElementById('selfProfErr');
+    errBox.style.display = 'none';
+    if(!name){ errBox.style.display='block'; errBox.textContent='নাম খালি রাখা যাবে না'; return; }
+    record.name = name;
+    record.engineerId = engineerId;
+    if(pw) record.password = pw;
+    DB.session.user = record;
+    await saveDB();
+    showSavedToast('✅ প্রোফাইল আপডেট হয়েছে');
+    go('peDashboard');
+  };
+}
 
 function myPeUsers(){
   const pe = DB.session.user;
@@ -5082,6 +5177,7 @@ function openPartModal(part){
       logHistory(`নতুন পার্টস যোগ: ${name} (${partNo})`);
     }
     saveDB();
+    showSavedToast(isEdit?'✅ পার্টস আপডেট হয়েছে':'✅ নতুন পার্টস যোগ হয়েছে');
     closeModal(); go('adminDashboard');
   };
 }
@@ -5244,11 +5340,12 @@ function usersTable(peFilter){
   }
   if(deleted.length){
     html += `<div class="card" style="margin-top:14px;background:#fff7f7;border:1.5px solid #efcaca;">
-      <div style="font-weight:700;color:#9b2c2c;margin-bottom:8px;">🗑️ Deleted Users (${deleted.length})</div>
+      <div style="font-weight:700;color:#9b2c2c;margin-bottom:8px;">🗑️ Delete History (${deleted.length})</div>
       ${deleted.map(u=>`<div style="display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid #f0d8d8;">
-        <span>${u.name} · <span class="mono">${u.phone}</span></span>
+        <span>${u.name} · <span class="mono">${u.phone}</span> · ${u.role==='dealer'?'ডিলার':'মেকানিক'}${u.deletedAt?` · ${new Date(u.deletedAt).toLocaleDateString('bn-BD')}`:''}</span>
         <span class="badge inactive">Deleted</span>
       </div>`).join('')}
+      <button class="btn btn-danger btn-sm" id="resetUserDeleteHistory" style="margin-top:10px;">🗑️ Delete History রিসেট করুন</button>
     </div>`;
   }
   return html || `<div class="empty">কোনো ইউজার নেই</div>`;
@@ -5284,6 +5381,18 @@ function wireUsersTab(){
   document.getElementById('peFilter').onchange = (e)=>{
     document.getElementById('usersTableWrap').innerHTML = usersTable(e.target.value);
   };
+  const resetBtn = document.getElementById('resetUserDeleteHistory');
+  if(resetBtn) resetBtn.onclick = resetUserDeleteHistory;
+}
+async function resetUserDeleteHistory(){
+  const deletedList = DB.users.filter(u=>isDeletedAccount(u));
+  if(!deletedList.length){ alert('Delete History ইতিমধ্যে খালি।'); return; }
+  if(!confirm(`Delete History-তে থাকা ${deletedList.length} জন ডিলিট করা ইউজারের তথ্য স্থায়ীভাবে মুছে ফেলতে চান? এটি ফিরিয়ে আনা যাবে না।`)) return;
+  DB.users = DB.users.filter(u=>!isDeletedAccount(u));
+  logHistory(`Delete History রিসেট করা হয়েছে (${deletedList.length} জন ইউজার স্থায়ীভাবে মুছে ফেলা হয়েছে)`);
+  await saveDB();
+  showSavedToast('✅ Delete History রিসেট হয়েছে');
+  go('adminDashboard');
 }
 function openUserModal(user){
   const isEdit = !!user;
@@ -5396,6 +5505,7 @@ function openUserModal(user){
       if(peName) logHistory(`${name}-কে ${peName} (${region})-এর অধীনে অ্যাসাইন করা হয়েছে`);
     }
     saveDB();
+    showSavedToast(isEdit?'✅ তথ্য আপডেট হয়েছে':'✅ নতুন ইউজার যোগ হয়েছে');
     closeModal(); go('adminDashboard');
   };
 }
@@ -5459,11 +5569,12 @@ function partsEngineersTable(){
   }
   if(deleted.length){
     html += `<div class="card" style="margin-top:14px;background:#fff7f7;border:1.5px solid #efcaca;">
-      <div style="font-weight:700;color:#9b2c2c;margin-bottom:8px;">🗑️ Deleted Parts Engineers (${deleted.length})</div>
+      <div style="font-weight:700;color:#9b2c2c;margin-bottom:8px;">🗑️ Delete History (${deleted.length})</div>
       ${deleted.map(p=>`<div style="display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid #f0d8d8;">
-        <span>${p.name} · <span class="mono">${p.phone}</span></span>
+        <span>${p.name} · <span class="mono">${p.phone}</span>${p.deletedAt?` · ${new Date(p.deletedAt).toLocaleDateString('bn-BD')}`:''}</span>
         <span class="badge inactive">Deleted</span>
       </div>`).join('')}
+      <button class="btn btn-danger btn-sm" id="resetPeDeleteHistory" style="margin-top:10px;">🗑️ Delete History রিসেট করুন</button>
     </div>`;
   }
   return html;
@@ -5472,6 +5583,18 @@ function wirePartsEngineersTab(){
   document.getElementById('peTableWrap').innerHTML = partsEngineersTable();
   document.getElementById('addPe').onclick = ()=> openPeModal();
   document.getElementById('exportPe').onclick = exportPeExcel;
+  const resetBtn = document.getElementById('resetPeDeleteHistory');
+  if(resetBtn) resetBtn.onclick = resetPeDeleteHistory;
+}
+async function resetPeDeleteHistory(){
+  const deletedList = DB.partsEngineers.filter(p=>isDeletedAccount(p));
+  if(!deletedList.length){ alert('Delete History ইতিমধ্যে খালি।'); return; }
+  if(!confirm(`Delete History-তে থাকা ${deletedList.length} জন ডিলিট করা Parts Engineer-এর তথ্য স্থায়ীভাবে মুছে ফেলতে চান? এটি ফিরিয়ে আনা যাবে না।`)) return;
+  DB.partsEngineers = DB.partsEngineers.filter(p=>!isDeletedAccount(p));
+  logHistory(`Parts Engineer Delete History রিসেট করা হয়েছে (${deletedList.length} জন স্থায়ীভাবে মুছে ফেলা হয়েছে)`);
+  await saveDB();
+  showSavedToast('✅ Delete History রিসেট হয়েছে');
+  go('adminDashboard');
 }
 
 const PARTS_ENGINEER_REGIONS = ['Dhaka', 'Gazipur', 'Kishoreganj', 'Munshiganj', 'Tangail', 'Chattogram', 'Cumilla', 'Brahmanbaria', 'Noakhali', 'Rajshahi', 'Natore', 'Naogaon', 'Jashore', 'Chuadanga', 'Barishal', 'Bhola', 'Sylhet', 'Rangpur', 'Dinajpur', 'Thakurgaon', 'Nilphamari', 'Lalmonirhat', 'Gaibandha', 'Mymensingh', 'Jamalpur'];
@@ -5531,6 +5654,7 @@ function openPeModal(pe){
       logHistory(`নতুন Parts Engineer যোগ: ${name} (${region})`);
     }
     saveDB();
+    showSavedToast(isEdit?'✅ তথ্য আপডেট হয়েছে':'✅ নতুন Parts Engineer যোগ হয়েছে');
     closeModal(); go('adminDashboard');
   };
 }
@@ -6431,10 +6555,10 @@ function renderQsResults(q){
 /* ================= INIT ================= */
 if(SYNC_ON){
   document.getElementById('app').innerHTML = `<div class="dl-screen"><div><div class="dl-loading-text">Google Sheet থেকে ডেটা লোড হচ্ছে</div><div class="dl-dots"><span></span><span></span><span></span><span></span><span></span></div></div></div>`;
-  loadFromSheet().then(()=>{ normalizeLoadedAccountPhones(); splashShown = true; showSplash(render); initQuickSearchFAB(); backfillPhoneRegistry(); });
+  loadFromSheet().then(()=>{ normalizeLoadedAccountPhones(); splashShown = true; showSplash(render); backfillPhoneRegistry(); });
 } else {
   document.getElementById('app').innerHTML = `<div class="dl-screen"><div><div class="dl-loading-text">ডেটা লোড হচ্ছে</div><div class="dl-dots"><span></span><span></span><span></span><span></span><span></span></div></div></div>`;
-  loadDB().then(()=>{ normalizeLoadedAccountPhones(); ensureCores(); splashShown = true; showSplash(render); migrateOldMemosToIndex(); initQuickSearchFAB(); backfillPhoneRegistry(); });
+  loadDB().then(()=>{ normalizeLoadedAccountPhones(); ensureCores(); splashShown = true; showSplash(render); migrateOldMemosToIndex(); backfillPhoneRegistry(); });
 }
 
 /* ================= MOBILE SCROLL / KEYBOARD FIX =================
