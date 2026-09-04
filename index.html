@@ -1038,9 +1038,9 @@ async function fbEnsureAuth(record, pw, prefix, options={}){
 
 let lastSaveError = null;
 let lastAuthError = null;
-async function saveDB(){
+async function saveDB(dirtyKeys){
   try{
-    const payload = {
+    const fullPayload = {
       users: DB.users,
       history: DB.history.slice(0,50),
       settings: { companyName: DB.settings.companyName, adminPassword: DB.settings.adminPassword, logo: DB.settings.logo, recoveryEmail: DB.settings.recoveryEmail, resetOTP: DB.settings.resetOTP || null, resetOTPExpiry: DB.settings.resetOTPExpiry || null, adminLastActive: DB.settings.adminLastActive || null, adminLastLogin: DB.settings.adminLastLogin || null, authEmail: DB.settings.authEmail || null, peAccessCode: DB.settings.peAccessCode || null, quickSearchCode: DB.settings.quickSearchCode || null },
@@ -1061,6 +1061,11 @@ async function saveDB(){
       stockHistory: DB.stockHistory,
       nextMemoNo: DB.nextMemoNo || 1
     };
+    // dirtyKeys দেওয়া থাকলে শুধু ঐ ক'টা key-ই পাঠানো হবে (PATCH দিয়ে — বাকি ডেটা Firebase-এ অক্ষত থাকবে)।
+    // এতে Delete History রিসেটের মতো ছোট পরিবর্তনে পুরো parts/vehicleCompat/dealerMemos ইত্যাদি বড় লিস্ট
+    // বারবার পাঠাতে হয় না, সেভ অনেক দ্রুত হয়। dirtyKeys না দিলে আগের মতোই সম্পূর্ণ ডেটা PUT হবে (কোনো পরিবর্তন নেই)।
+    const useFullSave = !Array.isArray(dirtyKeys) || dirtyKeys.length===0;
+    const payload = useFullSave ? fullPayload : Object.fromEntries(dirtyKeys.filter(k=>k in fullPayload).map(k=>[k, fullPayload[k]]));
     // Firebase এ সেভ — নতুন secured rules (auth != null) এর জন্য সাইন-ইন করা থাকলে ID token যুক্ত করা হয়
     let fbUrl = `${FB_URL}/appdata.json`;
     if(fbAuth.currentUser){
@@ -1068,7 +1073,7 @@ async function saveDB(){
       fbUrl += `?auth=${idToken}`;
     }
     const fbRes = await fetch(fbUrl, {
-      method: 'PUT',
+      method: useFullSave ? 'PUT' : 'PATCH',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify(payload)
     });
@@ -1079,8 +1084,8 @@ async function saveDB(){
       const errText = await fbRes.text().catch(()=>String(fbRes.status));
       throw new Error(`Firebase save failed: ${fbRes.status} ${errText}`);
     }
-    // localStorage এও সেভ (অফলাইন ব্যাকআপ)
-    try{ localStorage.setItem(LS_KEY, JSON.stringify(payload)); }catch(e){}
+    // localStorage এও সেভ (অফলাইন ব্যাকআপ) — লোকাল ব্যাকআপ সবসময় সম্পূর্ণ ডেটা রাখা হয়, যাতে অফলাইনে কোনো তথ্য না হারায়
+    try{ localStorage.setItem(LS_KEY, JSON.stringify(fullPayload)); }catch(e){}
     lastSaveError = null;
     return true;
   }catch(e){
@@ -1852,6 +1857,7 @@ function paintSingleLogin(role){
   ['slUser','slPw'].forEach(id=>{
     document.getElementById(id).addEventListener('keydown', (e)=>{ if(e.key === 'Enter') submit(); });
   });
+  syncQuickSearchFABVisibility();
 }
 // Role অনুযায়ী সঠিক Login System (Firebase Auth / বর্তমান Local Auth) দিয়ে যাচাই করে —
 // Admin/Engineer/Dealer/Mechanic প্রতিটির আলাদা Permission ও Portal অপরিবর্তিত রাখা হয়েছে,
@@ -5427,15 +5433,20 @@ async function resetUserDeleteHistory(){
   if(!confirm(`Delete History-তে থাকা ${deletedList.length} জন ডিলিট করা ইউজারের তথ্য স্থায়ীভাবে মুছে ফেলতে চান? এটি ফিরিয়ে আনা যাবে না।`)) return;
   const backup = DB.users;
   DB.users = DB.users.filter(u=>!isDeletedAccount(u));
-  const ok = await saveDB();
+  // logHistory() নিজে থেকেই আলাদা একটা পূর্ণ (সব ডেটা সহ) সেভ করে — এখানে সেটা এড়িয়ে
+  // শুধু users + history — এই দুটো অংশ একসাথে একবারেই পাঠানো হচ্ছে, তাই রিসেট দ্রুত হবে
+  const entry = {date: nowStr(), by: DB.session.user ? DB.session.user.name : "Admin", action: `Delete History রিসেট করা হয়েছে (${deletedList.length} জন ইউজার স্থায়ীভাবে মুছে ফেলা হয়েছে)`};
+  DB.history.unshift(entry);
+  syncPush('addHistory', entry);
+  const ok = await saveDB(['users','history']);
   if(!ok){
     // Firebase-এ সেভ ব্যর্থ হয়েছে — মেমোরিতে রোলব্যাক করে ইউজারকে জানানো হচ্ছে,
     // যাতে রিফ্রেশের পর পুরনো ডেটা "রহস্যজনকভাবে ফিরে আসা"-র বদলে এখনই বোঝা যায় সেভ হয়নি
     DB.users = backup;
+    DB.history.shift();
     alert('❌ Delete History রিসেট করা যায়নি — ইন্টারনেট সংযোগ বা Firebase পারমিশন চেক করুন এবং আবার চেষ্টা করুন।\n\nবিস্তারিত এরর: ' + (lastSaveError || 'অজানা'));
     return;
   }
-  logHistory(`Delete History রিসেট করা হয়েছে (${deletedList.length} জন ইউজার স্থায়ীভাবে মুছে ফেলা হয়েছে)`);
   showSavedToast('✅ Delete History রিসেট হয়েছে');
   go('adminDashboard');
 }
@@ -5637,13 +5648,16 @@ async function resetPeDeleteHistory(){
   if(!confirm(`Delete History-তে থাকা ${deletedList.length} জন ডিলিট করা Parts Engineer-এর তথ্য স্থায়ীভাবে মুছে ফেলতে চান? এটি ফিরিয়ে আনা যাবে না।`)) return;
   const backup = DB.partsEngineers;
   DB.partsEngineers = DB.partsEngineers.filter(p=>!isDeletedAccount(p));
-  const ok = await saveDB();
+  const entry = {date: nowStr(), by: DB.session.user ? DB.session.user.name : "Admin", action: `Parts Engineer Delete History রিসেট করা হয়েছে (${deletedList.length} জন স্থায়ীভাবে মুছে ফেলা হয়েছে)`};
+  DB.history.unshift(entry);
+  syncPush('addHistory', entry);
+  const ok = await saveDB(['partsEngineers','history']);
   if(!ok){
     DB.partsEngineers = backup;
+    DB.history.shift();
     alert('❌ Delete History রিসেট করা যায়নি — ইন্টারনেট সংযোগ বা Firebase পারমিশন চেক করুন এবং আবার চেষ্টা করুন।\n\nবিস্তারিত এরর: ' + (lastSaveError || 'অজানা'));
     return;
   }
-  logHistory(`Parts Engineer Delete History রিসেট করা হয়েছে (${deletedList.length} জন স্থায়ীভাবে মুছে ফেলা হয়েছে)`);
   showSavedToast('✅ Delete History রিসেট হয়েছে');
   go('adminDashboard');
 }
@@ -6532,11 +6546,13 @@ function removeQuickSearchFAB(){
 }
 // শুধু Admin Panel-এ (admin লগইন করা অবস্থায়) এই বাটন দেখাবে, অন্য কোনো পেজে (লগইন পেজ, ডিলার/মেকানিক/ইঞ্জিনিয়ার পেজ ইত্যাদি) দেখাবে না
 function syncQuickSearchFABVisibility(){
-  // "admin" দিয়ে শুরু হওয়া যেকোনো route (adminLogin, adminForgotPassword, adminQuickSearch, adminDashboard)
-  // — মানে অ্যাডমিন লগইন করার আগে (Admin Login পেজে) এবং পরে (Admin Dashboard-এ) দুই জায়গাতেই দেখাবে,
-  // কিন্তু Dealer/Mechanic/Parts Engineer বা ল্যান্ডিং পেজে দেখাবে না
-  const isAdminSide = typeof currentRoute === 'string' && currentRoute.indexOf('admin') === 0;
-  if(isAdminSide) initQuickSearchFAB();
+  // দুইভাবে অ্যাডমিন-সাইড ধরা হচ্ছে:
+  // ১) "admin" দিয়ে শুরু হওয়া আলাদা route (adminForgotPassword, adminQuickSearch, adminDashboard ইত্যাদি)
+  // ২) ল্যান্ডিং/লগইন পেজে থাকা অবস্থায় "Admin" ট্যাব সিলেক্ট করা থাকলে (এই অ্যাপের লগইন স্ক্রিনটা
+  //    আসলে একটাই পেজ — role change করলে নতুন route তৈরি হয় না, শুধু slCurrentRole বদলায়)
+  const isAdminRoute = typeof currentRoute === 'string' && currentRoute.indexOf('admin') === 0;
+  const isAdminLoginTab = currentRoute === 'landing' && slCurrentRole === 'admin';
+  if(isAdminRoute || isAdminLoginTab) initQuickSearchFAB();
   else removeQuickSearchFAB();
 }
 function closeQuickSearch(){ const ov=document.getElementById('qsOverlay'); if(ov) ov.classList.remove('show'); }
