@@ -5106,7 +5106,8 @@ function partsTabHTML(){
         <h3 style="margin:0">পার্টস তালিকা</h3>
         <div style="display:flex;gap:8px;">
           <button class="btn btn-ghost btn-sm" id="exportParts">📄 এক্সেল এক্সপোর্ট</button>
-          <label class="btn btn-ghost btn-sm file-btn">📥 এক্সেল আপলোড<input type="file" id="excelFile" accept=".xlsx,.xls,.csv"></label>
+          <label class="btn btn-ghost btn-sm file-btn">📥 নতুন পার্টস আপলোড<input type="file" id="excelFile" accept=".xlsx,.xls,.csv"></label>
+          <label class="btn btn-navy btn-sm file-btn">🔄 প্রাইস আপডেট<input type="file" id="priceUpdateFile" accept=".xlsx,.xls,.csv"></label>
           <button class="btn btn-primary btn-sm" id="addPart">➕ নতুন পার্টস</button>
         </div>
       </div>
@@ -5181,6 +5182,7 @@ function wirePartsTab(){
   document.getElementById('searchPartBtn').onclick=()=>renderTable(document.getElementById('partSearch').value.trim(),true);
   document.getElementById('addPart').onclick=()=>openPartModal();
   document.getElementById('excelFile').addEventListener('change',handleExcelUpload);
+  document.getElementById('priceUpdateFile').addEventListener('change',handlePriceUpdateUpload);
   document.getElementById('exportParts').onclick=exportPartsExcel;
 }
 function exportPartsExcel(){
@@ -5294,6 +5296,143 @@ function handleExcelUpload(e){
     }
   };
   reader.readAsBinaryString(file);
+}
+
+/* ---- Update Price via Excel ----
+   এটি শুধুমাত্র বিদ্যমান পার্টসের "মূল্য" আপডেট করে — পার্ট নম্বর দিয়ে ম্যাচ করে।
+   কোনো নতুন পার্টস যোগ হয় না, কোনো পার্টস ডিলিট হয় না, নাম/ক্যাটাগরিও বদলায় না।
+   আপলোডের পর একটি Preview দেখানো হয় — অ্যাডমিন নিজে চোখে দেখে "আপডেট করুন" চাপলেই
+   কেবল তখন ডেটা পরিবর্তন হয় (কোনো কিছু সরাসরি/অটোমেটিক ওভাররাইট হয় না)। */
+let pendingPriceUpdate = null;
+function handlePriceUpdateUpload(e){
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = (evt)=>{
+    try{
+      const wb = XLSX.read(evt.target.result, {type:'binary'});
+      const sheet = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(sheet, {defval:''});
+      if(!rows.length){ alert('❌ ফাইলে কোনো ডেটা পাওয়া যায়নি।'); return; }
+
+      // পার্ট নম্বর দিয়ে exact ম্যাচের জন্য ম্যাপ
+      const byExact = new Map();
+      DB.parts.forEach(p=>{
+        const key = String(p.partNo||'').trim().toLowerCase();
+        if(!byExact.has(key)) byExact.set(key, []);
+        byExact.get(key).push(p);
+      });
+      // exact ম্যাচ না পেলে core নম্বর দিয়ে (ফরম্যাট সামান্য আলাদা হলেও মেলানোর জন্য) ম্যাপ
+      const byCore = new Map();
+      DB.parts.forEach(p=>{
+        const key = p.core || coreOf(p.partNo||'');
+        if(!key) return;
+        if(!byCore.has(key)) byCore.set(key, []);
+        byCore.get(key).push(p);
+      });
+
+      const updatesById = new Map(); // id -> {part, newPrice}  (একই পার্টস একাধিকবার থাকলে শেষ ভ্যালুটা কার্যকর হবে)
+      const unmatched = [];
+      const invalid = [];
+
+      rows.forEach(r=>{
+        const partNoRaw = String(r['Part Number'] || r.PartNo || r['পার্ট নম্বর'] || r.partno || r['Part No'] || '').trim();
+        const priceRaw = r.Price !== undefined && r.Price !== '' ? r.Price : (r['মূল্য'] !== undefined && r['মূল্য'] !== '' ? r['মূল্য'] : r.price);
+        if(!partNoRaw && (priceRaw===undefined || priceRaw==='')) return; // সম্পূর্ণ খালি রো, গোনায় নেওয়া হবে না
+        if(!partNoRaw){ invalid.push({partNo:'-', reason:'পার্ট নম্বর খালি'}); return; }
+        const newPrice = parseFloat(priceRaw);
+        if(priceRaw===undefined || priceRaw==='' || isNaN(newPrice) || newPrice < 0){
+          invalid.push({partNo:partNoRaw, reason:'মূল্য সঠিক নয়'});
+          return;
+        }
+        const key = partNoRaw.toLowerCase();
+        let matches = byExact.get(key);
+        if(!matches || matches.length===0) matches = byCore.get(coreOf(partNoRaw));
+        if(!matches || matches.length===0){
+          unmatched.push({partNo:partNoRaw, reason:'তালিকায় পাওয়া যায়নি'});
+          return;
+        }
+        if(matches.length > 1){
+          unmatched.push({partNo:partNoRaw, reason:'একাধিক পার্টসের সাথে মিলেছে (অস্পষ্ট — বাদ দেওয়া হয়েছে)'});
+          return;
+        }
+        updatesById.set(matches[0].id, {part:matches[0], newPrice});
+      });
+
+      const allMatched = Array.from(updatesById.values());
+      const changed = allMatched.filter(u=> Number(u.part.price) !== Number(u.newPrice));
+      const unchanged = allMatched.length - changed.length;
+
+      if(allMatched.length===0 && unmatched.length===0 && invalid.length===0){
+        alert('❌ ফাইলে কোনো বৈধ পার্ট নম্বর/মূল্য পাওয়া যায়নি। Excel ফাইল চেক করুন (Part Number ও Price কলাম আছে কিনা)।');
+        return;
+      }
+
+      pendingPriceUpdate = {changed, unchanged, unmatched, invalid, fileName: file.name};
+      showPriceUpdatePreview();
+    }catch(err){
+      console.error('Price update upload error:', err);
+      alert('❌ ফাইল পড়া যায়নি: ' + err.message);
+    }
+  };
+  reader.readAsBinaryString(file);
+  e.target.value = ''; // একই ফাইল আবার সিলেক্ট করলেও যেন change ইভেন্ট ফায়ার হয়
+}
+function showPriceUpdatePreview(){
+  if(!pendingPriceUpdate) return;
+  const {changed, unchanged, unmatched, invalid, fileName} = pendingPriceUpdate;
+  const previewRows = changed.slice(0, 20);
+  const unmatchedPreview = unmatched.slice(0, 15);
+  openModal(`
+    <h3>🔄 প্রাইস আপডেট — Preview</h3>
+    <p class="hint" style="margin:0 0 10px">ফাইল: <b>${fileName}</b><br>এই ফিচার শুধু <b>বিদ্যমান পার্টসের মূল্য</b> আপডেট করে — কোনো নতুন পার্টস যোগ হবে না, কোনো পার্টস ডিলিট হবে না, নাম/ক্যাটাগরিও বদলাবে না। নিচে দেখে নিশ্চিত হয়ে তবেই "আপডেট করুন" চাপুন।</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
+      <span class="badge active">✅ আপডেট হবে: ${changed.length}</span>
+      <span class="badge inactive">➖ পরিবর্তন নেই: ${unchanged}</span>
+      <span class="badge inactive">⚠️ মেলেনি: ${unmatched.length}</span>
+      ${invalid.length ? `<span class="badge inactive">❌ ভুল রো: ${invalid.length}</span>` : ''}
+    </div>
+    ${changed.length ? `
+    <div style="overflow-x:auto;max-height:280px;overflow-y:auto;border:1px solid var(--line);border-radius:8px;">
+      <table style="width:100%;border-collapse:collapse;min-width:460px;font-size:13px">
+        <thead><tr style="background:var(--paper)"><th style="padding:6px;text-align:left">পার্ট নং</th><th style="padding:6px;text-align:left">নাম</th><th style="padding:6px;text-align:right">পুরাতন মূল্য</th><th style="padding:6px;text-align:right">নতুন মূল্য</th></tr></thead>
+        <tbody>${previewRows.map(u=>`<tr><td style="padding:6px" class="mono">${u.part.partNo}</td><td style="padding:6px">${u.part.name}</td><td style="padding:6px;text-align:right">৳${u.part.price}</td><td style="padding:6px;text-align:right;font-weight:700;color:var(--ok)">৳${u.newPrice}</td></tr>`).join('')}</tbody>
+      </table>
+    </div>
+    ${changed.length > previewRows.length ? `<p class="hint" style="margin-top:6px">উপরে প্রথম ${previewRows.length}টি দেখানো হয়েছে — মোট ${changed.length}টি আপডেট হবে</p>` : ''}
+    ` : `<div class="empty">আপডেট করার মতো কোনো মূল্য পরিবর্তন পাওয়া যায়নি</div>`}
+    ${unmatched.length ? `
+    <details style="margin-top:12px;">
+      <summary style="cursor:pointer;color:var(--muted);font-size:13px;">⚠️ যেসব পার্ট নম্বর মেলেনি (${unmatched.length}টি) — দেখতে চাপুন</summary>
+      <div style="max-height:150px;overflow-y:auto;margin-top:6px;font-size:12.5px;color:var(--muted);">
+        ${unmatchedPreview.map(u=>`<div class="mono">${u.partNo} — ${u.reason}</div>`).join('')}
+        ${unmatched.length > unmatchedPreview.length ? `<div>...আরও ${unmatched.length - unmatchedPreview.length}টি</div>` : ''}
+      </div>
+    </details>` : ''}
+    <div class="modal-actions" style="margin-top:16px;">
+      <button class="btn btn-ghost" id="priceUpdCancel">বাতিল</button>
+      <button class="btn btn-primary" id="priceUpdApply" ${changed.length ? '' : 'disabled'}>✅ ${changed.length}টি মূল্য আপডেট করুন</button>
+    </div>
+  `);
+  document.getElementById('priceUpdCancel').onclick = ()=>{ pendingPriceUpdate=null; closeModal(); };
+  const applyBtn = document.getElementById('priceUpdApply');
+  if(applyBtn) applyBtn.onclick = confirmPriceUpdate;
+}
+function confirmPriceUpdate(){
+  if(!pendingPriceUpdate) return;
+  const {changed, unmatched, invalid, fileName} = pendingPriceUpdate;
+  if(!changed.length){ closeModal(); return; }
+  if(!confirm(`নিশ্চিত? ${changed.length}টি পার্টসের মূল্য আপডেট হবে। এটি ফিরিয়ে নেওয়া যাবে না (তবে পুরাতন পার্টস/নাম/ক্যাটাগরি অপরিবর্তিত থাকবে)।`)) return;
+  changed.forEach(u=>{
+    u.part.price = u.newPrice;
+    syncPush('editPart', {id:u.part.id, partNo:u.part.partNo, name:u.part.name, category:u.part.category, price:u.newPrice});
+  });
+  logHistory(`প্রাইস আপডেট এক্সেল: ${changed.length}টি পার্টসের মূল্য আপডেট হয়েছে${unmatched.length?`, ${unmatched.length}টি মেলেনি`:''}${invalid.length?`, ${invalid.length}টি ভুল রো`:''} (${fileName})`);
+  saveDB();
+  closeModal();
+  pendingPriceUpdate = null;
+  showSavedToast(`✅ ${changed.length}টি পার্টসের মূল্য আপডেট হয়েছে`);
+  go('adminDashboard');
 }
 
 /* ---- Users tab ---- */
