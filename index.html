@@ -44,7 +44,7 @@ document.currentScript.parentNode.insertBefore(manifestLink, document.currentScr
 // প্রতিটি নতুন deployment/update দেওয়ার আগে এই APP_VERSION ভ্যালুটা পরিবর্তন করুন
 // (যেকোনো ইউনিক স্ট্রিং — তারিখ/সময় বা running number)। এই ভ্যালুর ভিত্তিতেই
 // সব ডিভাইস স্বয়ংক্রিয়ভাবে নতুন version detect করে reload হবে।
-window.APP_VERSION = '2026-09-14-part-model-lookup.1';
+window.APP_VERSION = '2026-09-14-vehicle-db-all-role-pdf.1';
 
 (function(){
   // পুরনো/legacy blob-based service worker ও পুরনো Cache Storage সম্পূর্ণ পরিষ্কার করে দেওয়া হয়,
@@ -95,6 +95,7 @@ window.APP_VERSION = '2026-09-14-part-model-lookup.1';
 })();
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.min.mjs" type="module"></script>
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
@@ -1714,7 +1715,8 @@ function dealerBottomNavHTML(){
     {key:'search',icon:'🏠',label:'হোম',onclick:"dealerManageTab='search';go('dealerPortal')"},
     {key:'memo',icon:'🧾',label:'মেমো',onclick:"dealerManageTab='memo';go('dealerPortal')"},
     {key:'stock',icon:'📦',label:'স্টক',onclick:"dealerManageTab='stock';go('dealerPortal')"},
-    {key:'partModels',icon:'🚜',label:'Part→Model',onclick:"dealerManageTab='partModels';go('dealerPortal')"},
+    {key:'partModels',icon:'🚜',label:'Tractor Model',onclick:"dealerManageTab='partModels';go('dealerPortal')"},
+    {key:'vehicleDb',icon:'🚗',label:'Vehicle DB',onclick:"dealerManageTab='vehicleDb';go('dealerPortal')"},
     {key:'more',icon:'➕',label:'আরও',onclick:"showDealerMoreMenu()"}
   ], dealerManageTab);
 }
@@ -1736,7 +1738,7 @@ function adminSidebarHTML(activeKey){
   const items = [
     ['home','🏠','হোম', "adminTab=null;go('adminDashboard')"],
     ['parts','⚙️','পার্টস ম্যানেজমেন্ট', "adminTab='parts';go('adminDashboard')"],
-    ['partModels','🚜','Part → Tractor Model', "adminTab='partModels';go('adminDashboard')"],
+    ['partModels','🚜','Tractor Model', "adminTab='partModels';go('adminDashboard')"],
     ['users','👥','ইউজার ম্যানেজমেন্ট', "adminTab='users';go('adminDashboard')"],
     ['history','📅','আপডেট হিস্টরি', "adminTab='history';go('adminDashboard')"],
     ['requisitions','📝','রিকুইজিশন হিস্টরি', "adminTab='requisitions';go('adminDashboard')"],
@@ -1769,7 +1771,7 @@ function showAdminMoreMenu(){
       <button class="btn btn-ghost btn-block" onclick="closeModal();adminTab='requisitions';go('adminDashboard')">📝 রিকুইজিশন হিস্টরি</button>
       <button class="btn btn-ghost btn-block" onclick="closeModal();adminTab='loginActivity';go('adminDashboard')">📶 লগইন অ্যাক্টিভিটি</button>
       <button class="btn btn-ghost btn-block" onclick="closeModal();adminTab='vehicleDb';go('adminDashboard')">🚗 Vehicle Model Database</button>
-      <button class="btn btn-ghost btn-block" onclick="closeModal();adminTab='partModels';go('adminDashboard')">🚜 Part → Tractor Model</button>
+      <button class="btn btn-ghost btn-block" onclick="closeModal();adminTab='partModels';go('adminDashboard')">🚜 Tractor Model</button>
       <button class="btn btn-ghost btn-block" onclick="closeModal();adminTab='partsEngineers';go('adminDashboard')">🧑‍🔧 Parts Engineer</button>
       <button class="btn btn-ghost btn-block" onclick="closeModal();adminTab='settings';go('adminDashboard')">🔧 সেটিংস</button>
       <button class="btn btn-ghost btn-block" onclick="closeModal()">বাতিল</button>
@@ -1781,7 +1783,8 @@ function peBottomNavHTML(){
     {key:'search',icon:'🔍',label:'পার্টস সার্চ',onclick:"peTab='search';go('peDashboard')"},
     {key:'requisitions',icon:'📝',label:'রিকুইজিশন',onclick:"peTab='requisitions';go('peDashboard')"},
     {key:'report',icon:'📊',label:'রিপোর্ট',onclick:"peTab='report';go('peDashboard')"},
-    {key:'partModels',icon:'🚜',label:'Part→Model',onclick:"peTab='partModels';go('peDashboard')"},
+    {key:'partModels',icon:'🚜',label:'Tractor Model',onclick:"peTab='partModels';go('peDashboard')"},
+    {key:'vehicleDb',icon:'🚗',label:'Vehicle DB',onclick:"peTab='vehicleDb';go('peDashboard')"},
     {key:'logout',icon:'🚪',label:'লগআউট',onclick:"if(confirm('লগআউট করবেন?')){DB.session={role:null,user:null};go('landing');}"}
   ], peTab);
 }
@@ -2907,7 +2910,7 @@ ROUTES.mechanicDashboard = function(){
   if(!requireRole(['mechanic'], 'dealerLogin')) return;
   const u = currentMechanic();
   const app = document.getElementById('app');
-  const content = mechanicTab === 'profile' ? mechanicProfileHTML() : (mechanicTab === 'tourbill' ? mechanicTourBillHTML() : (mechanicTab === 'partModels' ? modelLookupHTML() : mechanicSearchHTML()));
+  const content = mechanicTab === 'profile' ? mechanicProfileHTML() : (mechanicTab === 'tourbill' ? mechanicTourBillHTML() : (mechanicTab === 'vehicleDb' ? vehicleDbViewHTML() : (mechanicTab === 'partModels' ? modelLookupHTML() : mechanicSearchHTML())));
   app.appendChild(el(`<div>
     <div class="topbar">
       <div class="topbar-brand">
@@ -2923,7 +2926,8 @@ ROUTES.mechanicDashboard = function(){
     <div class="wrap has-bottom-nav">
       <div class="dealer-tabs">
         <button class="tab ${mechanicTab==='search'?'active':''}" onclick="mechanicTab='search';go('mechanicDashboard')">🔍 Parts Search</button>
-        <button class="tab ${mechanicTab==='partModels'?'active':''}" onclick="mechanicTab='partModels';go('mechanicDashboard')">🚜 Part → Model</button>
+        <button class="tab ${mechanicTab==='partModels'?'active':''}" onclick="mechanicTab='partModels';go('mechanicDashboard')">🚜 Tractor Model</button>
+        <button class="tab ${mechanicTab==='vehicleDb'?'active':''}" onclick="mechanicTab='vehicleDb';go('mechanicDashboard')">🚗 Vehicle Model DB</button>
         <button class="tab ${mechanicTab==='tourbill'?'active':''}" onclick="mechanicTab='tourbill';go('mechanicDashboard')">🧾 Tour Bill</button>
         <button class="tab ${mechanicTab==='profile'?'active':''}" onclick="mechanicTab='profile';go('mechanicDashboard')">👤 My Profile</button>
       </div>
@@ -2932,12 +2936,14 @@ ROUTES.mechanicDashboard = function(){
     ${bottomNavHTML([
       {key:'search',icon:'🔍',label:'Parts Search',onclick:"mechanicTab='search';go('mechanicDashboard')"},
       {key:'tourbill',icon:'🧾',label:'Tour Bill',onclick:"mechanicTab='tourbill';go('mechanicDashboard')"},
-      {key:'partModels',icon:'🚜',label:'Part→Model',onclick:"mechanicTab='partModels';go('mechanicDashboard')"},
+      {key:'partModels',icon:'🚜',label:'Tractor Model',onclick:"mechanicTab='partModels';go('mechanicDashboard')"},
+      {key:'vehicleDb',icon:'🚗',label:'Vehicle DB',onclick:"mechanicTab='vehicleDb';go('mechanicDashboard')"},
       {key:'profile',icon:'👤',label:'My Profile',onclick:"mechanicTab='profile';go('mechanicDashboard')"},
       {key:'logout',icon:'🚪',label:'লগআউট',onclick:"if(confirm('লগআউট করবেন?')){DB.session={role:null,user:null};go('dealerLogin');}"}
     ], mechanicTab)}
   </div>`));
   document.getElementById('mechLogout').onclick = ()=>{ DB.session = {role:null, user:null}; go('dealerLogin'); };
+  if(mechanicTab === 'vehicleDb'){ wireVehicleDbView(); }
   if(mechanicTab === 'search'){
     document.getElementById('mechSearch').addEventListener('input', ()=>{ clearTimeout(window._mechSearchTimer); window._mechSearchTimer = setTimeout(renderMechanicSearch, 180); });
     document.getElementById('mechSearchBtn').onclick = renderMechanicSearch;
@@ -3283,7 +3289,8 @@ function dealerSummary(){
 function dealerNavHTML(){
   const tabs=[
     ['search','🔍 Parts Search'],
-    ['partModels','🚜 Part → Model'],
+    ['partModels','🚜 Tractor Model'],
+    ['vehicleDb','🚗 Vehicle Model DB'],
     ['memo','🧾 Create Memo'],
     ['memoDrafts','🟡 Saved/Draft Memos'],
     ['memoHistory','📜 Memo History'],
@@ -4028,6 +4035,7 @@ function dealerPortalRender(){
   else if(dealerManageTab==='shopParts')content=dealerShopPartsHTML();
   else if(dealerManageTab==='stock')content=stockHTML();
   else if(dealerManageTab==='stockHistory')content=stockHistoryHTML(); else if(dealerManageTab==='partModels')content=modelLookupHTML();
+  else if(dealerManageTab==='vehicleDb')content=vehicleDbViewHTML();
   else if(dealerManageTab==='profile')content=dealerProfileHTML();
   else content=dealerPortalSearchHTML();
   document.getElementById('app').appendChild(el(`<div>${dealerTopbar('ডিলার পোর্টাল', dealerManageTab==='memo')}<div class="wrap has-bottom-nav">${dealerDashboardCards()}${dealerNavHTML()}${content}</div>${dealerBottomNavHTML()}</div><div class="modal-bg" id="modalBg"><div class="modal" id="modalBody"></div></div>`));
@@ -4035,7 +4043,7 @@ function dealerPortalRender(){
   document.getElementById('modalBg').addEventListener('click',ev=>{if(ev.target.id==='modalBg')closeModal();});
   if(dealerManageTab==='memo'){ const ed=window._memoDraftForWire||null; window._memoDraftForWire=null; wireMemoPage(ed); }
   if(dealerManageTab==='memoSearch')wireMemoSearch();
-  if(dealerManageTab==='shopParts')wireDealerShopParts(); if(dealerManageTab==='partModels')wireModelLookup();
+  if(dealerManageTab==='shopParts')wireDealerShopParts(); if(dealerManageTab==='partModels')wireModelLookup(); if(dealerManageTab==='vehicleDb')wireVehicleDbView();
   if(dealerManageTab==='profile')wireSelfUserProfile('dealerPortal');
   if(dealerManageTab==='search'){
     document.getElementById('dealerUnifiedSearch').addEventListener('input',()=>{clearTimeout(window._dealerSearchTimer);window._dealerSearchTimer=setTimeout(renderDealerUnifiedSearch,180);});
@@ -4647,7 +4655,8 @@ function peShell(innerHTML){
         </div>
         <div style="display:flex;gap:8px;margin:14px 0;flex-wrap:wrap;">
           <button class="btn ${peTab==='dealers'?'btn-primary':'btn-ghost'} btn-sm" onclick="peTab='dealers';go('peDashboard')" style="${peTab!=='dealers'?'color:#fff;border-color:rgba(255,255,255,0.3);':''}">👥 আমার ডিলার/মেকানিক</button>
-          <button class="btn ${peTab==='partModels'?'btn-primary':'btn-ghost'} btn-sm" onclick="peTab='partModels';go('peDashboard')" style="${peTab!=='partModels'?'color:#fff;border-color:rgba(255,255,255,0.3);':''}">🚜 Part → Model</button>
+          <button class="btn ${peTab==='partModels'?'btn-primary':'btn-ghost'} btn-sm" onclick="peTab='partModels';go('peDashboard')" style="${peTab!=='partModels'?'color:#fff;border-color:rgba(255,255,255,0.3);':''}">🚜 Tractor Model</button>
+          <button class="btn ${peTab==='vehicleDb'?'btn-primary':'btn-ghost'} btn-sm" onclick="peTab='vehicleDb';go('peDashboard')" style="${peTab!=='vehicleDb'?'color:#fff;border-color:rgba(255,255,255,0.3);':''}">🚗 Vehicle Model DB</button>
           <button class="btn ${peTab==='search'?'btn-primary':'btn-ghost'} btn-sm" onclick="peTab='search';go('peDashboard')" style="${peTab!=='search'?'color:#fff;border-color:rgba(255,255,255,0.3);':''}">🔍 পার্টস সার্চ</button>
           <button class="btn ${peTab==='requisitions'?'btn-primary':'btn-ghost'} btn-sm" onclick="peTab='requisitions';go('peDashboard')" style="${peTab!=='requisitions'?'color:#fff;border-color:rgba(255,255,255,0.3);':''}">📝 রিকুইজিশন</button>
           <button class="btn ${peTab==='report'?'btn-primary':'btn-ghost'} btn-sm" onclick="peTab='report';go('peDashboard')" style="${peTab!=='report'?'color:#fff;border-color:rgba(255,255,255,0.3);':''}">📊 রিপোর্ট</button>
@@ -4669,6 +4678,7 @@ ROUTES.peDashboard = function(){
   const pe = DB.session.user;
   if(!requireRole(['partsEngineer']) || !pe){ go('landing'); return; }
   if(peTab === 'partModels'){ peShell(modelLookupHTML()); wireModelLookup(); }
+  else if(peTab === 'vehicleDb'){ peShell(vehicleDbViewHTML()); wireVehicleDbView(); }
   else if(peTab === 'search'){ peShell(peSearchTabHTML()); wirePeSearchTab(); }
   else if(peTab === 'requisitions'){ peShell(peRequisitionsTabHTML()); wirePeRequisitionsTab(); }
   else if(peTab === 'report'){ peShell(peReportTabHTML()); }
@@ -4999,7 +5009,7 @@ ROUTES.adminDashboard = function(){
 
             <div style="background:#fff;border-radius:14px;padding:22px 11px;text-align:center;cursor:pointer;transition:all 0.25s;box-shadow:0 3px 11px rgba(0,0,0,0.16);" onclick="adminTab='partModels';go('adminDashboard');" onmouseover="this.style.transform='translateY(-6px)'" onmouseout="this.style.transform='translateY(0)'">
               <div style="width:48px;height:48px;border-radius:13px;background:#e3ddc4;display:flex;align-items:center;justify-content:center;font-size:24px;margin:0 auto 11px;">🚜</div>
-              <div style="font-size:13px;font-weight:700;color:#1a2233;">Part → Tractor Model</div>
+              <div style="font-size:13px;font-weight:700;color:#1a2233;">Tractor Model</div>
               <div style="font-size:10.5px;color:#6b7280;margin-top:3px;">Part Number দিয়ে Model দেখুন</div>
             </div>
 
@@ -6250,46 +6260,67 @@ function wireLoginActivityTab(){
 /* ---- Vehicle Model Database tab (Admin) ---- */
 let pendingVehicleUpload = null;
 function normalizeVText(s){ return String(s||'').toLowerCase().replace(/[.\-_,]/g,' ').replace(/\s+/g,' ').trim(); }
+function vehicleDbViewHTML(){
+  return `
+    <div class="card">
+      <div class="card-head"><h3 style="margin:0">🚗 Vehicle Model Database</h3><span class="badge active">Read Only</span></div>
+      <p class="hint">Admin যে Vehicle Model Database Excel/PDF থেকে আপলোড করবে, সকল role এখান থেকে একই তথ্য দেখতে পারবে। এখানে কোনো Edit / Delete / Upload option নেই।</p>
+      <input type="text" id="vehicleViewSearch" placeholder="🔍 Part Number, Part Name, Model বা Brand দিয়ে খুঁজুন..." style="width:100%;border:1px solid var(--line);border-radius:8px;padding:9px 12px;font-size:15px;margin:6px 0 14px;">
+      <div id="vehicleViewListWrap" style="overflow-x:auto">${renderVehicleCompatTable(DB.vehicleCompat.slice(0,100), false)}</div>
+    </div>`;
+}
+function wireVehicleDbView(){
+  const el=document.getElementById('vehicleViewSearch'); if(!el) return;
+  const render=()=>{
+    const q=normalizeVText(el.value);
+    const filtered=!q?DB.vehicleCompat.slice(0,100):DB.vehicleCompat.filter(v=>
+      normalizeVText(v.partNo).includes(q)||normalizeVText(v.partName).includes(q)||
+      normalizeVText((v.models||[]).join(' ')).includes(q)||normalizeVText(v.brand).includes(q)
+    ).slice(0,200);
+    document.getElementById('vehicleViewListWrap').innerHTML=renderVehicleCompatTable(filtered,false);
+  };
+  el.oninput=render;
+}
 function vehicleDbTabHTML(){
   return `
     <div class="card" style="margin-bottom:16px">
-      <h3 style="margin:0 0 10px">🚗 Vehicle Model Database — Excel আপলোড</h3>
-      <p class="hint" style="margin:0 0 10px">কলাম হতে হবে: Part Number | Part Name | Vehicle Model | Brand | Category | Remarks। একাধিক মডেল হলে কমা (,) দিয়ে লিখুন।</p>
-      <label class="btn btn-primary file-btn">📥 এক্সেল ফাইল বাছাই করুন<input type="file" id="vehicleExcelFile" accept=".xlsx,.xls,.csv"></label>
+      <h3 style="margin:0 0 10px">🚗 Vehicle Model Database — Excel / PDF আপলোড</h3>
+      <p class="hint" style="margin:0 0 10px">Excel কলাম: Part Number | Part Name/Description | Vehicle Model/Use for Tractor | Brand | Category | Remarks। Text-based PDF-ও আপলোড করা যাবে।</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <label class="btn btn-primary file-btn">📥 Excel/CSV বাছাই করুন<input type="file" id="vehicleExcelFile" accept=".xlsx,.xls,.csv"></label>
+        <label class="btn btn-navy file-btn">📄 PDF বাছাই করুন<input type="file" id="vehiclePdfFile" accept="application/pdf,.pdf"></label>
+      </div>
       <div id="vehicleUploadStatus" style="margin-top:10px;font-size:13.5px;color:var(--muted);"></div>
+      <div class="hint" style="margin-top:6px">PDF যদি scanned/image-only হয়, browser থেকে text/table extract করা যাবে না। Text-based PDF হলে import preview আসবে।</div>
     </div>
     <div class="card">
-      <div class="card-head">
-        <h3 style="margin:0">রেকর্ড তালিকা (${DB.vehicleCompat.length}টি)</h3>
-      </div>
+      <div class="card-head"><h3 style="margin:0">রেকর্ড তালিকা (${DB.vehicleCompat.length}টি)</h3><span class="badge active">Admin Upload / Read</span></div>
       <input type="text" id="vehicleAdminSearch" placeholder="🔍 পার্ট নং, নাম, মডেল বা ব্র্যান্ড দিয়ে খুঁজুন..." style="width:100%;border:1px solid var(--line);border-radius:8px;padding:9px 12px;font-size:15px;margin:6px 0 14px;">
-      <div id="vehicleListWrap" style="overflow-x:auto">
-        ${renderVehicleCompatTable(DB.vehicleCompat.slice(0,100))}
-      </div>
+      <div id="vehicleListWrap" style="overflow-x:auto">${renderVehicleCompatTable(DB.vehicleCompat.slice(0,100), true)}</div>
       ${DB.vehicleCompat.length > 100 ? `<p class="hint" style="margin-top:10px">মোট ${DB.vehicleCompat.length}টির মধ্যে প্রথম ১০০টি দেখানো হচ্ছে — সার্চ করে নির্দিষ্ট রেকর্ড খুঁজুন।</p>` : ''}
-    </div>
-  `;
+    </div>`;
 }
-function renderVehicleCompatTable(list){
+function renderVehicleCompatTable(list, adminMode=true){
   if(!list.length) return `<div class="empty">কোনো রেকর্ড নেই</div>`;
   return `<table style="width:100%;border-collapse:collapse;min-width:600px;font-size:13.5px">
     <thead><tr style="background:var(--bg-2,#f4f4f4)">
       <th style="padding:6px;text-align:left">পার্ট নং</th><th style="padding:6px;text-align:left">পার্টের নাম</th>
       <th style="padding:6px;text-align:left">গাড়ির মডেল</th><th style="padding:6px;text-align:left">ব্র্যান্ড</th>
-      <th style="padding:6px;text-align:center">✏️</th><th style="padding:6px;text-align:center">🗑️</th>
+      ${adminMode?'<th style="padding:6px;text-align:center">✏️</th><th style="padding:6px;text-align:center">🗑️</th>':''}
     </tr></thead>
     <tbody>${list.map(v=>`<tr>
-      <td style="padding:6px" class="mono">${v.partNo}</td>
-      <td style="padding:6px">${v.partName}</td>
-      <td style="padding:6px">${(v.models||[]).join(', ')}</td>
-      <td style="padding:6px">${v.brand||'-'}</td>
-      <td style="padding:6px;text-align:center"><button class="v-edit" data-id="${v.id}" style="border:none;background:none;cursor:pointer;font-size:15px;">✏️</button></td>
-      <td style="padding:6px;text-align:center"><button class="v-del" data-id="${v.id}" style="border:none;background:none;cursor:pointer;font-size:15px;color:#e11d48;">🗑️</button></td>
+      <td style="padding:6px" class="mono">${escHtml(v.partNo)}</td>
+      <td style="padding:6px">${escHtml(v.partName||'')}</td>
+      <td style="padding:6px">${escHtml((v.models||[]).join(', '))}</td>
+      <td style="padding:6px">${escHtml(v.brand||'-')}</td>
+      ${adminMode?`<td style="padding:6px;text-align:center"><button class="v-edit" data-id="${v.id}" style="border:none;background:none;cursor:pointer;font-size:15px;">✏️</button></td>
+      <td style="padding:6px;text-align:center"><button class="v-del" data-id="${v.id}" style="border:none;background:none;cursor:pointer;font-size:15px;color:#e11d48;">🗑️</button></td>`:''}
     </tr>`).join('')}</tbody>
   </table>`;
 }
 function wireVehicleDbTab(){
   document.getElementById('vehicleExcelFile').addEventListener('change', handleVehicleExcelUpload);
+  document.getElementById('vehiclePdfFile').addEventListener('change', handleVehiclePdfUpload);
   const searchEl = document.getElementById('vehicleAdminSearch');
   searchEl.oninput = ()=>{
     const q = normalizeVText(searchEl.value);
@@ -6297,180 +6328,74 @@ function wireVehicleDbTab(){
       normalizeVText(v.partNo).includes(q) || normalizeVText(v.partName).includes(q) ||
       normalizeVText((v.models||[]).join(' ')).includes(q) || normalizeVText(v.brand).includes(q)
     ).slice(0,200);
-    document.getElementById('vehicleListWrap').innerHTML = renderVehicleCompatTable(filtered);
+    document.getElementById('vehicleListWrap').innerHTML = renderVehicleCompatTable(filtered,true);
     wireVehicleRowButtons();
   };
   wireVehicleRowButtons();
 }
-function wireVehicleRowButtons(){
-  document.querySelectorAll('.v-del').forEach(btn=>{
-    btn.onclick = ()=>{
-      if(!confirm('এই রেকর্ডটি মুছে ফেলতে চান?')) return;
-      const id = Number(btn.dataset.id);
-      DB.vehicleCompat = DB.vehicleCompat.filter(v=>v.id!==id);
-      logHistory('Vehicle Model Database থেকে ১টি রেকর্ড ডিলিট হয়েছে');
-      saveDB();
-      go('adminDashboard');
-    };
-  });
-  document.querySelectorAll('.v-edit').forEach(btn=>{
-    btn.onclick = ()=>{
-      const v = DB.vehicleCompat.find(x=>x.id===Number(btn.dataset.id));
-      if(!v) return;
-      openModal(`
-        <h3>রেকর্ড সম্পাদনা</h3>
-        <div class="field"><label>পার্ট নং</label><input type="text" id="vePartNo" value="${v.partNo}"></div>
-        <div class="field"><label>পার্টের নাম</label><input type="text" id="vePartName" value="${v.partName}"></div>
-        <div class="field"><label>গাড়ির মডেল (কমা দিয়ে আলাদা)</label><input type="text" id="veModels" value="${(v.models||[]).join(', ')}"></div>
-        <div class="field"><label>ব্র্যান্ড</label><input type="text" id="veBrand" value="${v.brand||''}"></div>
-        <div class="field"><label>ক্যাটাগরি</label><input type="text" id="veCategory" value="${v.category||''}"></div>
-        <div class="field"><label>মন্তব্য</label><input type="text" id="veRemarks" value="${v.remarks||''}"></div>
-        <div class="modal-actions">
-          <button class="btn btn-ghost" onclick="closeModal()">বাতিল</button>
-          <button class="btn btn-primary" id="veSave">সেভ করুন</button>
-        </div>
-      `);
-      document.getElementById('veSave').onclick = ()=>{
-        v.partNo = document.getElementById('vePartNo').value.trim();
-        v.partName = document.getElementById('vePartName').value.trim();
-        v.models = document.getElementById('veModels').value.split(',').map(s=>s.trim()).filter(Boolean);
-        v.brand = document.getElementById('veBrand').value.trim();
-        v.category = document.getElementById('veCategory').value.trim();
-        v.remarks = document.getElementById('veRemarks').value.trim();
-        saveDB();
-        closeModal();
-        go('adminDashboard');
-      };
-    };
-  });
+async function loadPdfJs(){
+  if(window.pdfjsLib) return window.pdfjsLib;
+  try{
+    const mod=await import('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.min.mjs');
+    window.pdfjsLib=mod;
+    if(mod.GlobalWorkerOptions) mod.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.worker.min.mjs';
+    return mod;
+  }catch(err){ throw new Error('PDF reader load করা যায়নি: '+err.message); }
 }
-function findHeaderMatch(headerRow, aliases){
-  for(let i=0;i<headerRow.length;i++){
-    const h = normalizeVText(String(headerRow[i]||''));
-    if(aliases.some(a=>h===a || h.includes(a))) return i;
-  }
-  return -1;
+function normalizePdfPartNo(s){ return String(s||'').replace(/\s+/g,'').trim(); }
+function pdfLineToVehicleRow(line){
+  const raw=String(line||'').replace(/\u00a0/g,' ').replace(/\s+/g,' ').trim();
+  if(!raw) return null;
+  const tokens=raw.split(' ');
+  const partIdx=tokens.findIndex(t=>/^(?:\d{5,}|[A-Za-z]{1,6}[._-][A-Za-z0-9._-]{3,}|[A-Za-z0-9]+[-_][A-Za-z0-9-]{3,})$/.test(t.replace(/[|,;]$/,'')));
+  if(partIdx<0) return null;
+  const partNo=normalizePdfPartNo(tokens[partIdx].replace(/[|,;]$/,''));
+  if(partNo.length<4) return null;
+  const tail=tokens.slice(partIdx+1).join(' ');
+  if(!tail) return null;
+  // Try to detect common model patterns anywhere in the remaining text.
+  const modelMatches=tail.match(/\b(?:\d{3,5}(?:\/\d{3,5})+|\d{3,5}(?:\s*\([^)]*\))?|[A-Za-z]+\s*\d{3,5})\b/g)||[];
+  const models=[...new Set(modelMatches.map(x=>x.trim()))];
+  if(!models.length) return null;
+  return {partNo,partName:'',models,brand:'',category:'',remarks:tail};
 }
-function handleVehicleExcelUpload(e){
-  const file = e.target.files[0];
-  if(!file) return;
-  const statusEl = document.getElementById('vehicleUploadStatus');
-  statusEl.textContent = '⏳ ফাইল পড়া হচ্ছে...';
-  const reader = new FileReader();
-  reader.onload = (evt)=>{
-    try{
-      const wb = XLSX.read(evt.target.result, {type:'binary'});
-      const sheet = wb.Sheets[wb.SheetNames[0]];
-      const raw = XLSX.utils.sheet_to_json(sheet, {header:1, defval:''});
-      if(!raw.length){ statusEl.textContent = '❌ ফাইলে কোনো ডেটা নেই'; return; }
-
-      // টাইটেল রো থেকে ব্র্যান্ড অনুমান করা (যেমন "Eicher Tractor's...")
-      const knownBrands = ['eicher','tafe','massey ferguson','sonalika','mahindra','new holland','john deere','farmtrac','powertrac','swaraj'];
-      let inferredBrand = '';
-      const titleText = normalizeVText(String(raw[0]&&raw[0][0]||''));
-      knownBrands.forEach(b=>{ if(titleText.includes(b)) inferredBrand = b.replace(/\b\w/g, c=>c.toUpperCase()); });
-
-      // হেডার রো খুঁজে বের করা (প্রথম কয়েক রো-র মধ্যে "part no" জাতীয় কিছু আছে কিনা)
-      let headerIdx = -1, colMap = {};
-      const partNoAliases = ['part no','part number','partno','পার্ট নম্বর','পার্ট নং'];
-      for(let i=0;i<Math.min(5, raw.length);i++){
-        const idx = findHeaderMatch(raw[i], partNoAliases);
-        if(idx !== -1){ headerIdx = i; break; }
+async function handleVehiclePdfUpload(e){
+  const file=e.target.files[0]; if(!file) return;
+  const statusEl=document.getElementById('vehicleUploadStatus');
+  statusEl.textContent='⏳ PDF পড়া হচ্ছে...';
+  try{
+    const pdfjs=await loadPdfJs();
+    const data=new Uint8Array(await file.arrayBuffer());
+    const pdf=await pdfjs.getDocument({data}).promise;
+    let lines=[];
+    for(let p=1;p<=pdf.numPages;p++){
+      const page=await pdf.getPage(p);
+      const tc=await page.getTextContent();
+      const items=(tc.items||[]).filter(x=>String(x.str||'').trim());
+      const rows=[];
+      items.sort((a,b)=>(b.transform?.[5]||0)-(a.transform?.[5]||0) || (a.transform?.[4]||0)-(b.transform?.[4]||0));
+      for(const it of items){
+        const y=Math.round((it.transform?.[5]||0)/2)*2;
+        let row=rows.find(r=>Math.abs(r.y-y)<=2);
+        if(!row){row={y,items:[]};rows.push(row);}
+        row.items.push(it);
       }
-      if(headerIdx === -1){ statusEl.textContent = '❌ Part No./Part Number কলাম খুঁজে পাওয়া যায়নি — হেডার রো চেক করুন'; return; }
-      const headerRow = raw[headerIdx];
-      colMap.partNo = findHeaderMatch(headerRow, partNoAliases);
-      colMap.partName = findHeaderMatch(headerRow, ['part name','descriptions','description','পার্টের নাম','name']);
-      colMap.model = findHeaderMatch(headerRow, ['vehicle model','use for tractor','model','গাড়ির মডেল','tractor model']);
-      colMap.brand = findHeaderMatch(headerRow, ['brand','ব্র্যান্ড']);
-      colMap.category = findHeaderMatch(headerRow, ['category','position','ক্যাটাগরি']);
-      colMap.remarks = findHeaderMatch(headerRow, ['remarks','remark','মন্তব্য']);
-      colMap.itemCode = findHeaderMatch(headerRow, ['item code','itemcode']);
-
-      const parsed = [];
-      for(let i=headerIdx+1; i<raw.length; i++){
-        const row = raw[i];
-        if(!row || !row.length) continue;
-        const partNo = colMap.partNo!==-1 ? String(row[colMap.partNo]||'').trim() : '';
-        const modelRaw = colMap.model!==-1 ? String(row[colMap.model]||'').trim() : '';
-        if(!partNo || !modelRaw) continue;
-        // মডেল আলাদা করা — কমা (,) অথবা স্ল্যাশ (/) দুটোই সাপোর্ট করবে
-        let models = modelRaw.split(/[,/]/).map(s=>s.trim()).filter(Boolean);
-        const brand = colMap.brand!==-1 ? String(row[colMap.brand]||'').trim() : inferredBrand;
-        if(brand) models = models.map(m => /^\d/.test(m) ? `${brand} ${m}` : m); // শুধু সংখ্যা দিয়ে শুরু হলে ব্র্যান্ড prefix করা
-        models = [...new Set(models)]; // ডুপ্লিকেট মডেল বাদ
-        parsed.push({
-          partNo,
-          partName: colMap.partName!==-1 ? String(row[colMap.partName]||'').trim() : '',
-          models,
-          brand,
-          category: colMap.category!==-1 ? String(row[colMap.category]||'').trim() : '',
-          remarks: colMap.remarks!==-1 ? String(row[colMap.remarks]||'').trim() : ''
-        });
-      }
-      if(!parsed.length){
-        statusEl.textContent = '❌ কোনো বৈধ রেকর্ড পাওয়া যায়নি — Part No. ও Model কলাম খালি কিনা চেক করুন';
-        return;
-      }
-      statusEl.textContent = `✅ ${parsed.length}টি রেকর্ড পড়া হয়েছে (হেডার রো ${headerIdx+1}) — নিচে Preview দেখুন`;
-      pendingVehicleUpload = { rows: parsed, fileName: file.name };
-      showVehicleUploadPreview(parsed);
-    }catch(err){
-      statusEl.textContent = '❌ ফাইল পড়া যায়নি: ' + err.message;
+      rows.sort((a,b)=>b.y-a.y).forEach(r=>lines.push(r.items.sort((a,b)=>(a.transform?.[4]||0)-(b.transform?.[4]||0)).map(x=>x.str).join(' ')));
     }
-  };
-  reader.readAsBinaryString(file);
-  e.target.value = '';
-}
-function showVehicleUploadPreview(parsed){
-  const previewRows = parsed.slice(0, 15);
-  openModal(`
-    <h3>📋 Preview — ${parsed.length}টি রেকর্ড</h3>
-    <p class="hint" style="margin:0 0 10px">প্রথম ১৫টি রেকর্ড দেখানো হচ্ছে। এগিয়ে যেতে নিচে থেকে একটা অপশন বাছাই করুন।</p>
-    <div style="overflow-x:auto;max-height:320px;overflow-y:auto;">
-      <table style="width:100%;border-collapse:collapse;min-width:520px;font-size:13px">
-        <thead><tr style="background:var(--bg-2,#f4f4f4)"><th style="padding:5px;text-align:left">পার্ট নং</th><th style="padding:5px;text-align:left">নাম</th><th style="padding:5px;text-align:left">মডেল</th><th style="padding:5px;text-align:left">ব্র্যান্ড</th></tr></thead>
-        <tbody>${previewRows.map(r=>`<tr><td style="padding:5px" class="mono">${r.partNo}</td><td style="padding:5px">${r.partName}</td><td style="padding:5px">${r.models.join(', ')}</td><td style="padding:5px">${r.brand||'-'}</td></tr>`).join('')}</tbody>
-      </table>
-    </div>
-    <div class="modal-actions" style="flex-direction:column;gap:8px;align-items:stretch;margin-top:14px;">
-      <button class="btn btn-primary btn-block" id="vAppend">➕ বিদ্যমান ডেটার সাথে যোগ করুন</button>
-      <button class="btn btn-navy btn-block" id="vReplace">🔄 পুরোনো সব ডেটা মুছে নতুন করে বসান</button>
-      <button class="btn btn-ghost btn-block" onclick="closeModal()">বাতিল</button>
-    </div>
-  `);
-  document.getElementById('vAppend').onclick = ()=> confirmVehicleUpload('append');
-  document.getElementById('vReplace').onclick = ()=> confirmVehicleUpload('replace');
-}
-function confirmVehicleUpload(mode){
-  if(!pendingVehicleUpload) return;
-  const parsed = pendingVehicleUpload.rows;
-  if(mode==='replace'){
-    if(!confirm('নিশ্চিত? পুরোনো সব Vehicle Model ডেটা মুছে ফেলা হবে।')) return;
-    DB.vehicleCompat = [];
-  }
-  // ডুপ্লিকেট এড়াতে partNo দিয়ে ম্যাপ বানানো
-  const byPartNo = new Map(DB.vehicleCompat.map(v=>[v.partNo, v]));
-  let added=0, updated=0;
-  parsed.forEach(r=>{
-    if(byPartNo.has(r.partNo)){
-      Object.assign(byPartNo.get(r.partNo), r);
-      updated++;
-    } else {
-      const item = { id: Date.now()+Math.random(), ...r };
-      DB.vehicleCompat.push(item);
-      byPartNo.set(r.partNo, item);
-      added++;
+    const parsed=[]; const seen=new Set();
+    lines.forEach(line=>{const r=pdfLineToVehicleRow(line); if(r&&!seen.has(r.partNo)){seen.add(r.partNo);parsed.push(r);}});
+    if(!parsed.length){
+      statusEl.textContent=`❌ PDF থেকে Part Number + Model row শনাক্ত করা যায়নি (${pdf.numPages} page)। এটি scanned PDF হতে পারে বা table format ভিন্ন।`;
+      return;
     }
-  });
-  logHistory(`Vehicle Model Database: ${added}টি নতুন, ${updated}টি আপডেট হয়েছে (${pendingVehicleUpload.fileName})`);
-  saveDB();
-  closeModal();
-  pendingVehicleUpload = null;
-  alert(`✅ সম্পন্ন হয়েছে!\nনতুন যোগ হয়েছে: ${added}টি\nআপডেট হয়েছে: ${updated}টি\nমোট রেকর্ড: ${DB.vehicleCompat.length}টি`);
-  go('adminDashboard');
+    statusEl.textContent=`✅ PDF থেকে ${parsed.length}টি সম্ভাব্য রেকর্ড পাওয়া গেছে — Preview দেখুন`;
+    pendingVehicleUpload={rows:parsed,fileName:file.name};
+    showVehicleUploadPreview(parsed);
+  }catch(err){
+    console.error('PDF upload error:',err);
+    statusEl.textContent='❌ PDF পড়া যায়নি: '+err.message;
+  }finally{ e.target.value=''; }
 }
-
 /* ---- Settings tab ---- */
 function settingsTabHTML(){
   return `
