@@ -44,7 +44,7 @@ document.currentScript.parentNode.insertBefore(manifestLink, document.currentScr
 // প্রতিটি নতুন deployment/update দেওয়ার আগে এই APP_VERSION ভ্যালুটা পরিবর্তন করুন
 // (যেকোনো ইউনিক স্ট্রিং — তারিখ/সময় বা running number)। এই ভ্যালুর ভিত্তিতেই
 // সব ডিভাইস স্বয়ংক্রিয়ভাবে নতুন version detect করে reload হবে।
-window.APP_VERSION = '2026-09-14-tractor-model-pdf-reader-fix.3';
+window.APP_VERSION = '2026-09-14-tractor-model-pdf-image-viewer.5';
 
 (function(){
   // পুরনো/legacy blob-based service worker ও পুরনো Cache Storage সম্পূর্ণ পরিষ্কার করে দেওয়া হয়,
@@ -3212,81 +3212,76 @@ function modelLookupHTML(){return `
     <div id="modelLookupResults"></div>
 
     <div class="model-pdf-reader" style="margin-top:20px;border-top:1px solid var(--line);padding-top:18px;">
-      <div class="model-lookup-head"><h3>📄 Tractor Model PDF Reader</h3><span class="badge active">All Roles</span></div>
+      <div class="model-lookup-head"><h3>📄 Tractor Model PDF Image Viewer</h3><span class="badge active">All Roles</span></div>
       <p class="model-lookup-note">PDF upload করে এখানেই PDF-এর text/table পড়ে দেখা যাবে। Admin, DLR, MEC এবং ENG—সব role এই reader ব্যবহার করতে পারবে। PDF server-এ upload বা database-এ save হবে না।</p>
       <label class="btn btn-navy" for="tractorModelPdfInput" style="display:inline-block;cursor:pointer;">📄 PDF Upload & Read</label>
       <input id="tractorModelPdfInput" type="file" accept="application/pdf,.pdf" style="display:none;">
       <button class="btn btn-ghost btn-sm" id="tractorModelPdfClear" type="button" style="margin-left:8px;">Clear</button>
-      <button class="btn btn-primary btn-sm" id="tractorModelPdfOcr" type="button" style="margin-left:8px;">🔎 OCR Scan PDF</button>
-      <div id="tractorModelPdfStatus" class="ok-msg" style="display:block;margin-top:12px;">PDF select করুন।</div>
+      
+      <div id="tractorModelPdfStatus" class="ok-msg" style="display:block;margin-top:12px;">PDF select করুন — PDF-এর প্রতিটি page image হিসেবে দেখাবে।</div>
       <div id="tractorModelPdfPages" style="margin-top:12px;"></div>
     </div>
   </div>`;}
 function wireModelLookup(){
-  const input=document.getElementById('modelLookupQ'), box=document.getElementById('modelLookupResults'); if(!input||!box)return;
-  const run=()=>{
-    const raw=input.value.trim(), q=normalizePartLookup(raw); box.innerHTML='';
-    if(!q){box.innerHTML='<div class="empty">Part Number লিখে Search করুন।</div>';return;}
-    const exact=[],near=[];
-    EXCEL_PART_MODEL_DATA.forEach(x=>{const p=normalizePartLookup(x.p);if(p===q)exact.push(x);else if(p.includes(q)||q.length>=3&&p.endsWith(q))near.push(x);});
-    const list=(exact.length?exact:near).slice(0,50);
-    if(!list.length){box.innerHTML='<div class="empty">😕 এই Part Number-এর কোনো Model পাওয়া যায়নি।</div>';return;}
-    box.innerHTML=`<div class="model-lookup-count">${exact.length?'Exact Match':'Matching Part'} — ${list.length}টি</div>`+list.map(x=>`<div class="model-lookup-result ${normalizePartLookup(x.p)===q?'exact':''}"><div class="model-lookup-pn">${escHtml(x.p)}</div><div class="model-lookup-desc">${escHtml(x.d||'')}</div><div class="model-lookup-models">${(x.models&&x.models.length?x.models:['Model তথ্য নেই']).map(m=>`<span class="model-chip">${escHtml(m)}</span>`).join('')}</div></div>`).join('');
-  };
-  input.addEventListener('input',()=>{clearTimeout(window._modelLookupTimer);window._modelLookupTimer=setTimeout(run,180);});
-  input.addEventListener('keydown',e=>{if(e.key==='Enter')run();});
-  document.getElementById('modelLookupBtn').onclick=run;
+  const input=document.getElementById('modelLookupQ'), box=document.getElementById('modelLookupResults');
+  if(input&&box){
+    const run=()=>{
+      const raw=input.value.trim(), q=normalizePartLookup(raw); box.innerHTML='';
+      if(!q){box.innerHTML='<div class="empty">Part Number লিখে Search করুন।</div>';return;}
+      const exact=[],near=[];
+      EXCEL_PART_MODEL_DATA.forEach(x=>{const p=normalizePartLookup(x.p);if(p===q)exact.push(x);else if(p.includes(q)||q.length>=3&&p.endsWith(q))near.push(x);});
+      const list=(exact.length?exact:near).slice(0,50);
+      if(!list.length){box.innerHTML='<div class="empty">😕 এই Part Number-এর কোনো Model পাওয়া যায়নি।</div>';return;}
+      box.innerHTML=`<div class="model-lookup-count">${exact.length?'Exact Match':'Matching Part'} — ${list.length}টি</div>`+list.map(x=>`<div class="model-lookup-result ${normalizePartLookup(x.p)===q?'exact':''}"><div class="model-lookup-pn">${escHtml(x.p)}</div><div class="model-lookup-desc">${escHtml(x.d||'')}</div><div class="model-lookup-models">${(x.models&&x.models.length?x.models:['Model তথ্য নেই']).map(m=>`<span class="model-chip">${escHtml(m)}</span>`).join('')}</div></div>`).join('');
+    };
+    input.addEventListener('input',()=>{clearTimeout(window._modelLookupTimer);window._modelLookupTimer=setTimeout(run,180);});
+    input.addEventListener('keydown',e=>{if(e.key==='Enter')run();});
+    const btn=document.getElementById('modelLookupBtn'); if(btn)btn.onclick=run;
+  }
 
   const pdfInput=document.getElementById('tractorModelPdfInput');
   const pdfStatus=document.getElementById('tractorModelPdfStatus');
   const pdfPages=document.getElementById('tractorModelPdfPages');
   const clearBtn=document.getElementById('tractorModelPdfClear');
-  const ocrBtn=document.getElementById('tractorModelPdfOcr');
-  if(pdfInput){
-    pdfInput.onchange=async()=>{
-      const file=pdfInput.files&&pdfInput.files[0]; if(!file)return;
-      pdfStatus.className='ok-msg'; pdfStatus.style.display='block'; pdfStatus.textContent='⏳ PDF পড়া হচ্ছে...';
-      pdfPages.innerHTML='';
-      try{
-        if(file.type!=='application/pdf' && !/\.pdf$/i.test(file.name)) throw new Error('শুধু PDF file নির্বাচন করুন।');
-        const pdfjs=await loadPdfJs();
-        const data=new Uint8Array(await file.arrayBuffer());
-        const pdf=await pdfjs.getDocument({data}).promise;
-        let html=`<div class="model-lookup-count">📄 ${escHtml(file.name)} — ${pdf.numPages} page</div>`;
-        let extracted=0;
-        for(let pageNo=1;pageNo<=pdf.numPages;pageNo++){
-          const page=await pdf.getPage(pageNo); const tc=await page.getTextContent();
-          const items=(tc.items||[]).filter(x=>String(x.str||'').trim());
-          const rows=[];
-          items.sort((a,b)=>(b.transform?.[5]||0)-(a.transform?.[5]||0) || (a.transform?.[4]||0)-(b.transform?.[4]||0));
-          for(const item of items){
-            const y=Math.round(item.transform?.[5]||0);
-            let row=rows.find(r=>Math.abs(r.y-y)<=3); if(!row){row={y,text:[]};rows.push(row);} row.text.push(String(item.str||''));
-          }
-          const lines=rows.map(r=>r.text.join(' ').replace(/\s+/g,' ').trim()).filter(Boolean);
-          extracted+=lines.length;
-          html+=`<div style="margin-top:12px;border:1px solid var(--line);border-radius:10px;overflow:hidden;"><div style="padding:8px 12px;background:var(--paper);font-weight:700;">Page ${pageNo}</div><pre style="margin:0;padding:12px;white-space:pre-wrap;word-break:break-word;font-family:inherit;font-size:14px;max-height:500px;overflow:auto;">${escHtml(lines.join('\\n')||'[এই page-এ readable text পাওয়া যায়নি]')}</pre></div>`;
-        }
-        pdfPages.innerHTML=html;
-        if(extracted){
-          pdfStatus.textContent=`✅ PDF পড়া হয়েছে — ${extracted}টি text line পাওয়া গেছে।`;
-        }else{
-          pdfStatus.textContent='⚠️ PDF খুলেছে, কিন্তু readable text পাওয়া যায়নি। এটি scanned/image PDF। OCR চালানো হচ্ছে...';
-          await runTractorPdfOCR(file, pdfjs, pdf, pdfPages, pdfStatus);
-        }
-      }catch(err){ pdfStatus.className='err'; pdfStatus.style.display='block'; pdfStatus.textContent='❌ PDF পড়া যায়নি: '+err.message; }
-    };
-  }
-  if(ocrBtn){ocrBtn.onclick=async()=>{
-    const file=pdfInput&&pdfInput.files&&pdfInput.files[0];
-    if(!file){pdfStatus.className='err';pdfStatus.style.display='block';pdfStatus.textContent='⚠️ আগে একটি PDF select করুন।';return;}
+  if(!pdfInput||!pdfPages||!pdfStatus)return;
+
+  pdfInput.onchange=async()=>{
+    const file=pdfInput.files&&pdfInput.files[0]; if(!file)return;
+    pdfStatus.className='ok-msg'; pdfStatus.style.display='block'; pdfStatus.textContent='⏳ PDF খুলে page image তৈরি করা হচ্ছে...';
+    pdfPages.innerHTML='';
     try{
-      const pdfjs=await loadPdfJs(); const data=new Uint8Array(await file.arrayBuffer());
+      if(file.type!=='application/pdf' && !/\.pdf$/i.test(file.name)) throw new Error('শুধু PDF file নির্বাচন করুন।');
+      const pdfjs=await loadPdfJs();
+      const data=new Uint8Array(await file.arrayBuffer());
       const pdf=await pdfjs.getDocument({data}).promise;
-      await runTractorPdfOCR(file,pdfjs,pdf,pdfPages,pdfStatus);
-    }catch(err){pdfStatus.className='err';pdfStatus.style.display='block';pdfStatus.textContent='❌ OCR চালানো যায়নি: '+err.message;}
-  };}
-  if(clearBtn){clearBtn.onclick=()=>{if(pdfInput)pdfInput.value='';pdfPages.innerHTML='';pdfStatus.className='ok-msg';pdfStatus.style.display='block';pdfStatus.textContent='PDF select করুন।';};}
+      pdfPages.innerHTML=`<div class="model-lookup-count">📄 ${escHtml(file.name)} — ${pdf.numPages} page</div>`;
+
+      for(let pageNo=1;pageNo<=pdf.numPages;pageNo++){
+        const page=await pdf.getPage(pageNo);
+        const baseViewport=page.getViewport({scale:1});
+        const maxWidth=Math.min(1000, Math.max(700, pdfPages.clientWidth||900));
+        const scale=Math.min(2, maxWidth/baseViewport.width);
+        const viewport=page.getViewport({scale});
+
+        const wrap=document.createElement('div');
+        wrap.style.cssText='margin:14px 0;border:1px solid var(--line);border-radius:12px;overflow:auto;background:#eee;box-shadow:0 2px 8px rgba(0,0,0,.08);';
+        const head=document.createElement('div');
+        head.textContent=`Page ${pageNo} / ${pdf.numPages}`;
+        head.style.cssText='padding:9px 12px;background:var(--paper);font-weight:700;position:sticky;top:0;z-index:2;';
+        const canvas=document.createElement('canvas');
+        canvas.width=Math.ceil(viewport.width); canvas.height=Math.ceil(viewport.height);
+        canvas.style.cssText='display:block;width:100%;height:auto;background:#fff;';
+        wrap.appendChild(head); wrap.appendChild(canvas); pdfPages.appendChild(wrap);
+        await page.render({canvasContext:canvas.getContext('2d'),viewport}).promise;
+        pdfStatus.textContent=`✅ PDF image হিসেবে দেখানো হচ্ছে — Page ${pageNo}/${pdf.numPages}`;
+      }
+      pdfStatus.textContent=`✅ PDF সম্পূর্ণ দেখা যাচ্ছে — ${pdf.numPages} page।`;
+    }catch(err){
+      pdfStatus.className='err'; pdfStatus.style.display='block'; pdfStatus.textContent='❌ PDF দেখানো যায়নি: '+err.message;
+    }
+  };
+
+  if(clearBtn){clearBtn.onclick=()=>{pdfInput.value='';pdfPages.innerHTML='';pdfStatus.className='ok-msg';pdfStatus.style.display='block';pdfStatus.textContent='PDF select করুন।';};}
 }
 async function loadTesseract(){
   if(window.Tesseract) return window.Tesseract;
