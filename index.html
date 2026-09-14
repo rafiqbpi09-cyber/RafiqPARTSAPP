@@ -6381,13 +6381,28 @@ function wireVehicleDbTab(){
   wireVehicleRowButtons();
 }
 async function loadPdfJs(){
-  if(window.pdfjsLib) return window.pdfjsLib;
-  try{
-    const mod=await import('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.min.mjs');
-    window.pdfjsLib=mod;
-    if(mod.GlobalWorkerOptions) mod.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.worker.min.mjs';
-    return mod;
-  }catch(err){ throw new Error('PDF reader load করা যায়নি: '+err.message); }
+  // PDF.js UMD build: workerSrc explicitly set before getDocument()
+  if(window.pdfjsLib){
+    window.pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    return window.pdfjsLib;
+  }
+  await new Promise((resolve,reject)=>{
+    const existing=document.querySelector('script[data-pdfjs-loader="1"]');
+    if(existing){
+      existing.addEventListener('load',resolve,{once:true});
+      existing.addEventListener('error',()=>reject(new Error('PDF.js load failed')),{once:true});
+      return;
+    }
+    const script=document.createElement('script');
+    script.src='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+    script.async=true; script.dataset.pdfjsLoader='1';
+    script.onload=resolve;
+    script.onerror=()=>reject(new Error('PDF.js load করা যায়নি'));
+    document.head.appendChild(script);
+  });
+  if(!window.pdfjsLib) throw new Error('PDF.js library পাওয়া যায়নি');
+  window.pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  return window.pdfjsLib;
 }
 function normalizePdfPartNo(s){ return String(s||'').replace(/\s+/g,'').trim(); }
 function pdfLineToVehicleRow(line){
