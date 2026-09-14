@@ -3217,6 +3217,7 @@ function modelLookupHTML(){return `
       <label class="btn btn-navy" for="tractorModelPdfInput" style="display:inline-block;cursor:pointer;">📄 PDF Upload & Read</label>
       <input id="tractorModelPdfInput" type="file" accept="application/pdf,.pdf" style="display:none;">
       <button class="btn btn-ghost btn-sm" id="tractorModelPdfClear" type="button" style="margin-left:8px;">Clear</button>
+      <button class="btn btn-primary btn-sm" id="tractorModelPdfOcr" type="button" style="margin-left:8px;">🔎 OCR Scan PDF</button>
       <div id="tractorModelPdfStatus" class="ok-msg" style="display:block;margin-top:12px;">PDF select করুন।</div>
       <div id="tractorModelPdfPages" style="margin-top:12px;"></div>
     </div>
@@ -3240,6 +3241,7 @@ function wireModelLookup(){
   const pdfStatus=document.getElementById('tractorModelPdfStatus');
   const pdfPages=document.getElementById('tractorModelPdfPages');
   const clearBtn=document.getElementById('tractorModelPdfClear');
+  const ocrBtn=document.getElementById('tractorModelPdfOcr');
   if(pdfInput){
     pdfInput.onchange=async()=>{
       const file=pdfInput.files&&pdfInput.files[0]; if(!file)return;
@@ -3266,12 +3268,65 @@ function wireModelLookup(){
           html+=`<div style="margin-top:12px;border:1px solid var(--line);border-radius:10px;overflow:hidden;"><div style="padding:8px 12px;background:var(--paper);font-weight:700;">Page ${pageNo}</div><pre style="margin:0;padding:12px;white-space:pre-wrap;word-break:break-word;font-family:inherit;font-size:14px;max-height:500px;overflow:auto;">${escHtml(lines.join('\\n')||'[এই page-এ readable text পাওয়া যায়নি]')}</pre></div>`;
         }
         pdfPages.innerHTML=html;
-        pdfStatus.textContent=extracted?`✅ PDF পড়া হয়েছে — ${extracted}টি text line পাওয়া গেছে।`:'⚠️ PDF খুলেছে, কিন্তু readable text পাওয়া যায়নি। এটি সম্ভবত scanned/image PDF; OCR দরকার হবে।';
+        if(extracted){
+          pdfStatus.textContent=`✅ PDF পড়া হয়েছে — ${extracted}টি text line পাওয়া গেছে।`;
+        }else{
+          pdfStatus.textContent='⚠️ PDF খুলেছে, কিন্তু readable text পাওয়া যায়নি। এটি scanned/image PDF। OCR চালানো হচ্ছে...';
+          await runTractorPdfOCR(file, pdfjs, pdf, pdfPages, pdfStatus);
+        }
       }catch(err){ pdfStatus.className='err'; pdfStatus.style.display='block'; pdfStatus.textContent='❌ PDF পড়া যায়নি: '+err.message; }
     };
   }
+  if(ocrBtn){ocrBtn.onclick=async()=>{
+    const file=pdfInput&&pdfInput.files&&pdfInput.files[0];
+    if(!file){pdfStatus.className='err';pdfStatus.style.display='block';pdfStatus.textContent='⚠️ আগে একটি PDF select করুন।';return;}
+    try{
+      const pdfjs=await loadPdfJs(); const data=new Uint8Array(await file.arrayBuffer());
+      const pdf=await pdfjs.getDocument({data}).promise;
+      await runTractorPdfOCR(file,pdfjs,pdf,pdfPages,pdfStatus);
+    }catch(err){pdfStatus.className='err';pdfStatus.style.display='block';pdfStatus.textContent='❌ OCR চালানো যায়নি: '+err.message;}
+  };}
   if(clearBtn){clearBtn.onclick=()=>{if(pdfInput)pdfInput.value='';pdfPages.innerHTML='';pdfStatus.className='ok-msg';pdfStatus.style.display='block';pdfStatus.textContent='PDF select করুন।';};}
 }
+async function loadTesseract(){
+  if(window.Tesseract) return window.Tesseract;
+  await new Promise((resolve,reject)=>{
+    const existing=document.querySelector('script[data-tesseract-loader="1"]');
+    if(existing){existing.addEventListener('load',resolve,{once:true});existing.addEventListener('error',()=>reject(new Error('Tesseract.js load failed')),{once:true});return;}
+    const script=document.createElement('script');
+    script.src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
+    script.async=true; script.dataset.tesseractLoader='1';
+    script.onload=resolve; script.onerror=()=>reject(new Error('Tesseract.js library load করা যায়নি')); document.head.appendChild(script);
+  });
+  if(!window.Tesseract) throw new Error('Tesseract.js পাওয়া যায়নি');
+  return window.Tesseract;
+}
+async function runTractorPdfOCR(file,pdfjs,pdf,pdfPages,pdfStatus){
+  const Tesseract=await loadTesseract();
+  pdfStatus.className='ok-msg'; pdfStatus.style.display='block';
+  pdfStatus.textContent=`🔎 Scanned PDF OCR শুরু হচ্ছে — ${pdf.numPages} page... প্রথমবার language data load হতে কিছু সময় লাগতে পারে।`;
+  pdfPages.innerHTML=`<div class="empty">🔎 OCR চলছে... PDF-এর page image পড়া হচ্ছে।</div>`;
+  const worker=await Tesseract.createWorker('eng');
+  let html=`<div class="model-lookup-count">🔎 OCR Result — ${escHtml(file.name)} — ${pdf.numPages} page</div>`;
+  let totalChars=0;
+  try{
+    for(let pageNo=1;pageNo<=pdf.numPages;pageNo++){
+      pdfStatus.textContent=`🔎 OCR চলছে: Page ${pageNo}/${pdf.numPages}`;
+      const page=await pdf.getPage(pageNo);
+      const viewport=page.getViewport({scale:2.2});
+      const canvas=document.createElement('canvas'); canvas.width=Math.ceil(viewport.width); canvas.height=Math.ceil(viewport.height);
+      const ctx=canvas.getContext('2d',{willReadFrequently:true});
+      await page.render({canvasContext:ctx,viewport}).promise;
+      const result=await worker.recognize(canvas);
+      const text=String(result?.data?.text||'').trim(); totalChars+=text.length;
+      html+=`<div style="margin-top:12px;border:1px solid var(--line);border-radius:10px;overflow:hidden;"><div style="padding:8px 12px;background:var(--paper);font-weight:700;">Page ${pageNo} — OCR</div><pre style="margin:0;padding:12px;white-space:pre-wrap;word-break:break-word;font-family:inherit;font-size:14px;max-height:500px;overflow:auto;">${escHtml(text||'[এই page-এ OCR text পাওয়া যায়নি]')}</pre></div>`;
+      canvas.width=1;canvas.height=1;
+    }
+    pdfPages.innerHTML=html;
+    pdfStatus.textContent=totalChars?`✅ OCR সম্পন্ন — ${pdf.numPages} page থেকে ${totalChars.toLocaleString()} characters পড়া হয়েছে।`:'⚠️ OCR সম্পন্ন, কিন্তু কোনো readable text পাওয়া যায়নি। PDF image quality খুব কম হতে পারে।';
+  }finally{await worker.terminate();}
+}
+
 
 
 /* ============================================================= */
