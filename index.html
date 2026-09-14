@@ -44,7 +44,7 @@ document.currentScript.parentNode.insertBefore(manifestLink, document.currentScr
 // প্রতিটি নতুন deployment/update দেওয়ার আগে এই APP_VERSION ভ্যালুটা পরিবর্তন করুন
 // (যেকোনো ইউনিক স্ট্রিং — তারিখ/সময় বা running number)। এই ভ্যালুর ভিত্তিতেই
 // সব ডিভাইস স্বয়ংক্রিয়ভাবে নতুন version detect করে reload হবে।
-window.APP_VERSION = '2026-09-14-vehicle-db-all-role-pdf.1';
+window.APP_VERSION = '2026-09-14-tractor-model-pdf-reader-fix.3';
 
 (function(){
   // পুরনো/legacy blob-based service worker ও পুরনো Cache Storage সম্পূর্ণ পরিষ্কার করে দেওয়া হয়,
@@ -95,7 +95,7 @@ window.APP_VERSION = '2026-09-14-vehicle-db-all-role-pdf.1';
 })();
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.min.mjs" type="module"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
@@ -6381,30 +6381,12 @@ function wireVehicleDbTab(){
   wireVehicleRowButtons();
 }
 async function loadPdfJs(){
-  // PDF.js UMD build: workerSrc explicitly set before getDocument()
-  if(window.pdfjsLib){
-    window.pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-    return window.pdfjsLib;
-  }
-  await new Promise((resolve,reject)=>{
-    const existing=document.querySelector('script[data-pdfjs-loader="1"]');
-    if(existing){
-      existing.addEventListener('load',resolve,{once:true});
-      existing.addEventListener('error',()=>reject(new Error('PDF.js load failed')),{once:true});
-      return;
-    }
-    const script=document.createElement('script');
-    script.src='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
-    script.async=true; script.dataset.pdfjsLoader='1';
-    script.onload=resolve;
-    script.onerror=()=>reject(new Error('PDF.js load করা যায়নি'));
-    document.head.appendChild(script);
-  });
-  if(!window.pdfjsLib) throw new Error('PDF.js library পাওয়া যায়নি');
-  window.pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  // Use ONE PDF.js version only (3.11.174) so API and Worker versions match.
+  if(!window.pdfjsLib) throw new Error('PDF.js library load হয়নি');
+  window.pdfjsLib.GlobalWorkerOptions.workerSrc =
+    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
   return window.pdfjsLib;
-}
-function normalizePdfPartNo(s){ return String(s||'').replace(/\s+/g,'').trim(); }
+}function normalizePdfPartNo(s){ return String(s||'').replace(/\s+/g,'').trim(); }
 function pdfLineToVehicleRow(line){
   const raw=String(line||'').replace(/\u00a0/g,' ').replace(/\s+/g,' ').trim();
   if(!raw) return null;
