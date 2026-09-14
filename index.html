@@ -3212,16 +3212,17 @@ function modelLookupHTML(){return `
     <div id="modelLookupResults"></div>
 
     <div class="model-pdf-reader" style="margin-top:20px;border-top:1px solid var(--line);padding-top:18px;">
-      <div class="model-lookup-head"><h3>📄 Tractor Model PDF Image Viewer</h3><span class="badge active">All Roles</span></div>
-      <p class="model-lookup-note">PDF upload করে এখানেই PDF-এর text/table পড়ে দেখা যাবে। Admin, DLR, MEC এবং ENG—সব role এই reader ব্যবহার করতে পারবে। PDF server-এ upload বা database-এ save হবে না।</p>
-      <label class="btn btn-navy" for="tractorModelPdfInput" style="display:inline-block;cursor:pointer;">📄 PDF Upload & Read</label>
-      <input id="tractorModelPdfInput" type="file" accept="application/pdf,.pdf" style="display:none;">
-      <button class="btn btn-ghost btn-sm" id="tractorModelPdfClear" type="button" style="margin-left:8px;">Clear</button>
-      
-      <div id="tractorModelPdfStatus" class="ok-msg" style="display:block;margin-top:12px;">PDF select করুন — PDF-এর প্রতিটি page image হিসেবে দেখাবে।</div>
+      <div class="model-lookup-head"><h3>📄 Tractor Model PDF</h3><span class="badge active">All Roles</span></div>
+      <p class="model-lookup-note">সর্বোচ্চ 10টি PDF একসাথে select করুন। প্রতিটি PDF-এর filename অনুযায়ী আলাদা Tractor Model tab তৈরি হবে—যেমন <b>380.pdf</b>, <b>480.pdf</b>, <b>551.pdf</b>, <b>557.pdf</b>, <b>5660.pdf</b>, <b>650.pdf</b>। PDF-এর প্রতিটি page সরাসরি image হিসেবে দেখা যাবে।</p>
+      <label class="btn btn-navy" for="tractorModelPdfInput" style="display:inline-block;cursor:pointer;">📄 8–10 PDF Upload</label>
+      <input id="tractorModelPdfInput" type="file" accept="application/pdf,.pdf" multiple style="display:none;">
+      <button class="btn btn-ghost btn-sm" id="tractorModelPdfClear" type="button" style="margin-left:8px;">Clear All</button>
+      <div id="tractorModelPdfStatus" class="ok-msg" style="display:block;margin-top:12px;">PDF select করুন — প্রতিটি PDF আলাদা Model tab হবে।</div>
+      <div id="tractorModelPdfTabs" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:14px;"></div>
       <div id="tractorModelPdfPages" style="margin-top:12px;"></div>
     </div>
   </div>`;}
+
 function wireModelLookup(){
   const input=document.getElementById('modelLookupQ'), box=document.getElementById('modelLookupResults');
   if(input&&box){
@@ -3241,48 +3242,100 @@ function wireModelLookup(){
 
   const pdfInput=document.getElementById('tractorModelPdfInput');
   const pdfStatus=document.getElementById('tractorModelPdfStatus');
+  const pdfTabs=document.getElementById('tractorModelPdfTabs');
   const pdfPages=document.getElementById('tractorModelPdfPages');
   const clearBtn=document.getElementById('tractorModelPdfClear');
-  if(!pdfInput||!pdfPages||!pdfStatus)return;
+  if(!pdfInput||!pdfTabs||!pdfPages||!pdfStatus)return;
 
-  pdfInput.onchange=async()=>{
-    const file=pdfInput.files&&pdfInput.files[0]; if(!file)return;
-    pdfStatus.className='ok-msg'; pdfStatus.style.display='block'; pdfStatus.textContent='⏳ PDF খুলে page image তৈরি করা হচ্ছে...';
+  window._tractorModelPdfStore = window._tractorModelPdfStore || [];
+
+  const getModelName=(file)=>{
+    let name=String(file.name||'').replace(/\.pdf$/i,'').trim();
+    name=name.replace(/^tractor\s*model\s*[-_ ]*/i,'').trim();
+    return name || 'Model';
+  };
+
+  const renderPdfTabs=(activeIndex=0)=>{
+    pdfTabs.innerHTML='';
+    window._tractorModelPdfStore.forEach((item,index)=>{
+      const b=document.createElement('button');
+      b.type='button'; b.className='btn btn-sm '+(index===activeIndex?'btn-primary':'btn-ghost');
+      b.textContent='🚜 '+item.model;
+      b.title=item.file.name;
+      b.onclick=()=>renderPdfItem(index);
+      pdfTabs.appendChild(b);
+    });
+  };
+
+  const renderPdfItem=async(index)=>{
+    const item=window._tractorModelPdfStore[index]; if(!item)return;
+    renderPdfTabs(index);
     pdfPages.innerHTML='';
+    pdfStatus.className='ok-msg'; pdfStatus.style.display='block';
+    pdfStatus.textContent=`⏳ ${item.model} — PDF খুলে page image তৈরি করা হচ্ছে...`;
     try{
-      if(file.type!=='application/pdf' && !/\.pdf$/i.test(file.name)) throw new Error('শুধু PDF file নির্বাচন করুন।');
       const pdfjs=await loadPdfJs();
-      const data=new Uint8Array(await file.arrayBuffer());
+      const data=new Uint8Array(await item.file.arrayBuffer());
       const pdf=await pdfjs.getDocument({data}).promise;
-      pdfPages.innerHTML=`<div class="model-lookup-count">📄 ${escHtml(file.name)} — ${pdf.numPages} page</div>`;
-
+      item.pdf=pdf;
+      pdfPages.innerHTML=`<div class="model-lookup-count">🚜 ${escHtml(item.model)} — ${escHtml(item.file.name)} — ${pdf.numPages} page</div>`;
       for(let pageNo=1;pageNo<=pdf.numPages;pageNo++){
         const page=await pdf.getPage(pageNo);
         const baseViewport=page.getViewport({scale:1});
-        const maxWidth=Math.min(1000, Math.max(700, pdfPages.clientWidth||900));
-        const scale=Math.min(2, maxWidth/baseViewport.width);
+        const maxWidth=Math.min(1100,Math.max(700,pdfPages.clientWidth||900));
+        const scale=Math.min(2,maxWidth/baseViewport.width);
         const viewport=page.getViewport({scale});
-
         const wrap=document.createElement('div');
         wrap.style.cssText='margin:14px 0;border:1px solid var(--line);border-radius:12px;overflow:auto;background:#eee;box-shadow:0 2px 8px rgba(0,0,0,.08);';
         const head=document.createElement('div');
-        head.textContent=`Page ${pageNo} / ${pdf.numPages}`;
+        head.textContent=`${item.model} — Page ${pageNo} / ${pdf.numPages}`;
         head.style.cssText='padding:9px 12px;background:var(--paper);font-weight:700;position:sticky;top:0;z-index:2;';
         const canvas=document.createElement('canvas');
         canvas.width=Math.ceil(viewport.width); canvas.height=Math.ceil(viewport.height);
         canvas.style.cssText='display:block;width:100%;height:auto;background:#fff;';
         wrap.appendChild(head); wrap.appendChild(canvas); pdfPages.appendChild(wrap);
         await page.render({canvasContext:canvas.getContext('2d'),viewport}).promise;
-        pdfStatus.textContent=`✅ PDF image হিসেবে দেখানো হচ্ছে — Page ${pageNo}/${pdf.numPages}`;
+        pdfStatus.textContent=`✅ ${item.model} — Page ${pageNo}/${pdf.numPages}`;
       }
-      pdfStatus.textContent=`✅ PDF সম্পূর্ণ দেখা যাচ্ছে — ${pdf.numPages} page।`;
+      pdfStatus.textContent=`✅ ${item.model} PDF সম্পূর্ণ দেখা যাচ্ছে — ${pdf.numPages} page।`;
     }catch(err){
-      pdfStatus.className='err'; pdfStatus.style.display='block'; pdfStatus.textContent='❌ PDF দেখানো যায়নি: '+err.message;
+      pdfStatus.className='err'; pdfStatus.style.display='block'; pdfStatus.textContent='❌ '+escHtml(item.model)+' PDF দেখানো যায়নি: '+escHtml(err.message||String(err));
     }
   };
 
-  if(clearBtn){clearBtn.onclick=()=>{pdfInput.value='';pdfPages.innerHTML='';pdfStatus.className='ok-msg';pdfStatus.style.display='block';pdfStatus.textContent='PDF select করুন।';};}
+  pdfInput.onchange=async()=>{
+    const files=Array.from(pdfInput.files||[]);
+    if(!files.length)return;
+    if(files.length>10){
+      pdfStatus.className='err'; pdfStatus.style.display='block';
+      pdfStatus.textContent='⚠️ সর্বোচ্চ 10টি PDF একসাথে upload করা যাবে।';
+      pdfInput.value=''; return;
+    }
+    const valid=files.filter(f=>f.type==='application/pdf'||/\.pdf$/i.test(f.name));
+    if(valid.length!==files.length){
+      pdfStatus.className='err'; pdfStatus.style.display='block'; pdfStatus.textContent='⚠️ শুধু PDF file নির্বাচন করুন।';
+    }
+    const existingNames=new Set(window._tractorModelPdfStore.map(x=>x.file.name.toLowerCase()));
+    valid.forEach(file=>{
+      if(existingNames.has(file.name.toLowerCase()))return;
+      const model=getModelName(file);
+      window._tractorModelPdfStore.push({file,model,pdf:null});
+    });
+    renderPdfTabs(0);
+    pdfInput.value='';
+    if(window._tractorModelPdfStore.length){
+      pdfStatus.className='ok-msg'; pdfStatus.style.display='block';
+      pdfStatus.textContent=`✅ ${window._tractorModelPdfStore.length}টি Tractor Model PDF loaded। নিচের tab থেকে Model নির্বাচন করুন।`;
+      await renderPdfItem(0);
+    }
+  };
+
+  if(clearBtn){clearBtn.onclick=()=>{
+    window._tractorModelPdfStore=[]; pdfInput.value=''; pdfTabs.innerHTML=''; pdfPages.innerHTML='';
+    pdfStatus.className='ok-msg'; pdfStatus.style.display='block'; pdfStatus.textContent='PDF select করুন — প্রতিটি PDF আলাদা Model tab হবে।';
+  };}
 }
+
 async function loadTesseract(){
   if(window.Tesseract) return window.Tesseract;
   await new Promise((resolve,reject)=>{
