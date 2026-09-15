@@ -1,0 +1,26 @@
+BIZNIVO – Eicher Catalogue Firebase Rules
+
+The updated index.html stores catalogue PDF files in Firebase Storage and metadata in Realtime Database.
+Before production use, add these rules to your existing Firebase rules (merge with your current rules; do not replace unrelated rules).
+
+Realtime Database – merge this path into your existing "rules":
+
+"eicherCatalogues": {
+  ".read": "auth != null",
+  ".write": "auth != null && auth.token.email != null && auth.token.email.matches('.*@admin\\.metal-parts-app\\.local$')"
+}
+
+Firebase Storage – merge this path into your existing Storage rules:
+
+match /eicherCatalogues/{fileName} {
+  allow read: if request.auth != null;
+  allow write, delete: if request.auth != null
+    && request.auth.token.email != null
+    && request.auth.token.email.matches('.*@admin\\.metal-parts-app\\.local$');
+}
+
+Notes:
+- The app does NOT bundle or preload any of the sample Eicher PDFs supplied for reference.
+- All authenticated roles can read/view catalogue PDFs.
+- Only the Admin Firebase Auth identity (admin.*@admin.metal-parts-app.local) can upload, rename metadata, or delete catalogue files.
+- Keep your existing unrelated Realtime Database/Storage rules unchanged.
