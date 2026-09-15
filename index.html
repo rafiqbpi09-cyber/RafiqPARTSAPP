@@ -3311,22 +3311,29 @@ async function loadEicherCatalogues(){
       db.close();
       resolve((req.result||[]).map(x=>({
         name:x.name,
-        file:new File([x.blob],x.name,{type:x.type||'application/pdf'})
-      })));
+        file:x.blob,
+        type:x.type||'application/pdf'
+      })).filter(x=>x.file));
     };
     req.onerror=()=>{db.close();reject(req.error||new Error('Catalogue load করা যায়নি'));};
   });
 }
-function eicherReadFileArrayBuffer(file){
-  if(file && typeof file.arrayBuffer==='function') return file.arrayBuffer();
-  return new Promise((resolve,reject)=>{
-    try{
+async function eicherReadFileArrayBuffer(file){
+  // IndexedDB/browser compatibility: stored catalogue may be Blob, File,
+  // or a wrapper object containing the original Blob.
+  if(file && file.blob) file=file.blob;
+  if(file instanceof ArrayBuffer) return file;
+  if(ArrayBuffer.isView(file)) return file.buffer;
+  if(file && typeof file.arrayBuffer==='function') return await file.arrayBuffer();
+  if(typeof Blob!=='undefined' && file instanceof Blob){
+    return await new Promise((resolve,reject)=>{
       const reader=new FileReader();
       reader.onload=()=>resolve(reader.result);
       reader.onerror=()=>reject(reader.error||new Error('PDF file read করা যায়নি'));
       reader.readAsArrayBuffer(file);
-    }catch(e){ reject(e); }
-  });
+    });
+  }
+  throw new Error('PDF file data invalid বা পাওয়া যায়নি');
 }
 
 async function clearEicherCatalogues(){
@@ -3379,7 +3386,7 @@ async function wireModelLookup(){
         const res=await fetch(item.path,{cache:'no-store'});
         if(!res.ok) throw new Error('PDF file পাওয়া যায়নি: '+item.path);
         const blob=await res.blob();
-        file=new File([blob],item.name,{type:'application/pdf'});
+        file=blob;
       }
       const pdfjs=await loadPdfJs();
       const data=new Uint8Array(await eicherReadFileArrayBuffer(file));
@@ -6659,7 +6666,7 @@ async function handleVehiclePdfUpload(e){
   statusEl.textContent='⏳ PDF পড়া হচ্ছে...';
   try{
     const pdfjs=await loadPdfJs();
-    const data=new Uint8Array(await file.arrayBuffer());
+    const data=new Uint8Array(await eicherReadFileArrayBuffer(file));
     const pdf=await pdfjs.getDocument({data}).promise;
     let lines=[];
     for(let p=1;p<=pdf.numPages;p++){
