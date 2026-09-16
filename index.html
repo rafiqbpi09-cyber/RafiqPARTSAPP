@@ -44,7 +44,7 @@ document.currentScript.parentNode.insertBefore(manifestLink, document.currentScr
 // প্রতিটি নতুন deployment/update দেওয়ার আগে এই APP_VERSION ভ্যালুটা পরিবর্তন করুন
 // (যেকোনো ইউনিক স্ট্রিং — তারিখ/সময় বা running number)। এই ভ্যালুর ভিত্তিতেই
 // সব ডিভাইস স্বয়ংক্রিয়ভাবে নতুন version detect করে reload হবে।
-window.APP_VERSION = '2026-09-02-registration-fix.1';
+window.APP_VERSION = '2026-09-16-login-cross-device-fix.1';
 
 (function(){
   // পুরনো/legacy blob-based service worker ও পুরনো Cache Storage সম্পূর্ণ পরিষ্কার করে দেওয়া হয়,
@@ -981,6 +981,26 @@ function fbPw(pw){
 
 // admin/dealer/partsEngineer লগইনের সময় কল হয় — legacy পাসওয়ার্ড যাচাই ইতিমধ্যে হয়ে গেছে ধরে নিয়ে,
 // এই ফাংশন Firebase Auth-এ সাইন-ইন করে (প্রথমবার হলে অ্যাকাউন্ট বানিয়ে, পাসওয়ার্ড বদলালে নতুন অ্যাকাউন্টে rotate করে)।
+
+// Cross-device login repair:
+// If the local copy has an old password but Firebase Auth has the current password,
+// allow the real Firebase credential to authenticate and then synchronize the
+// password into the shared profile. This fixes APKs/devices that have stale local data.
+async function verifyFirebaseCredential(record, pw, prefix){
+  if(!record || !record.authEmail) return false;
+  try{
+    await fbAuth.signInWithEmailAndPassword(record.authEmail, fbPw(pw));
+    record.password = pw;
+    const dirtyKeys = record.role === 'partsEngineer' || prefix === 'pe'
+      ? ['partsEngineers']
+      : ['users'];
+    await saveDB(dirtyKeys);
+    return true;
+  }catch(err){
+    return false;
+  }
+}
+
 async function fbEnsureAuth(record, pw, prefix, options={}){
   const digits = normalizePhoneNumber(record.phone) || 'admin';
   const password = fbPw(pw);
@@ -1885,10 +1905,21 @@ async function slSubmitLogin(role){
   }
 
   if(role === 'engineer'){
-    const pe = DB.partsEngineers.find(x=>(x.phone===identifier || (x.engineerId && String(x.engineerId).trim().toLowerCase()===identifier.toLowerCase())) && x.password===pw);
+    const pe = DB.partsEngineers.find(x=>
+      x &&
+      !isDeletedAccount(x) &&
+      (normalizePhoneNumber(x.phone)===normalizePhoneNumber(identifier) ||
+       (x.engineerId && String(x.engineerId).trim().toLowerCase()===identifier.toLowerCase()))
+    );
     if(!pe){ showErr('মোবাইল নম্বর/Engineer ID অথবা পাসওয়ার্ড ভুল'); return; }
-    if(isDeletedAccount(pe)){ showErr('আপনার অ্যাকাউন্টটি ডিলিট করা হয়েছে। নতুন করে রেজিস্ট্রেশন করুন।'); return; }
-  if(!pe.active){ showErr('আপনার অ্যাকাউন্টটি নিষ্ক্রিয় করা হয়েছে, অ্যাডমিনের সাথে যোগাযোগ করুন।'); return; }
+    if(!pe.active){ showErr('আপনার অ্যাকাউন্টটি নিষ্ক্রিয় করা হয়েছে, অ্যাডমিনের সাথে যোগাযোগ করুন।'); return; }
+
+    let credentialOK = pe.password === pw;
+    if(!credentialOK){
+      credentialOK = await verifyFirebaseCredential(pe, pw, 'pe');
+    }
+    if(!credentialOK){ showErr('মোবাইল নম্বর/Engineer ID অথবা পাসওয়ার্ড ভুল'); return; }
+
     btn.disabled = true; btn.textContent = 'প্রবেশ করা হচ্ছে...';
     try{ await fbEnsureAuth(pe, pw, 'pe'); lastAuthError = null; }
     catch(err){ lastAuthError = (err && (err.code || err.message)) ? `${err.code||''} ${err.message||err}`.trim() : String(err); console.warn('Firebase parts-engineer auth skipped (offline/network issue), continuing with local login:', err); }
@@ -1900,11 +1931,17 @@ async function slSubmitLogin(role){
   }
 
   // role === 'dealer'  (Dealer / Mechanic উভয়ই এই একই ফর্ম দিয়ে লগইন করে, DB.users.role অনুযায়ী পোর্টাল ঠিক হয়)
-  const u = DB.users.find(x=>x.phone===identifier && x.password===pw);
+  const u = DB.users.find(x=>x && !isDeletedAccount(x) && normalizePhoneNumber(x.phone)===normalizePhoneNumber(identifier));
   if(!u){ showErr('মোবাইল নম্বর অথবা পাসওয়ার্ড ভুল'); return; }
-  if(isDeletedAccount(u)){ showErr('আপনার অ্যাকাউন্টটি ডিলিট করা হয়েছে। নতুন করে রেজিস্ট্রেশন করুন।'); return; }
   if(u.pending){ showErr('আপনার অ্যাকাউন্ট এখনও অনুমোদন হয়নি, অ্যাডমিনের সাথে যোগাযোগ করুন'); return; }
   if(!u.active){ showErr('আপনার অ্যাকাউন্টটি নিষ্ক্রিয় করা হয়েছে, অ্যাডমিনের সাথে যোগাযোগ করুন'); return; }
+
+  let credentialOK = u.password === pw;
+  if(!credentialOK){
+    credentialOK = await verifyFirebaseCredential(u, pw, 'dealer');
+  }
+  if(!credentialOK){ showErr('মোবাইল নম্বর অথবা পাসওয়ার্ড ভুল'); return; }
+
   btn.disabled = true; btn.textContent = 'প্রবেশ করা হচ্ছে...';
   try{ await fbEnsureAuth(u, pw, 'dealer'); lastAuthError = null; }
   catch(err){ lastAuthError = (err && (err.code || err.message)) ? `${err.code||''} ${err.message||err}`.trim() : String(err); console.warn('Firebase dealer auth skipped (offline/network issue), continuing with local login:', err); }
@@ -2427,10 +2464,17 @@ ROUTES.dealerLogin = function(){
     const phone = document.getElementById('phone').value.trim();
     const pw = document.getElementById('pw').value;
     const e = document.getElementById('err');
-    const u = DB.users.find(x=>x.phone===phone && x.password===pw);
+    const u = DB.users.find(x=>x && !isDeletedAccount(x) && normalizePhoneNumber(x.phone)===normalizePhoneNumber(phone));
     if(!u){ e.style.display='block'; e.textContent='মোবাইল নম্বর অথবা পাসওয়ার্ড ভুল'; return; }
     if(u.pending){ e.style.display='block'; e.textContent='আপনার অ্যাকাউন্ট এখনও অনুমোদন হয়নি, অ্যাডমিনের সাথে যোগাযোগ করুন'; return; }
     if(!u.active){ e.style.display='block'; e.textContent='আপনার অ্যাকাউন্টটি নিষ্ক্রিয় করা হয়েছে, অ্যাডমিনের সাথে যোগাযোগ করুন'; return; }
+
+    let credentialOK = u.password === pw;
+    if(!credentialOK){
+      credentialOK = await verifyFirebaseCredential(u, pw, 'dealer');
+    }
+    if(!credentialOK){ e.style.display='block'; e.textContent='মোবাইল নম্বর অথবা পাসওয়ার্ড ভুল'; return; }
+
     const btn = document.getElementById('submit'); btn.disabled = true; btn.textContent = 'প্রবেশ করা হচ্ছে...';
     try{
       await fbEnsureAuth(u, pw, 'dealer');
@@ -2960,9 +3004,21 @@ ROUTES.peLogin = function(){
     const identifier = document.getElementById('phone').value.trim();
     const pw = document.getElementById('pw').value;
     const e = document.getElementById('err');
-    const pe = DB.partsEngineers.find(x=>(x.phone===identifier || (x.engineerId && String(x.engineerId).trim().toLowerCase()===identifier.toLowerCase())) && x.password===pw);
+    const pe = DB.partsEngineers.find(x=>
+      x &&
+      !isDeletedAccount(x) &&
+      (normalizePhoneNumber(x.phone)===normalizePhoneNumber(identifier) ||
+       (x.engineerId && String(x.engineerId).trim().toLowerCase()===identifier.toLowerCase()))
+    );
     if(!pe){ e.style.display='block'; e.textContent='মোবাইল নম্বর/Engineer ID অথবা পাসওয়ার্ড ভুল'; return; }
     if(!pe.active){ e.style.display='block'; e.textContent='আপনার অ্যাকাউন্টটি নিষ্ক্রিয় করা হয়েছে, অ্যাডমিনের সাথে যোগাযোগ করুন। (Your account has been deactivated by Admin.)'; return; }
+
+    let credentialOK = pe.password === pw;
+    if(!credentialOK){
+      credentialOK = await verifyFirebaseCredential(pe, pw, 'pe');
+    }
+    if(!credentialOK){ e.style.display='block'; e.textContent='মোবাইল নম্বর/Engineer ID অথবা পাসওয়ার্ড ভুল'; return; }
+
     const btn = document.getElementById('submit'); btn.disabled = true; btn.textContent = 'প্রবেশ করা হচ্ছে...';
     try{
       await fbEnsureAuth(pe, pw, 'pe');
