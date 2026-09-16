@@ -44,7 +44,7 @@ document.currentScript.parentNode.insertBefore(manifestLink, document.currentScr
 // প্রতিটি নতুন deployment/update দেওয়ার আগে এই APP_VERSION ভ্যালুটা পরিবর্তন করুন
 // (যেকোনো ইউনিক স্ট্রিং — তারিখ/সময় বা running number)। এই ভ্যালুর ভিত্তিতেই
 // সব ডিভাইস স্বয়ংক্রিয়ভাবে নতুন version detect করে reload হবে।
-window.APP_VERSION = '2026-09-16-login-cross-device-fix.1';
+window.APP_VERSION = '2026-09-16-login-cross-device-fix.2';
 
 (function(){
   // পুরনো/legacy blob-based service worker ও পুরনো Cache Storage সম্পূর্ণ পরিষ্কার করে দেওয়া হয়,
@@ -1001,6 +1001,27 @@ async function verifyFirebaseCredential(record, pw, prefix){
   }
 }
 
+// Cross-device login bootstrap: refresh the shared account list before login lookup.
+async function refreshSharedLoginData(role){
+  try{
+    const key = role === 'engineer' ? 'partsEngineers' : 'users';
+    let url = `${FB_URL}/appdata/${key}.json`;
+    if(fbAuth.currentUser){
+      const token = await fbAuth.currentUser.getIdToken();
+      url += `?auth=${token}`;
+    }
+    const res = await fetch(url, {cache:'no-store'});
+    if(!res.ok) return false;
+    const data = await res.json();
+    if(!Array.isArray(data)) return false;
+    if(key === 'partsEngineers') DB.partsEngineers = data;
+    else DB.users = data;
+    return true;
+  }catch(err){
+    return false;
+  }
+}
+
 async function fbEnsureAuth(record, pw, prefix, options={}){
   const digits = normalizePhoneNumber(record.phone) || 'admin';
   const password = fbPw(pw);
@@ -1893,6 +1914,8 @@ async function slSubmitLogin(role){
   const showErr = (msg)=>{ errEl.style.display='block'; errEl.textContent = msg; };
   errEl.style.display = 'none';
 
+  if(role === 'engineer' || role === 'dealer') await refreshSharedLoginData(role);
+
   if(role === 'admin'){
     if(pw !== DB.settings.adminPassword){ showErr('পাসওয়ার্ড সঠিক নয়'); return; }
     btn.disabled = true; btn.textContent = 'প্রবেশ করা হচ্ছে...';
@@ -1905,6 +1928,7 @@ async function slSubmitLogin(role){
   }
 
   if(role === 'engineer'){
+    await refreshSharedLoginData('engineer');
     const pe = DB.partsEngineers.find(x=>
       x &&
       !isDeletedAccount(x) &&
@@ -2464,6 +2488,7 @@ ROUTES.dealerLogin = function(){
     const phone = document.getElementById('phone').value.trim();
     const pw = document.getElementById('pw').value;
     const e = document.getElementById('err');
+    await refreshSharedLoginData('dealer');
     const u = DB.users.find(x=>x && !isDeletedAccount(x) && normalizePhoneNumber(x.phone)===normalizePhoneNumber(phone));
     if(!u){ e.style.display='block'; e.textContent='মোবাইল নম্বর অথবা পাসওয়ার্ড ভুল'; return; }
     if(u.pending){ e.style.display='block'; e.textContent='আপনার অ্যাকাউন্ট এখনও অনুমোদন হয়নি, অ্যাডমিনের সাথে যোগাযোগ করুন'; return; }
