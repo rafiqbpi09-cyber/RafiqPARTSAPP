@@ -6476,10 +6476,21 @@ async function saveVehicleCompatToFirebase(replaceMode=false){
 }
 
 async function loadVehicleCompatFromFirebase(){
+  // Firebase Auth কখনো কখনো page refresh-এর পর কয়েক মুহূর্ত পরে currentUser সেট করে।
+  // তাই token ছাড়া protected vehicleCompat read করার চেষ্টা না করে Auth ready হওয়া পর্যন্ত অপেক্ষা করি।
   try{
+    if(!fbAuth.currentUser){
+      await new Promise(resolve=>{
+        let done=false;
+        const finish=()=>{ if(done) return; done=true; clearTimeout(timer); resolve(); };
+        const timer=setTimeout(finish,5000);
+        try{ fbAuth.onAuthStateChanged(finish); }catch(e){ finish(); }
+      });
+    }
+
     let url=`${FB_URL}/vehicleCompat.json?_=${Date.now()}`;
     if(fbAuth.currentUser){
-      const token=await fbAuth.currentUser.getIdToken();
+      const token=await fbAuth.currentUser.getIdToken(true);
       url+=`&auth=${encodeURIComponent(token)}`;
     }
     const res=await fetch(url,{cache:'no-store'});
@@ -6487,9 +6498,24 @@ async function loadVehicleCompatFromFirebase(){
     const val=await res.json();
     if(val && typeof val==='object'){
       const arr=Array.isArray(val)?val:Object.keys(val).sort((a,b)=>Number(a)-Number(b)).map(k=>val[k]).filter(Boolean);
-      if(arr.length){ DB.vehicleCompat=arr; return true; }
+      if(arr.length){
+        DB.vehicleCompat=arr;
+        try{ localStorage.setItem('vehicleCompatCache_v2',JSON.stringify(arr)); }catch(e){}
+        return true;
+      }
     }
+    // Firebase-এ empty/null এলে local cache-ও যাচাই করি।
   }catch(e){ console.warn('Vehicle Model Database remote load failed:',e); }
+
+  // Remote read সাময়িকভাবে ব্যর্থ হলেও একই ডিভাইসে upload করা data যেন 0 না দেখায়।
+  try{
+    const cached=JSON.parse(localStorage.getItem('vehicleCompatCache_v2')||'null');
+    if(Array.isArray(cached) && cached.length){
+      DB.vehicleCompat=cached;
+      console.warn('Vehicle Model Database loaded from local cache:',cached.length);
+      return true;
+    }
+  }catch(e){ console.warn('Vehicle cache load failed:',e); }
   return false;
 }
 
