@@ -1052,7 +1052,6 @@ async function saveDB(dirtyKeys){
       resetRequests: DB.resetRequests.slice(0,200),
       drafts: DB.drafts.slice(0,200),
       loginHistory: DB.loginHistory.slice(0,500),
-      vehicleCompat: DB.vehicleCompat.slice(0,6000),
       partsEngineers: DB.partsEngineers,
       nextPeId: nextPeId,
       dealerShopParts: DB.dealerShopParts,
@@ -1138,6 +1137,7 @@ async function loadDB(){
       if(Array.isArray(saved.drafts)) DB.drafts = saved.drafts;
       if(Array.isArray(saved.loginHistory)) DB.loginHistory = saved.loginHistory;
       if(Array.isArray(saved.vehicleCompat)) DB.vehicleCompat = saved.vehicleCompat;
+      await loadVehicleCompatFromFirebase();
       if(Array.isArray(saved.partsEngineers)) DB.partsEngineers = saved.partsEngineers;
       if(saved.nextPeId) nextPeId = saved.nextPeId;
       else if(DB.partsEngineers.length) nextPeId = Math.max(...DB.partsEngineers.map(p=>Number(p.id)||0))+1;
@@ -1179,6 +1179,7 @@ async function loadDB(){
     if(Array.isArray(saved.drafts)) DB.drafts = saved.drafts;
       if(Array.isArray(saved.loginHistory)) DB.loginHistory = saved.loginHistory;
       if(Array.isArray(saved.vehicleCompat)) DB.vehicleCompat = saved.vehicleCompat;
+      await loadVehicleCompatFromFirebase();
       if(Array.isArray(saved.partsEngineers)) DB.partsEngineers = saved.partsEngineers;
       if(saved.nextPeId) nextPeId = saved.nextPeId;
       else if(DB.partsEngineers.length) nextPeId = Math.max(...DB.partsEngineers.map(p=>Number(p.id)||0))+1;
@@ -1227,6 +1228,8 @@ async function loadFromSheet(){
       nextPartId = DB.parts.length ? Math.max(...DB.parts.map(p=>p.id))+1 : 1;
       nextUserId = DB.users.length ? Math.max(...DB.users.map(u=>u.id))+1 : 1;
       ensureCores();
+      // Vehicle Model Database আলাদা Firebase node থেকে সব records load করবে।
+      await loadVehicleCompatFromFirebase();
     }
   }catch(err){
     console.error('Google Sheet থেকে ডেটা লোড করা যায়নি:', err);
@@ -6353,7 +6356,7 @@ function handleVehicleExcelUpload(e){
         statusEl.textContent = '❌ কোনো বৈধ রেকর্ড পাওয়া যায়নি — Part No. ও Model কলাম খালি কিনা চেক করুন';
         return;
       }
-      statusEl.textContent = `✅ ${parsed.length}টি রেকর্ড পড়া হয়েছে (হেডার রো ${headerIdx+1}) — নিচে Preview দেখুন`;
+      statusEl.textContent = `✅ Excel থেকে ${parsed.length}টি valid record পড়া হয়েছে (হেডার রো ${headerIdx+1}) — নিচে Preview দেখুন`;
       pendingVehicleUpload = { rows: parsed, fileName: file.name };
       showVehicleUploadPreview(parsed);
     }catch(err){
@@ -6383,33 +6386,96 @@ function showVehicleUploadPreview(parsed){
   document.getElementById('vAppend').onclick = ()=> confirmVehicleUpload('append');
   document.getElementById('vReplace').onclick = ()=> confirmVehicleUpload('replace');
 }
-function confirmVehicleUpload(mode){
+async function confirmVehicleUpload(mode){
   if(!pendingVehicleUpload) return;
-  const parsed = pendingVehicleUpload.rows;
+  const parsed = pendingVehicleUpload.rows || [];
+  if(!parsed.length) return;
   if(mode==='replace'){
     if(!confirm('নিশ্চিত? পুরোনো সব Vehicle Model ডেটা মুছে ফেলা হবে।')) return;
     DB.vehicleCompat = [];
   }
-  // ডুপ্লিকেট এড়াতে partNo দিয়ে ম্যাপ বানানো
-  const byPartNo = new Map(DB.vehicleCompat.map(v=>[v.partNo, v]));
+
+  // Part No ভিত্তিক add/update, কিন্তু পুরো Vehicle Model Database আলাদা Firebase node-এ রাখা হবে।
+  // এতে 300/1000 record limit-এর মতো সমস্যা হবে না এবং mobile/desktop একই source থেকে data পাবে।
+  const byPartNo = new Map(DB.vehicleCompat.map(v=>[String(v.partNo||'').trim(), v]));
   let added=0, updated=0;
-  parsed.forEach(r=>{
-    if(byPartNo.has(r.partNo)){
-      Object.assign(byPartNo.get(r.partNo), r);
+  for(const r of parsed){
+    const key=String(r.partNo||'').trim();
+    if(!key) continue;
+    if(byPartNo.has(key)){
+      Object.assign(byPartNo.get(key), r);
       updated++;
-    } else {
-      const item = { id: Date.now()+Math.random(), ...r };
+    }else{
+      const item={id:Date.now()+Math.random(), ...r};
       DB.vehicleCompat.push(item);
-      byPartNo.set(r.partNo, item);
+      byPartNo.set(key,item);
       added++;
     }
-  });
-  logHistory(`Vehicle Model Database: ${added}টি নতুন, ${updated}টি আপডেট হয়েছে (${pendingVehicleUpload.fileName})`);
-  saveDB();
-  closeModal();
-  pendingVehicleUpload = null;
-  alert(`✅ সম্পন্ন হয়েছে!\nনতুন যোগ হয়েছে: ${added}টি\nআপডেট হয়েছে: ${updated}টি\nমোট রেকর্ড: ${DB.vehicleCompat.length}টি`);
-  go('adminDashboard');
+  }
+
+  const total=DB.vehicleCompat.length;
+  const statusEl=document.getElementById('vehicleUploadStatus');
+  if(statusEl) statusEl.textContent=`⏳ Firebase-এ ${total}টি Vehicle Model record সেভ হচ্ছে...`;
+  try{
+    await saveVehicleCompatToFirebase(mode==='replace');
+    // অন্য DB data আলাদা করে save হবে; vehicleCompat আর 6000-এ slice হবে না।
+    await saveDB(['history']);
+    logHistory(`Vehicle Model Database: ${added}টি নতুন, ${updated}টি আপডেট হয়েছে (${pendingVehicleUpload.fileName}) — মোট ${total}টি`);
+    await saveDB(['history']);
+    closeModal();
+    pendingVehicleUpload=null;
+    if(statusEl) statusEl.textContent=`✅ সম্পন্ন: Excel ${parsed.length}টি | নতুন ${added}টি | আপডেট ${updated}টি | মোট ${total}টি`;
+    alert(`✅ Vehicle Model Database upload completed!\nExcel records: ${parsed.length}\nনতুন যোগ: ${added}\nআপডেট: ${updated}\nFirebase total: ${total}`);
+    go('adminDashboard');
+  }catch(err){
+    console.error(err);
+    if(statusEl) statusEl.textContent='❌ Firebase save failed: '+(err.message||err);
+    alert('❌ Vehicle Model Database Firebase-এ সম্পূর্ণ সেভ হয়নি।\n'+(err.message||err));
+  }
+}
+
+async function saveVehicleCompatToFirebase(replaceMode=false){
+  const all=Array.isArray(DB.vehicleCompat)?DB.vehicleCompat:[];
+  const CHUNK=500;
+  let base=`${FB_URL}/vehicleCompat.json`;
+  if(fbAuth.currentUser){
+    const token=await fbAuth.currentUser.getIdToken();
+    base+=`?auth=${encodeURIComponent(token)}`;
+  }
+  // Firebase Realtime Database object keyed by stable index; chunks prevent oversized single writes.
+  if(replaceMode){
+    const del=await fetch(base,{method:'PUT',headers:{'Content-Type':'application/json'},body:'null'});
+    if(!del.ok) throw new Error(`Vehicle DB clear failed: ${del.status}`);
+  }
+  for(let i=0;i<all.length;i+=CHUNK){
+    const obj={};
+    const end=Math.min(i+CHUNK,all.length);
+    for(let j=i;j<end;j++) obj[String(j)]=all[j];
+    const url=base+(base.includes('?')?'&':'?')+'chunk='+i;
+    const res=await fetch(url,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(obj)});
+    if(!res.ok){ const t=await res.text().catch(()=>String(res.status)); throw new Error(`Vehicle DB chunk ${i}-${end-1} failed: ${res.status} ${t}`); }
+    const st=document.getElementById('vehicleUploadStatus');
+    if(st) st.textContent=`⏳ Firebase upload: ${end} / ${all.length}`;
+  }
+  try{ localStorage.setItem('vehicleCompatCache_v2',JSON.stringify(all)); }catch(e){ console.warn('Vehicle cache skipped',e); }
+}
+
+async function loadVehicleCompatFromFirebase(){
+  try{
+    let url=`${FB_URL}/vehicleCompat.json?_=${Date.now()}`;
+    if(fbAuth.currentUser){
+      const token=await fbAuth.currentUser.getIdToken();
+      url+=`&auth=${encodeURIComponent(token)}`;
+    }
+    const res=await fetch(url,{cache:'no-store'});
+    if(!res.ok) throw new Error(`Vehicle DB load failed: ${res.status}`);
+    const val=await res.json();
+    if(val && typeof val==='object'){
+      const arr=Array.isArray(val)?val:Object.keys(val).sort((a,b)=>Number(a)-Number(b)).map(k=>val[k]).filter(Boolean);
+      if(arr.length){ DB.vehicleCompat=arr; return true; }
+    }
+  }catch(e){ console.warn('Vehicle Model Database remote load failed:',e); }
+  return false;
 }
 
 /* ---- Settings tab ---- */
