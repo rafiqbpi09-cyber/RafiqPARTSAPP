@@ -992,6 +992,16 @@ const fbAuth = firebase.auth();
 const fbDb = firebase.database();
 const fbStorage = firebase.storage();
 
+/* ================= PARTS CATALOGUE (PDF আমদানি) — Phase 1 ================= */
+// Group → Model → Table No. → Assembly → Key No. → Part No. → Part Name → Qty → Remarks
+// এই হায়ারার্কি অনুযায়ী PDF থেকে টেক্সট-বেইজড এক্সট্র্যাকশন। DB.catalogueParts = Part Master
+// (প্রতিটি ইউনিক Part No.-র জন্য একটি রেকর্ড), DB.catalogueRefs = Catalogue References (একই
+// Part No. একাধিক Assembly/Table-এ থাকলে প্রতিটি occurrence আলাদাভাবে রাখা হয়)।
+DB.catalogueParts = DB.catalogueParts || [];
+DB.catalogueRefs = DB.catalogueRefs || [];
+DB.catalogueImportLog = DB.catalogueImportLog || [];
+let nextCatalogueRefId = 1;
+
 // Firebase Auth পাসওয়ার্ড কমপক্ষে ৬ ক্যারেক্টার লাগে; আমাদের অ্যাপের পুরনো পাসওয়ার্ড এর চেয়ে ছোট হতে পারে,
 // তাই ছোট পাসওয়ার্ডকে একই নিয়মে (deterministic) প্যাড করে ৬ ক্যারেক্টার বানানো হয় — আসল পাসওয়ার্ড অপরিবর্তিত থাকে DB-তে।
 function fbPw(pw){
@@ -1079,7 +1089,11 @@ async function saveDB(dirtyKeys){
       dealerMemos: DB.dealerMemos,
       dealerMemoDrafts: DB.dealerMemoDrafts,
       stockHistory: DB.stockHistory,
-      nextMemoNo: DB.nextMemoNo || 1
+      nextMemoNo: DB.nextMemoNo || 1,
+      catalogueParts: DB.catalogueParts,
+      catalogueRefs: DB.catalogueRefs,
+      catalogueImportLog: (DB.catalogueImportLog||[]).slice(0,100),
+      nextCatalogueRefId: nextCatalogueRefId
     };
     // dirtyKeys দেওয়া থাকলে শুধু ঐ ক'টা key-ই পাঠানো হবে (PATCH দিয়ে — বাকি ডেটা Firebase-এ অক্ষত থাকবে)।
     // এতে Delete History রিসেটের মতো ছোট পরিবর্তনে পুরো parts/vehicleCompat/dealerMemos ইত্যাদি বড় লিস্ট
@@ -1112,7 +1126,7 @@ async function saveDB(dirtyKeys){
     lastSaveError = (e && e.message) ? e.message : String(e);
     console.error('Firebase save failed:', e);
     // Firebase না হলে localStorage এ সেভ
-    try{ localStorage.setItem(LS_KEY, JSON.stringify({users:DB.users,history:DB.history.slice(0,50),settings:DB.settings,parts:DB.parts,nextPartId,partsSaved:true,requisitions:DB.requisitions.slice(0,200),nextReqNo,drafts:DB.drafts.slice(0,200),partsEngineers:DB.partsEngineers,nextPeId,dealerShopParts:DB.dealerShopParts,dealerMemos:DB.dealerMemos,dealerMemoDrafts:DB.dealerMemoDrafts,stockHistory:DB.stockHistory,nextMemoNo:DB.nextMemoNo||1})); }catch(e2){}
+    try{ localStorage.setItem(LS_KEY, JSON.stringify({users:DB.users,history:DB.history.slice(0,50),settings:DB.settings,parts:DB.parts,nextPartId,partsSaved:true,requisitions:DB.requisitions.slice(0,200),nextReqNo,drafts:DB.drafts.slice(0,200),partsEngineers:DB.partsEngineers,nextPeId,dealerShopParts:DB.dealerShopParts,dealerMemos:DB.dealerMemos,dealerMemoDrafts:DB.dealerMemoDrafts,stockHistory:DB.stockHistory,nextMemoNo:DB.nextMemoNo||1,catalogueParts:DB.catalogueParts,catalogueRefs:DB.catalogueRefs,catalogueImportLog:(DB.catalogueImportLog||[]).slice(0,100),nextCatalogueRefId})); }catch(e2){}
     // Firebase-এ আসল write ব্যর্থ হয়েছে — caller (যেমন Delete History রিসেট) এটা জেনে
     // ইউজারকে সঠিক সতর্কতা দেখাতে পারে, নাহলে সবকিছু "সেভ হয়েছে" মনে হবে অথচ রিফ্রেশে পুরনো ডেটা ফিরে আসবে
     return false;
@@ -1166,6 +1180,10 @@ async function loadDB(){
       if(Array.isArray(saved.dealerMemoDrafts)) DB.dealerMemoDrafts = saved.dealerMemoDrafts;
       if(Array.isArray(saved.stockHistory)) DB.stockHistory = saved.stockHistory;
       DB.nextMemoNo = Number(saved.nextMemoNo || 1);
+      if(Array.isArray(saved.catalogueParts)) DB.catalogueParts = saved.catalogueParts;
+      if(Array.isArray(saved.catalogueRefs)) DB.catalogueRefs = saved.catalogueRefs;
+      if(Array.isArray(saved.catalogueImportLog)) DB.catalogueImportLog = saved.catalogueImportLog;
+      nextCatalogueRefId = Number(saved.nextCatalogueRefId || (DB.catalogueRefs.length ? Math.max(...DB.catalogueRefs.map(r=>Number(r.id)||0))+1 : 1));
       if(saved.settings){ DB.settings.adminLastActive = saved.settings.adminLastActive || null; DB.settings.adminLastLogin = saved.settings.adminLastLogin || null; }
       if(DB.users.length) nextUserId = Math.max(...DB.users.map(u=>Number(u.id)||0))+1;
       return;
@@ -1203,6 +1221,10 @@ async function loadDB(){
       if(saved.nextPeId) nextPeId = saved.nextPeId;
       else if(DB.partsEngineers.length) nextPeId = Math.max(...DB.partsEngineers.map(p=>Number(p.id)||0))+1;
       if(saved.settings){ DB.settings.adminLastActive = saved.settings.adminLastActive || null; DB.settings.adminLastLogin = saved.settings.adminLastLogin || null; }
+      if(Array.isArray(saved.catalogueParts)) DB.catalogueParts = saved.catalogueParts;
+      if(Array.isArray(saved.catalogueRefs)) DB.catalogueRefs = saved.catalogueRefs;
+      if(Array.isArray(saved.catalogueImportLog)) DB.catalogueImportLog = saved.catalogueImportLog;
+      nextCatalogueRefId = Number(saved.nextCatalogueRefId || (DB.catalogueRefs.length ? Math.max(...DB.catalogueRefs.map(r=>Number(r.id)||0))+1 : 1));
     if(DB.users.length) nextUserId = Math.max(...DB.users.map(u=>Number(u.id)||0))+1;
   }catch(e){ console.error('localStorage load failed:', e); }
 }
@@ -1741,6 +1763,7 @@ function adminSidebarHTML(activeKey){
     ['home','🏠','হোম', "adminTab=null;go('adminDashboard')"],
     ['parts','⚙️','পার্টস ম্যানেজমেন্ট', "adminTab='parts';go('adminDashboard')"],
     ['partModels','🚜','Eicher Catalogue', "adminTab='partModels';go('adminDashboard')"],
+    ['partsCatalogue','🗂️','Parts Catalogue (PDF)', "adminTab='partsCatalogue';go('adminDashboard')"],
     ['users','👥','ইউজার ম্যানেজমেন্ট', "adminTab='users';go('adminDashboard')"],
     ['history','📅','আপডেট হিস্টরি', "adminTab='history';go('adminDashboard')"],
     ['requisitions','📝','রিকুইজিশন হিস্টরি', "adminTab='requisitions';go('adminDashboard')"],
@@ -1774,6 +1797,7 @@ function showAdminMoreMenu(){
       <button class="btn btn-ghost btn-block" onclick="closeModal();adminTab='loginActivity';go('adminDashboard')">📶 লগইন অ্যাক্টিভিটি</button>
       <button class="btn btn-ghost btn-block" onclick="closeModal();adminTab='vehicleDb';go('adminDashboard')">🚗 Vehicle Model Database</button>
       <button class="btn btn-ghost btn-block" onclick="closeModal();adminTab='partModels';go('adminDashboard')">🚜 Eicher Catalogue</button>
+      <button class="btn btn-ghost btn-block" onclick="closeModal();adminTab='partsCatalogue';go('adminDashboard')">🗂️ Parts Catalogue (PDF)</button>
       <button class="btn btn-ghost btn-block" onclick="closeModal();adminTab='partsEngineers';go('adminDashboard')">🧑‍🔧 Parts Engineer</button>
       <button class="btn btn-ghost btn-block" onclick="closeModal();adminTab='settings';go('adminDashboard')">🔧 সেটিংস</button>
       <button class="btn btn-ghost btn-block" onclick="closeModal()">বাতিল</button>
@@ -5207,6 +5231,13 @@ ROUTES.adminDashboard = function(){
               <div style="font-size:10.5px;color:#6b7280;margin-top:3px;">Part Number দিয়ে Model দেখুন</div>
             </div>
 
+            <div style="background:#fff;border-radius:14px;padding:22px 11px;text-align:center;cursor:pointer;transition:all 0.25s;box-shadow:0 3px 11px rgba(0,0,0,0.16);position:relative;" onclick="adminTab='partsCatalogue';go('adminDashboard');" onmouseover="this.style.transform='translateY(-6px)'" onmouseout="this.style.transform='translateY(0)'">
+              ${DB.catalogueParts.length ? `<div style="position:absolute;top:10px;right:10px;background:#0d5a7a;color:#fff;border-radius:999px;min-width:22px;height:22px;padding:0 6px;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;">${DB.catalogueParts.length}</div>` : ''}
+              <div style="width:48px;height:48px;border-radius:13px;background:#e3ddc4;display:flex;align-items:center;justify-content:center;font-size:24px;margin:0 auto 11px;">🗂️</div>
+              <div style="font-size:13px;font-weight:700;color:#1a2233;">Parts Catalogue (PDF Import)</div>
+              <div style="font-size:10.5px;color:#6b7280;margin-top:3px;">Spare-parts PDF থেকে অটো আমদানি ও সার্চ</div>
+            </div>
+
             <div style="background:#fff;border-radius:14px;padding:22px 11px;text-align:center;cursor:pointer;transition:all 0.25s;box-shadow:0 3px 11px rgba(0,0,0,0.16);" onclick="adminTab='users';go('adminDashboard');" onmouseover="this.style.transform='translateY(-6px)'" onmouseout="this.style.transform='translateY(0)'">
               <div style="width:48px;height:48px;border-radius:13px;background:#e3ddc4;display:flex;align-items:center;justify-content:center;font-size:24px;margin:0 auto 11px;">👥</div>
               <div style="font-size:13px;font-weight:700;color:#1a2233;">ইউজার ম্যানেজমেন্ট</div>
@@ -5267,6 +5298,7 @@ ROUTES.adminDashboard = function(){
   // adminTab সিলেক্ট থাকলে সাধারণ tab content দেখাই (tab buttons লুকানো)
   if(adminTab==='dashboard') adminShell(dashboardTabHTML());
   else if(adminTab==='parts') { adminShell(partsTabHTML()); wirePartsTab(); } else if(adminTab==='partModels') { adminShell(modelLookupHTML(true)); wireModelLookup(); }
+  else if(adminTab==='partsCatalogue') { adminShell(partsCatalogueTabHTML()); wirePartsCatalogueTab(); }
   else if(adminTab==='users') { adminShell(usersTabHTML()); wireUsersTab(); }
   else if(adminTab==='history') adminShell(historyTabHTML());
   else if(adminTab==='requisitions') { adminShell(requisitionsTabHTML()); wireRequisitionsTab(); }
@@ -6944,6 +6976,460 @@ function renderQsResults(q){
   if(exact.length){ html += `<div class="group-label">সঠিক মিল</div>` + exact.map(p=>partCardHTML(p, true, hl)).join(''); }
   if(near.length){ html += `<div class="group-label">কাছাকাছি মিল</div>` + near.map(p=>partCardHTML(p, false, hl)).join(''); }
   box.innerHTML = html;
+}
+
+/* ================= PARTS CATALOGUE (PDF IMPORT) — Phase 1 UI/Logic ================= */
+let pendingCatalogueImport = null; // {fileName, records, stats, totalPages, ocrPages}
+let catalogueSearchTimer = null;
+
+function catPartsCatalogueStats(){
+  const models = new Set(), assemblies = new Set(), tables = new Set();
+  DB.catalogueRefs.forEach(r=>{
+    if(r.model) models.add(r.model);
+    if(r.assembly) assemblies.add(r.assembly);
+    if(r.tableNo) tables.add(r.tableNo);
+  });
+  return {
+    totalParts: DB.catalogueParts.length,
+    totalRefs: DB.catalogueRefs.length,
+    totalModels: models.size,
+    totalAssemblies: assemblies.size,
+    totalImports: DB.catalogueImportLog.length
+  };
+}
+
+function partsCatalogueTabHTML(){
+  const s = catPartsCatalogueStats();
+  return `
+    <div class="card">
+      <h3 style="margin:0 0 6px;">🗂️ Parts Catalogue — PDF Import</h3>
+      <p class="hint" style="margin:0 0 14px;">PDF ক্যাটালগ আপলোড করুন — সিস্টেম স্বয়ংক্রিয়ভাবে Group/Model/Table No./Assembly/Key No./Part No./Part Name/Qty/Remarks শনাক্ত করার চেষ্টা করবে। <b>স্ক্যান করা (image) PDF-এর পেজের জন্য এখন OCR (Tesseract.js) ব্যবহার করা যাবে</b> — টেক্সট লেয়ার না থাকা পেজ পাওয়া গেলে OCR চালানোর বাটন দেখানো হবে। OCR-এর ফলাফল সবসময় 🟡 Low Confidence হিসেবে মার্ক হয়, কারণ OCR মাঝেমধ্যে ভুল পড়তে পারে। সেভ করার আগে সবকিছু রিভিউ ও এডিট করতে পারবেন — কোনো তথ্য অনুমান করে বসানো হয় না। বিদ্যমান Part No.-এর নামের সাথে নতুন নাম না মিললে 🔴 লাল করে দেখানো হয় (সম্ভাব্য টাইপো/OCR ভুল)।</p>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:16px;">
+        <div style="background:rgba(255,255,255,0.08);border-radius:10px;padding:12px;text-align:center;"><div style="font-size:22px;font-weight:700;">${s.totalParts}</div><div style="font-size:11px;opacity:0.8;">Part Master</div></div>
+        <div style="background:rgba(255,255,255,0.08);border-radius:10px;padding:12px;text-align:center;"><div style="font-size:22px;font-weight:700;">${s.totalRefs}</div><div style="font-size:11px;opacity:0.8;">Catalogue References</div></div>
+        <div style="background:rgba(255,255,255,0.08);border-radius:10px;padding:12px;text-align:center;"><div style="font-size:22px;font-weight:700;">${s.totalModels}</div><div style="font-size:11px;opacity:0.8;">Models</div></div>
+        <div style="background:rgba(255,255,255,0.08);border-radius:10px;padding:12px;text-align:center;"><div style="font-size:22px;font-weight:700;">${s.totalAssemblies}</div><div style="font-size:11px;opacity:0.8;">Assemblies</div></div>
+        <div style="background:rgba(255,255,255,0.08);border-radius:10px;padding:12px;text-align:center;"><div style="font-size:22px;font-weight:700;">${s.totalImports}</div><div style="font-size:11px;opacity:0.8;">Imported PDFs</div></div>
+      </div>
+      <label class="btn btn-navy" for="catPdfInput" style="display:inline-block;cursor:pointer;">📄 PDF ক্যাটালগ আপলোড করুন</label>
+      <input id="catPdfInput" type="file" accept="application/pdf,.pdf" style="display:none;">
+      <div id="catImportStatus" class="hint" style="margin-top:10px;"></div>
+      <div id="catImportReview"></div>
+    </div>
+
+    <div class="card">
+      <h3 style="margin:0 0 10px;">🔍 পার্টস সার্চ</h3>
+      <div class="toolbar">
+        <input type="text" id="catSearchInput" placeholder="Part Number / Part Name / Model / Assembly / Table No / Key No দিয়ে সার্চ করুন...">
+      </div>
+      <div id="catSearchResults"></div>
+    </div>
+
+    <div class="card">
+      <h3 style="margin:0 0 10px;">📥 Import History</h3>
+      <div id="catImportLogWrap">${catImportLogTableHTML()}</div>
+    </div>
+  `;
+}
+
+function catImportLogTableHTML(){
+  if(!DB.catalogueImportLog.length) return `<div class="empty">এখনো কোনো PDF আমদানি করা হয়নি</div>`;
+  const rows = DB.catalogueImportLog.slice().reverse().slice(0,30);
+  return `<div style="overflow:auto;"><table style="width:100%;border-collapse:collapse;font-size:13px;">
+    <thead><tr style="text-align:left;border-bottom:1px solid rgba(255,255,255,0.2);">
+      <th style="padding:8px 6px;">PDF নাম</th><th style="padding:8px 6px;">পেজ</th><th style="padding:8px 6px;">রেকর্ড</th>
+      <th style="padding:8px 6px;">Unique Parts</th><th style="padding:8px 6px;">Low Confidence</th>
+      <th style="padding:8px 6px;">OCR পেজ</th><th style="padding:8px 6px;">Conflict</th><th style="padding:8px 6px;">সময়</th>
+    </tr></thead>
+    <tbody>${rows.map(l=>`<tr style="border-bottom:1px solid rgba(255,255,255,0.08);">
+      <td style="padding:8px 6px;">${escHtml(l.pdfName)}</td>
+      <td style="padding:8px 6px;">${l.totalPages}</td>
+      <td style="padding:8px 6px;">${l.totalRecords}</td>
+      <td style="padding:8px 6px;">${l.uniqueParts}</td>
+      <td style="padding:8px 6px;">${l.lowConfidence}</td>
+      <td style="padding:8px 6px;">${l.ocrPagesUsed||0}</td>
+      <td style="padding:8px 6px;${l.conflicts?'color:#e11d48;font-weight:700;':''}">${l.conflicts||0}</td>
+      <td style="padding:8px 6px;">${l.importedAtStr||''}</td>
+    </tr>`).join('')}</tbody>
+  </table></div>`;
+}
+
+function escHtml(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+async function catLoadPdfLines(file, onProgress){
+  const pdfjs = await loadPdfJs();
+  const data = new Uint8Array(await file.arrayBuffer());
+  const pdf = await pdfjs.getDocument({data}).promise;
+  const pageLines = [];
+  const ocrPageNumbers = [];
+  for(let p=1;p<=pdf.numPages;p++){
+    const page = await pdf.getPage(p);
+    const tc = await page.getTextContent();
+    const items = (tc.items||[]).filter(x=>String(x.str||'').trim());
+    if(!items.length){ ocrPageNumbers.push(p); if(onProgress) onProgress(p, pdf.numPages); continue; }
+    const rows = [];
+    items.forEach(it=>{
+      const y = Math.round((it.transform && it.transform[5] || 0)/2)*2;
+      let row = rows.find(r=>Math.abs(r.y-y)<=2);
+      if(!row){ row={y,items:[]}; rows.push(row); }
+      row.items.push(it);
+    });
+    rows.sort((a,b)=>b.y-a.y).forEach(r=>{
+      const line = r.items.sort((a,b)=>((a.transform&&a.transform[4])||0)-((b.transform&&b.transform[4])||0)).map(x=>x.str).join('  ');
+      if(line.trim()) pageLines.push({page:p, text:line});
+    });
+    if(onProgress) onProgress(p, pdf.numPages);
+  }
+  return {pageLines, totalPages: pdf.numPages, ocrPages: ocrPageNumbers.length, ocrPageNumbers, pdf};
+}
+
+// স্ক্যান করা (কোনো টেক্সট লেয়ার নেই) পেজগুলো OCR (Tesseract.js) দিয়ে পড়া হয়।
+// OCR থেকে আসা প্রতিটি লাইন ocr:true ফ্ল্যাগ পায়, যাতে পরবর্তীতে সংশ্লিষ্ট রেকর্ড
+// সবসময় Low Confidence হিসেবে চিহ্নিত হয় (OCR ভুল পড়ার সম্ভাবনা বেশি বলে)।
+async function catRunOcrOnPages(pdf, pageNumbers, onProgress){
+  const Tesseract = await loadTesseract();
+  const worker = await Tesseract.createWorker('eng');
+  const pageLines = [];
+  try{
+    for(let i=0;i<pageNumbers.length;i++){
+      const pageNo = pageNumbers[i];
+      if(onProgress) onProgress(i+1, pageNumbers.length, pageNo);
+      const page = await pdf.getPage(pageNo);
+      const viewport = page.getViewport({scale:2.2});
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.ceil(viewport.width); canvas.height = Math.ceil(viewport.height);
+      const ctx = canvas.getContext('2d',{willReadFrequently:true});
+      await page.render({canvasContext:ctx, viewport}).promise;
+      const result = await worker.recognize(canvas);
+      const text = String((result && result.data && result.data.text) || '');
+      text.split(/\r?\n/).forEach(line=>{
+        const t = line.trim();
+        if(t) pageLines.push({page:pageNo, text:t, ocr:true});
+      });
+      canvas.width = 1; canvas.height = 1;
+    }
+  } finally {
+    try{ await worker.terminate(); }catch(e){}
+  }
+  return pageLines;
+}
+
+// Heuristিক লাইন-বেইজড parser — কোনো ডেটা কখনো অনুমান করে বসানো হয় না; যা শনাক্ত করা যায়নি তা ফাঁকা রেখে
+// confidence:'low' ফ্ল্যাগ করা হয়, যাতে অ্যাডমিন রিভিউ করে ঠিক করতে পারেন। OCR থেকে আসা লাইন সবসময় Low Confidence.
+function catParseLines(pageLines){
+  let group='', model='', tableNo='', assembly='';
+  const records=[];
+  const modelSeen=new Set(), tableSeen=new Set(), assemblySeen=new Set();
+  const sorted = pageLines.slice().sort((a,b)=> (a.page-b.page) || 0);
+  sorted.forEach(({page,text,ocr})=>{
+    const raw = String(text||'').replace(/\s+/g,' ').trim();
+    if(!raw) return;
+    let m;
+    if((m=raw.match(/^GROUP\s*[:\-]\s*(.+)$/i)) || (m=raw.match(/^GROUP\s+(.+)$/i))){ group=m[1].trim(); return; }
+    if((m=raw.match(/^MODEL\s*[:\-]\s*(.+)$/i))){ model=m[1].trim(); modelSeen.add(model); return; }
+    if((m=raw.match(/^TABLE\s*NO\.?\s*[:\-]\s*(.+)$/i))){ tableNo=m[1].trim(); tableSeen.add(tableNo); return; }
+    if((m=raw.match(/^ASSEMBLY(?:\s*NAME)?\s*[:\-]\s*(.+)$/i))){ assembly=m[1].trim(); assemblySeen.add(assembly); return; }
+    const cols = raw.split(/\s{2,}/).map(c=>c.trim()).filter(Boolean);
+    const finalCols = (ocr && cols.length<2) ? raw.split(/\s+/).map(c=>c.trim()).filter(Boolean) : cols;
+    if(finalCols.length < 2) return;
+    let partIdx = -1;
+    for(let i=0;i<finalCols.length;i++){
+      const c = finalCols[i];
+      if(/^\d{1,3}$/.test(c)) continue; // pure short number — likely Key No or Qty, not Part No
+      if(/^[A-Za-z0-9][A-Za-z0-9\-\.\/]{3,}$/.test(c)){ partIdx=i; break; }
+    }
+    if(partIdx === -1) return; // কোনো সম্ভাব্য Part No কলাম না পেলে এই লাইনকে টেবিল রো হিসেবে ধরা হচ্ছে না
+    const partNo = finalCols[partIdx];
+    let keyNo='', confidence= ocr ? 'low' : 'high';
+    if(partIdx>0 && /^\d{1,3}$/.test(finalCols[0])){ keyNo = finalCols[0]; } else { confidence='low'; }
+    let qtyIdx=-1;
+    for(let i=finalCols.length-1;i>partIdx;i--){ if(/^\d{1,4}$/.test(finalCols[i])){ qtyIdx=i; break; } }
+    let partName='', qty='', remarks='';
+    if(qtyIdx>-1){
+      qty = finalCols[qtyIdx];
+      partName = finalCols.slice(partIdx+1, qtyIdx).join(' ').trim();
+      remarks = finalCols.slice(qtyIdx+1).join(' ').trim();
+    } else {
+      partName = finalCols.slice(partIdx+1).join(' ').trim();
+      confidence='low';
+    }
+    if(!partName) confidence='low';
+    records.push({group,model,tableNo,assembly,keyNo,partNo,partName,qty,remarks,pageNo:page,confidence,ocr:!!ocr});
+  });
+  return {records, stats:{
+    totalRecords: records.length,
+    uniqueModels: modelSeen.size,
+    uniqueTables: tableSeen.size,
+    uniqueAssemblies: assemblySeen.size,
+    lowConfidenceCount: records.filter(r=>r.confidence==='low').length,
+    ocrCount: records.filter(r=>r.ocr).length
+  }};
+}
+
+// একই Part No.-তে বিদ্যমান Part Master-এর নামের সাথে নতুন রেকর্ডের নাম মিলছে কিনা তা যাচাই করে —
+// অমিল থাকলে সেটাকে "conflict" হিসেবে চিহ্নিত করা হয় যাতে অ্যাডমিন Save করার আগেই দেখতে পান
+// (ভুল OCR পড়া বা টাইপো থেকে ডুপ্লিকেট/ভুল ডেটা ঢোকা ঠেকাতে সাহায্য করে)।
+function catFindConflict(partNo, partName){
+  const p = String(partNo||'').trim();
+  const n = String(partName||'').trim();
+  if(!p || !n) return null;
+  const master = DB.catalogueParts.find(x=>x.partNo===p);
+  if(!master || !master.partName) return null;
+  const norm = s=>String(s||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+  if(norm(master.partName) !== norm(n)) return master.partName;
+  return null;
+}
+
+function catReviewTableHTML(records){
+  const conflictCount = records.filter(r=>catFindConflict(r.partNo,r.partName)).length;
+  return `<div class="card" style="background:rgba(255,255,255,0.06);margin-top:14px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
+      <h4 style="margin:0;">রিভিউ করুন ও প্রয়োজনে এডিট করুন (${records.length}টি রেকর্ড) — 🟡 হলুদ = Low Confidence${conflictCount?` — 🔴 লাল = Existing নামের সাথে অমিল (${conflictCount})`:''}</h4>
+      <div>
+        <button class="btn btn-ghost btn-sm" id="catCancelImport">✖ বাতিল</button>
+        <button class="btn btn-primary btn-sm" id="catConfirmImport">✅ Confirm &amp; Save</button>
+      </div>
+    </div>
+    <div style="overflow:auto;max-height:480px;">
+    <table style="width:100%;border-collapse:collapse;font-size:12.5px;" id="catReviewTable">
+      <thead><tr style="text-align:left;position:sticky;top:0;background:#12233d;">
+        <th style="padding:6px;">Group</th><th style="padding:6px;">Model</th><th style="padding:6px;">Table No.</th>
+        <th style="padding:6px;">Assembly</th><th style="padding:6px;">Key No.</th><th style="padding:6px;">Part No.</th>
+        <th style="padding:6px;">Part Name</th><th style="padding:6px;">Qty</th><th style="padding:6px;">Remarks</th>
+        <th style="padding:6px;">Page</th><th style="padding:6px;">উৎস</th><th style="padding:6px;"></th>
+      </tr></thead>
+      <tbody>${records.map((r,i)=>{
+        const conflictName = catFindConflict(r.partNo, r.partName);
+        const bg = conflictName ? 'rgba(225,29,72,0.18)' : (r.confidence==='low' ? 'rgba(226,134,31,0.18)' : 'transparent');
+        return `
+        <tr data-idx="${i}" style="background:${bg};border-bottom:1px solid rgba(255,255,255,0.08);" ${conflictName?`title="⚠️ বিদ্যমান Part Master-এ এই Part No.-এর নাম: ${escHtml(conflictName)} — মিলছে না, ভুল টাইপো/OCR ভুল হতে পারে"`:''}>
+          <td style="padding:3px;"><input data-f="group" value="${escHtml(r.group)}" style="width:80px;"></td>
+          <td style="padding:3px;"><input data-f="model" value="${escHtml(r.model)}" style="width:70px;"></td>
+          <td style="padding:3px;"><input data-f="tableNo" value="${escHtml(r.tableNo)}" style="width:90px;"></td>
+          <td style="padding:3px;"><input data-f="assembly" value="${escHtml(r.assembly)}" style="width:110px;"></td>
+          <td style="padding:3px;"><input data-f="keyNo" value="${escHtml(r.keyNo)}" style="width:50px;"></td>
+          <td style="padding:3px;"><input data-f="partNo" value="${escHtml(r.partNo)}" style="width:110px;font-weight:700;"></td>
+          <td style="padding:3px;"><input data-f="partName" value="${escHtml(r.partName)}" style="width:150px;"></td>
+          <td style="padding:3px;"><input data-f="qty" value="${escHtml(r.qty)}" style="width:45px;"></td>
+          <td style="padding:3px;"><input data-f="remarks" value="${escHtml(r.remarks)}" style="width:110px;"></td>
+          <td style="padding:3px;text-align:center;">${r.pageNo}</td>
+          <td style="padding:3px;text-align:center;" title="${r.ocr?'OCR দিয়ে পড়া হয়েছে — ভুল পড়ার সম্ভাবনা বেশি, ভালোভাবে যাচাই করুন':'PDF টেক্সট লেয়ার থেকে সরাসরি পড়া'}">${r.ocr?'🔎 OCR':'📄'}</td>
+          <td style="padding:3px;text-align:center;"><button type="button" class="cat-row-del" data-idx="${i}" title="এই রো বাদ দিন" style="border:none;background:none;color:#e11d48;cursor:pointer;">🗑️</button></td>
+        </tr>`;
+      }).join('')}
+      </tbody>
+    </table>
+    </div>
+  </div>`;
+}
+
+function catOcrButtonHTML(pageCount){
+  return `<div id="catOcrPrompt" style="margin-top:10px;padding:10px 12px;background:rgba(96,165,250,0.14);border:1px solid rgba(96,165,250,0.35);border-radius:10px;">
+    <div style="margin-bottom:8px;">⚠️ ${pageCount}টি পেজে কোনো টেক্সট লেয়ার নেই — এগুলো সম্ভবত স্ক্যান করা (image) পেজ। OCR (Tesseract.js) দিয়ে পড়াতে চাইলে নিচের বাটনে ক্লিক করুন। প্রথমবার language data ডাউনলোড হতে কিছুটা সময় লাগতে পারে, এবং OCR ফলাফল সবসময় Low Confidence হিসেবে মার্ক হবে — সাবধানে যাচাই করবেন।</div>
+    <button type="button" class="btn btn-navy btn-sm" id="catRunOcrBtn">🔎 OCR চালান (${pageCount} পেজ)</button>
+  </div>`;
+}
+
+function wirePartsCatalogueTab(){
+  const fileInput = document.getElementById('catPdfInput');
+  const statusEl = document.getElementById('catImportStatus');
+  fileInput.addEventListener('change', async (e)=>{
+    const file = e.target.files[0];
+    if(!file) return;
+    document.getElementById('catImportReview').innerHTML = '';
+    statusEl.textContent = '⏳ PDF পড়া হচ্ছে... (0%)';
+    try{
+      const {pageLines, totalPages, ocrPageNumbers, pdf} = await catLoadPdfLines(file, (p,total)=>{
+        statusEl.textContent = `⏳ PDF পড়া হচ্ছে... (${p}/${total} পেজ)`;
+      });
+      pendingCatalogueImport = {fileName:file.name, records:[], stats:null, totalPages, pageLines, ocrPageNumbers, pdf, ocrPagesUsed:0};
+      if(!pageLines.length){
+        const {records, stats} = catParseLines(pageLines);
+        pendingCatalogueImport.records = records; pendingCatalogueImport.stats = stats;
+        statusEl.innerHTML = `❌ এই PDF থেকে কোনো টেক্সট পড়া যায়নি — এটি সম্ভবত সম্পূর্ণ স্ক্যান করা (image) PDF।` + (ocrPageNumbers.length?catOcrButtonHTML(ocrPageNumbers.length):'');
+        if(ocrPageNumbers.length) wireOcrButton(statusEl, file);
+        return;
+      }
+      const {records, stats} = catParseLines(pageLines);
+      pendingCatalogueImport.records = records; pendingCatalogueImport.stats = stats;
+      if(!records.length){
+        statusEl.innerHTML = `⚠️ ${totalPages} পেজ থেকে টেক্সট পড়া গেছে, কিন্তু কোনো Part row শনাক্ত করা যায়নি। এই PDF-এর টেবিল ফরম্যাট বর্তমান parser সাপোর্ট করে না — নিচে raw টেক্সট দেখে ম্যানুয়ালি এন্ট্রি করতে হবে অথবা ফরম্যাট জানালে parser উন্নত করা যাবে।` + (ocrPageNumbers.length?catOcrButtonHTML(ocrPageNumbers.length):'');
+        if(ocrPageNumbers.length) wireOcrButton(statusEl, file);
+        return;
+      }
+      statusEl.innerHTML = `✅ ${totalPages} পেজ থেকে ${records.length}টি সম্ভাব্য রেকর্ড পাওয়া গেছে (Low confidence: ${stats.lowConfidenceCount}টি)${ocrPageNumbers.length?` — ⚠️ ${ocrPageNumbers.length}টি পেজে কোনো টেক্সট লেয়ার নেই`:''}। নিচে রিভিউ করে Save করুন।` + (ocrPageNumbers.length?catOcrButtonHTML(ocrPageNumbers.length):'');
+      if(ocrPageNumbers.length) wireOcrButton(statusEl, file);
+      document.getElementById('catImportReview').innerHTML = catReviewTableHTML(records);
+      wireCatReviewTable();
+    }catch(err){
+      console.error('Catalogue PDF parse error:', err);
+      statusEl.textContent = '❌ PDF পড়া যায়নি: ' + (err && err.message ? err.message : String(err));
+    }finally{
+      e.target.value = '';
+    }
+  });
+
+  const searchInput = document.getElementById('catSearchInput');
+  searchInput.addEventListener('input', ()=>{
+    clearTimeout(catalogueSearchTimer);
+    const q = searchInput.value;
+    catalogueSearchTimer = setTimeout(()=>{
+      document.getElementById('catSearchResults').innerHTML = catSearchResultsHTML(q);
+    }, 200);
+  });
+}
+
+function wireOcrButton(statusEl, file){
+  const btn = document.getElementById('catRunOcrBtn');
+  if(!btn) return;
+  btn.onclick = async ()=>{
+    if(!pendingCatalogueImport || !pendingCatalogueImport.pdf) return;
+    const {pdf, ocrPageNumbers, pageLines} = pendingCatalogueImport;
+    btn.disabled = true;
+    const ocrPromptEl = document.getElementById('catOcrPrompt');
+    try{
+      const ocrLines = await catRunOcrOnPages(pdf, ocrPageNumbers, (done,total,pageNo)=>{
+        if(ocrPromptEl) ocrPromptEl.querySelector('div').textContent = `🔎 OCR চলছে: পেজ ${pageNo} (${done}/${total})... প্রথমবার language data লোড হতে কিছু সময় লাগতে পারে।`;
+      });
+      const combined = pageLines.concat(ocrLines);
+      const {records, stats} = catParseLines(combined);
+      pendingCatalogueImport.records = records;
+      pendingCatalogueImport.stats = stats;
+      pendingCatalogueImport.pageLines = combined;
+      pendingCatalogueImport.ocrPagesUsed = ocrPageNumbers.length;
+      pendingCatalogueImport.ocrPageNumbers = [];
+      statusEl.innerHTML = `✅ OCR সম্পন্ন — মোট ${pendingCatalogueImport.totalPages} পেজ থেকে ${records.length}টি সম্ভাব্য রেকর্ড পাওয়া গেছে (Low confidence: ${stats.lowConfidenceCount}টি, OCR থেকে: ${stats.ocrCount}টি)। নিচে ভালোভাবে রিভিউ করে Save করুন — OCR ভুল পড়তে পারে।`;
+      document.getElementById('catImportReview').innerHTML = records.length ? catReviewTableHTML(records) : '';
+      wireCatReviewTable();
+    }catch(err){
+      console.error('Catalogue OCR error:', err);
+      if(ocrPromptEl) ocrPromptEl.querySelector('div').textContent = '❌ OCR চালানো যায়নি: ' + (err && err.message ? err.message : String(err));
+      btn.disabled = false;
+    }
+  };
+}
+
+function wireCatReviewTable(){
+  const wrap = document.getElementById('catImportReview');
+  if(!wrap) return;
+  wrap.querySelectorAll('#catReviewTable tbody tr input').forEach(inp=>{
+    inp.addEventListener('input', ()=>{
+      const tr = inp.closest('tr');
+      const idx = Number(tr.getAttribute('data-idx'));
+      const field = inp.getAttribute('data-f');
+      if(pendingCatalogueImport && pendingCatalogueImport.records[idx]) pendingCatalogueImport.records[idx][field] = inp.value;
+    });
+  });
+  wrap.querySelectorAll('.cat-row-del').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const idx = Number(btn.getAttribute('data-idx'));
+      if(!pendingCatalogueImport) return;
+      pendingCatalogueImport.records.splice(idx,1);
+      document.getElementById('catImportReview').innerHTML = pendingCatalogueImport.records.length ? catReviewTableHTML(pendingCatalogueImport.records) : '';
+      wireCatReviewTable();
+    });
+  });
+  const cancelBtn = document.getElementById('catCancelImport');
+  if(cancelBtn) cancelBtn.onclick = ()=>{
+    pendingCatalogueImport = null;
+    document.getElementById('catImportReview').innerHTML = '';
+    document.getElementById('catImportStatus').textContent = '';
+  };
+  const confirmBtn = document.getElementById('catConfirmImport');
+  if(confirmBtn) confirmBtn.onclick = async ()=>{
+    if(!pendingCatalogueImport) return;
+    confirmBtn.disabled = true; confirmBtn.textContent = '⏳ সেভ হচ্ছে...';
+    const {fileName, records, totalPages, ocrPagesUsed} = pendingCatalogueImport;
+    let uniqueParts = 0, repeatedRefs = 0, conflicts = 0;
+    const seenThisImport = new Set();
+    records.forEach(r=>{
+      const partNo = String(r.partNo||'').trim();
+      if(!partNo) return;
+      const conflictName = catFindConflict(partNo, r.partName);
+      if(conflictName) conflicts++;
+      let master = DB.catalogueParts.find(p=>p.partNo===partNo);
+      if(!master){
+        master = {partNo, originalPartNo:partNo, normalizedPartNo:partNo.toUpperCase().replace(/\s+/g,''), partName:String(r.partName||'').trim()};
+        DB.catalogueParts.push(master);
+        uniqueParts++;
+      } else if(seenThisImport.has(partNo)) {
+        repeatedRefs++;
+      }
+      seenThisImport.add(partNo);
+      DB.catalogueRefs.push({
+        id: nextCatalogueRefId++,
+        partNo,
+        group: String(r.group||'').trim(),
+        model: String(r.model||'').trim(),
+        tableNo: String(r.tableNo||'').trim(),
+        assembly: String(r.assembly||'').trim(),
+        keyNo: String(r.keyNo||'').trim(),
+        qty: String(r.qty||'').trim(),
+        remarks: String(r.remarks||'').trim(),
+        pageNo: r.pageNo,
+        sourcePdf: fileName,
+        confidence: r.confidence||'high',
+        ocr: !!r.ocr,
+        conflictWithExisting: conflictName || '',
+        importedAt: Date.now()
+      });
+    });
+    DB.catalogueImportLog.push({
+      id: DB.catalogueImportLog.length+1,
+      pdfName: fileName,
+      totalPages,
+      totalRecords: records.length,
+      uniqueParts,
+      repeatedRefs,
+      lowConfidence: records.filter(r=>r.confidence==='low').length,
+      ocrPagesUsed: ocrPagesUsed||0,
+      conflicts,
+      importedAt: Date.now(),
+      importedAtStr: nowStr()
+    });
+    const ok = await saveDB(['catalogueParts','catalogueRefs','catalogueImportLog']);
+    confirmBtn.disabled = false; confirmBtn.textContent = '✅ Confirm & Save';
+    if(ok){
+      pendingCatalogueImport = null;
+      if(conflicts>0) alert(`⚠️ ${conflicts}টি রেকর্ডে বিদ্যমান Part No.-এর নামের সাথে অমিল পাওয়া গেছে (সম্ভাব্য টাইপো/OCR ভুল)। এগুলো সেভ হয়ে গেছে — Import History-তে "Conflict" কলামে দেখতে পাবেন, প্রয়োজনে পরে ঠিক করে নিন।`);
+      go('adminDashboard'); // re-render tab with fresh stats
+    } else {
+      alert('⚠️ Firebase-এ সেভ করা যায়নি। ইন্টারনেট সংযোগ চেক করে আবার চেষ্টা করুন — ডেটা এখনো ব্রাউজারে আছে, হারায়নি।');
+    }
+  };
+}
+
+function catSearchResultsHTML(q){
+  const raw = String(q||'').trim().toLowerCase();
+  if(!raw) return '';
+  const matches = DB.catalogueRefs.filter(r=>{
+    return String(r.partNo||'').toLowerCase().includes(raw) ||
+      String(r.model||'').toLowerCase().includes(raw) ||
+      String(r.assembly||'').toLowerCase().includes(raw) ||
+      String(r.tableNo||'').toLowerCase().includes(raw) ||
+      String(r.keyNo||'').toLowerCase().includes(raw) ||
+      (DB.catalogueParts.find(p=>p.partNo===r.partNo && p.partName.toLowerCase().includes(raw)));
+  }).slice(0,100);
+  if(!matches.length) return `<div class="empty">কোনো ফলাফল পাওয়া যায়নি</div>`;
+  return `<div class="hint" style="margin-bottom:8px;">${matches.length}টি ফলাফল (সর্বোচ্চ ১০০টি দেখানো হচ্ছে)</div>
+  <div style="overflow:auto;"><table style="width:100%;border-collapse:collapse;font-size:12.5px;">
+    <thead><tr style="text-align:left;border-bottom:1px solid rgba(255,255,255,0.2);">
+      <th style="padding:6px;">Part No.</th><th style="padding:6px;">Part Name</th><th style="padding:6px;">Model</th>
+      <th style="padding:6px;">Assembly</th><th style="padding:6px;">Qty</th><th style="padding:6px;">Table No.</th><th style="padding:6px;">Page</th>
+    </tr></thead>
+    <tbody>${matches.map(r=>{
+      const master = DB.catalogueParts.find(p=>p.partNo===r.partNo);
+      return `<tr style="border-bottom:1px solid rgba(255,255,255,0.08);">
+        <td style="padding:6px;font-weight:700;">${escHtml(r.partNo)}</td>
+        <td style="padding:6px;">${escHtml(master?master.partName:'')}</td>
+        <td style="padding:6px;">${escHtml(r.model)}</td>
+        <td style="padding:6px;">${escHtml(r.assembly)}</td>
+        <td style="padding:6px;">${escHtml(r.qty)}</td>
+        <td style="padding:6px;">${escHtml(r.tableNo)}</td>
+        <td style="padding:6px;">${r.pageNo||''}</td>
+      </tr>`;
+    }).join('')}</tbody>
+  </table></div>`;
 }
 
 /* ================= INIT ================= */
