@@ -100,7 +100,6 @@ window.APP_VERSION = '2026-09-02-registration-fix.1';
 <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-database-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-functions-compat.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
 <style>
@@ -770,47 +769,6 @@ window.APP_VERSION = '2026-09-02-registration-fix.1';
   @media print{.tb-toolbar,.tb-remove-row,.tb-action-cell{display:none!important}.tb-table{min-width:0;width:100%}.tb-table th,.tb-table td{font-size:9px;padding:2px}.tb-mechanic-meta{background:#fff;border:0;padding:0}.tb-table tr.tb-row-filled td{background:#fff!important;box-shadow:none!important}}
   #saveToast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(20px);background:#1f7a4d;color:#fff;padding:10px 20px;border-radius:30px;font-size:14px;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,.25);z-index:99999;opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;}
   #saveToast.show{opacity:1;transform:translateX(-50%) translateY(0);}
-
-  /* ================= MODEL WISE PARTS (নতুন মডিউল — শুধু .mwp-* ক্লাস, বিদ্যমান কোনো স্টাইল বদলানো হয়নি) ================= */
-  .mwp-toolbar{display:flex;flex-wrap:wrap;gap:9px;align-items:center;margin-bottom:12px;}
-  .mwp-toolbar input[type="text"],.mwp-toolbar select{border:1px solid var(--line);border-radius:9px;padding:10px 12px;font-size:14.5px;font-family:inherit;background:var(--card);color:var(--text);min-height:42px;}
-  .mwp-toolbar .mwp-grow{flex:1 1 230px;min-width:150px;}
-  .mwp-toolbar select{flex:0 1 190px;min-width:140px;font-weight:600;cursor:pointer;}
-  .mwp-stat{display:flex;gap:9px;flex-wrap:wrap;margin-bottom:13px;}
-  .mwp-stat>div{flex:1 1 110px;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:9px 12px;}
-  .mwp-stat b{display:block;font-size:19px;color:#0d5a7a;line-height:1.3;}
-  .mwp-stat span{font-size:11.5px;color:var(--muted);font-weight:600;}
-  .mwp-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid var(--line);border-radius:10px;}
-  table.mwp-table{width:100%;border-collapse:collapse;min-width:900px;font-size:13.5px;}
-  table.mwp-table thead th{background:#12233d;color:#fff;padding:10px 8px;text-align:left;font-size:12.5px;font-weight:700;white-space:nowrap;}
-  table.mwp-table tbody td{padding:8px;border-bottom:1px solid var(--line);vertical-align:top;}
-  table.mwp-table tbody tr:nth-child(even){background:rgba(0,0,0,.025);}
-  table.mwp-table tbody tr:hover{background:rgba(13,90,122,.08);}
-  table.mwp-table .mwp-act{text-align:center;white-space:nowrap;}
-  table.mwp-table .mwp-act button{border:none;background:none;cursor:pointer;font-size:15px;padding:2px 4px;}
-  .mwp-badge{display:inline-block;padding:2px 9px;border-radius:20px;background:#e8f1f7;color:#0d5a7a;font-size:11.5px;font-weight:700;white-space:nowrap;}
-  .mwp-cat{display:inline-block;padding:2px 8px;border-radius:6px;background:#f2f4f7;color:var(--muted);font-size:11.5px;font-weight:700;}
-  [data-theme="dark"] .mwp-badge{background:#123041;color:#8fd0ea;}
-  [data-theme="dark"] .mwp-cat{background:#1a2431;color:#9fb0c6;}
-  [data-theme="dark"] table.mwp-table tbody tr:nth-child(even){background:rgba(255,255,255,.035);}
-  .mwp-pager{display:flex;flex-wrap:wrap;gap:6px;align-items:center;justify-content:center;margin-top:14px;}
-  .mwp-pager button{border:1px solid var(--line);background:var(--card);color:var(--text);border-radius:8px;padding:7px 12px;font-size:13.5px;font-weight:700;cursor:pointer;font-family:inherit;min-width:40px;}
-  .mwp-pager button.active{background:#0d5a7a;color:#fff;border-color:#0d5a7a;}
-  .mwp-pager button:disabled{opacity:.42;cursor:not-allowed;}
-  .mwp-pageinfo{width:100%;text-align:center;font-size:12.5px;color:var(--muted);margin-top:6px;}
-  .mwp-denied{max-width:540px;margin:48px auto;text-align:center;background:#fff3f4;border:2px solid #e11d48;border-radius:14px;padding:30px 22px;}
-  [data-theme="dark"] .mwp-denied{background:#2a1218;}
-  .mwp-denied h2{color:#e11d48;margin:0 0 10px;font-size:20px;}
-  .mwp-denied p{color:var(--muted);font-size:14px;margin:0 0 18px;}
-  .mwp-loading{text-align:center;padding:26px;color:var(--muted);font-size:14px;}
-  .mwp-spin{display:inline-block;width:16px;height:16px;border:2.5px solid var(--line);border-top-color:#0d5a7a;border-radius:50%;animation:mwpSpin .7s linear infinite;vertical-align:-3px;margin-right:7px;}
-  @keyframes mwpSpin{to{transform:rotate(360deg);}}
-  .mwp-bar{height:7px;border-radius:5px;background:var(--line);overflow:hidden;margin-top:9px;}
-  .mwp-bar>i{display:block;height:100%;width:0;background:linear-gradient(90deg,#0d5a7a,#1f8a4c);transition:width .3s ease;}
-  @media(max-width:560px){
-    table.mwp-table{min-width:760px;font-size:13px;}
-    .mwp-toolbar select{flex:1 1 46%;}
-  }
 </style>
 </head>
 <body>
@@ -1080,26 +1038,6 @@ async function fbEnsureAuth(record, pw, prefix, options={}){
 
 let lastSaveError = null;
 let lastAuthError = null;
-
-/* ================= ADMIN CUSTOM CLAIM (নিরাপত্তা হার্ডেনিং) =================
-   fbEnsureAuth(DB.settings, pw, 'admin') সফল হওয়ার পরপরই এই ফাংশনটা কল করা হয়।
-   এটা Cloud Function 'setAdminClaim' কে (আপনার নিজস্ব adminPassword যাচাই করেই)
-   কল করে uid-তে {admin:true} custom claim বসায় — যা ক্লায়েন্ট কখনো নিজে
-   জাল করতে পারে না। এতে RTDB rule ইমেইল-প্যাটার্নের বদলে
-   auth.token.admin === true দিয়ে সুরক্ষিত করা যায়।
-   ব্যর্থ হলেও (যেমন Cloud Function এখনো ডিপ্লয় করা না থাকলে, বা অফলাইনে)
-   অ্যাডমিন লগইন আগের মতোই local session দিয়ে কাজ করবে — এটা শুধু একটা
-   অতিরিক্ত নিরাপত্তা স্তর, app ব্লক করে না। */
-async function mwpClaimAdmin(pw){
-  try{
-    if(!firebase.functions) return;                 // SDK script এখনো যোগ না করা থাকলে চুপচাপ স্কিপ
-    const setAdminClaim = firebase.functions().httpsCallable('setAdminClaim');
-    await setAdminClaim({ password: pw });
-    if(fbAuth.currentUser) await fbAuth.currentUser.getIdToken(true);  // টোকেন রিফ্রেশ — claim কার্যকর করতে
-  }catch(e){
-    console.warn('Admin custom claim সেট করা যায়নি (Cloud Function ডিপ্লয় করা আছে কিনা দেখুন):', e);
-  }
-}
 async function saveDB(dirtyKeys){
   try{
     const fullPayload = {
@@ -1714,11 +1652,7 @@ const ROUTE_ROLES = {
   dealerPortal: ['dealer'],
   dealerRequisition: ['dealer'],
   dealerVehicleSearch: ['dealer'],
-  mechanicDashboard: ['mechanic'],
-  // নতুন: Model Wise Parts — লগইন করা চারটি role-ই দেখতে পারে।
-  // (modelPartsUpload এখানে নেই — সেটি নিজের ভেতরে Admin চেক করে
-  //  "Access Denied – Admin permission required." পেজ দেখায়)
-  modelParts: ['admin','dealer','mechanic','partsEngineer']
+  mechanicDashboard: ['mechanic']
 };
 function requireRole(roles, fallback){
   fallback = fallback || 'landing';
@@ -1776,7 +1710,6 @@ function showDealerMoreMenu(){
       <button class="btn btn-ghost btn-block" onclick="closeModal();dealerManageTab='shopParts';go('dealerPortal')">🧩 My Shop Parts</button>
       <button class="btn btn-ghost btn-block" onclick="closeModal();dealerManageTab='stockHistory';go('dealerPortal')">↕️ Stock History</button>
       <button class="btn btn-ghost btn-block" onclick="closeModal();go('dealerRequisition')">📝 রিকুইজিশন</button>
-      <button class="btn btn-ghost btn-block" onclick="closeModal();go('modelParts')">🧩 Model Wise Parts</button>
       <button class="btn btn-ghost btn-block" onclick="closeModal();dealerManageTab='profile';go('dealerPortal')">👤 আমার প্রোফাইল</button>
       <button class="btn btn-ghost btn-block" onclick="closeModal()">বাতিল</button>
     </div>`);
@@ -1791,7 +1724,6 @@ function adminSidebarHTML(activeKey){
     ['requisitions','📝','রিকুইজিশন হিস্টরি', "adminTab='requisitions';go('adminDashboard')"],
     ['loginActivity','📶','লগইন অ্যাক্টিভিটি', "adminTab='loginActivity';go('adminDashboard')"],
     ['vehicleDb','🚗','Vehicle Model DB', "adminTab='vehicleDb';go('adminDashboard')"],
-    ['modelParts','🧩','Model Wise Parts', "adminTab='modelParts';go('adminDashboard')"],
     ['partsEngineers','🧑‍🔧','Parts Engineer', "adminTab='partsEngineers';go('adminDashboard')"],
     ['settings','🔧','সেটিংস', "adminTab='settings';go('adminDashboard')"],
     ['tourBills','🧾','Tour Bill Receive Report', "adminTab='tourBills';go('adminDashboard')"]
@@ -1819,7 +1751,6 @@ function showAdminMoreMenu(){
       <button class="btn btn-ghost btn-block" onclick="closeModal();adminTab='requisitions';go('adminDashboard')">📝 রিকুইজিশন হিস্টরি</button>
       <button class="btn btn-ghost btn-block" onclick="closeModal();adminTab='loginActivity';go('adminDashboard')">📶 লগইন অ্যাক্টিভিটি</button>
       <button class="btn btn-ghost btn-block" onclick="closeModal();adminTab='vehicleDb';go('adminDashboard')">🚗 Vehicle Model Database</button>
-      <button class="btn btn-ghost btn-block" onclick="closeModal();adminTab='modelParts';go('adminDashboard')">🧩 Model Wise Parts</button>
       <button class="btn btn-ghost btn-block" onclick="closeModal();adminTab='partsEngineers';go('adminDashboard')">🧑‍🔧 Parts Engineer</button>
       <button class="btn btn-ghost btn-block" onclick="closeModal();adminTab='settings';go('adminDashboard')">🔧 সেটিংস</button>
       <button class="btn btn-ghost btn-block" onclick="closeModal()">বাতিল</button>
@@ -1942,7 +1873,7 @@ async function slSubmitLogin(role){
   if(role === 'admin'){
     if(pw !== DB.settings.adminPassword){ showErr('পাসওয়ার্ড সঠিক নয়'); return; }
     btn.disabled = true; btn.textContent = 'প্রবেশ করা হচ্ছে...';
-    try{ await fbEnsureAuth(DB.settings, pw, 'admin'); lastAuthError = null; await mwpClaimAdmin(pw); }
+    try{ await fbEnsureAuth(DB.settings, pw, 'admin'); lastAuthError = null; }
     catch(err){ lastAuthError = (err && (err.code || err.message)) ? `${err.code||''} ${err.message||err}`.trim() : String(err); console.warn('Firebase admin auth skipped (offline/network issue), continuing with local login:', err); }
     DB.session = {role:'admin', user:{name:'Admin'}};
     recordLogin('Admin', 'admin', '');
@@ -2020,7 +1951,6 @@ ROUTES.adminLogin = function(){
       try{
         await fbEnsureAuth(DB.settings, pw, 'admin');
         lastAuthError = null;
-        await mwpClaimAdmin(pw);
       }catch(err){
         lastAuthError = (err && (err.code || err.message)) ? `${err.code||''} ${err.message||err}`.trim() : String(err);
         console.warn('Firebase admin auth skipped (offline/network issue), continuing with local login:', err);
@@ -2974,7 +2904,6 @@ ROUTES.mechanicDashboard = function(){
       <div class="dealer-tabs">
         <button class="tab ${mechanicTab==='search'?'active':''}" onclick="mechanicTab='search';go('mechanicDashboard')">🔍 Parts Search</button>
         <button class="tab ${mechanicTab==='tourbill'?'active':''}" onclick="mechanicTab='tourbill';go('mechanicDashboard')">🧾 Tour Bill</button>
-        <button class="tab" onclick="go('modelParts')">🧩 Model Wise Parts</button>
         <button class="tab ${mechanicTab==='profile'?'active':''}" onclick="mechanicTab='profile';go('mechanicDashboard')">👤 My Profile</button>
       </div>
       ${content}
@@ -4670,7 +4599,6 @@ function peShell(innerHTML){
           <button class="btn ${peTab==='search'?'btn-primary':'btn-ghost'} btn-sm" onclick="peTab='search';go('peDashboard')" style="${peTab!=='search'?'color:#fff;border-color:rgba(255,255,255,0.3);':''}">🔍 পার্টস সার্চ</button>
           <button class="btn ${peTab==='requisitions'?'btn-primary':'btn-ghost'} btn-sm" onclick="peTab='requisitions';go('peDashboard')" style="${peTab!=='requisitions'?'color:#fff;border-color:rgba(255,255,255,0.3);':''}">📝 রিকুইজিশন</button>
           <button class="btn ${peTab==='report'?'btn-primary':'btn-ghost'} btn-sm" onclick="peTab='report';go('peDashboard')" style="${peTab!=='report'?'color:#fff;border-color:rgba(255,255,255,0.3);':''}">📊 রিপোর্ট</button>
-          <button class="btn btn-ghost btn-sm" onclick="go('modelParts')" style="color:#fff;border-color:rgba(255,255,255,0.3);">🧩 Model Wise Parts</button>
           <button class="btn ${peTab==='profile'?'btn-primary':'btn-ghost'} btn-sm" onclick="peTab='profile';go('peDashboard')" style="${peTab!=='profile'?'color:#fff;border-color:rgba(255,255,255,0.3);':''}">👤 আমার প্রোফাইল</button>
         </div>
         <div class="admin-content" style="background:rgba(255,255,255,0.05);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.15);color:#fff;">
@@ -5084,8 +5012,6 @@ ROUTES.adminDashboard = function(){
   else if(adminTab==='partsEngineers') { adminShell(partsEngineersTabHTML()); wirePartsEngineersTab(); }
   else if(adminTab==='settings') { adminShell(settingsTabHTML()); wireSettingsTab(); }
   else if(adminTab==='tourBills') { adminShell(adminTourBillTabHTML()); wireTourBillAdminTab(); }
-  else if(adminTab==='modelParts') { adminShell(modelPartsPanelHTML()); wireModelPartsPanel(); }
-  else if(adminTab==='modelPartsUpload') { adminShell(modelPartsUploadPanelHTML()); wireModelPartsUploadPanel(); }
 };
 
 /* ---- Dashboard tab ---- */
@@ -6486,797 +6412,9 @@ function confirmVehicleUpload(mode){
   go('adminDashboard');
 }
 
-
-/* =========================================================================================
-   MODEL WISE PARTS — নতুন মডিউল (সম্পূর্ণ আলাদা, বিদ্যমান কোনো ফাংশন/ডেটা পরিবর্তন করা হয়নি)
-
-   ডেটা রাখা হয় Firebase Realtime Database-এর আলাদা top-level node `modelParts`-এ
-   (appdata/ এর ভেতরে নয়) — যাতে:
-     ১) বিদ্যমান saveDB()/loadDB() একদম অপরিবর্তিত থাকে, এবং
-     ২) শুধুমাত্র `modelParts` node-এ Admin-only write rule বসানো যায়, বাকি অ্যাপের
-        Dealer/Mechanic/Engineer সেভ আগের মতোই কাজ করে।
-
-   >>> Firebase Console → Realtime Database → Rules-এ নিচের অংশটুকু যোগ করুন (merge করুন,
-       আপনার বিদ্যমান rules মুছবেন না):
-
-       "modelParts": {
-         ".read": true,
-         ".write": "auth != null && auth.token.email.matches(/@admin[.]metal-parts-app[.]local$/)"
-       }
-
-       এই অ্যাপে Admin লগইন করলে Firebase Auth ইমেইল হয় `...@admin.metal-parts-app.local`,
-       Dealer হলে `...@dealer.metal-parts-app.local`, Engineer হলে `...@pe.metal-parts-app.local`
-       (দেখুন fbEnsureAuth() — prefix 'admin' / 'dealer' / 'pe')। তাই উপরের rule সার্ভার
-       লেভেলেই DLR / Mechanic / Engineer-এর write আটকে দেয় — শুধু UI লুকানো নয়।
-   ========================================================================================= */
-
-DB.modelParts = Array.isArray(DB.modelParts) ? DB.modelParts : [];
-
-const MWP_LS_KEY   = 'mwp_model_parts_v1';
-const MWP_PAGE_SIZE = 25;
-const MWP_VIEW_ROLES = ['admin', 'dealer', 'mechanic', 'partsEngineer'];
-const MWP_ADMIN_EMAIL_SUFFIX = '@admin.metal-parts-app.local';
-
-let mwpLoaded = false;          // অন্তত একবার লোড হয়েছে কিনা
-let mwpLoading = false;         // এই মুহূর্তে লোড চলছে কিনা
-let mwpLoadError = null;
-let mwpLastFetch = 0;
-let mwpSaving = false;          // এই মুহূর্তে সেভ চলছে কিনা
-let mwpLastSave = 0;            // সর্বশেষ সেভ শুরু/শেষ হওয়ার সময়
-let mwpQuery = '';
-let mwpModelFilter = '';
-let mwpCatFilter = '';
-let mwpPage = 1;
-let pendingModelPartsUpload = null;
-let nextModelPartId = 1;
-
-/* ---------- Role helpers (defense in depth — প্রতি জায়গায় আলাদাভাবে চেক করা হয়) ---------- */
-function mwpIsAdmin(){
-  return !!(DB.session && DB.session.role === 'admin');
-}
-function mwpCanView(){
-  return !!(DB.session && MWP_VIEW_ROLES.includes(DB.session.role));
-}
-function mwpHomeRoute(){
-  const r = DB.session && DB.session.role;
-  if(r === 'admin') return 'adminDashboard';
-  if(r === 'mechanic') return 'mechanicDashboard';
-  if(r === 'partsEngineer') return 'peDashboard';
-  if(r === 'dealer') return 'dealerPortal';
-  return 'landing';
-}
-function mwpNorm(s){ return normalizeVText(s); }
-function mwpEsc(v){ return escHtml(v == null ? '' : String(v)); }
-
-/* ---------- Firebase load / save (আলাদা node, আলাদা localStorage key) ---------- */
-async function mwpFbUrl(){
-  let url = FB_URL + '/modelParts.json';
-  try{
-    if(fbAuth.currentUser){
-      const idToken = await fbAuth.currentUser.getIdToken();
-      url += '?auth=' + idToken;
-    }
-  }catch(e){ /* টোকেন না পেলে টোকেন ছাড়াই চেষ্টা করা হবে */ }
-  return url;
-}
-function mwpLoadLocalBackup(){
-  try{
-    const raw = localStorage.getItem(MWP_LS_KEY);
-    if(!raw) return false;
-    const saved = JSON.parse(raw);
-    if(saved && Array.isArray(saved.items)){ DB.modelParts = saved.items.filter(Boolean); return true; }
-  }catch(e){ console.warn('Model Wise Parts: local backup পড়া যায়নি', e); }
-  return false;
-}
-function mwpSaveLocalBackup(){
-  try{ localStorage.setItem(MWP_LS_KEY, JSON.stringify({items: DB.modelParts, savedAt: Date.now()})); }catch(e){}
-}
-async function loadModelParts(){
-  if(mwpLoading) return;
-  mwpLoading = true;
-  const startedAt = Date.now();
-  try{
-    const res = await fetch(await mwpFbUrl(), {cache:'no-store'});
-    if(!res.ok) throw new Error('HTTP ' + res.status);
-    const saved = await res.json();
-    // এই লোড চলাকালীন Admin কিছু সেভ করে থাকলে সার্ভারের পুরনো রেসপন্স দিয়ে
-    // মেমোরির নতুন ডেটা মুছে ফেলা যাবে না (race condition গার্ড)
-    if(mwpSaving || mwpLastSave >= startedAt){
-      mwpLoadError = null;
-      return;
-    }
-    const items = saved && Array.isArray(saved.items) ? saved.items
-                : (Array.isArray(saved) ? saved : null);
-    if(items){
-      DB.modelParts = items.filter(Boolean);
-      mwpSaveLocalBackup();
-    } else if(!DB.modelParts.length){
-      mwpLoadLocalBackup();          // node এখনো খালি — লোকাল ব্যাকআপ থাকলে সেটাই দেখাই
-    }
-    mwpLoadError = null;
-  }catch(e){
-    mwpLoadError = (e && e.message) ? e.message : String(e);
-    console.warn('Model Wise Parts: Firebase load failed, local backup ব্যবহার হচ্ছে —', e);
-    if(!(mwpSaving || mwpLastSave >= startedAt)) mwpLoadLocalBackup();
-  }finally{
-    mwpRefreshIds();
-    mwpLoaded = true;
-    mwpLoading = false;
-    mwpLastFetch = Date.now();
-  }
-}
-function mwpRefreshIds(){
-  let max = 0;
-  DB.modelParts.forEach(r=>{ const n = Number(r && r.id) || 0; if(n > max) max = n; });
-  nextModelPartId = max + 1;
-}
-async function saveModelParts(){
-  // ব্যাকএন্ড-স্তরের গার্ড: Admin ছাড়া কেউ যেন এই ফাংশন দিয়ে লিখতে না পারে
-  if(!mwpIsAdmin()){
-    console.warn('Model Wise Parts: Access Denied – Admin permission required.');
-    return false;
-  }
-  mwpSaving = true;
-  mwpLastSave = Date.now();
-  mwpSaveLocalBackup();
-  try{
-    const res = await fetch(await mwpFbUrl(), {
-      method: 'PUT',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({items: DB.modelParts, updatedAt: Date.now(), count: DB.modelParts.length})
-    });
-    if(!res.ok){
-      const txt = await res.text().catch(()=>String(res.status));
-      throw new Error(res.status + ' ' + txt);
-    }
-    mwpLoadError = null;
-    return true;
-  }catch(e){
-    mwpLoadError = (e && e.message) ? e.message : String(e);
-    console.error('Model Wise Parts save failed:', e);
-    return false;
-  }finally{
-    mwpSaving = false;
-    mwpLastSave = Date.now();
-  }
-}
-/* পেজে ঢোকার সময় ডেটা আছে কিনা নিশ্চিত করা — না থাকলে লোড করে টেবিল রিফ্রেশ */
-function mwpEnsureLoaded(){
-  const stale = (Date.now() - mwpLastFetch) > 60000;   // ৬০ সেকেন্ড পর পর রিফ্রেশ
-  if(mwpLoaded && !stale) return;
-  loadModelParts().then(()=>{
-    if(currentRoute === 'modelParts' || (currentRoute === 'adminDashboard' && adminTab === 'modelParts')){
-      mwpRenderList();
-      const c = document.getElementById('mwpTotalCount');
-      if(c) c.textContent = DB.modelParts.length;
-    }
-  });
-}
-
-/* ---------- Filtering / sorting / pagination ---------- */
-function mwpHaystack(r){
-  return mwpNorm([r.model, r.partNo, r.partName, r.description, r.category].join(' '));
-}
-function mwpFiltered(){
-  const tokens = mwpNorm(mwpQuery).split(' ').filter(Boolean);
-  return DB.modelParts.filter(r=>{
-    if(!r) return false;
-    if(mwpModelFilter && String(r.model||'') !== mwpModelFilter) return false;
-    if(mwpCatFilter && String(r.category||'') !== mwpCatFilter) return false;
-    if(!tokens.length) return true;
-    const hay = mwpHaystack(r);
-    return tokens.every(t=>hay.includes(t));
-  });
-}
-function mwpSortModels(a, b){
-  const na = parseFloat(String(a).replace(/[^\d.]/g,'')), nb = parseFloat(String(b).replace(/[^\d.]/g,''));
-  if(!isNaN(na) && !isNaN(nb) && na !== nb) return na - nb;
-  return String(a).localeCompare(String(b));
-}
-function mwpAllModels(){
-  return [...new Set(DB.modelParts.map(r=>String((r&&r.model)||'').trim()).filter(Boolean))].sort(mwpSortModels);
-}
-function mwpAllCategories(){
-  return [...new Set(DB.modelParts.map(r=>String((r&&r.category)||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
-}
-
-/* ---------- টেবিল + পেজিনেশন রেন্ডার ---------- */
-function mwpTableHTML(rows, startIndex){
-  const admin = mwpIsAdmin();
-  return `<table class="mwp-table">
-    <thead><tr>
-      <th style="width:44px">#</th>
-      <th>মডেল (Model)</th>
-      <th>পার্ট নম্বর (Part No.)</th>
-      <th>পার্টের নাম (Part Name)</th>
-      <th>বিবরণ (Description)</th>
-      <th>ক্যাটাগরি</th>
-      <th style="text-align:right">স্টক/Qty</th>
-      ${admin ? `<th style="text-align:center">✏️</th><th style="text-align:center">🗑️</th>` : ``}
-    </tr></thead>
-    <tbody>${rows.map((r, i)=>`<tr>
-      <td style="color:var(--muted)">${startIndex + i + 1}</td>
-      <td><span class="mwp-badge">${mwpEsc(r.model) || '—'}</span></td>
-      <td class="mono">${mwpEsc(r.partNo) || '—'}</td>
-      <td>${mwpEsc(r.partName) || '—'}</td>
-      <td style="color:var(--muted)">${mwpEsc(r.description) || '—'}</td>
-      <td>${r.category ? `<span class="mwp-cat">${mwpEsc(r.category)}</span>` : '—'}</td>
-      <td style="text-align:right;font-weight:700">${(r.qty === '' || r.qty == null) ? '—' : mwpEsc(r.qty)}</td>
-      ${admin ? `<td class="mwp-act"><button class="mwp-edit" data-id="${mwpEsc(r.id)}" title="সম্পাদনা">✏️</button></td>
-                 <td class="mwp-act"><button class="mwp-del" data-id="${mwpEsc(r.id)}" title="ডিলিট" style="color:#e11d48">🗑️</button></td>` : ``}
-    </tr>`).join('')}</tbody>
-  </table>`;
-}
-function mwpPagerHTML(total, totalPages){
-  if(total === 0) return '';
-  const p = mwpPage;
-  const nums = [];
-  const push = n => { if(n >= 1 && n <= totalPages && !nums.includes(n)) nums.push(n); };
-  push(1); push(2); push(p-1); push(p); push(p+1); push(totalPages-1); push(totalPages);
-  nums.sort((a,b)=>a-b);
-  let btns = '', prev = 0;
-  nums.forEach(n=>{
-    if(prev && n - prev > 1) btns += `<button disabled>…</button>`;
-    btns += `<button class="mwp-go ${n===p?'active':''}" data-page="${n}">${n}</button>`;
-    prev = n;
-  });
-  const from = (p-1)*MWP_PAGE_SIZE + 1, to = Math.min(p*MWP_PAGE_SIZE, total);
-  return `<div class="mwp-pager">
-      <button class="mwp-go" data-page="${p-1}" ${p<=1?'disabled':''}>◀ আগের</button>
-      ${btns}
-      <button class="mwp-go" data-page="${p+1}" ${p>=totalPages?'disabled':''}>পরের ▶</button>
-      <div class="mwp-pageinfo">${total}টির মধ্যে ${from}–${to} দেখানো হচ্ছে (পৃষ্ঠা ${p}/${totalPages})</div>
-    </div>`;
-}
-function mwpRenderList(){
-  const wrap = document.getElementById('mwpListWrap');
-  if(!wrap) return;
-  if(mwpLoading && !DB.modelParts.length){
-    wrap.innerHTML = `<div class="mwp-loading"><span class="mwp-spin"></span>ডেটা লোড হচ্ছে…</div>`;
-    return;
-  }
-  if(!DB.modelParts.length){
-    wrap.innerHTML = `<div class="empty">📭 এখনো কোনো Model Wise Parts ডেটা নেই।${
-      mwpIsAdmin() ? `<br><span style="font-size:13px">Admin Settings → <b>Model Wise Parts Upload</b> থেকে এক্সেল ফাইল আপলোড করুন।</span>` :
-      `<br><span style="font-size:13px">Admin ডেটা আপলোড করলে এখানে দেখা যাবে।</span>`
-    }${mwpLoadError ? `<br><span style="font-size:12px;color:#c23b3b">⚠️ সার্ভার থেকে লোড করা যায়নি: ${mwpEsc(mwpLoadError)}</span>` : ''}</div>`;
-    return;
-  }
-  const list = mwpFiltered();
-  const total = list.length;
-  const totalPages = Math.max(1, Math.ceil(total / MWP_PAGE_SIZE));
-  if(mwpPage > totalPages) mwpPage = totalPages;
-  if(mwpPage < 1) mwpPage = 1;
-  const start = (mwpPage - 1) * MWP_PAGE_SIZE;
-  const rows = list.slice(start, start + MWP_PAGE_SIZE);
-
-  if(!total){
-    wrap.innerHTML = `<div class="empty">😕 এই ফিল্টার/সার্চে কোনো পার্ট পাওয়া যায়নি।<br>
-      <span style="font-size:13px">অন্য মডেল বাছাই করুন অথবা সার্চ বক্স খালি করে দেখুন।</span></div>`;
-    return;
-  }
-  wrap.innerHTML = `<div class="mwp-table-wrap">${mwpTableHTML(rows, start)}</div>${mwpPagerHTML(total, totalPages)}`;
-  mwpWireListButtons();
-  const shown = document.getElementById('mwpShownCount');
-  if(shown) shown.textContent = total;
-}
-
-/* ---------- প্যানেল (Admin shell এবং অন্য role — দুই জায়গাতেই একই HTML) ---------- */
-function modelPartsPanelHTML(){
-  const admin = mwpIsAdmin();
-  const models = mwpAllModels();
-  const cats = mwpAllCategories();
-  return `
-    <div class="mwp-stat">
-      <div><b id="mwpTotalCount">${DB.modelParts.length}</b><span>মোট রেকর্ড</span></div>
-      <div><b>${models.length}</b><span>মোট মডেল</span></div>
-      <div><b>${cats.length}</b><span>ক্যাটাগরি</span></div>
-      <div><b id="mwpShownCount">${DB.modelParts.length}</b><span>বর্তমান ফলাফল</span></div>
-    </div>
-    <div class="card">
-      <div class="card-head" style="flex-wrap:wrap;gap:8px">
-        <h3 style="margin:0">🧩 Model Wise Parts — মডেল অনুযায়ী পার্টস তালিকা</h3>
-        ${admin ? `<div style="display:flex;gap:8px;flex-wrap:wrap">
-          <button class="btn btn-ghost btn-sm" id="mwpAddBtn">➕ নতুন পার্ট</button>
-          <button class="btn btn-primary btn-sm" id="mwpGoUpload">📥 এক্সেল আপলোড</button>
-        </div>` : ``}
-      </div>
-      <div class="mwp-toolbar">
-        <input type="text" class="mwp-grow" id="mwpSearch" placeholder="🔍 পার্ট নম্বর, পার্টের নাম, মডেল বা বিবরণ দিয়ে খুঁজুন…" value="${mwpEsc(mwpQuery)}">
-        <select id="mwpModelSel">
-          <option value="">🚜 সব মডেল</option>
-          ${models.map(m=>`<option value="${mwpEsc(m)}" ${m===mwpModelFilter?'selected':''}>${mwpEsc(m)}</option>`).join('')}
-        </select>
-        <select id="mwpCatSel">
-          <option value="">🗂️ সব ক্যাটাগরি</option>
-          ${cats.map(c=>`<option value="${mwpEsc(c)}" ${c===mwpCatFilter?'selected':''}>${mwpEsc(c)}</option>`).join('')}
-        </select>
-        <button class="btn btn-ghost btn-sm" id="mwpClear">✖ ফিল্টার মুছুন</button>
-      </div>
-      <div id="mwpListWrap"></div>
-    </div>
-  `;
-}
-function mwpWireListButtons(){
-  document.querySelectorAll('.mwp-go').forEach(b=>{
-    b.onclick = ()=>{ const n = Number(b.dataset.page); if(!n) return; mwpPage = n; mwpRenderList(); window.scrollTo({top:0, behavior:'smooth'}); };
-  });
-  if(!mwpIsAdmin()) return;   // Edit/Delete শুধু Admin-এর জন্য
-  document.querySelectorAll('.mwp-del').forEach(b=>{
-    b.onclick = ()=> mwpDeleteRow(b.dataset.id);
-  });
-  document.querySelectorAll('.mwp-edit').forEach(b=>{
-    b.onclick = ()=> mwpOpenEditModal(b.dataset.id);
-  });
-}
-function wireModelPartsPanel(){
-  const s = document.getElementById('mwpSearch');
-  if(s){
-    let tmr;
-    s.addEventListener('input', ()=>{
-      clearTimeout(tmr);
-      tmr = setTimeout(()=>{ mwpQuery = s.value; mwpPage = 1; mwpRenderList(); }, 180);
-    });
-  }
-  const ms = document.getElementById('mwpModelSel');
-  if(ms) ms.onchange = ()=>{ mwpModelFilter = ms.value; mwpPage = 1; mwpRenderList(); };
-  const cs = document.getElementById('mwpCatSel');
-  if(cs) cs.onchange = ()=>{ mwpCatFilter = cs.value; mwpPage = 1; mwpRenderList(); };
-  const cl = document.getElementById('mwpClear');
-  if(cl) cl.onclick = ()=>{
-    mwpQuery = ''; mwpModelFilter = ''; mwpCatFilter = ''; mwpPage = 1;
-    if(s) s.value = ''; if(ms) ms.value = ''; if(cs) cs.value = '';
-    mwpRenderList();
-  };
-  const up = document.getElementById('mwpGoUpload');
-  if(up) up.onclick = ()=>{ if(mwpIsAdmin()) go('modelPartsUpload'); };
-  const add = document.getElementById('mwpAddBtn');
-  if(add) add.onclick = ()=>{ if(mwpIsAdmin()) mwpOpenEditModal(null); };
-  mwpRenderList();
-  mwpEnsureLoaded();
-}
-
-/* ---------- Add / Edit / Delete (Admin only) ---------- */
-function mwpOpenEditModal(id){
-  if(!mwpIsAdmin()){ alert('Access Denied – Admin permission required.'); return; }
-  const isNew = !id;
-  const r = isNew ? {model:'', partNo:'', partName:'', description:'', category:'', qty:''}
-                  : DB.modelParts.find(x=>String(x.id) === String(id));
-  if(!r) return;
-  openModal(`
-    <h3>${isNew ? '➕ নতুন পার্ট যোগ করুন' : '✏️ পার্ট সম্পাদনা'}</h3>
-    <div class="field"><label>মডেল নাম (Model Name) *</label><input type="text" id="mwpFModel" value="${mwpEsc(r.model)}"></div>
-    <div class="field"><label>পার্ট নম্বর (Part Number) *</label><input type="text" id="mwpFPartNo" value="${mwpEsc(r.partNo)}"></div>
-    <div class="field"><label>পার্টের নাম (Part Name)</label><input type="text" id="mwpFPartName" value="${mwpEsc(r.partName)}"></div>
-    <div class="field"><label>বিবরণ (Part Description)</label><input type="text" id="mwpFDesc" value="${mwpEsc(r.description)}"></div>
-    <div class="field"><label>ক্যাটাগরি (Category)</label><input type="text" id="mwpFCat" value="${mwpEsc(r.category)}"></div>
-    <div class="field"><label>স্টক / Quantity</label><input type="text" id="mwpFQty" value="${mwpEsc(r.qty)}"></div>
-    <div class="modal-actions">
-      <button class="btn btn-ghost" onclick="closeModal()">বাতিল</button>
-      <button class="btn btn-primary" id="mwpFSave">সেভ করুন</button>
-    </div>
-  `);
-  document.getElementById('mwpFSave').onclick = async ()=>{
-    const model  = document.getElementById('mwpFModel').value.trim();
-    const partNo = document.getElementById('mwpFPartNo').value.trim();
-    if(!model || !partNo){ alert('⚠️ মডেল নাম এবং পার্ট নম্বর দুটোই দিতে হবে।'); return; }
-    const data = {
-      model, partNo,
-      partName:    document.getElementById('mwpFPartName').value.trim(),
-      description: document.getElementById('mwpFDesc').value.trim(),
-      category:    document.getElementById('mwpFCat').value.trim(),
-      qty:         document.getElementById('mwpFQty').value.trim()
-    };
-    const dupKey = mwpKey(data);
-    const dup = DB.modelParts.find(x=> mwpKey(x) === dupKey && String(x.id) !== String(r.id));
-    if(dup){ alert('⚠️ এই মডেল + পার্ট নম্বরের রেকর্ড ইতিমধ্যে আছে।'); return; }
-    if(isNew) DB.modelParts.push({id: nextModelPartId++, ...data});
-    else Object.assign(r, data);
-    const ok = await saveModelParts();
-    logHistory(`Model Wise Parts: ${isNew ? '১টি নতুন পার্ট যোগ' : '১টি পার্ট আপডেট'} (${partNo} / ${model})`);
-    closeModal();
-    mwpRenderList();
-    const c = document.getElementById('mwpTotalCount'); if(c) c.textContent = DB.modelParts.length;
-    showSavedToast(ok ? '✅ সেভ হয়েছে' : '⚠️ সার্ভারে সেভ হয়নি — লোকাল ব্যাকআপে রাখা হয়েছে');
-  };
-}
-async function mwpDeleteRow(id){
-  if(!mwpIsAdmin()){ alert('Access Denied – Admin permission required.'); return; }
-  const r = DB.modelParts.find(x=>String(x.id) === String(id));
-  if(!r) return;
-  if(!confirm(`এই রেকর্ডটি মুছে ফেলতে চান?\n\nমডেল: ${r.model}\nপার্ট নং: ${r.partNo}`)) return;
-  DB.modelParts = DB.modelParts.filter(x=>String(x.id) !== String(id));
-  const ok = await saveModelParts();
-  logHistory(`Model Wise Parts: ১টি রেকর্ড ডিলিট হয়েছে (${r.partNo} / ${r.model})`);
-  mwpRenderList();
-  const c = document.getElementById('mwpTotalCount'); if(c) c.textContent = DB.modelParts.length;
-  showSavedToast(ok ? '🗑️ ডিলিট হয়েছে' : '⚠️ সার্ভারে সেভ হয়নি');
-}
-function mwpKey(r){
-  return mwpNorm(r.model) + '||' + mwpNorm(r.partNo);
-}
-
-/* ---------- এক্সেল হেডার শনাক্তকরণ ---------- */
-const MWP_ALIASES = {
-  partNo:   ['part no','part number','partno','part num','part #','partnumber','part code','পার্ট নং','পার্ট নম্বর'],
-  model:    ['model name','model no','model','tractor model','vehicle model','use for tractor','মডেল'],
-  partName: ['part name','partname','item name','description of part','পার্টের নাম'],
-  desc:     ['part description','description','descriptions','details','remarks','বিবরণ'],
-  cat:      ['category','group','position','section','type','ক্যাটাগরি'],
-  qty:      ['quantity','qty','stock','qty/stock','stock qty','available','পরিমাণ','স্টক']
-};
-// শুধু ছোট সেল (≤40 অক্ষর) হেডার হিসেবে গণ্য — লম্বা টাইটেল রো যেন ম্যাচ না করে।
-function mwpMatchCol(headerRow, aliases, used){
-  const cells = [];
-  for(let i = 0; i < headerRow.length; i++){
-    const cell = String(headerRow[i] == null ? '' : headerRow[i]).trim();
-    cells.push((cell && cell.length <= 40) ? mwpNorm(cell) : null);
-  }
-  for(let i = 0; i < cells.length; i++){                       // আগে হুবহু মিল
-    if(cells[i] && !used.has(i) && aliases.some(a => cells[i] === a)) return i;
-  }
-  for(let i = 0; i < cells.length; i++){                       // তারপর আংশিক মিল
-    if(cells[i] && !used.has(i) && aliases.some(a => cells[i].includes(a))) return i;
-  }
-  return -1;
-}
-function mwpDetectColumns(headerRow){
-  if(!Array.isArray(headerRow)) return {partNo:-1, model:-1, partName:-1, desc:-1, cat:-1, qty:-1};
-  const used = new Set(), col = {};
-  ['partNo','model','partName','desc','cat','qty'].forEach(k=>{
-    const idx = mwpMatchCol(headerRow, MWP_ALIASES[k], used);
-    col[k] = idx;
-    if(idx !== -1) used.add(idx);
-  });
-  return col;
-}
-
-/* =========================================================================================
-   ROUTE 1 : Model Wise Parts (সব লগইন-করা role দেখতে পারে)
-   ========================================================================================= */
-ROUTES.modelParts = function(){
-  // Admin হলে নিজের sidebar shell-এর ভেতরেই দেখানো হয় (মেনু হারিয়ে যায় না)
-  if(mwpIsAdmin()){
-    adminTab = 'modelParts';
-    currentRoute = 'adminDashboard';
-    ROUTES.adminDashboard();
-    return;
-  }
-  if(!mwpCanView()){ go('landing'); return; }
-  const app = document.getElementById('app');
-  const role = DB.session.role;
-  const sub = role === 'dealer' ? 'Dealer Portal' : (role === 'mechanic' ? 'Mechanic Portal' : 'Engineer Portal');
-  app.appendChild(el(`
-    <div>
-      <div class="topbar">
-        <div class="topbar-brand">
-          <div class="brand-logo">${DB.settings.logo ? `<img src="${DB.settings.logo}" style="width:100%;height:100%;object-fit:cover;border-radius:9px">` : '🧩'}</div>
-          <div><div class="brand-name">${mwpEsc(DB.settings.companyName)}</div><div class="brand-sub">Model Wise Parts — ${sub}</div></div>
-        </div>
-        <div class="topbar-right">
-          <button class="btn btn-ghost btn-sm theme-toggle" onclick="toggleTheme()" style="color:#fff;border-color:rgba(255,255,255,.3)">🌙</button>
-          <button class="btn btn-ghost btn-sm" id="mwpBack" style="color:#fff;border-color:rgba(255,255,255,.3)">⬅️ ফিরে যান</button>
-        </div>
-      </div>
-      <div class="wrap has-bottom-nav">
-        ${modelPartsPanelHTML()}
-      </div>
-    </div>
-  `));
-  const back = document.getElementById('mwpBack');
-  if(back) back.onclick = ()=> go(mwpHomeRoute());
-  wireModelPartsPanel();
-};
-
-/* =========================================================================================
-   ROUTE 2 : Admin Settings → Model Wise Parts Upload  (শুধুমাত্র Admin)
-   URL/route সরাসরি খোলার চেষ্টা করলেও এখানে Access Denied দেখানো হয়।
-   ========================================================================================= */
-ROUTES.modelPartsUpload = function(){
-  if(!mwpIsAdmin()){
-    mwpRenderAccessDenied();
-    return;
-  }
-  adminTab = 'modelPartsUpload';
-  currentRoute = 'adminDashboard';
-  ROUTES.adminDashboard();
-};
-function mwpRenderAccessDenied(){
-  const app = document.getElementById('app');
-  app.appendChild(el(`
-    <div>
-      <div class="topbar">
-        <div class="topbar-brand">
-          <div class="brand-logo">🔒</div>
-          <div><div class="brand-name">${mwpEsc(DB.settings.companyName)}</div><div class="brand-sub">Restricted Area</div></div>
-        </div>
-      </div>
-      <div class="wrap">
-        <div class="mwp-denied">
-          <div style="font-size:40px;line-height:1;margin-bottom:10px">⛔</div>
-          <h2>Access Denied – Admin permission required.</h2>
-          <p>এই পেজটি শুধুমাত্র Admin ব্যবহার করতে পারেন। DLR / Mechanic / Engineer অ্যাকাউন্ট থেকে
-             Model Wise Parts Upload খোলা বা ডেটা ইমপোর্ট করা সম্ভব নয়।</p>
-          <button class="btn btn-primary" id="mwpDeniedBack">⬅️ ফিরে যান</button>
-        </div>
-      </div>
-    </div>
-  `));
-  document.getElementById('mwpDeniedBack').onclick = ()=> go(mwpHomeRoute());
-}
-
-/* ---------- Upload প্যানেল (Admin shell-এর ভেতরে রেন্ডার হয়) ---------- */
-function modelPartsUploadPanelHTML(){
-  if(!mwpIsAdmin()){
-    return `<div class="mwp-denied"><div style="font-size:40px;margin-bottom:10px">⛔</div>
-      <h2>Access Denied – Admin permission required.</h2></div>`;
-  }
-  return `
-    <div class="card" style="margin-bottom:16px">
-      <h3 style="margin:0 0 6px">📥 Model Wise Parts Upload (Admin only)</h3>
-      <p class="hint" style="margin:0 0 10px">
-        সাপোর্টেড ফরম্যাট: <b>.xlsx</b>, <b>.xls</b>, <b>.csv</b>।<br>
-        কলাম হেডার হিসেবে থাকতে পারে: <b>Model</b> | <b>Part No / Part Number</b> | <b>Part Name</b> |
-        <b>Part Description</b> | <b>Category</b> | <b>Qty / Stock</b>।<br>
-        একটি ঘরে একাধিক মডেল থাকলে কমা (,) বা স্ল্যাশ (/) দিয়ে লিখুন — প্রতিটি মডেলের জন্য আলাদা রেকর্ড তৈরি হবে।
-      </p>
-      <label class="btn btn-primary file-btn">📂 এক্সেল/CSV ফাইল বাছাই করুন<input type="file" id="mwpFile" accept=".xlsx,.xls,.csv"></label>
-      <div id="mwpUploadStatus" style="margin-top:10px;font-size:13.5px;color:var(--muted);"></div>
-      <div class="mwp-bar" id="mwpBarWrap" style="display:none"><i id="mwpBar"></i></div>
-    </div>
-    <div class="card">
-      <div class="card-head" style="flex-wrap:wrap;gap:8px">
-        <h3 style="margin:0">বর্তমান ডেটা — ${DB.modelParts.length}টি রেকর্ড</h3>
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <button class="btn btn-ghost btn-sm" id="mwpViewList">📋 তালিকা দেখুন</button>
-          <button class="btn btn-danger btn-sm" id="mwpWipe">🗑️ সব Model Wise Parts ডিলিট</button>
-        </div>
-      </div>
-      <p class="hint" style="margin:0">শেষ আপলোডের পর ডেটা Firebase (<span class="mono">/modelParts</span>) ও লোকাল ব্যাকআপ — দুই জায়গাতেই সেভ হয়, তাই পেজ রিফ্রেশ করলেও ডেটা থাকে।</p>
-    </div>
-  `;
-}
-function wireModelPartsUploadPanel(){
-  if(!mwpIsAdmin()) return;
-  const f = document.getElementById('mwpFile');
-  if(f) f.addEventListener('change', handleModelPartsExcelUpload);
-  const v = document.getElementById('mwpViewList');
-  if(v) v.onclick = ()=>{ adminTab = 'modelParts'; go('adminDashboard'); };
-  const w = document.getElementById('mwpWipe');
-  if(w) w.onclick = async ()=>{
-    if(!mwpIsAdmin()){ alert('Access Denied – Admin permission required.'); return; }
-    if(!DB.modelParts.length){ alert('কোনো ডেটা নেই।'); return; }
-    if(!confirm(`নিশ্চিত? সব ${DB.modelParts.length}টি Model Wise Parts রেকর্ড স্থায়ীভাবে মুছে যাবে।`)) return;
-    const n = DB.modelParts.length;
-    DB.modelParts = [];
-    const ok = await saveModelParts();
-    logHistory(`Model Wise Parts: সব ডেটা ডিলিট হয়েছে (${n}টি রেকর্ড)`);
-    alert(ok ? `✅ ${n}টি রেকর্ড ডিলিট হয়েছে।` : '⚠️ সার্ভারে সেভ হয়নি — Firebase rules/নেটওয়ার্ক চেক করুন।');
-    go('adminDashboard');
-  };
-}
-
-/* ---------- এক্সেল/CSV পড়া + ভ্যালিডেশন ---------- */
-function handleModelPartsExcelUpload(e){
-  const file = e.target.files[0];
-  if(!file) return;
-  const statusEl = document.getElementById('mwpUploadStatus');
-  const barWrap = document.getElementById('mwpBarWrap');
-  const bar = document.getElementById('mwpBar');
-  const setBar = pct => { if(barWrap && bar){ barWrap.style.display = 'block'; bar.style.width = pct + '%'; } };
-  const fail = msg => { statusEl.innerHTML = `<span style="color:#c23b3b">❌ ${msg}</span>`; setBar(0); };
-
-  if(!mwpIsAdmin()){ fail('Access Denied – Admin permission required.'); e.target.value=''; return; }
-
-  const ext = (file.name.split('.').pop() || '').toLowerCase();
-  if(!['xlsx','xls','csv'].includes(ext)){
-    fail('শুধু .xlsx, .xls অথবা .csv ফাইল আপলোড করা যাবে।'); e.target.value=''; return;
-  }
-  if(file.size > 20 * 1024 * 1024){
-    fail('ফাইলের সাইজ ২০ MB-এর বেশি — ছোট ফাইল ব্যবহার করুন।'); e.target.value=''; return;
-  }
-
-  statusEl.innerHTML = `<span class="mwp-spin"></span> ফাইল পড়া হচ্ছে…`;
-  setBar(15);
-  const reader = new FileReader();
-  reader.onerror = ()=> fail('ফাইল পড়া যায়নি।');
-  reader.onload = (evt)=>{
-    try{
-      setBar(45);
-      const wb = XLSX.read(evt.target.result, {type:'binary'});
-      if(!wb.SheetNames.length){ fail('ফাইলে কোনো শিট নেই।'); return; }
-      const sheet = wb.Sheets[wb.SheetNames[0]];
-      const raw = XLSX.utils.sheet_to_json(sheet, {header:1, defval:''});
-      if(!raw.length){ fail('ফাইলে কোনো ডেটা নেই।'); return; }
-      setBar(65);
-
-      // টাইটেল রো থেকে ব্র্যান্ড অনুমান (যেমন "Eicher Tractor's Model Wise Parts List")
-      const knownBrands = ['eicher','tafe','massey ferguson','sonalika','mahindra','new holland','john deere','farmtrac','powertrac','swaraj'];
-      let inferredBrand = '';
-      const titleText = mwpNorm(String((raw[0] && raw[0][0]) || '') + ' ' + file.name);
-      knownBrands.forEach(b=>{ if(titleText.includes(b) && !inferredBrand) inferredBrand = b.replace(/\b\w/g, c=>c.toUpperCase()); });
-
-      // হেডার রো খুঁজে বের করা।
-      // সতর্কতা: "Eicher Tractor's Model Wise Parts List" এর মতো টাইটেল রো-তেও 'model'/'parts'
-      // শব্দ থাকে — তাই শুধু একটিমাত্র শব্দ মিললে সেটিকে হেডার ধরা হয় না। প্রথম ১০ রো-র মধ্যে
-      // যে রো-তে সবচেয়ে বেশি কলাম শনাক্ত হয় (অন্তত ২টি) সেটিই হেডার রো।
-      let headerIdx = -1, col = null, bestScore = 0;
-      for(let i = 0; i < Math.min(10, raw.length); i++){
-        const c = mwpDetectColumns(raw[i]);
-        const score = ['partNo','model','partName','desc','cat','qty'].filter(k=>c[k] !== -1).length;
-        if(score >= 2 && score > bestScore){ bestScore = score; headerIdx = i; col = c; }
-      }
-      if(headerIdx === -1 || !col){
-        fail('হেডার রো পাওয়া যায়নি — ফাইলের প্রথম দিকের কোনো রো-তে <b>Model</b> ও <b>Part No.</b> এর মতো কলাম নাম থাকতে হবে।');
-        return;
-      }
-      // Part Name না থাকলে Description কলামটিকেই নাম হিসেবে ব্যবহার করা হয়
-      if(col.partName === -1 && col.desc !== -1){ col.partName = col.desc; col.desc = -1; }
-      if(col.desc !== -1 && col.desc === col.partName) col.desc = -1;
-      if(col.model === -1){ fail('<b>Model</b> কলাম শনাক্ত করা যায়নি — হেডারে "Model" / "Model Name" রাখুন।'); return; }
-      if(col.partNo === -1){ fail('<b>Part No.</b> কলাম শনাক্ত করা যায়নি — হেডারে "Part No" / "Part Number" রাখুন।'); return; }
-
-      const parsed = [];
-      const skipped = [];
-      const seen = new Set();
-      for(let i = headerIdx + 1; i < raw.length; i++){
-        const row = raw[i];
-        if(!row || !row.length) continue;
-        const cell = idx => idx !== -1 ? String(row[idx] == null ? '' : row[idx]).trim() : '';
-        const partNo = cell(col.partNo);
-        const modelRaw = cell(col.model);
-        const partName = cell(col.partName);
-        if(!partNo && !modelRaw && !partName) continue;      // পুরো খালি রো — চুপচাপ বাদ
-        if(!partNo){ skipped.push({row: i + 1, reason: 'Part Number খালি'}); continue; }
-        if(!modelRaw){ skipped.push({row: i + 1, reason: 'Model খালি'}); continue; }
-
-        let models = modelRaw.split(/[,/;]/).map(s=>s.trim()).filter(Boolean);
-        if(inferredBrand) models = models.map(m => /^[\d]/.test(m) ? `${inferredBrand} ${m}` : m);
-        models = [...new Set(models)];
-
-        models.forEach(model=>{
-          const rec = {
-            model,
-            partNo,
-            partName,
-            description: cell(col.desc),
-            category:    cell(col.cat),
-            qty:         cell(col.qty)
-          };
-          const k = mwpKey(rec);
-          if(seen.has(k)){ skipped.push({row: i + 1, reason: `ফাইলের ভেতরেই ডুপ্লিকেট (${model} / ${partNo})`}); return; }
-          seen.add(k);
-          parsed.push(rec);
-        });
-      }
-      setBar(90);
-      if(!parsed.length){
-        fail(`কোনো বৈধ রেকর্ড পাওয়া যায়নি (${skipped.length}টি রো বাদ পড়েছে) — Model ও Part No. কলাম খালি কিনা দেখুন।`);
-        return;
-      }
-      setBar(100);
-      statusEl.innerHTML = `✅ <b>${parsed.length}</b>টি বৈধ রেকর্ড পড়া হয়েছে` +
-        ` (হেডার রো ${headerIdx + 1}${inferredBrand ? `, ব্র্যান্ড: ${mwpEsc(inferredBrand)}` : ''})` +
-        (skipped.length ? ` — <span style="color:#b96c14">${skipped.length}টি রো বাদ পড়েছে</span>` : '') +
-        ` — নিচের Preview দেখে Import নিশ্চিত করুন।`;
-      pendingModelPartsUpload = {rows: parsed, skipped, fileName: file.name};
-      showModelPartsPreview();
-    }catch(err){
-      console.error('Model Wise Parts upload error:', err);
-      fail('ফাইল পড়া যায়নি: ' + mwpEsc(err.message || err));
-    }
-  };
-  reader.readAsBinaryString(file);
-  e.target.value = '';
-}
-
-/* ---------- Import Preview ---------- */
-function showModelPartsPreview(){
-  if(!pendingModelPartsUpload) return;
-  const {rows, skipped, fileName} = pendingModelPartsUpload;
-  const preview = rows.slice(0, 15);
-  const existing = new Set(DB.modelParts.map(mwpKey));
-  let willUpdate = 0;
-  rows.forEach(r=>{ if(existing.has(mwpKey(r))) willUpdate++; });
-  const willAdd = rows.length - willUpdate;
-
-  openModal(`
-    <h3>📋 Import Preview — ${rows.length}টি রেকর্ড</h3>
-    <p class="hint" style="margin:0 0 8px">ফাইল: <b>${mwpEsc(fileName)}</b><br>
-      নতুন যোগ হবে: <b style="color:#1f8a4c">${willAdd}</b>টি &nbsp;•&nbsp;
-      আপডেট হবে: <b style="color:#b96c14">${willUpdate}</b>টি &nbsp;•&nbsp;
-      বাদ পড়েছে: <b style="color:#c23b3b">${skipped.length}</b>টি রো</p>
-    <div style="overflow:auto;max-height:300px;border:1px solid var(--line);border-radius:8px">
-      <table class="mwp-table" style="min-width:640px">
-        <thead><tr><th>মডেল</th><th>পার্ট নং</th><th>পার্টের নাম</th><th>বিবরণ</th><th>ক্যাটাগরি</th><th>Qty</th></tr></thead>
-        <tbody>${preview.map(r=>`<tr>
-          <td><span class="mwp-badge">${mwpEsc(r.model)}</span></td>
-          <td class="mono">${mwpEsc(r.partNo)}</td>
-          <td>${mwpEsc(r.partName) || '—'}</td>
-          <td style="color:var(--muted)">${mwpEsc(r.description) || '—'}</td>
-          <td>${mwpEsc(r.category) || '—'}</td>
-          <td>${mwpEsc(r.qty) || '—'}</td>
-        </tr>`).join('')}</tbody>
-      </table>
-    </div>
-    ${rows.length > 15 ? `<p class="hint" style="margin:8px 0 0">প্রথম ১৫টি রেকর্ড দেখানো হচ্ছে।</p>` : ''}
-    ${skipped.length ? `<details style="margin-top:10px"><summary style="cursor:pointer;font-weight:700;font-size:13.5px;color:#c23b3b">⚠️ বাদ পড়া ${skipped.length}টি রো দেখুন</summary>
-      <div style="max-height:130px;overflow:auto;font-size:12.5px;color:var(--muted);margin-top:6px">
-        ${skipped.slice(0,100).map(s=>`রো ${s.row}: ${mwpEsc(s.reason)}`).join('<br>')}
-        ${skipped.length > 100 ? `<br>… আরও ${skipped.length - 100}টি` : ''}
-      </div></details>` : ''}
-    <div class="modal-actions" style="flex-direction:column;gap:8px;align-items:stretch;margin-top:14px">
-      <button class="btn btn-primary btn-block" id="mwpImportMerge">➕ বিদ্যমান ডেটার সাথে যোগ/আপডেট করুন</button>
-      <button class="btn btn-navy btn-block" id="mwpImportReplace">🔄 পুরোনো সব মুছে নতুন করে বসান</button>
-      <button class="btn btn-ghost btn-block" id="mwpImportCancel">বাতিল</button>
-    </div>
-  `);
-  document.getElementById('mwpImportMerge').onclick = ()=> confirmModelPartsImport('merge');
-  document.getElementById('mwpImportReplace').onclick = ()=> confirmModelPartsImport('replace');
-  document.getElementById('mwpImportCancel').onclick = ()=>{ pendingModelPartsUpload = null; closeModal(); };
-}
-
-async function confirmModelPartsImport(mode){
-  // চূড়ান্ত গার্ড — import করার ঠিক আগেও role যাচাই
-  if(!mwpIsAdmin()){ alert('Access Denied – Admin permission required.'); closeModal(); return; }
-  if(!pendingModelPartsUpload) return;
-  const {rows, skipped, fileName} = pendingModelPartsUpload;
-
-  if(mode === 'replace'){
-    if(!confirm(`নিশ্চিত? বর্তমান ${DB.modelParts.length}টি Model Wise Parts রেকর্ড মুছে নতুন ${rows.length}টি বসানো হবে।`)) return;
-    DB.modelParts = [];
-    mwpRefreshIds();
-  }
-  const byKey = new Map(DB.modelParts.map(r=>[mwpKey(r), r]));
-  let added = 0, updated = 0;
-  rows.forEach(r=>{
-    const k = mwpKey(r);
-    if(byKey.has(k)){ Object.assign(byKey.get(k), r); updated++; }
-    else {
-      const item = {id: nextModelPartId++, ...r};
-      DB.modelParts.push(item);
-      byKey.set(k, item);
-      added++;
-    }
-  });
-
-  const btn = document.getElementById(mode === 'merge' ? 'mwpImportMerge' : 'mwpImportReplace');
-  if(btn){ btn.disabled = true; btn.textContent = '⏳ সেভ হচ্ছে…'; }
-  const ok = await saveModelParts();
-  logHistory(`Model Wise Parts আপলোড: ${added}টি নতুন, ${updated}টি আপডেট, ${skipped.length}টি বাদ (${fileName})`);
-  pendingModelPartsUpload = null;
-  closeModal();
-
-  alert(
-    (ok ? '✅ ইমপোর্ট সম্পন্ন হয়েছে!' : '⚠️ ইমপোর্ট হয়েছে, কিন্তু সার্ভারে সেভ করা যায়নি (লোকাল ব্যাকআপে আছে)।\nFirebase rules বা ইন্টারনেট সংযোগ দেখুন।') +
-    `\n\nনতুন যোগ হয়েছে: ${added}টি` +
-    `\nআপডেট হয়েছে: ${updated}টি` +
-    `\nবাদ পড়েছে/ব্যর্থ: ${skipped.length}টি রো` +
-    `\nমোট রেকর্ড এখন: ${DB.modelParts.length}টি`
-  );
-  // ইমপোর্টের পর তালিকা স্বয়ংক্রিয়ভাবে রিফ্রেশ
-  mwpQuery = ''; mwpModelFilter = ''; mwpCatFilter = ''; mwpPage = 1;
-  mwpLastFetch = Date.now();
-  adminTab = 'modelParts';
-  go('adminDashboard');
-}
-
-/* ---------- বুট: ব্যাকগ্রাউন্ডে প্রাথমিক লোড (বিদ্যমান loadDB() স্পর্শ না করে) ---------- */
-mwpLoadLocalBackup();
-mwpRefreshIds();
-setTimeout(()=>{ loadModelParts(); }, 1200);
-
 /* ---- Settings tab ---- */
 function settingsTabHTML(){
   return `
-    <div class="card" style="border:2px solid #0d5a7a;">
-      <h3 style="margin:0 0 6px;color:#0d5a7a;">🧩 Model Wise Parts Upload</h3>
-      <p class="hint" style="margin:0 0 12px">মডেল অনুযায়ী পার্টস তালিকা (.xlsx / .xls / .csv) আপলোড ও ইমপোর্ট করুন। এই অপশনটি <b>শুধুমাত্র Admin</b> ব্যবহার করতে পারেন — DLR / Mechanic / Engineer এটি দেখতেও পাবেন না, সরাসরি খোলার চেষ্টা করলেও "Access Denied" দেখাবে।</p>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <button class="btn btn-primary" onclick="adminTab='modelPartsUpload';go('adminDashboard')">📥 Model Wise Parts Upload খুলুন</button>
-        <button class="btn btn-ghost" onclick="adminTab='modelParts';go('adminDashboard')">📋 তালিকা দেখুন (${DB.modelParts.length}টি)</button>
-      </div>
-    </div>
     <div class="card" style="background:#ffebee;border:2px solid #c2041d;">
       <h3 style="color:#c2041d;">🔴 সব পুরনো পার্টস ডিলিট করে নতুন লিস্ট আপলোড</h3>
       <p class="hint">এটি চাপলে আপনার বর্তমান সব পার্টস (${DB.parts.length}টি) স্থায়ীভাবে ডিলিট হয়ে যাবে এবং Firebase-এ সেভ হয়ে যাবে — এরপর সরাসরি নতুন এক্সেল ফাইল সিলেক্ট করার অপশন আসবে।</p>
