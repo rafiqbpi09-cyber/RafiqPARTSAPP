@@ -6299,72 +6299,84 @@ function handleVehicleExcelUpload(e){
   const file = e.target.files[0];
   if(!file) return;
   const statusEl = document.getElementById('vehicleUploadStatus');
-  statusEl.textContent = '⏳ ফাইল পড়া হচ্ছে...';
+  statusEl.textContent = '⏳ Excel ফাইল পড়া হচ্ছে...';
   const reader = new FileReader();
   reader.onload = (evt)=>{
     try{
       const wb = XLSX.read(evt.target.result, {type:'binary'});
       const sheet = wb.Sheets[wb.SheetNames[0]];
       const raw = XLSX.utils.sheet_to_json(sheet, {header:1, defval:''});
-      if(!raw.length){ statusEl.textContent = '❌ ফাইলে কোনো ডেটা নেই'; return; }
+      if(!raw.length){ statusEl.textContent='❌ ফাইলে কোনো ডেটা নেই'; return; }
 
-      // টাইটেল রো থেকে ব্র্যান্ড অনুমান করা (যেমন "Eicher Tractor's...")
       const knownBrands = ['eicher','tafe','massey ferguson','sonalika','mahindra','new holland','john deere','farmtrac','powertrac','swaraj'];
-      let inferredBrand = '';
-      const titleText = normalizeVText(String(raw[0]&&raw[0][0]||''));
-      knownBrands.forEach(b=>{ if(titleText.includes(b)) inferredBrand = b.replace(/\b\w/g, c=>c.toUpperCase()); });
-
-      // হেডার রো খুঁজে বের করা (প্রথম কয়েক রো-র মধ্যে "part no" জাতীয় কিছু আছে কিনা)
-      let headerIdx = -1, colMap = {};
-      const partNoAliases = ['part no','part number','partno','পার্ট নম্বর','পার্ট নং'];
-      for(let i=0;i<Math.min(5, raw.length);i++){
-        const idx = findHeaderMatch(raw[i], partNoAliases);
-        if(idx !== -1){ headerIdx = i; break; }
+      let inferredBrand='';
+      for(const rr of raw.slice(0,5)){
+        const txt=normalizeVText(String(rr?.[0]||''));
+        for(const b of knownBrands){ if(txt.includes(b)){ inferredBrand=b.replace(/\b\w/g,c=>c.toUpperCase()); break; } }
+        if(inferredBrand) break;
       }
-      if(headerIdx === -1){ statusEl.textContent = '❌ Part No./Part Number কলাম খুঁজে পাওয়া যায়নি — হেডার রো চেক করুন'; return; }
-      const headerRow = raw[headerIdx];
-      colMap.partNo = findHeaderMatch(headerRow, partNoAliases);
-      colMap.partName = findHeaderMatch(headerRow, ['part name','descriptions','description','পার্টের নাম','name']);
-      colMap.model = findHeaderMatch(headerRow, ['vehicle model','use for tractor','model','গাড়ির মডেল','tractor model']);
-      colMap.brand = findHeaderMatch(headerRow, ['brand','ব্র্যান্ড']);
-      colMap.category = findHeaderMatch(headerRow, ['category','position','ক্যাটাগরি']);
-      colMap.remarks = findHeaderMatch(headerRow, ['remarks','remark','মন্তব্য']);
-      colMap.itemCode = findHeaderMatch(headerRow, ['item code','itemcode']);
 
-      const parsed = [];
-      for(let i=headerIdx+1; i<raw.length; i++){
-        const row = raw[i];
+      const partAliases=['part no','part number','partno','পার্ট নম্বর','পার্ট নং','item code','itemcode','item no','item number'];
+      const altPartAliases=['changable part no','changeable part no','changable part number','changeable part number'];
+      let headerIdx=-1;
+      for(let i=0;i<Math.min(10,raw.length);i++){
+        if(findHeaderMatch(raw[i],partAliases)!==-1 || findHeaderMatch(raw[i],altPartAliases)!==-1){ headerIdx=i; break; }
+      }
+      if(headerIdx===-1){ statusEl.textContent='❌ Part No./Item Code কলাম খুঁজে পাওয়া যায়নি'; return; }
+
+      const headerRow=raw[headerIdx];
+      const partIdx=findHeaderMatch(headerRow,partAliases);
+      const altPartIdx=findHeaderMatch(headerRow,altPartAliases);
+      const nameIdx=findHeaderMatch(headerRow,['part name','parts name','descriptions','description','পার্টের নাম','name']);
+      const modelIdx=findHeaderMatch(headerRow,['vehicle model','use for tractor','model','গাড়ির মডেল','tractor model']);
+      const brandIdx=findHeaderMatch(headerRow,['brand','ব্র্যান্ড']);
+      const categoryIdx=findHeaderMatch(headerRow,['category','position','ক্যাটাগরি']);
+      const remarksIdx=findHeaderMatch(headerRow,['remarks','remark','মন্তব্য']);
+
+      const parsed=[];
+      const byPart=new Map();
+      let sourceRows=0, skipped=0;
+      for(let i=headerIdx+1;i<raw.length;i++){
+        const row=raw[i];
         if(!row || !row.length) continue;
-        const partNo = colMap.partNo!==-1 ? String(row[colMap.partNo]||'').trim() : '';
-        const modelRaw = colMap.model!==-1 ? String(row[colMap.model]||'').trim() : '';
-        if(!partNo || !modelRaw) continue;
-        // মডেল আলাদা করা — কমা (,) অথবা স্ল্যাশ (/) দুটোই সাপোর্ট করবে
-        let models = modelRaw.split(/[,/]/).map(s=>s.trim()).filter(Boolean);
-        const brand = colMap.brand!==-1 ? String(row[colMap.brand]||'').trim() : inferredBrand;
-        if(brand) models = models.map(m => /^\d/.test(m) ? `${brand} ${m}` : m); // শুধু সংখ্যা দিয়ে শুরু হলে ব্র্যান্ড prefix করা
-        models = [...new Set(models)]; // ডুপ্লিকেট মডেল বাদ
-        parsed.push({
-          partNo,
-          partName: colMap.partName!==-1 ? String(row[colMap.partName]||'').trim() : '',
-          models,
-          brand,
-          category: colMap.category!==-1 ? String(row[colMap.category]||'').trim() : '',
-          remarks: colMap.remarks!==-1 ? String(row[colMap.remarks]||'').trim() : ''
-        });
+        sourceRows++;
+        let partNo=partIdx!==-1 ? String(row[partIdx]||'').trim() : '';
+        if(!partNo && altPartIdx!==-1) partNo=String(row[altPartIdx]||'').trim();
+        const modelRaw=modelIdx!==-1 ? String(row[modelIdx]||'').trim() : '';
+        if(!partNo || !modelRaw){ skipped++; continue; }
+
+        let models=modelRaw.split(/[,/;]+/).map(x=>x.trim()).filter(Boolean);
+        const brand=brandIdx!==-1 ? String(row[brandIdx]||'').trim() : inferredBrand;
+        if(brand) models=models.map(m=>/^\d/.test(m)?`${brand} ${m}`:m);
+        models=[...new Set(models)];
+        const partName=nameIdx!==-1 ? String(row[nameIdx]||'').trim() : '';
+        const item={partNo,partName,models,brand,
+          category:categoryIdx!==-1?String(row[categoryIdx]||'').trim():'',
+          remarks:remarksIdx!==-1?String(row[remarksIdx]||'').trim():''};
+
+        const key=partNo.toUpperCase();
+        if(byPart.has(key)){
+          const old=byPart.get(key);
+          old.models=[...new Set([...(old.models||[]),...models])];
+          if(!old.partName && partName) old.partName=partName;
+          if(!old.brand && brand) old.brand=brand;
+          if(!old.category && item.category) old.category=item.category;
+          if(!old.remarks && item.remarks) old.remarks=item.remarks;
+        }else{
+          byPart.set(key,item);
+          parsed.push(item);
+        }
       }
-      if(!parsed.length){
-        statusEl.textContent = '❌ কোনো বৈধ রেকর্ড পাওয়া যায়নি — Part No. ও Model কলাম খালি কিনা চেক করুন';
-        return;
-      }
-      statusEl.textContent = `✅ Excel থেকে ${parsed.length}টি valid record পড়া হয়েছে (হেডার রো ${headerIdx+1}) — নিচে Preview দেখুন`;
-      pendingVehicleUpload = { rows: parsed, fileName: file.name };
+
+      if(!parsed.length){ statusEl.textContent='❌ কোনো বৈধ রেকর্ড পাওয়া যায়নি — Part No./Item Code ও Model কলাম চেক করুন'; return; }
+      const modelMappings=parsed.reduce((n,r)=>n+(r.models?.length||0),0);
+      statusEl.textContent=`✅ Excel-এর ${sourceRows}টি data row পড়া হয়েছে → ${parsed.length}টি unique part, ${modelMappings}টি model mapping — Preview দেখুন`;
+      pendingVehicleUpload={rows:parsed,fileName:file.name,sourceRows,skipped,modelMappings};
       showVehicleUploadPreview(parsed);
-    }catch(err){
-      statusEl.textContent = '❌ ফাইল পড়া যায়নি: ' + err.message;
-    }
+    }catch(err){ statusEl.textContent='❌ ফাইল পড়া যায়নি: '+err.message; }
   };
   reader.readAsBinaryString(file);
-  e.target.value = '';
+  e.target.value='';
 }
 function showVehicleUploadPreview(parsed){
   const previewRows = parsed.slice(0, 15);
@@ -6388,25 +6400,27 @@ function showVehicleUploadPreview(parsed){
 }
 async function confirmVehicleUpload(mode){
   if(!pendingVehicleUpload) return;
-  const parsed = pendingVehicleUpload.rows || [];
+  const parsed=pendingVehicleUpload.rows||[];
   if(!parsed.length) return;
   if(mode==='replace'){
     if(!confirm('নিশ্চিত? পুরোনো সব Vehicle Model ডেটা মুছে ফেলা হবে।')) return;
-    DB.vehicleCompat = [];
+    DB.vehicleCompat=[];
   }
 
-  // Part No ভিত্তিক add/update, কিন্তু পুরো Vehicle Model Database আলাদা Firebase node-এ রাখা হবে।
-  // এতে 300/1000 record limit-এর মতো সমস্যা হবে না এবং mobile/desktop একই source থেকে data পাবে।
-  const byPartNo = new Map(DB.vehicleCompat.map(v=>[String(v.partNo||'').trim(), v]));
-  let added=0, updated=0;
+  const byPartNo=new Map(DB.vehicleCompat.map(v=>[String(v.partNo||'').trim().toUpperCase(),v]));
+  let added=0,updated=0;
   for(const r of parsed){
-    const key=String(r.partNo||'').trim();
+    const key=String(r.partNo||'').trim().toUpperCase();
     if(!key) continue;
     if(byPartNo.has(key)){
-      Object.assign(byPartNo.get(key), r);
-      updated++;
+      const old=byPartNo.get(key);
+      const before=JSON.stringify(old.models||[]);
+      Object.assign(old,r);
+      old.models=[...new Set([...(old.models||[]),...(r.models||[])])];
+      if(JSON.stringify(old.models)!==before) updated++;
+      else updated++;
     }else{
-      const item={id:Date.now()+Math.random(), ...r};
+      const item={id:Date.now()+Math.random(),...r};
       DB.vehicleCompat.push(item);
       byPartNo.set(key,item);
       added++;
@@ -6414,18 +6428,19 @@ async function confirmVehicleUpload(mode){
   }
 
   const total=DB.vehicleCompat.length;
+  const totalMappings=DB.vehicleCompat.reduce((n,v)=>n+(v.models?.length||0),0);
   const statusEl=document.getElementById('vehicleUploadStatus');
-  if(statusEl) statusEl.textContent=`⏳ Firebase-এ ${total}টি Vehicle Model record সেভ হচ্ছে...`;
+  if(statusEl) statusEl.textContent=`⏳ Firebase-এ ${total} unique part / ${totalMappings} model mapping সেভ হচ্ছে...`;
   try{
     await saveVehicleCompatToFirebase(mode==='replace');
-    // অন্য DB data আলাদা করে save হবে; vehicleCompat আর 6000-এ slice হবে না।
+    const entry={date:nowStr(),by:DB.session.user?DB.session.user.name:'Admin',action:`Vehicle Model Database: ${added}টি নতুন, ${updated}টি আপডেট — Excel ${pendingVehicleUpload.sourceRows||parsed.length} row, মোট ${total} unique part / ${totalMappings} model mapping (${pendingVehicleUpload.fileName})`};
+    DB.history.unshift(entry);
     await saveDB(['history']);
-    logHistory(`Vehicle Model Database: ${added}টি নতুন, ${updated}টি আপডেট হয়েছে (${pendingVehicleUpload.fileName}) — মোট ${total}টি`);
-    await saveDB(['history']);
+    const uploadedRows=pendingVehicleUpload.sourceRows||parsed.length;
     closeModal();
     pendingVehicleUpload=null;
-    if(statusEl) statusEl.textContent=`✅ সম্পন্ন: Excel ${parsed.length}টি | নতুন ${added}টি | আপডেট ${updated}টি | মোট ${total}টি`;
-    alert(`✅ Vehicle Model Database upload completed!\nExcel records: ${parsed.length}\nনতুন যোগ: ${added}\nআপডেট: ${updated}\nFirebase total: ${total}`);
+    if(statusEl) statusEl.textContent=`✅ সম্পন্ন: Excel ${uploadedRows} row | Unique Part ${total} | Model Mapping ${totalMappings}`;
+    alert(`✅ Vehicle Model Database upload completed!\n\nExcel data rows: ${uploadedRows}\nUnique Parts: ${total}\nModel Mappings: ${totalMappings}\nনতুন যোগ: ${added}\nআপডেট: ${updated}`);
     go('adminDashboard');
   }catch(err){
     console.error(err);
