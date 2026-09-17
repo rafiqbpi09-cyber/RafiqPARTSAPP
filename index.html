@@ -44,7 +44,7 @@ document.currentScript.parentNode.insertBefore(manifestLink, document.currentScr
 // প্রতিটি নতুন deployment/update দেওয়ার আগে এই APP_VERSION ভ্যালুটা পরিবর্তন করুন
 // (যেকোনো ইউনিক স্ট্রিং — তারিখ/সময় বা running number)। এই ভ্যালুর ভিত্তিতেই
 // সব ডিভাইস স্বয়ংক্রিয়ভাবে নতুন version detect করে reload হবে।
-window.APP_VERSION = '2026-09-17-pdf-catalog.1';
+window.APP_VERSION = '2026-09-17-pdf-catalog.2';
 
 (function(){
   // পুরনো/legacy blob-based service worker ও পুরনো Cache Storage সম্পূর্ণ পরিষ্কার করে দেওয়া হয়,
@@ -789,7 +789,7 @@ window.APP_VERSION = '2026-09-17-pdf-catalog.1';
   @media(max-width:760px){
     .catalog-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}
     .catalog-card{padding:14px;min-height:138px;}
-    .catalog-view iframe{height:76vh;min-height:460px;}
+    .catalog-pdf-viewport{height:76vh;min-height:460px;} .catalog-pdf-frame{height:calc(76vh - 24px);min-height:436px;}
   }
   @media(max-width:480px){
     .catalog-grid{grid-template-columns:1fr;}
