@@ -58,6 +58,7 @@ window.APP_VERSION = '2026-09-16-login-cross-device-fix.2';
     caches.keys().then(keys=>{ keys.forEach(k=>caches.delete(k)); }).catch(()=>{});
   }
 
+  window.__appReloading = false;
   let checking = false, reloaded = false;
   async function checkForUpdate(){
     if(checking || reloaded) return;
@@ -69,6 +70,7 @@ window.APP_VERSION = '2026-09-16-login-cross-device-fix.2';
       const m = text.match(/window\.APP_VERSION\s*=\s*['"]([^'"]+)['"]/);
       if(m && m[1] && m[1] !== window.APP_VERSION){
         reloaded = true;
+        window.__appReloading = true;
         if('serviceWorker' in navigator){
           const regs = await navigator.serviceWorker.getRegistrations();
           await Promise.all(regs.map(r=>r.unregister()));
@@ -84,6 +86,13 @@ window.APP_VERSION = '2026-09-16-login-cross-device-fix.2';
     }catch(e){ /* নেটওয়ার্ক সমস্যা হলে চুপচাপ ইগনোর — অফলাইনে আগের ভার্সন দিয়েই কাজ চলবে */ }
     checking = false;
   }
+
+  // ফ্রেশ APK ইনস্টলে (uninstall → reinstall) WebView-এর bundled/cached কপি পুরনো হতে পারে —
+  // তাই পেজ লোড হওয়ার সাথে সাথেই (৩ সেকেন্ড অপেক্ষা না করে) প্রথমবার version check করা হচ্ছে,
+  // এবং এই promise টা window.__initialUpdateCheck-এ রাখা হচ্ছে যাতে মূল অ্যাপ বুট হওয়ার আগে
+  // (login/register স্ক্রিন দেখানোর আগে) এটার ফলাফল জেনে নেওয়া যায় — পুরনো কোডে লগইন/রেজিস্ট্রেশন
+  // দেখানোর সুযোগই না দিয়ে সরাসরি নতুন ভার্সনে reload হয়ে যাবে।
+  window.__initialUpdateCheck = checkForUpdate();
 
   // পেজ লোড হওয়ার কিছুক্ষণ পর, app ফোরগ্রাউন্ডে ফিরলে (Android WebView background→foreground সহ),
   // window focus হলে এবং প্রতি ৫ মিনিট পরপর — আপডেট চেক করা হয়। এভাবে APK বন্ধ না করেই,
@@ -6960,13 +6969,19 @@ function renderQsResults(q){
 }
 
 /* ================= INIT ================= */
-if(SYNC_ON){
-  document.getElementById('app').innerHTML = `<div class="dl-screen"><div><div class="dl-loading-text">Google Sheet থেকে ডেটা লোড হচ্ছে</div><div class="dl-dots"><span></span><span></span><span></span><span></span><span></span></div></div></div>`;
-  loadFromSheet().then(()=>{ normalizeLoadedAccountPhones(); splashShown = true; showSplash(render); backfillPhoneRegistry(); });
-} else {
-  document.getElementById('app').innerHTML = `<div class="dl-screen"><div><div class="dl-loading-text">ডেটা লোড হচ্ছে</div><div class="dl-dots"><span></span><span></span><span></span><span></span><span></span></div></div></div>`;
-  loadDB().then(()=>{ normalizeLoadedAccountPhones(); ensureCores(); splashShown = true; showSplash(render); migrateOldMemosToIndex(); backfillPhoneRegistry(); });
-}
+// প্রথমে window.__initialUpdateCheck (head-এ শুরু হওয়া version check) শেষ হওয়া পর্যন্ত অপেক্ষা করা হয়।
+// এতে ফ্রেশ APK ইনস্টলে পুরনো bundled কোডে কখনো login/register স্ক্রিন দেখানো হবে না —
+// নতুন ভার্সন থাকলে সেটা চলে আসার (location.href reload) আগেই এই বুট থেমে থাকবে।
+Promise.resolve(window.__initialUpdateCheck).catch(()=>{}).then(()=>{
+  if(window.__appReloading) return; // নতুন ভার্সনে reload হচ্ছে — এই পুরনো/স্টেল কোডে আর বুট করা হবে না
+  if(SYNC_ON){
+    document.getElementById('app').innerHTML = `<div class="dl-screen"><div><div class="dl-loading-text">Google Sheet থেকে ডেটা লোড হচ্ছে</div><div class="dl-dots"><span></span><span></span><span></span><span></span><span></span></div></div></div>`;
+    loadFromSheet().then(()=>{ normalizeLoadedAccountPhones(); splashShown = true; showSplash(render); backfillPhoneRegistry(); });
+  } else {
+    document.getElementById('app').innerHTML = `<div class="dl-screen"><div><div class="dl-loading-text">ডেটা লোড হচ্ছে</div><div class="dl-dots"><span></span><span></span><span></span><span></span><span></span></div></div></div>`;
+    loadDB().then(()=>{ normalizeLoadedAccountPhones(); ensureCores(); splashShown = true; showSplash(render); migrateOldMemosToIndex(); backfillPhoneRegistry(); });
+  }
+});
 
 /* ================= MOBILE SCROLL / KEYBOARD FIX =================
    শুধুমাত্র মোবাইল/টাচ স্ক্রিনে কাজ করে — ডেস্কটপে কোনো প্রভাব পড়বে না।
