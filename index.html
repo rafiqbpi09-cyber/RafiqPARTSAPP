@@ -779,17 +779,25 @@ window.APP_VERSION = '2026-09-17-pdf-catalog.2';
   .catalog-date{font-size:11px;color:var(--muted);line-height:1.45;margin-bottom:10px;}
   .catalog-actions{display:flex;gap:7px;flex-wrap:wrap;}
   .catalog-empty{padding:36px 12px;text-align:center;color:var(--muted);background:var(--card);border:1px dashed var(--line);border-radius:12px;}
-  .catalog-view{background:#111;border-radius:12px;overflow:hidden;border:1px solid #2c3640;}
-  .catalog-view iframe{display:block;width:100%;height:78vh;min-height:520px;border:0;background:#111;}
-  .catalog-view-top{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 10px;background:#182430;color:#fff;flex-wrap:wrap;}
-  .catalog-view-name{font-weight:700;font-size:14px;}
+  .catalog-view{position:fixed;inset:0;z-index:100000;background:#111;overflow:hidden;border:0;border-radius:0;display:flex;flex-direction:column;}
+  .catalog-view iframe{display:block;width:100%;height:calc(100dvh - 56px);min-height:0;flex:1;border:0;background:#111;touch-action:pinch-zoom;}
+  .catalog-view-top{height:56px;min-height:56px;box-sizing:border-box;display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 10px;background:#182430;color:#fff;flex-wrap:nowrap;}
+  .catalog-view-name{font-weight:700;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:48vw;}
+  .catalog-view-tools{display:flex;gap:6px;align-items:center;flex-shrink:0;}
+  .catalog-view-tools .btn{white-space:nowrap;}
+  .catalog-fullscreen{color:#fff!important;border-color:rgba(255,255,255,.35)!important;}
   .catalog-form{max-width:520px;margin:0 auto;}
   .catalog-form .field{margin-bottom:14px;}
   .catalog-form .hint{line-height:1.55;}
   @media(max-width:760px){
     .catalog-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}
     .catalog-card{padding:14px;min-height:138px;}
-    .catalog-pdf-viewport{height:76vh;min-height:460px;} .catalog-pdf-frame{height:calc(76vh - 24px);min-height:436px;}
+    .catalog-view iframe{height:calc(100dvh - 56px);}
+  }
+  @media(max-width:600px){
+    .catalog-view-top{padding:7px 8px;}
+    .catalog-view-name{max-width:38vw;font-size:13px;}
+    .catalog-view-tools .btn{padding:7px 8px;font-size:12px;}
   }
   @media(max-width:480px){
     .catalog-grid{grid-template-columns:1fr;}
@@ -4271,8 +4279,16 @@ function openPartsCatalogForm(id=''){
 function editPartsCatalog(id){openPartsCatalogForm(id);}
 function openPartsCatalogPdf(id){
   const c=catalogList().find(x=>String(x.id)===String(id)); if(!c)return;
-  openModal(`<div class="catalog-view"><div class="catalog-view-top"><div class="catalog-view-name">📘 ${escHtml(c.model)}</div><div style="display:flex;gap:6px;"><a class="btn btn-ghost btn-sm" href="${escHtml(catalogOpenUrl(c.driveLink))}" target="_blank" rel="noopener" style="color:#fff;border-color:rgba(255,255,255,.35);text-decoration:none;">Open Drive</a><button class="btn btn-ghost btn-sm" onclick="closeModal()" style="color:#fff;border-color:rgba(255,255,255,.35);">Close</button></div></div><iframe src="${escHtml(catalogPreviewUrl(c.driveLink))}" title="${escHtml(c.model)} PDF Catalog" allow="autoplay" loading="lazy"></iframe></div>`);
+  const viewerId='catalogPdfFrame_'+Date.now();
+  openModal(`<div class="catalog-view" id="catalogPdfViewer"><div class="catalog-view-top"><div class="catalog-view-name">📘 ${escHtml(c.model)}</div><div class="catalog-view-tools"><button class="btn btn-ghost btn-sm catalog-fullscreen" type="button" onclick="catalogEnterFullscreen()">⛶ Full screen</button><button class="btn btn-ghost btn-sm" type="button" onclick="closeModal()" style="color:#fff;border-color:rgba(255,255,255,.35);">✕ Close</button></div></div><iframe id="${viewerId}" src="${escHtml(catalogPreviewUrl(c.driveLink))}" title="${escHtml(c.model)} PDF Catalog" allow="autoplay; fullscreen" allowfullscreen loading="eager"></iframe></div>`);
 }
+function catalogEnterFullscreen(){
+  const box=document.getElementById('catalogPdfViewer');
+  if(!box)return;
+  const fn=box.requestFullscreen||box.webkitRequestFullscreen||box.msRequestFullscreen;
+  if(fn){try{const r=fn.call(box); if(r&&r.catch)r.catch(()=>{});}catch(e){}}
+}
+
 ROUTES.partsCatalog=function(){
   if(!requireRole(['admin','dealer','mechanic','partsEngineer']))return;
   const role=DB.session.role, back=role==='admin'?'adminDashboard':role==='partsEngineer'?'peDashboard':role==='mechanic'?'mechanicDashboard':'dealerPortal';
