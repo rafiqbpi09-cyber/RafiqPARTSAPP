@@ -2457,7 +2457,9 @@ ROUTES.dealerRegister = function(){
       else if(code==='PERMISSION_DENIED') e.textContent='নিরাপদ ডাটাবেস সংযোগ অনুমোদিত হয়নি। অনুগ্রহ করে আবার চেষ্টা করুন।';
       else if(err && err.message==='INVALID_PHONE') e.textContent='মোবাইল নম্বর সঠিক নয়।';
       else if(err && err.message==='PROFILE_WRITE_FAILED') e.textContent='অ্যাকাউন্ট তৈরি হয়েছে, কিন্তু প্রোফাইল সেভ হয়নি। আবার চেষ্টা করুন।';
-      else e.textContent='রেজিস্ট্রেশন সম্পন্ন করা যায়নি। কিছুক্ষণ পর আবার চেষ্টা করুন।';
+      // ডায়াগনস্টিক: আসল error code/message স্ক্রিনেই দেখানো হচ্ছে, যাতে ঠিক কারণ (যেমন
+      // auth/operation-not-allowed, auth/too-many-requests ইত্যাদি) সরাসরি বোঝা যায়
+      else e.textContent='রেজিস্ট্রেশন সম্পন্ন করা যায়নি। কিছুক্ষণ পর আবার চেষ্টা করুন। (' + (code || (err && err.message) || 'unknown') + ')';
       return;
     }
   };
@@ -3147,7 +3149,8 @@ ROUTES.peRegister = function(){
       e.style.display='block';
       e.textContent = err && err.code==='auth/network-request-failed'
         ? 'ইন্টারনেট সংযোগে সমস্যা হয়েছে। সংযোগ ঠিক করে আবার চেষ্টা করুন।'
-        : 'রেজিস্ট্রেশন সম্পন্ন করা যায়নি। কিছুক্ষণ পর আবার চেষ্টা করুন।';
+        // ডায়াগনস্টিক: আসল error code/message দেখানো হচ্ছে
+        : 'রেজিস্ট্রেশন সম্পন্ন করা যায়নি। কিছুক্ষণ পর আবার চেষ্টা করুন। (' + ((err && (err.code||err.message)) || 'unknown') + ')';
       return;
     }
     const peInsertedIndex=DB.partsEngineers.length;
