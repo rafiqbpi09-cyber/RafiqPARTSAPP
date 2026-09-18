@@ -44,7 +44,7 @@ document.currentScript.parentNode.insertBefore(manifestLink, document.currentScr
 // প্রতিটি নতুন deployment/update দেওয়ার আগে এই APP_VERSION ভ্যালুটা পরিবর্তন করুন
 // (যেকোনো ইউনিক স্ট্রিং — তারিখ/সময় বা running number)। এই ভ্যালুর ভিত্তিতেই
 // সব ডিভাইস স্বয়ংক্রিয়ভাবে নতুন version detect করে reload হবে।
-window.APP_VERSION = '2026-09-17-pdf-catalog.2';
+window.APP_VERSION = '2026-09-16-login-cross-device-fix.2';
 
 (function(){
   // পুরনো/legacy blob-based service worker ও পুরনো Cache Storage সম্পূর্ণ পরিষ্কার করে দেওয়া হয়,
@@ -767,6 +767,8 @@ window.APP_VERSION = '2026-09-17-pdf-catalog.2';
   .tb-admin-view .tb-wrap{max-height:60vh;overflow:auto;}
   @media(max-width:768px){.tb-admin-tools{grid-template-columns:1fr}.tb-admin-table{min-width:0}.tb-admin-table thead{display:none}.tb-admin-table,.tb-admin-table tbody,.tb-admin-table tr,.tb-admin-table td{display:block;width:100%;box-sizing:border-box}.tb-admin-table tr{margin-bottom:12px;border:1px solid var(--line);border-radius:10px;padding:8px}.tb-admin-table td{border:0;border-bottom:1px solid #eef1f4;padding:8px 4px;display:flex;justify-content:space-between;gap:10px}.tb-admin-table td:last-child{border-bottom:0}.tb-admin-table td::before{content:attr(data-label);font-weight:700;color:var(--muted);}.tb-table{min-width:1180px}.tb-toolbar{position:sticky;top:0;z-index:3;background:var(--card);padding:5px 0}.tb-mechanic-meta{font-size:11px;}}
   @media print{.tb-toolbar,.tb-remove-row,.tb-action-cell{display:none!important}.tb-table{min-width:0;width:100%}.tb-table th,.tb-table td{font-size:9px;padding:2px}.tb-mechanic-meta{background:#fff;border:0;padding:0}.tb-table tr.tb-row-filled td{background:#fff!important;box-shadow:none!important}}
+  #saveToast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(20px);background:#1f7a4d;color:#fff;padding:10px 20px;border-radius:30px;font-size:14px;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,.25);z-index:99999;opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;}
+  #saveToast.show{opacity:1;transform:translateX(-50%) translateY(0);}
   /* ================= PDF CATALOG ================= */
   .catalog-page{max-width:980px;margin:0 auto;}
   .catalog-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;flex-wrap:wrap;}
@@ -813,6 +815,7 @@ window.APP_VERSION = '2026-09-17-pdf-catalog.2';
   }
   #saveToast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(20px);background:#1f7a4d;color:#fff;padding:10px 20px;border-radius:30px;font-size:14px;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,.25);z-index:99999;opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;}
   #saveToast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
 </style>
 </head>
 <body>
@@ -1026,6 +1029,47 @@ function fbPw(pw){
 
 // admin/dealer/partsEngineer লগইনের সময় কল হয় — legacy পাসওয়ার্ড যাচাই ইতিমধ্যে হয়ে গেছে ধরে নিয়ে,
 // এই ফাংশন Firebase Auth-এ সাইন-ইন করে (প্রথমবার হলে অ্যাকাউন্ট বানিয়ে, পাসওয়ার্ড বদলালে নতুন অ্যাকাউন্টে rotate করে)।
+
+// Cross-device login repair:
+// If the local copy has an old password but Firebase Auth has the current password,
+// allow the real Firebase credential to authenticate and then synchronize the
+// password into the shared profile. This fixes APKs/devices that have stale local data.
+async function verifyFirebaseCredential(record, pw, prefix){
+  if(!record || !record.authEmail) return false;
+  try{
+    await fbAuth.signInWithEmailAndPassword(record.authEmail, fbPw(pw));
+    record.password = pw;
+    const dirtyKeys = record.role === 'partsEngineer' || prefix === 'pe'
+      ? ['partsEngineers']
+      : ['users'];
+    await saveDB(dirtyKeys);
+    return true;
+  }catch(err){
+    return false;
+  }
+}
+
+// Cross-device login bootstrap: refresh the shared account list before login lookup.
+async function refreshSharedLoginData(role){
+  try{
+    const key = role === 'engineer' ? 'partsEngineers' : 'users';
+    let url = `${FB_URL}/appdata/${key}.json`;
+    if(fbAuth.currentUser){
+      const token = await fbAuth.currentUser.getIdToken();
+      url += `?auth=${token}`;
+    }
+    const res = await fetch(url, {cache:'no-store'});
+    if(!res.ok) return false;
+    const data = await res.json();
+    if(!Array.isArray(data)) return false;
+    if(key === 'partsEngineers') DB.partsEngineers = data;
+    else DB.users = data;
+    return true;
+  }catch(err){
+    return false;
+  }
+}
+
 async function fbEnsureAuth(record, pw, prefix, options={}){
   const digits = normalizePhoneNumber(record.phone) || 'admin';
   const password = fbPw(pw);
@@ -1137,7 +1181,7 @@ async function saveDB(dirtyKeys){
     lastSaveError = (e && e.message) ? e.message : String(e);
     console.error('Firebase save failed:', e);
     // Firebase না হলে localStorage এ সেভ
-    try{ localStorage.setItem(LS_KEY, JSON.stringify({users:DB.users,history:DB.history.slice(0,50),settings:DB.settings,parts:DB.parts,nextPartId,partsSaved:true,catalogs:DB.catalogs,requisitions:DB.requisitions.slice(0,200),nextReqNo,drafts:DB.drafts.slice(0,200),partsEngineers:DB.partsEngineers,nextPeId,dealerShopParts:DB.dealerShopParts,dealerMemos:DB.dealerMemos,dealerMemoDrafts:DB.dealerMemoDrafts,stockHistory:DB.stockHistory,nextMemoNo:DB.nextMemoNo||1})); }catch(e2){}
+    try{ localStorage.setItem(LS_KEY, JSON.stringify({users:DB.users,history:DB.history.slice(0,50),settings:DB.settings,parts:DB.parts,nextPartId,partsSaved:true,requisitions:DB.requisitions.slice(0,200),nextReqNo,drafts:DB.drafts.slice(0,200),partsEngineers:DB.partsEngineers,nextPeId,dealerShopParts:DB.dealerShopParts,dealerMemos:DB.dealerMemos,dealerMemoDrafts:DB.dealerMemoDrafts,stockHistory:DB.stockHistory,nextMemoNo:DB.nextMemoNo||1})); }catch(e2){}
     // Firebase-এ আসল write ব্যর্থ হয়েছে — caller (যেমন Delete History রিসেট) এটা জেনে
     // ইউজারকে সঠিক সতর্কতা দেখাতে পারে, নাহলে সবকিছু "সেভ হয়েছে" মনে হবে অথচ রিফ্রেশে পুরনো ডেটা ফিরে আসবে
     return false;
@@ -1226,7 +1270,6 @@ async function loadDB(){
     if(Array.isArray(saved.drafts)) DB.drafts = saved.drafts;
       if(Array.isArray(saved.loginHistory)) DB.loginHistory = saved.loginHistory;
       if(Array.isArray(saved.vehicleCompat)) DB.vehicleCompat = saved.vehicleCompat;
-      if(Array.isArray(saved.catalogs)) DB.catalogs = saved.catalogs;
       await loadVehicleCompatFromFirebase();
       if(Array.isArray(saved.partsEngineers)) DB.partsEngineers = saved.partsEngineers;
       if(saved.nextPeId) nextPeId = saved.nextPeId;
@@ -1703,7 +1746,6 @@ const ROUTE_ROLES = {
   dealerPortal: ['dealer'],
   dealerRequisition: ['dealer'],
   dealerVehicleSearch: ['dealer'],
-  partsCatalog: ['admin','dealer','mechanic','partsEngineer'],
   mechanicDashboard: ['mechanic']
 };
 function requireRole(roles, fallback){
@@ -1762,7 +1804,6 @@ function showDealerMoreMenu(){
       <button class="btn btn-ghost btn-block" onclick="closeModal();dealerManageTab='shopParts';go('dealerPortal')">🧩 My Shop Parts</button>
       <button class="btn btn-ghost btn-block" onclick="closeModal();dealerManageTab='stockHistory';go('dealerPortal')">↕️ Stock History</button>
       <button class="btn btn-ghost btn-block" onclick="closeModal();go('dealerRequisition')">📝 রিকুইজিশন</button>
-      <button class="btn btn-ghost btn-block" onclick="closeModal();go('partsCatalog')">📁 Vehicle Model DB</button>
       <button class="btn btn-ghost btn-block" onclick="closeModal();dealerManageTab='profile';go('dealerPortal')">👤 আমার প্রোফাইল</button>
       <button class="btn btn-ghost btn-block" onclick="closeModal()">বাতিল</button>
     </div>`);
@@ -1777,7 +1818,6 @@ function adminSidebarHTML(activeKey){
     ['requisitions','📝','রিকুইজিশন হিস্টরি', "adminTab='requisitions';go('adminDashboard')"],
     ['loginActivity','📶','লগইন অ্যাক্টিভিটি', "adminTab='loginActivity';go('adminDashboard')"],
     ['vehicleDb','🚗','Vehicle Model DB', "adminTab='vehicleDb';go('adminDashboard')"],
-    ['catalogs','🚗','Vehicle Model DB', "go('partsCatalog')"],
     ['partsEngineers','🧑‍🔧','Parts Engineer', "adminTab='partsEngineers';go('adminDashboard')"],
     ['settings','🔧','সেটিংস', "adminTab='settings';go('adminDashboard')"],
     ['tourBills','🧾','Tour Bill Receive Report', "adminTab='tourBills';go('adminDashboard')"]
@@ -1805,7 +1845,6 @@ function showAdminMoreMenu(){
       <button class="btn btn-ghost btn-block" onclick="closeModal();adminTab='requisitions';go('adminDashboard')">📝 রিকুইজিশন হিস্টরি</button>
       <button class="btn btn-ghost btn-block" onclick="closeModal();adminTab='loginActivity';go('adminDashboard')">📶 লগইন অ্যাক্টিভিটি</button>
       <button class="btn btn-ghost btn-block" onclick="closeModal();adminTab='vehicleDb';go('adminDashboard')">🚗 Vehicle Model Database</button>
-      <button class="btn btn-ghost btn-block" onclick="closeModal();go('partsCatalog')">🚗 Vehicle Model DB</button>
       <button class="btn btn-ghost btn-block" onclick="closeModal();adminTab='partsEngineers';go('adminDashboard')">🧑‍🔧 Parts Engineer</button>
       <button class="btn btn-ghost btn-block" onclick="closeModal();adminTab='settings';go('adminDashboard')">🔧 সেটিংস</button>
       <button class="btn btn-ghost btn-block" onclick="closeModal()">বাতিল</button>
@@ -1817,7 +1856,7 @@ function peBottomNavHTML(){
     {key:'search',icon:'🔍',label:'পার্টস সার্চ',onclick:"peTab='search';go('peDashboard')"},
     {key:'requisitions',icon:'📝',label:'রিকুইজিশন',onclick:"peTab='requisitions';go('peDashboard')"},
     {key:'report',icon:'📊',label:'রিপোর্ট',onclick:"peTab='report';go('peDashboard')"},
-    {key:'vehicleDb',icon:'🚗',label:'Vehicle Model DB',onclick:"go('partsCatalog')"},
+    {key:'vehicleDb',icon:'📁',label:'Vehicle DB',onclick:"go('partsCatalog')"},
     {key:'logout',icon:'🚪',label:'লগআউট',onclick:"if(confirm('লগআউট করবেন?')){DB.session={role:null,user:null};go('landing');}"}
   ], peTab);
 }
@@ -1926,6 +1965,8 @@ async function slSubmitLogin(role){
   const showErr = (msg)=>{ errEl.style.display='block'; errEl.textContent = msg; };
   errEl.style.display = 'none';
 
+  if(role === 'engineer' || role === 'dealer') await refreshSharedLoginData(role);
+
   if(role === 'admin'){
     if(pw !== DB.settings.adminPassword){ showErr('পাসওয়ার্ড সঠিক নয়'); return; }
     btn.disabled = true; btn.textContent = 'প্রবেশ করা হচ্ছে...';
@@ -1938,10 +1979,22 @@ async function slSubmitLogin(role){
   }
 
   if(role === 'engineer'){
-    const pe = DB.partsEngineers.find(x=>(x.phone===identifier || (x.engineerId && String(x.engineerId).trim().toLowerCase()===identifier.toLowerCase())) && x.password===pw);
+    await refreshSharedLoginData('engineer');
+    const pe = DB.partsEngineers.find(x=>
+      x &&
+      !isDeletedAccount(x) &&
+      (normalizePhoneNumber(x.phone)===normalizePhoneNumber(identifier) ||
+       (x.engineerId && String(x.engineerId).trim().toLowerCase()===identifier.toLowerCase()))
+    );
     if(!pe){ showErr('মোবাইল নম্বর/Engineer ID অথবা পাসওয়ার্ড ভুল'); return; }
-    if(isDeletedAccount(pe)){ showErr('আপনার অ্যাকাউন্টটি ডিলিট করা হয়েছে। নতুন করে রেজিস্ট্রেশন করুন।'); return; }
-  if(!pe.active){ showErr('আপনার অ্যাকাউন্টটি নিষ্ক্রিয় করা হয়েছে, অ্যাডমিনের সাথে যোগাযোগ করুন।'); return; }
+    if(!pe.active){ showErr('আপনার অ্যাকাউন্টটি নিষ্ক্রিয় করা হয়েছে, অ্যাডমিনের সাথে যোগাযোগ করুন।'); return; }
+
+    let credentialOK = pe.password === pw;
+    if(!credentialOK){
+      credentialOK = await verifyFirebaseCredential(pe, pw, 'pe');
+    }
+    if(!credentialOK){ showErr('মোবাইল নম্বর/Engineer ID অথবা পাসওয়ার্ড ভুল'); return; }
+
     btn.disabled = true; btn.textContent = 'প্রবেশ করা হচ্ছে...';
     try{ await fbEnsureAuth(pe, pw, 'pe'); lastAuthError = null; }
     catch(err){ lastAuthError = (err && (err.code || err.message)) ? `${err.code||''} ${err.message||err}`.trim() : String(err); console.warn('Firebase parts-engineer auth skipped (offline/network issue), continuing with local login:', err); }
@@ -1953,11 +2006,17 @@ async function slSubmitLogin(role){
   }
 
   // role === 'dealer'  (Dealer / Mechanic উভয়ই এই একই ফর্ম দিয়ে লগইন করে, DB.users.role অনুযায়ী পোর্টাল ঠিক হয়)
-  const u = DB.users.find(x=>x.phone===identifier && x.password===pw);
+  const u = DB.users.find(x=>x && !isDeletedAccount(x) && normalizePhoneNumber(x.phone)===normalizePhoneNumber(identifier));
   if(!u){ showErr('মোবাইল নম্বর অথবা পাসওয়ার্ড ভুল'); return; }
-  if(isDeletedAccount(u)){ showErr('আপনার অ্যাকাউন্টটি ডিলিট করা হয়েছে। নতুন করে রেজিস্ট্রেশন করুন।'); return; }
   if(u.pending){ showErr('আপনার অ্যাকাউন্ট এখনও অনুমোদন হয়নি, অ্যাডমিনের সাথে যোগাযোগ করুন'); return; }
   if(!u.active){ showErr('আপনার অ্যাকাউন্টটি নিষ্ক্রিয় করা হয়েছে, অ্যাডমিনের সাথে যোগাযোগ করুন'); return; }
+
+  let credentialOK = u.password === pw;
+  if(!credentialOK){
+    credentialOK = await verifyFirebaseCredential(u, pw, 'dealer');
+  }
+  if(!credentialOK){ showErr('মোবাইল নম্বর অথবা পাসওয়ার্ড ভুল'); return; }
+
   btn.disabled = true; btn.textContent = 'প্রবেশ করা হচ্ছে...';
   try{ await fbEnsureAuth(u, pw, 'dealer'); lastAuthError = null; }
   catch(err){ lastAuthError = (err && (err.code || err.message)) ? `${err.code||''} ${err.message||err}`.trim() : String(err); console.warn('Firebase dealer auth skipped (offline/network issue), continuing with local login:', err); }
@@ -2480,10 +2539,18 @@ ROUTES.dealerLogin = function(){
     const phone = document.getElementById('phone').value.trim();
     const pw = document.getElementById('pw').value;
     const e = document.getElementById('err');
-    const u = DB.users.find(x=>x.phone===phone && x.password===pw);
+    await refreshSharedLoginData('dealer');
+    const u = DB.users.find(x=>x && !isDeletedAccount(x) && normalizePhoneNumber(x.phone)===normalizePhoneNumber(phone));
     if(!u){ e.style.display='block'; e.textContent='মোবাইল নম্বর অথবা পাসওয়ার্ড ভুল'; return; }
     if(u.pending){ e.style.display='block'; e.textContent='আপনার অ্যাকাউন্ট এখনও অনুমোদন হয়নি, অ্যাডমিনের সাথে যোগাযোগ করুন'; return; }
     if(!u.active){ e.style.display='block'; e.textContent='আপনার অ্যাকাউন্টটি নিষ্ক্রিয় করা হয়েছে, অ্যাডমিনের সাথে যোগাযোগ করুন'; return; }
+
+    let credentialOK = u.password === pw;
+    if(!credentialOK){
+      credentialOK = await verifyFirebaseCredential(u, pw, 'dealer');
+    }
+    if(!credentialOK){ e.style.display='block'; e.textContent='মোবাইল নম্বর অথবা পাসওয়ার্ড ভুল'; return; }
+
     const btn = document.getElementById('submit'); btn.disabled = true; btn.textContent = 'প্রবেশ করা হচ্ছে...';
     try{
       await fbEnsureAuth(u, pw, 'dealer');
@@ -2938,6 +3005,79 @@ function wireTourBillAdminTab(){
   loadTourBillsAdmin();
 }
 
+/* ================= PDF CATALOG ================= */
+function catalogList(){ return Array.isArray(DB.catalogs) ? DB.catalogs : []; }
+function catalogModels(){
+  const set=new Set();
+  catalogList().forEach(c=>{if(c?.model)set.add(String(c.model).trim());});
+  (DB.vehicleCompat||[]).forEach(v=>(v.models||[]).forEach(m=>{if(String(m).trim())set.add(String(m).trim());}));
+  return [...set].filter(Boolean).sort((a,b)=>a.localeCompare(b,undefined,{numeric:true,sensitivity:'base'}));
+}
+function catalogFileId(url){
+  const u=String(url||'').trim();
+  let m=u.match(/drive\.google\.com\/file\/d\/([^/]+)/i);
+  if(m)return m[1];
+  m=u.match(/[?&]id=([^&]+)/i);
+  return m?m[1]:'';
+}
+function catalogPreviewUrl(url){const id=catalogFileId(url);return id?`https://drive.google.com/file/d/${encodeURIComponent(id)}/preview`:String(url||'').trim();}
+function catalogOpenUrl(url){const id=catalogFileId(url);return id?`https://drive.google.com/file/d/${encodeURIComponent(id)}/view?usp=sharing`:String(url||'').trim();}
+function catalogValidLink(url){return /^https:\/\/drive\.google\.com\//i.test(String(url||'').trim());}
+function catalogCardHTML(c,isAdmin){
+  const updated=c.updatedAtDisplay||c.createdAtDisplay||'—';
+  return `<div class="catalog-card"><div><div class="catalog-folder-icon">📂</div><h4>${escHtml(c.model||'Unnamed Model')}</h4><div class="catalog-date">Last updated:<br>${escHtml(updated)}${c.updatedBy?` — ${escHtml(c.updatedBy)}`:''}</div></div><div class="catalog-actions"><button class="btn btn-navy btn-sm" onclick="openPartsCatalogPdf('${escHtml(c.id)}')">📖 View PDF</button>${isAdmin?`<button class="btn btn-ghost btn-sm" onclick="editPartsCatalog('${escHtml(c.id)}')">Edit</button>`:''}</div></div>`;
+}
+function partsCatalogHTML(){
+  const isAdmin=DB.session?.role==='admin', list=catalogList();
+  return `<div class="catalog-page"><div class="card" style="margin-bottom:14px;"><div class="catalog-head"><div><h2 class="catalog-title">🚗 Vehicle Model DB</h2><div class="catalog-sub">মডেলগুলো Folder Style-এ দেখুন এবং PDF Catalog অ্যাপের ভিতরেই পড়ুন</div></div>${isAdmin?`<button class="btn btn-primary btn-sm" onclick="openPartsCatalogForm()">＋ Add Catalog</button>`:''}</div><input id="catalogSearch" class="catalog-search" type="search" placeholder="Enter the model name..." autocomplete="off"><div style="font-size:12px;color:var(--muted);margin:-8px 0 14px;">Total models: <b id="catalogCount">${list.length}</b></div><div id="catalogGrid" class="catalog-grid">${list.length?list.map(c=>catalogCardHTML(c,isAdmin)).join(''):`<div class="catalog-empty" style="grid-column:1/-1;">এখনো কোনো PDF Catalog যোগ করা হয়নি।${isAdmin?' Add Catalog চাপুন এবং Google Drive PDF link দিন।':''}</div>`}</div></div></div>`;
+}
+function renderPartsCatalogList(){
+  const grid=document.getElementById('catalogGrid'), count=document.getElementById('catalogCount'), input=document.getElementById('catalogSearch'); if(!grid)return;
+  const q=String(input?.value||'').trim().toLowerCase(), list=catalogList().filter(c=>!q||String(c.model||'').toLowerCase().includes(q));
+  if(count)count.textContent=list.length;
+  const isAdmin=DB.session?.role==='admin'; grid.innerHTML=list.length?list.map(c=>catalogCardHTML(c,isAdmin)).join(''):`<div class="catalog-empty" style="grid-column:1/-1;">কোনো matching model পাওয়া যায়নি।</div>`;
+}
+function catalogFormModelOptions(selected){
+  const models=catalogModels();
+  return `<option value="">-- Select from the list --</option>${models.map(m=>`<option value="${escHtml(m)}" ${String(selected||'')===String(m)?'selected':''}>${escHtml(m)}</option>`).join('')}<option value="__other__" ${selected&&!models.includes(selected)?'selected':''}>Other (write yourself)</option>`;
+}
+function openPartsCatalogForm(id=''){
+  if(DB.session?.role!=='admin')return;
+  const existing=catalogList().find(c=>String(c.id)===String(id))||null, selected=existing?.model||'', models=catalogModels();
+  openModal(`<div class="catalog-form"><h3>${existing?'📚 Catalog Edit':'📚 Add new catalog'}</h3><div class="field"><label>Model</label><select id="catModelSelect">${catalogFormModelOptions(selected)}</select></div><div class="field"><label>Model name (enter here if not listed)</label><input id="catModelName" type="text" value="${escHtml(selected&&!models.includes(selected)?selected:'')}" placeholder="For example: Eicher 480"></div><div class="field"><label>Google Drive catalog link</label><input id="catDriveLink" type="url" value="${escHtml(existing?.driveLink||'')}" placeholder="https://drive.google.com/..." autocomplete="off"></div><div class="hint">The PDF in Google Drive must be shared as <b>Anyone with the link can view</b>. You only upload the PDF and paste the link here.</div><div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" id="catSaveBtn">Save</button></div>${existing?`<button class="btn btn-danger btn-block" id="catDeleteBtn" style="margin-top:8px;">Delete</button>`:''}</div>`);
+  const sel=document.getElementById('catModelSelect'), name=document.getElementById('catModelName'), link=document.getElementById('catDriveLink');
+  sel.onchange=()=>{if(sel.value&&sel.value!=='__other__')name.value=sel.value;else if(sel.value==='')name.value='';else name.focus();};
+  document.getElementById('catSaveBtn').onclick=async()=>{
+    const model=(name.value.trim()||(sel.value&&sel.value!=='__other__'?sel.value:'')).trim(), driveLink=link.value.trim();
+    if(!model){alert('Model name দিন।');return;} if(!catalogValidLink(driveLink)){alert('সঠিক Google Drive link দিন।');return;}
+    const now=new Date(), by=DB.session.user?.name||'Admin';
+    if(existing){Object.assign(existing,{model,driveLink,updatedAt:now.toISOString(),updatedAtDisplay:now.toLocaleDateString('en-GB'),updatedBy:by});}
+    else DB.catalogs.push({id:'CAT-'+Date.now()+'-'+Math.random().toString(36).slice(2,7),model,driveLink,createdAt:now.toISOString(),createdAtDisplay:now.toLocaleDateString('en-GB'),updatedAt:now.toISOString(),updatedAtDisplay:now.toLocaleDateString('en-GB'),updatedBy:by});
+    if(!await saveDB(['catalogs'])){alert('Catalog Firebase-এ সেভ হয়নি। আবার চেষ্টা করুন।');return;} closeModal(); showSavedToast(existing?'✅ Catalog updated':'✅ Catalog added'); go('partsCatalog');
+  };
+  if(existing)document.getElementById('catDeleteBtn').onclick=async()=>{if(!confirm(`"${existing.model}" Catalog delete করবেন?`))return;DB.catalogs=DB.catalogs.filter(c=>String(c.id)!==String(existing.id));if(!await saveDB(['catalogs'])){alert('Catalog delete Firebase-এ সেভ হয়নি।');return;}closeModal();showSavedToast('🗑️ Catalog deleted');go('partsCatalog');};
+}
+function editPartsCatalog(id){openPartsCatalogForm(id);}
+function openPartsCatalogPdf(id){
+  const c=catalogList().find(x=>String(x.id)===String(id)); if(!c)return;
+  const viewerId='catalogPdfFrame_'+Date.now();
+  openModal(`<div class="catalog-view" id="catalogPdfViewer"><div class="catalog-view-top"><div class="catalog-view-name">📘 ${escHtml(c.model)}</div><div class="catalog-view-tools"><button class="btn btn-ghost btn-sm catalog-fullscreen" type="button" onclick="catalogEnterFullscreen()">⛶ Full screen</button><button class="btn btn-ghost btn-sm" type="button" onclick="closeModal()" style="color:#fff;border-color:rgba(255,255,255,.35);">✕ Close</button></div></div><iframe id="${viewerId}" src="${escHtml(catalogPreviewUrl(c.driveLink))}" title="${escHtml(c.model)} PDF Catalog" allow="autoplay; fullscreen" allowfullscreen loading="eager"></iframe></div>`);
+}
+function catalogEnterFullscreen(){
+  const box=document.getElementById('catalogPdfViewer');
+  if(!box)return;
+  const fn=box.requestFullscreen||box.webkitRequestFullscreen||box.msRequestFullscreen;
+  if(fn){try{const r=fn.call(box); if(r&&r.catch)r.catch(()=>{});}catch(e){}}
+}
+
+ROUTES.partsCatalog=function(){
+  if(!requireRole(['admin','dealer','mechanic','partsEngineer']))return;
+  const role=DB.session.role, back=role==='admin'?'adminDashboard':role==='partsEngineer'?'peDashboard':role==='mechanic'?'mechanicDashboard':'dealerPortal';
+  const app=document.getElementById('app');
+  app.appendChild(el(`<div><div class="topbar"><div class="topbar-brand"><div class="brand-logo">📚</div><div><div class="brand-name">${escHtml(DB.settings.companyName)}</div><div class="brand-sub">Vehicle Model DB</div></div></div><div class="topbar-right"><button class="btn btn-ghost btn-sm" onclick="go('${back}')" style="color:#fff;border-color:rgba(255,255,255,.3)">⬅️ Back</button></div></div><div class="wrap has-bottom-nav">${partsCatalogHTML()}</div><div class="modal-bg" id="modalBg"><div class="modal" id="modalBody"></div></div></div>`));
+  const q=document.getElementById('catalogSearch'); if(q)q.addEventListener('input',renderPartsCatalogList); const bg=document.getElementById('modalBg'); if(bg)bg.addEventListener('click',ev=>{if(ev.target.id==='modalBg')closeModal();});
+};
+
 let mechanicTab = 'search';
 ROUTES.mechanicDashboard = function(){
   if(!requireRole(['mechanic'], 'dealerLogin')) return;
@@ -2961,7 +3101,7 @@ ROUTES.mechanicDashboard = function(){
         <button class="tab ${mechanicTab==='search'?'active':''}" onclick="mechanicTab='search';go('mechanicDashboard')">🔍 Parts Search</button>
         <button class="tab ${mechanicTab==='tourbill'?'active':''}" onclick="mechanicTab='tourbill';go('mechanicDashboard')">🧾 Tour Bill</button>
         <button class="tab ${mechanicTab==='profile'?'active':''}" onclick="mechanicTab='profile';go('mechanicDashboard')">👤 My Profile</button>
-        <button class="tab ${currentRoute==='partsCatalog'?'active':''}" onclick="go('partsCatalog')">🚗 Vehicle Model DB</button>
+        <button class="tab" onclick="go('partsCatalog')">🚗 Vehicle Model DB</button>
       </div>
       ${content}
     </div>
@@ -3015,9 +3155,21 @@ ROUTES.peLogin = function(){
     const identifier = document.getElementById('phone').value.trim();
     const pw = document.getElementById('pw').value;
     const e = document.getElementById('err');
-    const pe = DB.partsEngineers.find(x=>(x.phone===identifier || (x.engineerId && String(x.engineerId).trim().toLowerCase()===identifier.toLowerCase())) && x.password===pw);
+    const pe = DB.partsEngineers.find(x=>
+      x &&
+      !isDeletedAccount(x) &&
+      (normalizePhoneNumber(x.phone)===normalizePhoneNumber(identifier) ||
+       (x.engineerId && String(x.engineerId).trim().toLowerCase()===identifier.toLowerCase()))
+    );
     if(!pe){ e.style.display='block'; e.textContent='মোবাইল নম্বর/Engineer ID অথবা পাসওয়ার্ড ভুল'; return; }
     if(!pe.active){ e.style.display='block'; e.textContent='আপনার অ্যাকাউন্টটি নিষ্ক্রিয় করা হয়েছে, অ্যাডমিনের সাথে যোগাযোগ করুন। (Your account has been deactivated by Admin.)'; return; }
+
+    let credentialOK = pe.password === pw;
+    if(!credentialOK){
+      credentialOK = await verifyFirebaseCredential(pe, pw, 'pe');
+    }
+    if(!credentialOK){ e.style.display='block'; e.textContent='মোবাইল নম্বর/Engineer ID অথবা পাসওয়ার্ড ভুল'; return; }
+
     const btn = document.getElementById('submit'); btn.disabled = true; btn.textContent = 'প্রবেশ করা হচ্ছে...';
     try{
       await fbEnsureAuth(pe, pw, 'pe');
@@ -3298,11 +3450,10 @@ function dealerNavHTML(){
     ['shopParts','🧩 My Shop Parts'],
     ['stock','📦 My Stock'],
     ['stockHistory','↕️ Stock History'],
-    ['profile','👤 আমার প্রোফাইল'],
-    ['catalog','📚 PDF Catalog']
+    ['profile','👤 আমার প্রোফাইল']
   ];
   return `<div class="dealer-tabs">${tabs.map(([id,label])=>
-    `<button class="tab ${dealerManageTab===id?'active':''}" onclick="${id==='catalog' ? "go('partsCatalog')" : `dealerManageTab='${id}';go('dealerPortal')`}">${label}</button>`).join('')}</div>`;
+    `<button class="tab ${dealerManageTab===id?'active':''}" onclick="dealerManageTab='${id}';go('dealerPortal')">${label}</button>`).join('')}</div>`;
 }
 function dealerProfileHTML(){
   const u = currentDealer();
@@ -3325,7 +3476,7 @@ function dealerTopbar(sub='ডিলার পোর্টাল', hideBrand=fal
       <div><div class="brand-name">${escHtml(DB.settings.companyName)}</div><div class="brand-sub">${sub}</div></div>
     </div>`}
     <div class="topbar-right">
-      <button class="btn btn-ghost btn-sm" onclick="go('dealerVehicleSearch')" style="color:#fff;border-color:rgba(255,255,255,.3)">🚗 গাড়ির মডেল</button><button class="btn btn-ghost btn-sm" onclick="go('partsCatalog')" style="color:#fff;border-color:rgba(255,255,255,.3)">📁 Vehicle Model DB</button>
+      <button class="btn btn-ghost btn-sm" onclick="go('dealerVehicleSearch')" style="color:#fff;border-color:rgba(255,255,255,.3)">🚗 গাড়ির মডেল</button>
       <button class="btn btn-ghost btn-sm" onclick="go('dealerRequisition')" style="color:#fff;border-color:rgba(255,255,255,.3)">📝 রিকুইজিশন</button>
       <button class="btn btn-ghost btn-sm theme-toggle" onclick="toggleTheme()" style="color:#fff;border-color:rgba(255,255,255,.3)">🌙</button>
       <span class="pill">${escHtml(u?u.name:'')}</span>
@@ -4234,78 +4385,6 @@ ROUTES.dealerVehicleSearch = function(){
   input.addEventListener('input', ()=>{ clearTimeout(vTimer); vTimer = setTimeout(runVSearch, 180); });
 };
 
-/* ================= PDF CATALOG ================= */
-function catalogList(){ return Array.isArray(DB.catalogs) ? DB.catalogs : []; }
-function catalogModels(){
-  const set=new Set();
-  catalogList().forEach(c=>{if(c?.model)set.add(String(c.model).trim());});
-  (DB.vehicleCompat||[]).forEach(v=>(v.models||[]).forEach(m=>{if(String(m).trim())set.add(String(m).trim());}));
-  return [...set].filter(Boolean).sort((a,b)=>a.localeCompare(b,undefined,{numeric:true,sensitivity:'base'}));
-}
-function catalogFileId(url){
-  const u=String(url||'').trim();
-  let m=u.match(/drive\.google\.com\/file\/d\/([^/]+)/i);
-  if(m)return m[1];
-  m=u.match(/[?&]id=([^&]+)/i);
-  return m?m[1]:'';
-}
-function catalogPreviewUrl(url){const id=catalogFileId(url);return id?`https://drive.google.com/file/d/${encodeURIComponent(id)}/preview`:String(url||'').trim();}
-function catalogOpenUrl(url){const id=catalogFileId(url);return id?`https://drive.google.com/file/d/${encodeURIComponent(id)}/view?usp=sharing`:String(url||'').trim();}
-function catalogValidLink(url){return /^https:\/\/drive\.google\.com\//i.test(String(url||'').trim());}
-function catalogCardHTML(c,isAdmin){
-  const updated=c.updatedAtDisplay||c.createdAtDisplay||'—';
-  return `<div class="catalog-card"><div><div class="catalog-folder-icon">📂</div><h4>${escHtml(c.model||'Unnamed Model')}</h4><div class="catalog-date">Last updated:<br>${escHtml(updated)}${c.updatedBy?` — ${escHtml(c.updatedBy)}`:''}</div></div><div class="catalog-actions"><button class="btn btn-navy btn-sm" onclick="openPartsCatalogPdf('${escHtml(c.id)}')">📖 View PDF</button>${isAdmin?`<button class="btn btn-ghost btn-sm" onclick="editPartsCatalog('${escHtml(c.id)}')">Edit</button>`:''}</div></div>`;
-}
-function partsCatalogHTML(){
-  const isAdmin=DB.session?.role==='admin', list=catalogList();
-  return `<div class="catalog-page"><div class="card" style="margin-bottom:14px;"><div class="catalog-head"><div><h2 class="catalog-title">🚗 Vehicle Model DB</h2><div class="catalog-sub">মডেলগুলো Folder Style-এ দেখুন এবং PDF Catalog অ্যাপের ভিতরেই পড়ুন</div></div>${isAdmin?`<button class="btn btn-primary btn-sm" onclick="openPartsCatalogForm()">＋ Add Catalog</button>`:''}</div><input id="catalogSearch" class="catalog-search" type="search" placeholder="Enter the model name..." autocomplete="off"><div style="font-size:12px;color:var(--muted);margin:-8px 0 14px;">Total models: <b id="catalogCount">${list.length}</b></div><div id="catalogGrid" class="catalog-grid">${list.length?list.map(c=>catalogCardHTML(c,isAdmin)).join(''):`<div class="catalog-empty" style="grid-column:1/-1;">এখনো কোনো PDF Catalog যোগ করা হয়নি।${isAdmin?' Add Catalog চাপুন এবং Google Drive PDF link দিন।':''}</div>`}</div></div></div>`;
-}
-function renderPartsCatalogList(){
-  const grid=document.getElementById('catalogGrid'), count=document.getElementById('catalogCount'), input=document.getElementById('catalogSearch'); if(!grid)return;
-  const q=String(input?.value||'').trim().toLowerCase(), list=catalogList().filter(c=>!q||String(c.model||'').toLowerCase().includes(q));
-  if(count)count.textContent=list.length;
-  const isAdmin=DB.session?.role==='admin'; grid.innerHTML=list.length?list.map(c=>catalogCardHTML(c,isAdmin)).join(''):`<div class="catalog-empty" style="grid-column:1/-1;">কোনো matching model পাওয়া যায়নি।</div>`;
-}
-function catalogFormModelOptions(selected){
-  const models=catalogModels();
-  return `<option value="">-- Select from the list --</option>${models.map(m=>`<option value="${escHtml(m)}" ${String(selected||'')===String(m)?'selected':''}>${escHtml(m)}</option>`).join('')}<option value="__other__" ${selected&&!models.includes(selected)?'selected':''}>Other (write yourself)</option>`;
-}
-function openPartsCatalogForm(id=''){
-  if(DB.session?.role!=='admin')return;
-  const existing=catalogList().find(c=>String(c.id)===String(id))||null, selected=existing?.model||'', models=catalogModels();
-  openModal(`<div class="catalog-form"><h3>${existing?'📚 Catalog Edit':'📚 Add new catalog'}</h3><div class="field"><label>Model</label><select id="catModelSelect">${catalogFormModelOptions(selected)}</select></div><div class="field"><label>Model name (enter here if not listed)</label><input id="catModelName" type="text" value="${escHtml(selected&&!models.includes(selected)?selected:'')}" placeholder="For example: Eicher 480"></div><div class="field"><label>Google Drive catalog link</label><input id="catDriveLink" type="url" value="${escHtml(existing?.driveLink||'')}" placeholder="https://drive.google.com/..." autocomplete="off"></div><div class="hint">The PDF in Google Drive must be shared as <b>Anyone with the link can view</b>. You only upload the PDF and paste the link here.</div><div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">Cancel</button><button class="btn btn-primary" id="catSaveBtn">Save</button></div>${existing?`<button class="btn btn-danger btn-block" id="catDeleteBtn" style="margin-top:8px;">Delete</button>`:''}</div>`);
-  const sel=document.getElementById('catModelSelect'), name=document.getElementById('catModelName'), link=document.getElementById('catDriveLink');
-  sel.onchange=()=>{if(sel.value&&sel.value!=='__other__')name.value=sel.value;else if(sel.value==='')name.value='';else name.focus();};
-  document.getElementById('catSaveBtn').onclick=async()=>{
-    const model=(name.value.trim()||(sel.value&&sel.value!=='__other__'?sel.value:'')).trim(), driveLink=link.value.trim();
-    if(!model){alert('Model name দিন।');return;} if(!catalogValidLink(driveLink)){alert('সঠিক Google Drive link দিন।');return;}
-    const now=new Date(), by=DB.session.user?.name||'Admin';
-    if(existing){Object.assign(existing,{model,driveLink,updatedAt:now.toISOString(),updatedAtDisplay:now.toLocaleDateString('en-GB'),updatedBy:by});}
-    else DB.catalogs.push({id:'CAT-'+Date.now()+'-'+Math.random().toString(36).slice(2,7),model,driveLink,createdAt:now.toISOString(),createdAtDisplay:now.toLocaleDateString('en-GB'),updatedAt:now.toISOString(),updatedAtDisplay:now.toLocaleDateString('en-GB'),updatedBy:by});
-    if(!await saveDB(['catalogs'])){alert('Catalog Firebase-এ সেভ হয়নি। আবার চেষ্টা করুন।');return;} closeModal(); showSavedToast(existing?'✅ Catalog updated':'✅ Catalog added'); go('partsCatalog');
-  };
-  if(existing)document.getElementById('catDeleteBtn').onclick=async()=>{if(!confirm(`"${existing.model}" Catalog delete করবেন?`))return;DB.catalogs=DB.catalogs.filter(c=>String(c.id)!==String(existing.id));if(!await saveDB(['catalogs'])){alert('Catalog delete Firebase-এ সেভ হয়নি।');return;}closeModal();showSavedToast('🗑️ Catalog deleted');go('partsCatalog');};
-}
-function editPartsCatalog(id){openPartsCatalogForm(id);}
-function openPartsCatalogPdf(id){
-  const c=catalogList().find(x=>String(x.id)===String(id)); if(!c)return;
-  const viewerId='catalogPdfFrame_'+Date.now();
-  openModal(`<div class="catalog-view" id="catalogPdfViewer"><div class="catalog-view-top"><div class="catalog-view-name">📘 ${escHtml(c.model)}</div><div class="catalog-view-tools"><button class="btn btn-ghost btn-sm catalog-fullscreen" type="button" onclick="catalogEnterFullscreen()">⛶ Full screen</button><button class="btn btn-ghost btn-sm" type="button" onclick="closeModal()" style="color:#fff;border-color:rgba(255,255,255,.35);">✕ Close</button></div></div><iframe id="${viewerId}" src="${escHtml(catalogPreviewUrl(c.driveLink))}" title="${escHtml(c.model)} PDF Catalog" allow="autoplay; fullscreen" allowfullscreen loading="eager"></iframe></div>`);
-}
-function catalogEnterFullscreen(){
-  const box=document.getElementById('catalogPdfViewer');
-  if(!box)return;
-  const fn=box.requestFullscreen||box.webkitRequestFullscreen||box.msRequestFullscreen;
-  if(fn){try{const r=fn.call(box); if(r&&r.catch)r.catch(()=>{});}catch(e){}}
-}
-
-ROUTES.partsCatalog=function(){
-  if(!requireRole(['admin','dealer','mechanic','partsEngineer']))return;
-  const role=DB.session.role, back=role==='admin'?'adminDashboard':role==='partsEngineer'?'peDashboard':role==='mechanic'?'mechanicDashboard':'dealerPortal';
-  const app=document.getElementById('app');
-  app.appendChild(el(`<div><div class="topbar"><div class="topbar-brand"><div class="brand-logo">📚</div><div><div class="brand-name">${escHtml(DB.settings.companyName)}</div><div class="brand-sub">Vehicle Model DB</div></div></div><div class="topbar-right"><button class="btn btn-ghost btn-sm" onclick="go('${back}')" style="color:#fff;border-color:rgba(255,255,255,.3)">⬅️ Back</button></div></div><div class="wrap has-bottom-nav">${partsCatalogHTML()}</div><div class="modal-bg" id="modalBg"><div class="modal" id="modalBody"></div></div></div>`));
-  const q=document.getElementById('catalogSearch'); if(q)q.addEventListener('input',renderPartsCatalogList); const bg=document.getElementById('modalBg'); if(bg)bg.addEventListener('click',ev=>{if(ev.target.id==='modalBg')closeModal();});
-};
 /* ---- Dealer Requisition (পার্টস রিকুইজিশন) ---- */
 const REQ_ROWS = 50;
 ROUTES.dealerRequisition = function(){
@@ -4730,7 +4809,7 @@ function peShell(innerHTML){
           <button class="btn ${peTab==='search'?'btn-primary':'btn-ghost'} btn-sm" onclick="peTab='search';go('peDashboard')" style="${peTab!=='search'?'color:#fff;border-color:rgba(255,255,255,0.3);':''}">🔍 পার্টস সার্চ</button>
           <button class="btn ${peTab==='requisitions'?'btn-primary':'btn-ghost'} btn-sm" onclick="peTab='requisitions';go('peDashboard')" style="${peTab!=='requisitions'?'color:#fff;border-color:rgba(255,255,255,0.3);':''}">📝 রিকুইজিশন</button>
           <button class="btn ${peTab==='report'?'btn-primary':'btn-ghost'} btn-sm" onclick="peTab='report';go('peDashboard')" style="${peTab!=='report'?'color:#fff;border-color:rgba(255,255,255,0.3);':''}">📊 রিপোর্ট</button>
-          <button class="btn ${currentRoute==='partsCatalog'?'btn-primary':'btn-ghost'} btn-sm" onclick="go('partsCatalog')" style="${currentRoute!=='partsCatalog'?'color:#fff;border-color:rgba(255,255,255,0.3);':''}">🚗 Vehicle Model DB</button>
+          <button class="btn btn-ghost btn-sm" onclick="go('partsCatalog')" style="color:#fff;border-color:rgba(255,255,255,0.3);">🚗 Vehicle Model DB</button>
           <button class="btn ${peTab==='profile'?'btn-primary':'btn-ghost'} btn-sm" onclick="peTab='profile';go('peDashboard')" style="${peTab!=='profile'?'color:#fff;border-color:rgba(255,255,255,0.3);':''}">👤 আমার প্রোফাইল</button>
         </div>
         <div class="admin-content" style="background:rgba(255,255,255,0.05);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.15);color:#fff;">
@@ -5105,12 +5184,6 @@ ROUTES.adminDashboard = function(){
               <div style="width:48px;height:48px;border-radius:13px;background:#e3ddc4;display:flex;align-items:center;justify-content:center;font-size:24px;margin:0 auto 11px;">🚗</div>
               <div style="font-size:13px;font-weight:700;color:#1a2233;">Vehicle Model Database</div>
               <div style="font-size:10.5px;color:#6b7280;margin-top:3px;">পার্ট ও গাড়ির মডেল ম্যাপিং</div>
-            </div>
-
-            <div style="background:#fff;border-radius:14px;padding:22px 11px;text-align:center;cursor:pointer;transition:all 0.25s;box-shadow:0 3px 11px rgba(0,0,0,0.16);" onclick="go('partsCatalog');" onmouseover="this.style.transform='translateY(-6px)'" onmouseout="this.style.transform='translateY(0)'">
-              <div style="width:48px;height:48px;border-radius:13px;background:#e3ddc4;display:flex;align-items:center;justify-content:center;font-size:24px;margin:0 auto 11px;">📚</div>
-              <div style="font-size:13px;font-weight:700;color:#1a2233;">PDF Catalog</div>
-              <div style="font-size:10.5px;color:#6b7280;margin-top:3px;">মডেল অনুযায়ী PDF Catalog</div>
             </div>
 
             <div style="background:#fff;border-radius:14px;padding:22px 11px;text-align:center;cursor:pointer;transition:all 0.25s;box-shadow:0 3px 11px rgba(0,0,0,0.16);position:relative;" onclick="adminTab='partsEngineers';go('adminDashboard');" onmouseover="this.style.transform='translateY(-6px)'" onmouseout="this.style.transform='translateY(0)'">
