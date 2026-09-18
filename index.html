@@ -1793,7 +1793,6 @@ function dealerBottomNavHTML(){
     {key:'search',icon:'🏠',label:'হোম',onclick:"dealerManageTab='search';go('dealerPortal')"},
     {key:'memo',icon:'🧾',label:'মেমো',onclick:"dealerManageTab='memo';go('dealerPortal')"},
     {key:'stock',icon:'📦',label:'স্টক',onclick:"dealerManageTab='stock';go('dealerPortal')"},
-    {key:'vehicle',icon:'🚗',label:'গাড়ির মডেল',onclick:"go('dealerVehicleSearch')"},
     {key:'more',icon:'➕',label:'আরও',onclick:"showDealerMoreMenu()"}
   ], dealerManageTab);
 }
@@ -4266,8 +4265,7 @@ ROUTES.dealerSearch = function(){
         </div>
         <div class="topbar-right">
           <button class="btn btn-ghost btn-sm" onclick="go('dealerPortal')" style="color:#fff;border-color:rgba(255,255,255,.3)">🧾 Dealer Management</button>
-          <button class="btn btn-ghost btn-sm" onclick="go('dealerVehicleSearch')" style="color:#fff;border-color:rgba(255,255,255,.3)">🚗 গাড়ির মডেল</button>
-          <button class="btn btn-ghost btn-sm" onclick="go('dealerRequisition')" style="color:#fff;border-color:rgba(255,255,255,.3)">📝 রিকুইজিশন</button>
+             <button class="btn btn-ghost btn-sm" onclick="go('dealerRequisition')" style="color:#fff;border-color:rgba(255,255,255,.3)">📝 রিকুইজিশন</button>
           <button class="btn btn-ghost btn-sm theme-toggle" onclick="toggleTheme()" style="color:#fff;border-color:rgba(255,255,255,.3)">🌙</button>
           <span class="pill">${DB.session.user.name}</span>
           <button class="btn btn-ghost btn-sm" style="color:#fff;border-color:rgba(255,255,255,.3)" id="logout">${t('logout')}</button>
@@ -6455,13 +6453,14 @@ function wireLoginActivityTab(){
 let pendingVehicleUpload = null;
 function normalizeVText(s){ return String(s||'').toLowerCase().replace(/[.\-_,]/g,' ').replace(/\s+/g,' ').trim(); }
 function vehicleDbTabHTML(){
+  const isAdmin = DB.session?.role === 'admin';
   return `
-    <div class="card" style="margin-bottom:16px">
+    ${isAdmin ? `<div class="card" style="margin-bottom:16px">
       <h3 style="margin:0 0 10px">🚗 Vehicle Model Database — Excel আপলোড</h3>
       <p class="hint" style="margin:0 0 10px">কলাম হতে হবে: Part Number | Part Name | Vehicle Model | Brand | Category | Remarks। একাধিক মডেল হলে কমা (,) দিয়ে লিখুন।</p>
       <label class="btn btn-primary file-btn">📥 এক্সেল ফাইল বাছাই করুন<input type="file" id="vehicleExcelFile" accept=".xlsx,.xls,.csv"></label>
       <div id="vehicleUploadStatus" style="margin-top:10px;font-size:13.5px;color:var(--muted);"></div>
-    </div>
+    </div>` : ''}
     <div class="card">
       <div class="card-head">
         <h3 style="margin:0">রেকর্ড তালিকা (${DB.vehicleCompat.length}টি)</h3>
@@ -6476,24 +6475,27 @@ function vehicleDbTabHTML(){
 }
 function renderVehicleCompatTable(list){
   if(!list.length) return `<div class="empty">কোনো রেকর্ড নেই</div>`;
-  return `<table style="width:100%;border-collapse:collapse;min-width:600px;font-size:13.5px">
+  const isAdmin = DB.session?.role === 'admin';
+  return `<table style="width:100%;border-collapse:collapse;min-width:${isAdmin?'600':'460'}px;font-size:13.5px">
     <thead><tr style="background:var(--bg-2,#f4f4f4)">
       <th style="padding:6px;text-align:left">পার্ট নং</th><th style="padding:6px;text-align:left">পার্টের নাম</th>
       <th style="padding:6px;text-align:left">গাড়ির মডেল</th><th style="padding:6px;text-align:left">ব্র্যান্ড</th>
-      <th style="padding:6px;text-align:center">✏️</th><th style="padding:6px;text-align:center">🗑️</th>
+      ${isAdmin ? '<th style="padding:6px;text-align:center">✏️</th><th style="padding:6px;text-align:center">🗑️</th>' : ''}
     </tr></thead>
     <tbody>${list.map(v=>`<tr>
       <td style="padding:6px" class="mono">${v.partNo}</td>
       <td style="padding:6px">${v.partName}</td>
       <td style="padding:6px">${(v.models||[]).join(', ')}</td>
       <td style="padding:6px">${v.brand||'-'}</td>
-      <td style="padding:6px;text-align:center"><button class="v-edit" data-id="${v.id}" style="border:none;background:none;cursor:pointer;font-size:15px;">✏️</button></td>
-      <td style="padding:6px;text-align:center"><button class="v-del" data-id="${v.id}" style="border:none;background:none;cursor:pointer;font-size:15px;color:#e11d48;">🗑️</button></td>
+      ${isAdmin ? `<td style="padding:6px;text-align:center"><button class="v-edit" data-id="${v.id}" style="border:none;background:none;cursor:pointer;font-size:15px;">✏️</button></td>
+      <td style="padding:6px;text-align:center"><button class="v-del" data-id="${v.id}" style="border:none;background:none;cursor:pointer;font-size:15px;color:#e11d48;">🗑️</button></td>` : ''}
     </tr>`).join('')}</tbody>
   </table>`;
 }
+
 function wireVehicleDbTab(){
-  document.getElementById('vehicleExcelFile').addEventListener('change', handleVehicleExcelUpload);
+  const uploadEl = document.getElementById('vehicleExcelFile');
+  if(uploadEl && DB.session?.role === 'admin') uploadEl.addEventListener('change', handleVehicleExcelUpload);
   const searchEl = document.getElementById('vehicleAdminSearch');
   searchEl.oninput = ()=>{
     const q = normalizeVText(searchEl.value);
