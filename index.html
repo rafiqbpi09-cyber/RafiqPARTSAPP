@@ -687,6 +687,62 @@ window.APP_VERSION = '2026-09-16-login-cross-device-fix.2';
     .memo-print-sheet{border:none;max-width:none;padding:0;}
   }
 
+
+  /* ---- Role tab grid design: visual-only, keeps existing tab content/actions ---- */
+  .dealer-tabs{
+    display:grid !important;
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:10px !important;
+    padding:0 !important;
+    background:transparent !important;
+    border:none !important;
+    overflow:visible !important;
+  }
+  .dealer-tabs .tab{
+    min-height:76px;
+    margin:0 !important;
+    border:1px solid var(--line) !important;
+    border-radius:12px !important;
+    background:var(--card) !important;
+    color:var(--text) !important;
+    box-shadow:0 2px 7px rgba(0,0,0,.10);
+    display:flex !important;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    gap:6px;
+    padding:10px 6px !important;
+    white-space:normal !important;
+    line-height:1.2;
+  }
+  .dealer-tabs .tab:hover{transform:translateY(-1px);}
+  .dealer-tabs .tab.active{background:var(--navy) !important;color:#fff !important;border-color:var(--navy) !important;}
+  .pe-role-nav{
+    display:grid !important;
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:10px !important;
+    margin:14px 0 !important;
+  }
+  .pe-role-nav .role-nav-btn{
+    min-height:76px;
+    border:1px solid rgba(255,255,255,.22) !important;
+    border-radius:12px !important;
+    display:flex !important;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:6px;
+    text-align:center;
+    white-space:normal;
+    padding:10px 6px !important;
+    font-size:12px;
+  }
+  @media(max-width:760px){
+    .dealer-tabs,.pe-role-nav{grid-template-columns:repeat(3,minmax(0,1fr)) !important;}
+    .dealer-tabs .tab,.pe-role-nav .role-nav-btn{min-height:70px;font-size:11.5px;}
+  }
+
   /* ---- Bottom Navigation Bar (Dealer/PE/Admin — app-style quick nav) ---- */
   .bottom-nav{position:fixed;left:0;right:0;bottom:0;z-index:60;background:#fff;border-top:1px solid #e7e1cf;display:flex;justify-content:space-around;align-items:stretch;padding:6px 4px calc(6px + env(safe-area-inset-bottom,0px));box-shadow:0 -6px 16px rgba(0,0,0,0.10);}
   .bottom-nav-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;background:none;border:none;cursor:pointer;padding:5px 2px;color:#6b7280;font-size:11px;font-family:inherit;-webkit-tap-highlight-color:transparent;}
@@ -3526,6 +3582,7 @@ function dealerTopbar(sub='ডিলার পোর্টাল', hideBrand=fal
       <div><div class="brand-name">${escHtml(DB.settings.companyName)}</div><div class="brand-sub">${sub}</div></div>
     </div>`}
     <div class="topbar-right">
+      <button class="btn btn-ghost btn-sm" onclick="go('dealerVehicleSearch')" style="color:#fff;border-color:rgba(255,255,255,.3)">🚗 গাড়ির মডেল</button>
       <button class="btn btn-ghost btn-sm" onclick="go('dealerRequisition')" style="color:#fff;border-color:rgba(255,255,255,.3)">📝 রিকুইজিশন</button>
       <button class="btn btn-ghost btn-sm theme-toggle" onclick="toggleTheme()" style="color:#fff;border-color:rgba(255,255,255,.3)">🌙</button>
       <span class="pill">${escHtml(u?u.name:'')}</span>
@@ -4852,14 +4909,14 @@ function peShell(innerHTML){
             <button class="btn btn-ghost btn-sm" id="logout" style="color:#fff;border-color:rgba(255,255,255,0.3);font-size:15px;">🚪 ${t('logout')}</button>
           </div>
         </div>
-        <div style="display:flex;gap:8px;margin:14px 0;flex-wrap:wrap;">
-          <button class="btn ${peTab==='dealers'?'btn-primary':'btn-ghost'} btn-sm" onclick="peTab='dealers';go('peDashboard')" style="${peTab!=='dealers'?'color:#fff;border-color:rgba(255,255,255,0.3);':''}">👥 আমার ডিলার/মেকানিক</button>
-          <button class="btn ${peTab==='search'?'btn-primary':'btn-ghost'} btn-sm" onclick="peTab='search';go('peDashboard')" style="${peTab!=='search'?'color:#fff;border-color:rgba(255,255,255,0.3);':''}">🔍 পার্টস সার্চ</button>
-          <button class="btn ${peTab==='requisitions'?'btn-primary':'btn-ghost'} btn-sm" onclick="peTab='requisitions';go('peDashboard')" style="${peTab!=='requisitions'?'color:#fff;border-color:rgba(255,255,255,0.3);':''}">📝 রিকুইজিশন</button>
-          <button class="btn ${peTab==='report'?'btn-primary':'btn-ghost'} btn-sm" onclick="peTab='report';go('peDashboard')" style="${peTab!=='report'?'color:#fff;border-color:rgba(255,255,255,0.3);':''}">📊 রিপোর্ট</button>
-          <button class="btn btn-ghost btn-sm" onclick="go('vehicleModelDB')" style="color:#fff;border-color:rgba(255,255,255,0.3);">🚗 Vehicle Model DB</button>
-          <button class="btn btn-ghost btn-sm" onclick="go('partsCatalog')" style="color:#fff;border-color:rgba(255,255,255,0.3);">📚 Catalogue</button>
-          <button class="btn ${peTab==='profile'?'btn-primary':'btn-ghost'} btn-sm" onclick="peTab='profile';go('peDashboard')" style="${peTab!=='profile'?'color:#fff;border-color:rgba(255,255,255,0.3);':''}">👤 আমার প্রোফাইল</button>
+        <div class="pe-role-nav">
+          <button class="role-nav-btn btn ${peTab==='dealers'?'btn-primary':'btn-ghost'} btn-sm" onclick="peTab='dealers';go('peDashboard')" style="${peTab!=='dealers'?'color:#fff;border-color:rgba(255,255,255,0.3);':''}">👥 আমার ডিলার/মেকানিক</button>
+          <button class="role-nav-btn btn ${peTab==='search'?'btn-primary':'btn-ghost'} btn-sm" onclick="peTab='search';go('peDashboard')" style="${peTab!=='search'?'color:#fff;border-color:rgba(255,255,255,0.3);':''}">🔍 পার্টস সার্চ</button>
+          <button class="role-nav-btn btn ${peTab==='requisitions'?'btn-primary':'btn-ghost'} btn-sm" onclick="peTab='requisitions';go('peDashboard')" style="${peTab!=='requisitions'?'color:#fff;border-color:rgba(255,255,255,0.3);':''}">📝 রিকুইজিশন</button>
+          <button class="role-nav-btn btn ${peTab==='report'?'btn-primary':'btn-ghost'} btn-sm" onclick="peTab='report';go('peDashboard')" style="${peTab!=='report'?'color:#fff;border-color:rgba(255,255,255,0.3);':''}">📊 রিপোর্ট</button>
+          <button class="role-nav-btn btn btn-ghost btn-sm" onclick="go('vehicleModelDB')" style="color:#fff;border-color:rgba(255,255,255,0.3);">🚗 Vehicle Model DB</button>
+          <button class="role-nav-btn btn btn-ghost btn-sm" onclick="go('partsCatalog')" style="color:#fff;border-color:rgba(255,255,255,0.3);">📚 Catalogue</button>
+          <button class="role-nav-btn btn ${peTab==='profile'?'btn-primary':'btn-ghost'} btn-sm" onclick="peTab='profile';go('peDashboard')" style="${peTab!=='profile'?'color:#fff;border-color:rgba(255,255,255,0.3);':''}">👤 আমার প্রোফাইল</button>
         </div>
         <div class="admin-content" style="background:rgba(255,255,255,0.05);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.15);color:#fff;">
           ${innerHTML}
