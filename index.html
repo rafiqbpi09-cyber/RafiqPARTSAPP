@@ -1802,7 +1802,7 @@ function showDealerMoreMenu(){
       <button class="btn btn-ghost btn-block" onclick="closeModal();dealerManageTab='memoHistory';go('dealerPortal')">📜 Memo History</button>
       <button class="btn btn-ghost btn-block" onclick="closeModal();dealerManageTab='memoSearch';go('dealerPortal')">🔎 Memo Search</button>
       <button class="btn btn-ghost btn-block" onclick="closeModal();dealerManageTab='shopParts';go('dealerPortal')">🧩 My Shop Parts</button>
-      <button class="btn btn-ghost btn-block" onclick="closeModal();dealerManageTab='stockHistory';go('dealerPortal')">↕️ Stock History</button>
+      <button class="btn btn-ghost btn-block" onclick="closeModal();dealerManageTab='stockHistory';go('dealerPortal')">↕️ Stock History</button>\n      <button class="btn btn-ghost btn-block" onclick="closeModal();go('partsCatalog')">📚 Catalogue</button>
       <button class="btn btn-ghost btn-block" onclick="closeModal();go('dealerRequisition')">📝 রিকুইজিশন</button>
       <button class="btn btn-ghost btn-block" onclick="closeModal();dealerManageTab='profile';go('dealerPortal')">👤 আমার প্রোফাইল</button>
       <button class="btn btn-ghost btn-block" onclick="closeModal()">বাতিল</button>
@@ -1844,7 +1844,7 @@ function showAdminMoreMenu(){
       <button class="btn btn-ghost btn-block" onclick="closeModal();adminTab='dashboard';go('adminDashboard')">📊 ড্যাশবোর্ড</button>
       <button class="btn btn-ghost btn-block" onclick="closeModal();adminTab='requisitions';go('adminDashboard')">📝 রিকুইজিশন হিস্টরি</button>
       <button class="btn btn-ghost btn-block" onclick="closeModal();adminTab='loginActivity';go('adminDashboard')">📶 লগইন অ্যাক্টিভিটি</button>
-      <button class="btn btn-ghost btn-block" onclick="closeModal();adminTab='vehicleDb';go('adminDashboard')">🚗 Vehicle Model Database</button>
+      <button class="btn btn-ghost btn-block" onclick="closeModal();adminTab='vehicleDb';go('adminDashboard')">📚 Catalogue</button>
       <button class="btn btn-ghost btn-block" onclick="closeModal();adminTab='partsEngineers';go('adminDashboard')">🧑‍🔧 Parts Engineer</button>
       <button class="btn btn-ghost btn-block" onclick="closeModal();adminTab='settings';go('adminDashboard')">🔧 সেটিংস</button>
       <button class="btn btn-ghost btn-block" onclick="closeModal()">বাতিল</button>
@@ -1856,7 +1856,7 @@ function peBottomNavHTML(){
     {key:'search',icon:'🔍',label:'পার্টস সার্চ',onclick:"peTab='search';go('peDashboard')"},
     {key:'requisitions',icon:'📝',label:'রিকুইজিশন',onclick:"peTab='requisitions';go('peDashboard')"},
     {key:'report',icon:'📊',label:'রিপোর্ট',onclick:"peTab='report';go('peDashboard')"},
-    {key:'vehicleDb',icon:'📁',label:'Vehicle DB',onclick:"go('partsCatalog')"},
+    {key:'catalogue',icon:'📚',label:'Catalogue',onclick:"go('partsCatalog')"},
     {key:'logout',icon:'🚪',label:'লগআউট',onclick:"if(confirm('লগআউট করবেন?')){DB.session={role:null,user:null};go('landing');}"}
   ], peTab);
 }
@@ -3109,7 +3109,7 @@ ROUTES.mechanicDashboard = function(){
       {key:'search',icon:'🔍',label:'Parts Search',onclick:"mechanicTab='search';go('mechanicDashboard')"},
       {key:'tourbill',icon:'🧾',label:'Tour Bill',onclick:"mechanicTab='tourbill';go('mechanicDashboard')"},
       {key:'profile',icon:'👤',label:'My Profile',onclick:"mechanicTab='profile';go('mechanicDashboard')"},
-      {key:'vehicleDb',icon:'📁',label:'Vehicle DB',onclick:"go('partsCatalog')"},
+      {key:'catalogue',icon:'📚',label:'Catalogue',onclick:"go('partsCatalog')"},
       {key:'logout',icon:'🚪',label:'লগআউট',onclick:"if(confirm('লগআউট করবেন?')){DB.session={role:null,user:null};go('dealerLogin');}"}
     ], mechanicTab)}
   </div>`));
