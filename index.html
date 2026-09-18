@@ -1821,6 +1821,7 @@ function adminSidebarHTML(activeKey){
     ['requisitions','📝','রিকুইজিশন হিস্টরি', "adminTab='requisitions';go('adminDashboard')"],
     ['loginActivity','📶','লগইন অ্যাক্টিভিটি', "adminTab='loginActivity';go('adminDashboard')"],
     ['vehicleDb','🚗','Vehicle Model DB', "adminTab='vehicleDb';go('adminDashboard')"],
+    ['catalogue','📚','Catalogue', "go('partsCatalog')"],
     ['partsEngineers','🧑‍🔧','Parts Engineer', "adminTab='partsEngineers';go('adminDashboard')"],
     ['settings','🔧','সেটিংস', "adminTab='settings';go('adminDashboard')"],
     ['tourBills','🧾','Tour Bill Receive Report', "adminTab='tourBills';go('adminDashboard')"]
@@ -3505,10 +3506,11 @@ function dealerNavHTML(){
     ['shopParts','🧩 My Shop Parts'],
     ['stock','📦 My Stock'],
     ['stockHistory','↕️ Stock History'],
+    ['vehicleDb','🚗 Vehicle Model DB'],
+    ['catalogue','📚 Catalogue'],
     ['profile','👤 আমার প্রোফাইল']
   ];
-  return `<div class="dealer-tabs">${tabs.map(([id,label])=>
-    `<button class="tab ${dealerManageTab===id?'active':''}" onclick="dealerManageTab='${id}';go('dealerPortal')">${label}</button>`).join('')}</div>`;
+  return `<div class="dealer-tabs">${tabs.map(([id,label])=>{ const action=id==='vehicleDb' ? "go('vehicleModelDB')" : id==='catalogue' ? "go('partsCatalog')" : `dealerManageTab='${id}';go('dealerPortal')`; return `<button class="tab ${dealerManageTab===id?'active':''}" onclick="${action}">${label}</button>`; }).join('')}</div>`;
 }
 function dealerProfileHTML(){
   const u = currentDealer();
