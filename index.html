@@ -44,7 +44,7 @@ document.currentScript.parentNode.insertBefore(manifestLink, document.currentScr
 // প্রতিটি নতুন deployment/update দেওয়ার আগে এই APP_VERSION ভ্যালুটা পরিবর্তন করুন
 // (যেকোনো ইউনিক স্ট্রিং — তারিখ/সময় বা running number)। এই ভ্যালুর ভিত্তিতেই
 // সব ডিভাইস স্বয়ংক্রিয়ভাবে নতুন version detect করে reload হবে।
-window.APP_VERSION = '2026-09-18-sabihasoft-login-ui.1';
+window.APP_VERSION = '2026-09-18-sabihasoft-login-ui.2';
 
 (function(){
   // পুরনো/legacy blob-based service worker ও পুরনো Cache Storage সম্পূর্ণ পরিষ্কার করে দেওয়া হয়,
@@ -370,6 +370,14 @@ window.APP_VERSION = '2026-09-18-sabihasoft-login-ui.1';
 .sabiha-brand-name .soft{color:#ffb400;}
 .sabiha-brand-sub{margin-top:7px;font-size:clamp(15px,2.5vw,27px);font-weight:700;color:#123f84;letter-spacing:.2px;}
 .sabiha-tagline{margin-top:16px;font-size:clamp(18px,3vw,31px);font-weight:700;color:#12468e;}
+.sabiha-topnav{position:relative;z-index:10;max-width:1180px;margin:-10px auto 22px;display:flex;align-items:center;gap:8px;padding:8px 10px;background:rgba(255,255,255,.94);border:1px solid rgba(190,215,240,.9);border-radius:14px;box-shadow:0 8px 22px rgba(12,72,140,.12);overflow-x:auto;scrollbar-width:none;white-space:nowrap;}
+.sabiha-topnav::-webkit-scrollbar{display:none;}
+.sabiha-topnav .nav-brand{font-weight:900;font-size:18px;color:#0d3f91;margin-right:8px;display:flex;align-items:center;gap:6px;flex:0 0 auto;}
+.sabiha-topnav .nav-brand .soft{color:#ffb400;}
+.sabiha-topnav button{height:42px;padding:0 15px;border:1px solid #cfe0f6;border-radius:10px;background:#fff;color:#12468e;font:800 13px inherit;cursor:pointer;display:inline-flex;align-items:center;gap:6px;flex:0 0 auto;}
+.sabiha-topnav button:hover{background:#eef6ff;}
+.sabiha-topnav button.nav-home{background:#ffb400;border-color:#ffb400;color:#073b84;}
+.sabiha-topnav button.nav-login{background:#0b70dc;border-color:#0b70dc;color:#fff;}
 .sabiha-login-stage{position:relative;z-index:3;max-width:640px;margin:0 auto;}
 .sabiha-card{background:rgba(255,255,255,.94);border:2px solid rgba(255,255,255,.95);border-radius:28px;box-shadow:0 20px 55px rgba(12,72,140,.20);overflow:hidden;backdrop-filter:blur(8px);}
 .sabiha-card-head{background:linear-gradient(145deg,#0b70dc,#073f9c);color:#fff;padding:28px 30px 32px;position:relative;overflow:hidden;}
@@ -403,7 +411,10 @@ window.APP_VERSION = '2026-09-18-sabihasoft-login-ui.1';
 .sabiha-feature-strip span{display:inline-flex;align-items:center;gap:5px;}
 .sabiha-footer-band{position:absolute;left:-5%;right:-5%;bottom:-65px;height:150px;background:#073d91;border-top:7px solid #ffb400;border-radius:50% 50% 0 0/45% 45% 0 0;z-index:1;}
 @media(max-width:680px){
- .sabiha-login{padding:22px 12px 28px;overflow:auto;}
+ .sabiha-login{padding:12px 10px 28px;overflow:auto;}
+ .sabiha-topnav{margin:0 -2px 16px;padding:7px 8px;gap:6px;border-radius:12px;}
+ .sabiha-topnav .nav-brand{font-size:15px;margin-right:2px;}
+ .sabiha-topnav button{height:38px;padding:0 11px;font-size:11px;border-radius:9px;}
  .sabiha-curve{height:95px;top:-45px;}
  .sabiha-brand{margin-top:25px;margin-bottom:18px;}
  .sabiha-brand-name{font-size:44px;letter-spacing:-1.5px;}
@@ -2004,6 +2015,15 @@ ROUTES.landing = function(){
   app.appendChild(el(`
     <div class="sabiha-login">
       <div class="sabiha-curve"></div>
+      <nav class="sabiha-topnav" aria-label="Main navigation">
+        <div class="nav-brand">⚙️ Sabiha<span class="soft">Soft</span></div>
+        <button type="button" class="nav-home" data-nav="home">🏠 Home</button>
+        <button type="button" data-nav="parts">🔍 Parts Finder</button>
+        <button type="button" data-nav="dealer">👤 Dealer</button>
+        <button type="button" data-nav="mechanic">🔧 Mechanic</button>
+        <button type="button" data-nav="engineer">⚙️ Engineer</button>
+        <button type="button" class="nav-login" data-nav="login">⇥ Login</button>
+      </nav>
       <div class="sabiha-brand">
         <div class="sabiha-brand-name">Sabiha<span class="soft">Soft</span></div>
         <div class="sabiha-brand-sub">Parts Finder&nbsp;&nbsp;•&nbsp;&nbsp;Dealer&nbsp;&nbsp;•&nbsp;&nbsp;Mechanic&nbsp;&nbsp;•&nbsp;&nbsp;Engineer</div>
@@ -2020,6 +2040,15 @@ ROUTES.landing = function(){
       <div style="position:fixed;top:18px;left:16px;z-index:20;">${langSwitchHTML()}</div>
     </div>
   `));
+  const navActions = {
+    home: ()=>{ window.scrollTo({top:0,behavior:'smooth'}); },
+    parts: ()=>{ paintSingleLogin('admin'); window.scrollTo({top:document.getElementById('slCard')?.offsetTop||0,behavior:'smooth'}); },
+    dealer: ()=>{ paintSingleLogin('dealer'); window.scrollTo({top:document.getElementById('slCard')?.offsetTop||0,behavior:'smooth'}); },
+    mechanic: ()=>{ paintSingleLogin('dealer'); window.scrollTo({top:document.getElementById('slCard')?.offsetTop||0,behavior:'smooth'}); },
+    engineer: ()=>{ paintSingleLogin('engineer'); window.scrollTo({top:document.getElementById('slCard')?.offsetTop||0,behavior:'smooth'}); },
+    login: ()=>{ document.getElementById('slUser')?.focus(); window.scrollTo({top:document.getElementById('slCard')?.offsetTop||0,behavior:'smooth'}); }
+  };
+  document.querySelectorAll('.sabiha-topnav [data-nav]').forEach(btn=>{ btn.onclick=()=>navActions[btn.dataset.nav]?.(); });
   paintSingleLogin(initialRole);
 };
 
