@@ -3115,14 +3115,8 @@ ROUTES.vehicleModelDB=function(){
   const role=DB.session.role;
   const back=role==='admin'?'adminDashboard':role==='partsEngineer'?'peDashboard':role==='mechanic'?'mechanicDashboard':'dealerPortal';
   const app=document.getElementById('app');
-  app.appendChild(el(`<div><div class="topbar"><div class="topbar-brand"><div class="brand-logo">🚗</div><div><div class="brand-name">${escHtml(DB.settings.companyName)}</div><div class="brand-sub">Vehicle Model DB</div></div></div><div class="topbar-right"><button class="btn btn-ghost btn-sm" onclick="go('${back}')" style="color:#fff;border-color:rgba(255,255,255,.3)">⬅️ Back</button></div></div><div class="wrap has-bottom-nav">${vehicleModelDBRoleHTML()}</div></div>`));
-  const q=document.getElementById('vehicleModelDbSearch');
-  if(q) q.addEventListener('input',()=>{
-    const s=String(q.value||'').trim().toLowerCase();
-    const cards=document.querySelectorAll('.vehicle-model-folder'); let visible=0;
-    cards.forEach(c=>{const ok=!s||String(c.dataset.model||'').includes(s);c.style.display=ok?'':'none';if(ok)visible++;});
-    const count=document.getElementById('vehicleModelDbCount'); if(count)count.textContent=visible;
-  });
+  app.appendChild(el(`<div><div class="topbar"><div class="topbar-brand"><div class="brand-logo">🚗</div><div><div class="brand-name">${escHtml(DB.settings.companyName)}</div><div class="brand-sub">Vehicle Model DB</div></div></div><div class="topbar-right"><button class="btn btn-ghost btn-sm" onclick="go('${back}')" style="color:#fff;border-color:rgba(255,255,255,.3)">⬅️ Back</button></div></div><div class="wrap has-bottom-nav">${vehicleDbTabHTML()}</div></div>`));
+  wireVehicleDbTab();
 };
 
 ROUTES.partsCatalog=function(){
