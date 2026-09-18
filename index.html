@@ -773,11 +773,15 @@ window.APP_VERSION = '2026-09-17-pdf-catalog.2';
   .catalog-title{font-size:21px;font-weight:800;color:var(--text);margin:0;}
   .catalog-sub{font-size:12.5px;color:var(--muted);margin-top:2px;}
   .catalog-search{width:100%;padding:12px 14px;border:1.5px solid var(--line);border-radius:10px;background:var(--card);color:var(--text);font:inherit;margin-bottom:16px;}
-  .catalog-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;}
-  .catalog-card{background:var(--card);border:1px solid var(--line);border-left:3px solid #0e5c30;border-radius:12px;padding:16px;box-shadow:0 2px 8px rgba(18,35,61,.08);min-height:145px;display:flex;flex-direction:column;justify-content:space-between;}
-  .catalog-card h4{margin:0 0 8px;color:var(--text);font-size:15px;}
+  .catalog-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;}
+  .catalog-card{position:relative;background:linear-gradient(180deg,#fffdf7 0%,var(--card) 100%);border:1px solid #d9d2c2;border-radius:12px;padding:18px 14px 14px;box-shadow:0 3px 10px rgba(18,35,61,.08);min-height:154px;display:flex;flex-direction:column;justify-content:space-between;overflow:visible;margin-top:7px;}
+  .catalog-card::before{content:"";position:absolute;left:-1px;top:-8px;width:58px;height:18px;background:#e8ddbd;border:1px solid #d9d2c2;border-bottom:0;border-radius:9px 9px 0 0;}
+  .catalog-card::after{content:"📁";position:absolute;left:12px;top:-5px;font-size:13px;}
+  .catalog-folder-icon{font-size:28px;line-height:1;margin-bottom:7px;}
+  .catalog-card h4{margin:0 0 7px;color:var(--text);font-size:15px;font-weight:800;word-break:break-word;}
   .catalog-date{font-size:11px;color:var(--muted);line-height:1.45;margin-bottom:10px;}
   .catalog-actions{display:flex;gap:7px;flex-wrap:wrap;}
+  .catalog-actions .btn{flex:1 1 auto;min-width:72px;}
   .catalog-empty{padding:36px 12px;text-align:center;color:var(--muted);background:var(--card);border:1px dashed var(--line);border-radius:12px;}
   .catalog-view{position:fixed;inset:0;z-index:100000;background:#111;overflow:hidden;border:0;border-radius:0;display:flex;flex-direction:column;}
   .catalog-view iframe{display:block;width:100%;height:calc(100dvh - 56px);min-height:0;flex:1;border:0;background:#111;touch-action:pinch-zoom;}
@@ -800,9 +804,12 @@ window.APP_VERSION = '2026-09-17-pdf-catalog.2';
     .catalog-view-tools .btn{padding:7px 8px;font-size:12px;}
   }
   @media(max-width:480px){
-    .catalog-grid{grid-template-columns:1fr;}
+    .catalog-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;}
     .catalog-title{font-size:19px;}
-    .catalog-card{min-height:128px;}
+    .catalog-card{min-height:136px;padding:17px 10px 10px;}
+    .catalog-card h4{font-size:13.5px;}
+    .catalog-date{font-size:10px;}
+    .catalog-actions .btn{font-size:11px;padding:7px 6px;}
   }
   #saveToast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(20px);background:#1f7a4d;color:#fff;padding:10px 20px;border-radius:30px;font-size:14px;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,.25);z-index:99999;opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;}
   #saveToast.show{opacity:1;transform:translateX(-50%) translateY(0);}
@@ -1755,6 +1762,7 @@ function showDealerMoreMenu(){
       <button class="btn btn-ghost btn-block" onclick="closeModal();dealerManageTab='shopParts';go('dealerPortal')">🧩 My Shop Parts</button>
       <button class="btn btn-ghost btn-block" onclick="closeModal();dealerManageTab='stockHistory';go('dealerPortal')">↕️ Stock History</button>
       <button class="btn btn-ghost btn-block" onclick="closeModal();go('dealerRequisition')">📝 রিকুইজিশন</button>
+      <button class="btn btn-ghost btn-block" onclick="closeModal();go('partsCatalog')">📁 Vehicle Model DB</button>
       <button class="btn btn-ghost btn-block" onclick="closeModal();dealerManageTab='profile';go('dealerPortal')">👤 আমার প্রোফাইল</button>
       <button class="btn btn-ghost btn-block" onclick="closeModal()">বাতিল</button>
     </div>`);
@@ -1769,7 +1777,7 @@ function adminSidebarHTML(activeKey){
     ['requisitions','📝','রিকুইজিশন হিস্টরি', "adminTab='requisitions';go('adminDashboard')"],
     ['loginActivity','📶','লগইন অ্যাক্টিভিটি', "adminTab='loginActivity';go('adminDashboard')"],
     ['vehicleDb','🚗','Vehicle Model DB', "adminTab='vehicleDb';go('adminDashboard')"],
-    ['catalogs','📚','PDF Catalog', "go('partsCatalog')"],
+    ['catalogs','🚗','Vehicle Model DB', "go('partsCatalog')"],
     ['partsEngineers','🧑‍🔧','Parts Engineer', "adminTab='partsEngineers';go('adminDashboard')"],
     ['settings','🔧','সেটিংস', "adminTab='settings';go('adminDashboard')"],
     ['tourBills','🧾','Tour Bill Receive Report', "adminTab='tourBills';go('adminDashboard')"]
@@ -1797,7 +1805,7 @@ function showAdminMoreMenu(){
       <button class="btn btn-ghost btn-block" onclick="closeModal();adminTab='requisitions';go('adminDashboard')">📝 রিকুইজিশন হিস্টরি</button>
       <button class="btn btn-ghost btn-block" onclick="closeModal();adminTab='loginActivity';go('adminDashboard')">📶 লগইন অ্যাক্টিভিটি</button>
       <button class="btn btn-ghost btn-block" onclick="closeModal();adminTab='vehicleDb';go('adminDashboard')">🚗 Vehicle Model Database</button>
-      <button class="btn btn-ghost btn-block" onclick="closeModal();go('partsCatalog')">📚 PDF Catalog</button>
+      <button class="btn btn-ghost btn-block" onclick="closeModal();go('partsCatalog')">🚗 Vehicle Model DB</button>
       <button class="btn btn-ghost btn-block" onclick="closeModal();adminTab='partsEngineers';go('adminDashboard')">🧑‍🔧 Parts Engineer</button>
       <button class="btn btn-ghost btn-block" onclick="closeModal();adminTab='settings';go('adminDashboard')">🔧 সেটিংস</button>
       <button class="btn btn-ghost btn-block" onclick="closeModal()">বাতিল</button>
@@ -1809,6 +1817,7 @@ function peBottomNavHTML(){
     {key:'search',icon:'🔍',label:'পার্টস সার্চ',onclick:"peTab='search';go('peDashboard')"},
     {key:'requisitions',icon:'📝',label:'রিকুইজিশন',onclick:"peTab='requisitions';go('peDashboard')"},
     {key:'report',icon:'📊',label:'রিপোর্ট',onclick:"peTab='report';go('peDashboard')"},
+    {key:'vehicleDb',icon:'🚗',label:'Vehicle Model DB',onclick:"go('partsCatalog')"},
     {key:'logout',icon:'🚪',label:'লগআউট',onclick:"if(confirm('লগআউট করবেন?')){DB.session={role:null,user:null};go('landing');}"}
   ], peTab);
 }
@@ -2952,7 +2961,7 @@ ROUTES.mechanicDashboard = function(){
         <button class="tab ${mechanicTab==='search'?'active':''}" onclick="mechanicTab='search';go('mechanicDashboard')">🔍 Parts Search</button>
         <button class="tab ${mechanicTab==='tourbill'?'active':''}" onclick="mechanicTab='tourbill';go('mechanicDashboard')">🧾 Tour Bill</button>
         <button class="tab ${mechanicTab==='profile'?'active':''}" onclick="mechanicTab='profile';go('mechanicDashboard')">👤 My Profile</button>
-        <button class="tab" onclick="go('partsCatalog')">📚 PDF Catalog</button>
+        <button class="tab ${currentRoute==='partsCatalog'?'active':''}" onclick="go('partsCatalog')">🚗 Vehicle Model DB</button>
       </div>
       ${content}
     </div>
@@ -2960,6 +2969,7 @@ ROUTES.mechanicDashboard = function(){
       {key:'search',icon:'🔍',label:'Parts Search',onclick:"mechanicTab='search';go('mechanicDashboard')"},
       {key:'tourbill',icon:'🧾',label:'Tour Bill',onclick:"mechanicTab='tourbill';go('mechanicDashboard')"},
       {key:'profile',icon:'👤',label:'My Profile',onclick:"mechanicTab='profile';go('mechanicDashboard')"},
+      {key:'vehicleDb',icon:'📁',label:'Vehicle DB',onclick:"go('partsCatalog')"},
       {key:'logout',icon:'🚪',label:'লগআউট',onclick:"if(confirm('লগআউট করবেন?')){DB.session={role:null,user:null};go('dealerLogin');}"}
     ], mechanicTab)}
   </div>`));
@@ -3315,7 +3325,7 @@ function dealerTopbar(sub='ডিলার পোর্টাল', hideBrand=fal
       <div><div class="brand-name">${escHtml(DB.settings.companyName)}</div><div class="brand-sub">${sub}</div></div>
     </div>`}
     <div class="topbar-right">
-      <button class="btn btn-ghost btn-sm" onclick="go('dealerVehicleSearch')" style="color:#fff;border-color:rgba(255,255,255,.3)">🚗 গাড়ির মডেল</button>
+      <button class="btn btn-ghost btn-sm" onclick="go('dealerVehicleSearch')" style="color:#fff;border-color:rgba(255,255,255,.3)">🚗 গাড়ির মডেল</button><button class="btn btn-ghost btn-sm" onclick="go('partsCatalog')" style="color:#fff;border-color:rgba(255,255,255,.3)">📁 Vehicle Model DB</button>
       <button class="btn btn-ghost btn-sm" onclick="go('dealerRequisition')" style="color:#fff;border-color:rgba(255,255,255,.3)">📝 রিকুইজিশন</button>
       <button class="btn btn-ghost btn-sm theme-toggle" onclick="toggleTheme()" style="color:#fff;border-color:rgba(255,255,255,.3)">🌙</button>
       <span class="pill">${escHtml(u?u.name:'')}</span>
@@ -4244,11 +4254,11 @@ function catalogOpenUrl(url){const id=catalogFileId(url);return id?`https://driv
 function catalogValidLink(url){return /^https:\/\/drive\.google\.com\//i.test(String(url||'').trim());}
 function catalogCardHTML(c,isAdmin){
   const updated=c.updatedAtDisplay||c.createdAtDisplay||'—';
-  return `<div class="catalog-card"><div><h4>📘 ${escHtml(c.model||'Unnamed Model')}</h4><div class="catalog-date">Last updated:<br>${escHtml(updated)}${c.updatedBy?` — ${escHtml(c.updatedBy)}`:''}</div></div><div class="catalog-actions"><button class="btn btn-navy btn-sm" onclick="openPartsCatalogPdf('${escHtml(c.id)}')">📁 View</button>${isAdmin?`<button class="btn btn-ghost btn-sm" onclick="editPartsCatalog('${escHtml(c.id)}')">Edit</button>`:''}</div></div>`;
+  return `<div class="catalog-card"><div><div class="catalog-folder-icon">📂</div><h4>${escHtml(c.model||'Unnamed Model')}</h4><div class="catalog-date">Last updated:<br>${escHtml(updated)}${c.updatedBy?` — ${escHtml(c.updatedBy)}`:''}</div></div><div class="catalog-actions"><button class="btn btn-navy btn-sm" onclick="openPartsCatalogPdf('${escHtml(c.id)}')">📖 View PDF</button>${isAdmin?`<button class="btn btn-ghost btn-sm" onclick="editPartsCatalog('${escHtml(c.id)}')">Edit</button>`:''}</div></div>`;
 }
 function partsCatalogHTML(){
   const isAdmin=DB.session?.role==='admin', list=catalogList();
-  return `<div class="catalog-page"><div class="card" style="margin-bottom:14px;"><div class="catalog-head"><div><h2 class="catalog-title">📚 Parts PDF Catalog</h2><div class="catalog-sub">মডেল অনুযায়ী PDF Catalog অ্যাপের ভিতরেই পড়ুন</div></div>${isAdmin?`<button class="btn btn-primary btn-sm" onclick="openPartsCatalogForm()">＋ Add Catalog</button>`:''}</div><input id="catalogSearch" class="catalog-search" type="search" placeholder="Enter the model name..." autocomplete="off"><div style="font-size:12px;color:var(--muted);margin:-8px 0 14px;">Total models: <b id="catalogCount">${list.length}</b></div><div id="catalogGrid" class="catalog-grid">${list.length?list.map(c=>catalogCardHTML(c,isAdmin)).join(''):`<div class="catalog-empty" style="grid-column:1/-1;">এখনো কোনো PDF Catalog যোগ করা হয়নি।${isAdmin?' Add Catalog চাপুন এবং Google Drive PDF link দিন।':''}</div>`}</div></div></div>`;
+  return `<div class="catalog-page"><div class="card" style="margin-bottom:14px;"><div class="catalog-head"><div><h2 class="catalog-title">🚗 Vehicle Model DB</h2><div class="catalog-sub">মডেলগুলো Folder Style-এ দেখুন এবং PDF Catalog অ্যাপের ভিতরেই পড়ুন</div></div>${isAdmin?`<button class="btn btn-primary btn-sm" onclick="openPartsCatalogForm()">＋ Add Catalog</button>`:''}</div><input id="catalogSearch" class="catalog-search" type="search" placeholder="Enter the model name..." autocomplete="off"><div style="font-size:12px;color:var(--muted);margin:-8px 0 14px;">Total models: <b id="catalogCount">${list.length}</b></div><div id="catalogGrid" class="catalog-grid">${list.length?list.map(c=>catalogCardHTML(c,isAdmin)).join(''):`<div class="catalog-empty" style="grid-column:1/-1;">এখনো কোনো PDF Catalog যোগ করা হয়নি।${isAdmin?' Add Catalog চাপুন এবং Google Drive PDF link দিন।':''}</div>`}</div></div></div>`;
 }
 function renderPartsCatalogList(){
   const grid=document.getElementById('catalogGrid'), count=document.getElementById('catalogCount'), input=document.getElementById('catalogSearch'); if(!grid)return;
@@ -4293,7 +4303,7 @@ ROUTES.partsCatalog=function(){
   if(!requireRole(['admin','dealer','mechanic','partsEngineer']))return;
   const role=DB.session.role, back=role==='admin'?'adminDashboard':role==='partsEngineer'?'peDashboard':role==='mechanic'?'mechanicDashboard':'dealerPortal';
   const app=document.getElementById('app');
-  app.appendChild(el(`<div><div class="topbar"><div class="topbar-brand"><div class="brand-logo">📚</div><div><div class="brand-name">${escHtml(DB.settings.companyName)}</div><div class="brand-sub">Parts PDF Catalog</div></div></div><div class="topbar-right"><button class="btn btn-ghost btn-sm" onclick="go('${back}')" style="color:#fff;border-color:rgba(255,255,255,.3)">⬅️ Back</button></div></div><div class="wrap has-bottom-nav">${partsCatalogHTML()}</div><div class="modal-bg" id="modalBg"><div class="modal" id="modalBody"></div></div></div>`));
+  app.appendChild(el(`<div><div class="topbar"><div class="topbar-brand"><div class="brand-logo">📚</div><div><div class="brand-name">${escHtml(DB.settings.companyName)}</div><div class="brand-sub">Vehicle Model DB</div></div></div><div class="topbar-right"><button class="btn btn-ghost btn-sm" onclick="go('${back}')" style="color:#fff;border-color:rgba(255,255,255,.3)">⬅️ Back</button></div></div><div class="wrap has-bottom-nav">${partsCatalogHTML()}</div><div class="modal-bg" id="modalBg"><div class="modal" id="modalBody"></div></div></div>`));
   const q=document.getElementById('catalogSearch'); if(q)q.addEventListener('input',renderPartsCatalogList); const bg=document.getElementById('modalBg'); if(bg)bg.addEventListener('click',ev=>{if(ev.target.id==='modalBg')closeModal();});
 };
 /* ---- Dealer Requisition (পার্টস রিকুইজিশন) ---- */
@@ -4720,7 +4730,7 @@ function peShell(innerHTML){
           <button class="btn ${peTab==='search'?'btn-primary':'btn-ghost'} btn-sm" onclick="peTab='search';go('peDashboard')" style="${peTab!=='search'?'color:#fff;border-color:rgba(255,255,255,0.3);':''}">🔍 পার্টস সার্চ</button>
           <button class="btn ${peTab==='requisitions'?'btn-primary':'btn-ghost'} btn-sm" onclick="peTab='requisitions';go('peDashboard')" style="${peTab!=='requisitions'?'color:#fff;border-color:rgba(255,255,255,0.3);':''}">📝 রিকুইজিশন</button>
           <button class="btn ${peTab==='report'?'btn-primary':'btn-ghost'} btn-sm" onclick="peTab='report';go('peDashboard')" style="${peTab!=='report'?'color:#fff;border-color:rgba(255,255,255,0.3);':''}">📊 রিপোর্ট</button>
-          <button class="btn btn-ghost btn-sm" onclick="go('partsCatalog')" style="color:#fff;border-color:rgba(255,255,255,0.3);">📚 PDF Catalog</button>
+          <button class="btn ${currentRoute==='partsCatalog'?'btn-primary':'btn-ghost'} btn-sm" onclick="go('partsCatalog')" style="${currentRoute!=='partsCatalog'?'color:#fff;border-color:rgba(255,255,255,0.3);':''}">🚗 Vehicle Model DB</button>
           <button class="btn ${peTab==='profile'?'btn-primary':'btn-ghost'} btn-sm" onclick="peTab='profile';go('peDashboard')" style="${peTab!=='profile'?'color:#fff;border-color:rgba(255,255,255,0.3);':''}">👤 আমার প্রোফাইল</button>
         </div>
         <div class="admin-content" style="background:rgba(255,255,255,0.05);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.15);color:#fff;">
