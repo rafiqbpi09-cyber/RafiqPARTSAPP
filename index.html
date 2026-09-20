@@ -44,7 +44,7 @@ document.currentScript.parentNode.insertBefore(manifestLink, document.currentScr
 // প্রতিটি নতুন deployment/update দেওয়ার আগে এই APP_VERSION ভ্যালুটা পরিবর্তন করুন
 // (যেকোনো ইউনিক স্ট্রিং — তারিখ/সময় বা running number)। এই ভ্যালুর ভিত্তিতেই
 // সব ডিভাইস স্বয়ংক্রিয়ভাবে নতুন version detect করে reload হবে।
-window.APP_VERSION = '2026-09-18-sabihasoft-login-ui.1';
+window.APP_VERSION = '2026-09-20-sabihasoft-login-cleanup.1';
 
 (function(){
   // পুরনো/legacy blob-based service worker ও পুরনো Cache Storage সম্পূর্ণ পরিষ্কার করে দেওয়া হয়,
@@ -403,26 +403,28 @@ window.APP_VERSION = '2026-09-18-sabihasoft-login-ui.1';
 .sabiha-feature-strip span{display:inline-flex;align-items:center;gap:5px;}
 .sabiha-footer-band{position:absolute;left:-5%;right:-5%;bottom:-65px;height:150px;background:#073d91;border-top:7px solid #ffb400;border-radius:50% 50% 0 0/45% 45% 0 0;z-index:1;}
 @media(max-width:680px){
- .sabiha-login{padding:22px 12px 28px;overflow:auto;}
- .sabiha-curve{height:95px;top:-45px;}
- .sabiha-brand{margin-top:25px;margin-bottom:18px;}
- .sabiha-brand-name{font-size:44px;letter-spacing:-1.5px;}
- .sabiha-brand-sub{font-size:13px;}
- .sabiha-tagline{font-size:17px;margin-top:10px;}
- .sabiha-card{border-radius:20px;}
- .sabiha-card-head{padding:22px 20px 28px;}
- .sabiha-welcome{gap:12px;}
- .sabiha-user-badge{width:54px;height:54px;font-size:27px;}
- .sabiha-welcome h1{font-size:25px;}
- .sabiha-welcome p{font-size:13px;}
- .sabiha-card-body{padding:22px 18px 22px;}
- .sabiha-role select,.sabiha-input{height:52px;font-size:14px;}
- .sabiha-switch button{height:44px;font-size:14px;}
- .sabiha-login-btn{height:52px;font-size:16px;}
- .sabiha-options{font-size:12px;}
- .sabiha-options button,.sabiha-create,.sabiha-links button{font-size:12px;}
- .sabiha-feature-strip{font-size:10px;gap:10px;padding:10px;}
- .sabiha-footer-band{bottom:-85px;}
+ .sabiha-login{padding:10px 10px 16px;overflow:auto;}
+ .sabiha-curve{height:78px;top:-38px;}
+ .sabiha-brand{margin-top:18px;margin-bottom:12px;}
+ .sabiha-brand-name{font-size:40px;letter-spacing:-1.2px;}
+ .sabiha-brand-sub{font-size:12px;}
+ .sabiha-tagline{font-size:15px;margin-top:7px;}
+ .sabiha-card{border-radius:18px;}
+ .sabiha-card-head{padding:18px 16px 22px;}
+ .sabiha-welcome{gap:10px;}
+ .sabiha-user-badge{width:48px;height:48px;font-size:24px;}
+ .sabiha-welcome h1{font-size:22px;}
+ .sabiha-welcome p{font-size:12px;}
+ .sabiha-card-body{padding:16px 14px 16px;}
+ .sabiha-role{margin-bottom:12px;}
+ .sabiha-role select,.sabiha-input{height:48px;font-size:14px;}
+ .sabiha-field{margin-bottom:10px;}
+ .sabiha-login-btn{height:48px;font-size:15px;margin:4px 0 12px;}
+ .sabiha-options{font-size:11px;margin-bottom:12px;}
+ .sabiha-options button,.sabiha-create,.sabiha-links button{font-size:11px;}
+ .sabiha-divider{margin:2px 0 12px;}
+ .sabiha-feature-strip{margin-top:12px;font-size:9px;gap:8px;padding:8px;}
+ .sabiha-footer-band{bottom:-90px;}
 }
 
 
@@ -1982,8 +1984,7 @@ function peBottomNavHTML(){
     {key:'requisitions',icon:'📝',label:'রিকুইজিশন',onclick:"peTab='requisitions';go('peDashboard')"},
     {key:'report',icon:'📊',label:'রিপোর্ট',onclick:"peTab='report';go('peDashboard')"},
     {key:'vehicleDb',icon:'🚗',label:'Vehicle DB',onclick:"go('vehicleModelDB')"},
-      {key:'vehicleDb',icon:'🚗',label:'Vehicle DB',onclick:"go('vehicleModelDB')"},
-    {key:'catalogue',icon:'📚',label:'Catalogue',onclick:"go('partsCatalog')"},
+      {key:'catalogue',icon:'📚',label:'Catalogue',onclick:"go('partsCatalog')"},
     {key:'logout',icon:'🚪',label:'লগআউট',onclick:"if(confirm('লগআউট করবেন?')){DB.session={role:null,user:null};go('landing');}"}
   ], peTab);
 }
@@ -2060,7 +2061,6 @@ function paintSingleLogin(role){
         <option value="engineer" ${role==='engineer'?'selected':''}>🔧 ${getLang()==='en'?'Engineer':'ইঞ্জিনিয়ার'}</option>
       </select>
     </div>`;
-  const defaultMode = role === 'admin' ? 'staff' : 'mobile';
   card.innerHTML = `
     <div class="sabiha-card-head">
       <div class="sabiha-welcome">
@@ -2070,12 +2070,8 @@ function paintSingleLogin(role){
     </div>
     <div class="sabiha-card-body">
       ${roleSelectHTML}
-      <div class="sabiha-switch" id="slLoginMode">
-        <button type="button" data-mode="staff" class="${defaultMode==='staff'?'active':''}">👤 Staff ID</button>
-        <button type="button" data-mode="mobile" class="${defaultMode==='mobile'?'active':''}">📱 Mobile Number</button>
-      </div>
       <div class="err" id="slErr"></div>
-      <div class="sabiha-field"><span class="sicon">👤</span><input class="sabiha-input" type="text" id="slUser" placeholder="${defaultMode==='staff' ? 'Enter Staff ID' : cfg.idPlaceholder}" autocomplete="username"></div>
+      <div class="sabiha-field"><span class="sicon">👤</span><input class="sabiha-input" type="text" id="slUser" placeholder="${cfg.idPlaceholder}" autocomplete="username"></div>
       <div class="sabiha-field"><span class="sicon">🔒</span><input class="sabiha-input" type="password" id="slPw" placeholder="Password" autocomplete="current-password"><button type="button" class="seye" onclick="l3Toggle('slPw')">${ICO_EYE}</button></div>
       <button class="sabiha-login-btn" id="slSubmit">⇥ &nbsp; Login</button>
       <div class="sabiha-options">
@@ -2089,13 +2085,6 @@ function paintSingleLogin(role){
   if(!DEALER_ONLY){
     document.getElementById('slRoleSelect').onchange = (e)=> paintSingleLogin(e.target.value);
   }
-  const modeButtons = [...document.querySelectorAll('#slLoginMode button')];
-  const setMode = (mode)=>{
-    modeButtons.forEach(b=>b.classList.toggle('active',b.dataset.mode===mode));
-    const inp=document.getElementById('slUser');
-    if(inp) inp.placeholder = mode==='staff' ? 'Enter Staff ID' : cfg.idPlaceholder;
-  };
-  modeButtons.forEach(b=>b.onclick=()=>setMode(b.dataset.mode));
   const forgot = document.getElementById('slForgotAlt');
   if(forgot){
     forgot.onclick = ()=>{
@@ -3678,7 +3667,6 @@ function dealerTopbar(sub='ডিলার পোর্টাল', hideBrand=fal
       <div><div class="brand-name">${escHtml(DB.settings.companyName)}</div><div class="brand-sub">${sub}</div></div>
     </div>`}
     <div class="topbar-right">
-      <button class="btn btn-ghost btn-sm" onclick="go('dealerVehicleSearch')" style="color:#fff;border-color:rgba(255,255,255,.3)">🚗 গাড়ির মডেল</button>
       <button class="btn btn-ghost btn-sm" onclick="go('dealerRequisition')" style="color:#fff;border-color:rgba(255,255,255,.3)">📝 রিকুইজিশন</button>
       <button class="btn btn-ghost btn-sm theme-toggle" onclick="toggleTheme()" style="color:#fff;border-color:rgba(255,255,255,.3)">🌙</button>
       <span class="pill">${escHtml(u?u.name:'')}</span>
