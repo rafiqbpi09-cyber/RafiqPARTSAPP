@@ -1359,7 +1359,10 @@ async function loadDB(){
       if(Array.isArray(saved.partsEngineers)) DB.partsEngineers = saved.partsEngineers;
       if(saved.nextPeId) nextPeId = saved.nextPeId;
       else if(DB.partsEngineers.length) nextPeId = Math.max(...DB.partsEngineers.map(p=>Number(p.id)||0))+1;
-      if(!dealerPartsLoadedFromFirebase && Array.isArray(saved.dealerShopParts)) DB.dealerShopParts = saved.dealerShopParts;
+      if(!dealerPartsLoadedFromFirebase){
+        const savedDealerParts=dealerPartsArray(saved.dealerShopParts);
+        if(savedDealerParts.length) DB.dealerShopParts = savedDealerParts;
+      }
       normalizeDealerShopPartBrands();
       if(Array.isArray(saved.dealerMemos)) DB.dealerMemos = saved.dealerMemos;
       if(Array.isArray(saved.dealerMemoDrafts)) DB.dealerMemoDrafts = saved.dealerMemoDrafts;
@@ -1373,8 +1376,9 @@ async function loadDB(){
       try{
         const dSnap = await fbDb.ref('appdata/dealerShopParts').once('value');
         const dSaved = dSnap.val();
-        if(Array.isArray(dSaved)){
-          DB.dealerShopParts = dSaved;
+        const dParts=dealerPartsArray(dSaved);
+        if(dParts.length){
+          DB.dealerShopParts = dParts;
           dealerPartsLoadedFromFirebase=true;
         }
       }catch(de){ console.warn('Dealer shop parts SDK load failed:', de); }
@@ -1387,8 +1391,9 @@ async function loadDB(){
     try{
       const dSnap = await fbDb.ref('appdata/dealerShopParts').once('value');
       const dSaved = dSnap.val();
-      if(Array.isArray(dSaved)){
-        DB.dealerShopParts = dSaved;
+      const dParts=dealerPartsArray(dSaved);
+      if(dParts.length){
+        DB.dealerShopParts = dParts;
         dealerPartsLoadedFromFirebase=true;
       }
     }catch(de){ console.warn('Dealer shop parts SDK load failed:', de); }
@@ -3652,6 +3657,17 @@ function normalizeVehicleBrands(){
   return changed;
 }
 
+function dealerPartsArray(value){
+  if(Array.isArray(value)) return value.filter(Boolean);
+  if(value && typeof value==='object'){
+    // Firebase RTDB may return an object when numeric array indexes have gaps.
+    // Convert those numeric-key records back to a normal list instead of showing 0.
+    const keys=Object.keys(value);
+    if(keys.length && keys.every(k=>/^\d+$/.test(k))) return keys.sort((a,b)=>Number(a)-Number(b)).map(k=>value[k]).filter(Boolean);
+  }
+  return [];
+}
+
 function currentDealer(){
   return DB.session && DB.session.role === 'dealer' ? DB.session.user : null;
 }
@@ -3680,7 +3696,19 @@ function dealerShopParts(){
   const u=currentDealer();
   if(!u) return [];
   const id=dealerDataId(u);
-  return DB.dealerShopParts.filter(p=>String(p.dealerId)===String(id));
+  const all=dealerPartsArray(DB.dealerShopParts);
+  const direct=all.filter(p=>String(p.dealerId)===String(id));
+  if(direct.length) return direct;
+  // Legacy recovery: older records may have a previous dealerId while the
+  // stock-history records still identify the same dealer/parts.
+  const h=Array.isArray(DB.stockHistory)?DB.stockHistory:[];
+  const name=String(u.name||'').trim().toLowerCase();
+  const ownedIds=new Set(h.filter(x=>{
+    const hn=String(x?.dealerName||'').trim().toLowerCase();
+    return String(x?.dealerId)===String(id) || (name && hn===name);
+  }).map(x=>String(x?.partId||'')).filter(Boolean));
+  if(!ownedIds.size) return [];
+  return all.filter(p=>ownedIds.has(String(p?.id)));
 }
 
 async function dealerShopPartsTransaction(mutator){
@@ -3691,7 +3719,7 @@ async function dealerShopPartsTransaction(mutator){
   let callbackError=null;
   const result=await ref.transaction(current=>{
     try{
-      const serverList=Array.isArray(current) ? current.slice() : [];
+      const serverList=dealerPartsArray(current).slice();
       const resultValue=mutator(serverList, u);
       if(resultValue===undefined) return serverList;
       return resultValue;
@@ -3702,7 +3730,7 @@ async function dealerShopPartsTransaction(mutator){
   });
   if(callbackError) throw callbackError;
   if(!result.committed) throw new Error('Dealer Parts save বাতিল হয়েছে। আবার চেষ্টা করুন।');
-  DB.dealerShopParts=Array.isArray(result.snapshot.val()) ? result.snapshot.val() : [];
+  DB.dealerShopParts=dealerPartsArray(result.snapshot.val());
   return DB.dealerShopParts;
 }
 
@@ -4618,9 +4646,10 @@ async function refreshDealerShopPartsFromFirebase(){
     const res=await fetch(url,{cache:'no-store'});
     if(!res.ok) throw new Error(`Dealer parts load failed: ${res.status}`);
     const data=await res.json();
-    if(Array.isArray(data)){
+    const latestParts=dealerPartsArray(data);
+    if(latestParts.length){
       // Firebase is the source of truth. No 100/500 item limit and no local overwrite.
-      DB.dealerShopParts=data;
+      DB.dealerShopParts=latestParts;
       normalizeDealerShopPartBrands();
       if(currentRoute==='dealerPortal' && currentDealer()) dealerPortalRender();
     }
