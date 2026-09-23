@@ -1374,14 +1374,24 @@ async function loadDB(){
       // directly through the Firebase SDK. There is NO 100/500 item limit and the
       // list is never replaced by a fixed local copy.
       try{
-        const dSnap = await fbDb.ref('appdata/dealerShopParts').once('value');
-        const dSaved = dSnap.val();
-        const dParts=dealerPartsArray(dSaved);
-        if(dParts.length){
+        // Read the dealer parts node directly from Firebase REST so the app always
+        // uses the current server data, including numeric-key objects and any count.
+        const dRes = await fetch(`${FB_URL}/appdata/dealerShopParts.json`);
+        if(dRes.ok){
+          const dSaved = await dRes.json();
+          const dParts=dealerPartsArray(dSaved);
           DB.dealerShopParts = dParts;
           dealerPartsLoadedFromFirebase=true;
         }
-      }catch(de){ console.warn('Dealer shop parts SDK load failed:', de); }
+      }catch(de){
+        console.warn('Dealer shop parts REST load failed:', de);
+        try{
+          const dSnap = await fbDb.ref('appdata/dealerShopParts').once('value');
+          const dParts=dealerPartsArray(dSnap.val());
+          DB.dealerShopParts = dParts;
+          dealerPartsLoadedFromFirebase=true;
+        }catch(de2){ console.warn('Dealer shop parts SDK load failed:', de2); }
+      }
       return;
     }
   }catch(e){
@@ -1389,14 +1399,20 @@ async function loadDB(){
     // If the main REST load fails, still read dealerShopParts from Firebase SDK.
     // This avoids showing 0 because another appdata field failed to load.
     try{
-      const dSnap = await fbDb.ref('appdata/dealerShopParts').once('value');
-      const dSaved = dSnap.val();
-      const dParts=dealerPartsArray(dSaved);
-      if(dParts.length){
+      const dRes = await fetch(`${FB_URL}/appdata/dealerShopParts.json`);
+      if(dRes.ok){
+        const dParts=dealerPartsArray(await dRes.json());
         DB.dealerShopParts = dParts;
         dealerPartsLoadedFromFirebase=true;
       }
-    }catch(de){ console.warn('Dealer shop parts SDK load failed:', de); }
+    }catch(de){
+      console.warn('Dealer shop parts REST load failed:', de);
+      try{
+        const dSnap = await fbDb.ref('appdata/dealerShopParts').once('value');
+        DB.dealerShopParts = dealerPartsArray(dSnap.val());
+        dealerPartsLoadedFromFirebase=true;
+      }catch(de2){ console.warn('Dealer shop parts SDK load failed:', de2); }
+    }
   }
   // Firebase না হলে localStorage থেকে লোড
   try{
@@ -3736,6 +3752,7 @@ async function dealerShopPartsTransaction(mutator){
 
 async function addDealerShopPartSafe(part){
   const list=await dealerShopPartsTransaction((serverList,u)=>{
+    const dataId=dealerDataId(u);
     const duplicate=serverList.some(p=>String(p.dealerId)===String(dataId) && String(p.partNo||'').trim().toLowerCase()===String(part.partNo||'').trim().toLowerCase());
     if(duplicate) throw new Error('এই Part Number আগে থেকেই আছে।');
     serverList.push({...part,dealerId:dataId});
@@ -3746,6 +3763,7 @@ async function addDealerShopPartSafe(part){
 
 async function updateDealerShopPartSafe(partId, changes){
   const list=await dealerShopPartsTransaction((serverList,u)=>{
+    const dataId=dealerDataId(u);
     const idx=serverList.findIndex(p=>String(p.dealerId)===String(dataId) && Number(p.id)===Number(partId));
     if(idx<0) throw new Error('Part টি আর পাওয়া যাচ্ছে না। অন্য ডিভাইস থেকে পরিবর্তন হয়ে থাকতে পারে।');
     const next={...serverList[idx],...changes};
@@ -3759,6 +3777,7 @@ async function updateDealerShopPartSafe(partId, changes){
 
 async function deleteDealerShopPartSafe(partId){
   return dealerShopPartsTransaction((serverList,u)=>{
+    const dataId=dealerDataId(u);
     const idx=serverList.findIndex(p=>String(p.dealerId)===String(dataId) && Number(p.id)===Number(partId));
     if(idx<0) throw new Error('Part টি আর পাওয়া যাচ্ছে না।');
     if(Number(serverList[idx].currentStock||0)!==0) throw new Error('Stock 0 না হলে Part delete করা যাবে না।');
@@ -3770,6 +3789,7 @@ async function deleteDealerShopPartSafe(partId){
 async function adjustDealerStockSafe(partId, type, qty, reason){
   let historyRecord=null;
   const list=await dealerShopPartsTransaction((serverList,u)=>{
+    const dataId=dealerDataId(u);
     const idx=serverList.findIndex(p=>String(p.dealerId)===String(dataId) && Number(p.id)===Number(partId));
     if(idx<0) throw new Error('Part টি আর পাওয়া যাচ্ছে না। অন্য ডিভাইস থেকে পরিবর্তন হয়ে থাকতে পারে।');
     const p={...serverList[idx]};
@@ -3790,6 +3810,7 @@ async function adjustDealerStockSafe(partId, type, qty, reason){
 async function deductDealerStockForMemoSafe(items, memoNo){
   const history=[];
   const list=await dealerShopPartsTransaction((serverList,u)=>{
+    const dataId=dealerDataId(u);
     const nextList=serverList.map(p=>({...p}));
     for(const it of items){
       const idx=nextList.findIndex(p=>String(p.dealerId)===String(dataId) && Number(p.id)===Number(it.partId));
@@ -7197,8 +7218,93 @@ async function loadVehicleCompatFromFirebase(){
 }
 
 /* ---- Settings tab ---- */
+async function restoreDealerShopPartsFromStockHistory(){
+  if(!requireRole(['admin'])) return;
+  const btn=document.getElementById('restoreDealerPartsBtn');
+  const status=document.getElementById('restoreDealerPartsStatus');
+  try{
+    if(!Array.isArray(DB.stockHistory) || !DB.stockHistory.length){
+      alert('Stock History-তে কোনো record পাওয়া যায়নি।');
+      return;
+    }
+    // Read the live server node first. Never overwrite existing dealerShopParts.
+    let serverValue=null;
+    try{
+      const res=await fetch(`${FB_URL}/appdata/dealerShopParts.json`);
+      if(res.ok) serverValue=await res.json();
+    }catch(e){ console.warn('Restore pre-check REST failed:',e); }
+    const existing=dealerPartsArray(serverValue);
+    if(existing.length){
+      alert(`Firebase-এ dealerShopParts ইতিমধ্যে ${existing.length}টি Part আছে। নিরাপত্তার জন্য Restore বন্ধ রাখা হয়েছে।`);
+      if(status) status.textContent=`ℹ️ Restore করা হয়নি — Firebase-এ আগে থেকেই ${existing.length}টি Part আছে।`;
+      return;
+    }
+    const byId=new Map();
+    for(const h of DB.stockHistory){
+      if(!h || h.partId==null || String(h.partId).trim()==='') continue;
+      const key=String(h.partId);
+      const old=byId.get(key);
+      const t=Date.parse(h.dateISO||'') || Date.parse(String(h.date||'').replace(' ','T')) || Number(h.id)||0;
+      const ot=old ? (Date.parse(old.dateISO||'') || Date.parse(String(old.date||'').replace(' ','T')) || Number(old.id)||0) : -1;
+      if(!old || t>=ot) byId.set(key,h);
+    }
+    const recovered=[...byId.values()].map(h=>({
+      id:h.partId,
+      dealerId:h.dealerId,
+      name:String(h.partName||'').trim() || `Recovered Part ${h.partId}`,
+      partNo:String(h.partNo||'').trim(),
+      category:'',
+      brand:'',
+      unit:'PCS',
+      lowStock:5,
+      purchasePrice:0,
+      sellingPrice:0,
+      openingStock:Number(h.currentStock||0),
+      currentStock:Number(h.currentStock||0),
+      createdAt:h.dateISO||new Date().toISOString(),
+      restoredFromStockHistory:true,
+      restoredAt:new Date().toISOString()
+    })).filter(p=>p.partNo || p.name);
+    if(!recovered.length){
+      alert('Stock History থেকে পুনরুদ্ধার করার মতো Part পাওয়া যায়নি।');
+      return;
+    }
+    const dealerCount=new Set(recovered.map(p=>String(p.dealerId))).size;
+    if(!confirm(`Stock History থেকে ${recovered.length}টি unique Part পুনরুদ্ধার করে Firebase-এর appdata/dealerShopParts-এ রাখা হবে।\n\nDealer: ${dealerCount}টি\n\nCategory/Brand/Price যেসব তথ্য History-তে নেই সেগুলো ফাঁকা/0 থাকবে। পরে Edit করে পূরণ করা যাবে।\n\nএখন Restore করবেন?`)) return;
+    if(btn){btn.disabled=true;btn.textContent='⏳ Restore হচ্ছে...';}
+    // Transaction prevents another browser from creating the node between pre-check and write.
+    const ref=fbDb.ref('appdata/dealerShopParts');
+    const tx=await ref.transaction(current=>{
+      const cur=dealerPartsArray(current);
+      if(cur.length) return;
+      return recovered;
+    });
+    if(!tx.committed){
+      throw new Error('Firebase-এ Restore commit হয়নি। সম্ভবত অন্য ডিভাইস ইতিমধ্যে Part data লিখেছে।');
+    }
+    DB.dealerShopParts=dealerPartsArray(tx.snapshot.val());
+    try{ await saveDB(['history']); }catch(e){ console.warn('Restore history save skipped:',e); }
+    const msg=`✅ ${recovered.length}টি Part Restore হয়েছে। Firebase appdata/dealerShopParts এখন ${DB.dealerShopParts.length}টি record আছে।`;
+    if(status) status.textContent=msg;
+    alert(msg+`\n\nনোট: Stock History-তে না থাকা Category, Brand, Purchase Price, Selling Price পুনরুদ্ধার করা যায়নি; সেগুলো পরে Edit করুন।`);
+  }catch(err){
+    console.error('Restore dealer parts failed:',err);
+    if(status) status.textContent='❌ Restore failed: '+(err.message||err);
+    alert('❌ Restore করা যায়নি।\n'+(err.message||err));
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent='♻️ Stock History থেকে Parts Restore করুন';}
+  }
+}
+
 function settingsTabHTML(){
   return `
+    <div class="card" style="background:#fff8e1;border:2px solid #d97706;">
+      <h3 style="color:#b45309;">♻️ Dealer Shop Parts Recovery</h3>
+      <p class="hint">Firebase-এর <span class="mono">appdata/dealerShopParts</span> node যদি খালি/অনুপস্থিত থাকে, তাহলে <b>Stock History</b> থেকে প্রতিটি unique Part-এর সর্বশেষ record ব্যবহার করে Parts পুনরুদ্ধার করা যাবে। Existing Parts থাকলে নিরাপত্তার জন্য Restore হবে না।</p>
+      <p class="hint">বর্তমান Firebase Dealer Parts: <b>${dealerPartsArray(DB.dealerShopParts).length}</b> &nbsp; | &nbsp; Stock History: <b>${Array.isArray(DB.stockHistory)?DB.stockHistory.length:0}</b></p>
+      <button class="btn btn-primary" id="restoreDealerPartsBtn" style="margin-top:8px;">♻️ Stock History থেকে Parts Restore করুন</button>
+      <div class="hint" id="restoreDealerPartsStatus" style="margin-top:10px;"></div>
+    </div>
     <div class="card" style="background:#ffebee;border:2px solid #c2041d;">
       <h3 style="color:#c2041d;">🔴 সব পুরনো পার্টস ডিলিট করে নতুন লিস্ট আপলোড</h3>
       <p class="hint">এটি চাপলে আপনার বর্তমান সব পার্টস (${DB.parts.length}টি) স্থায়ীভাবে ডিলিট হয়ে যাবে এবং Firebase-এ সেভ হয়ে যাবে — এরপর সরাসরি নতুন এক্সেল ফাইল সিলেক্ট করার অপশন আসবে।</p>
@@ -7276,6 +7382,8 @@ function settingsTabHTML(){
   `;
 }
 function wireSettingsTab(){
+  const restoreBtn=document.getElementById('restoreDealerPartsBtn');
+  if(restoreBtn) restoreBtn.onclick=restoreDealerShopPartsFromStockHistory;
   const delAllBtn = document.getElementById('deleteAllParts');
   if(delAllBtn){
     delAllBtn.onclick = async ()=>{
