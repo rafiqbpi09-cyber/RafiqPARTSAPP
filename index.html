@@ -44,7 +44,7 @@ document.currentScript.parentNode.insertBefore(manifestLink, document.currentScr
 // প্রতিটি নতুন deployment/update দেওয়ার আগে এই APP_VERSION ভ্যালুটা পরিবর্তন করুন
 // (যেকোনো ইউনিক স্ট্রিং — তারিখ/সময় বা running number)। এই ভ্যালুর ভিত্তিতেই
 // সব ডিভাইস স্বয়ংক্রিয়ভাবে নতুন version detect করে reload হবে।
-window.APP_VERSION = '2026-09-23-dealer-parts-safe-write.1';
+window.APP_VERSION = '2026-09-20-sabihasoft-login-cleanup.1';
 
 (function(){
   // পুরনো/legacy blob-based service worker ও পুরনো Cache Storage সম্পূর্ণ পরিষ্কার করে দেওয়া হয়,
@@ -1267,9 +1267,7 @@ async function saveDB(dirtyKeys){
       loginHistory: DB.loginHistory.slice(0,500),
       partsEngineers: DB.partsEngineers,
       nextPeId: nextPeId,
-      // IMPORTANT: dealerShopParts is intentionally NOT included here.
-      // It is written only through Firebase transactions below, so a stale browser
-      // can never overwrite newer dealer parts with an older array.
+      dealerShopParts: DB.dealerShopParts,
       dealerMemos: DB.dealerMemos,
       dealerMemoDrafts: DB.dealerMemoDrafts,
       stockHistory: DB.stockHistory,
@@ -1354,12 +1352,10 @@ async function loadDB(){
       if(Array.isArray(saved.vehicleCompat)) DB.vehicleCompat = saved.vehicleCompat;
       if(Array.isArray(saved.catalogs)) DB.catalogs = saved.catalogs;
       await loadVehicleCompatFromFirebase();
-      normalizeVehicleBrands();
       if(Array.isArray(saved.partsEngineers)) DB.partsEngineers = saved.partsEngineers;
       if(saved.nextPeId) nextPeId = saved.nextPeId;
       else if(DB.partsEngineers.length) nextPeId = Math.max(...DB.partsEngineers.map(p=>Number(p.id)||0))+1;
       if(Array.isArray(saved.dealerShopParts)) DB.dealerShopParts = saved.dealerShopParts;
-      normalizeDealerShopPartBrands();
       if(Array.isArray(saved.dealerMemos)) DB.dealerMemos = saved.dealerMemos;
       if(Array.isArray(saved.dealerMemoDrafts)) DB.dealerMemoDrafts = saved.dealerMemoDrafts;
       if(Array.isArray(saved.stockHistory)) DB.stockHistory = saved.stockHistory;
@@ -1637,38 +1633,17 @@ function recordLogin(name, role, phone){
   saveDB();
 }
 
-async function heartbeatTick(){
-  try{
-    const now=Date.now();
-    if(DB.session.role === 'dealer' && DB.session.user){
-      const u = DB.users.find(x=>x.id===DB.session.user.id);
-      if(u){
-        u.lastActive=now;
-        await fbDb.ref('appdata/users').transaction(list=>{
-          if(!Array.isArray(list)) return list;
-          const copy=list.slice();
-          const i=copy.findIndex(x=>x && String(x.id)===String(u.id));
-          if(i>=0) copy[i]={...copy[i],lastActive:now};
-          return copy;
-        });
-      }
-    } else if(DB.session.role === 'admin'){
-      DB.settings.adminLastActive=now;
-      await fbDb.ref('appdata/settings/adminLastActive').set(now);
-    } else if(DB.session.role === 'partsEngineer' && DB.session.user){
-      const pe = DB.partsEngineers.find(x=>x.id===DB.session.user.id);
-      if(pe){
-        pe.lastActive=now;
-        await fbDb.ref('appdata/partsEngineers').transaction(list=>{
-          if(!Array.isArray(list)) return list;
-          const copy=list.slice();
-          const i=copy.findIndex(x=>x && String(x.id)===String(pe.id));
-          if(i>=0) copy[i]={...copy[i],lastActive:now};
-          return copy;
-        });
-      }
-    }
-  }catch(err){ console.warn('Heartbeat update failed:',err); }
+function heartbeatTick(){
+  if(DB.session.role === 'dealer' && DB.session.user){
+    const u = DB.users.find(x=>x.id===DB.session.user.id);
+    if(u){ u.lastActive = Date.now(); saveDB(); }
+  } else if(DB.session.role === 'admin'){
+    DB.settings.adminLastActive = Date.now();
+    saveDB();
+  } else if(DB.session.role === 'partsEngineer' && DB.session.user){
+    const pe = DB.partsEngineers.find(x=>x.id===DB.session.user.id);
+    if(pe){ pe.lastActive = Date.now(); saveDB(); }
+  }
 }
 setInterval(heartbeatTick, 60000);
 
@@ -3273,7 +3248,7 @@ function vehicleModelDBRoleHTML(){
 }
 function openVehicleModelDbFolder(model){
   const records = (DB.vehicleCompat||[]).filter(v=>(v.models||[]).some(m=>String(m).trim()===String(model).trim()));
-  openModal(`<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px;"><h3 style="margin:0">📁 ${escHtml(model)}</h3><button class="btn btn-ghost btn-sm" onclick="closeModal()">✕</button></div><div style="max-height:70vh;overflow:auto;display:grid;gap:8px;">${records.length?records.map(v=>`<div class="card" style="margin:0;padding:10px 12px;"><div style="font-weight:700">${escHtml(v.partNo||'-')}</div><div>${escHtml(v.partName||'-')}</div><div class="hint">Brand: ${escHtml(normalizeBrandName(v.brand)||'-')}</div></div>`).join(''):`<div class="empty">কোনো record নেই</div>`}</div>`);
+  openModal(`<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px;"><h3 style="margin:0">📁 ${escHtml(model)}</h3><button class="btn btn-ghost btn-sm" onclick="closeModal()">✕</button></div><div style="max-height:70vh;overflow:auto;display:grid;gap:8px;">${records.length?records.map(v=>`<div class="card" style="margin:0;padding:10px 12px;"><div style="font-weight:700">${escHtml(v.partNo||'-')}</div><div>${escHtml(v.partName||'-')}</div><div class="hint">Brand: ${escHtml(v.brand||'-')}</div></div>`).join(''):`<div class="empty">কোনো record নেই</div>`}</div>`);
 }
 ROUTES.vehicleModelDB=function(){
   if(!requireRole(['admin','dealer','mechanic','partsEngineer']))return;
@@ -3601,145 +3576,13 @@ ROUTES.dealerForgotPassword = function(){
 /* ============================================================= */
 let dealerManageTab = 'search';
 
-function normalizeBrandName(value){
-  // Brand is user-entered: preserve the actual brand name and letter case.
-  return String(value??'').trim();
-}
-function normalizeDealerShopPartBrands(){
-  if(!Array.isArray(DB.dealerShopParts)) return false;
-  let changed=false;
-  DB.dealerShopParts=DB.dealerShopParts.map(p=>{
-    if(!p || typeof p!=='object') return p;
-    const brand=normalizeBrandName(p.brand);
-    if(brand!==p.brand){ changed=true; return {...p,brand}; }
-    return p;
-  });
-  return changed;
-}
-function normalizeVehicleBrands(){
-  if(!Array.isArray(DB.vehicleCompat)) return false;
-  let changed=false;
-  DB.vehicleCompat=DB.vehicleCompat.map(v=>{
-    if(!v || typeof v!=='object') return v;
-    const brand=normalizeBrandName(v.brand);
-    if(brand!==v.brand){ changed=true; return {...v,brand}; }
-    return v;
-  });
-  return changed;
-}
-
 function currentDealer(){
   return DB.session && DB.session.role === 'dealer' ? DB.session.user : null;
 }
-/* ================= DEALER SHOP PARTS — SAFE CONCURRENT STORAGE =================
-   IMPORTANT:
-   dealerShopParts is shared Firebase data. Never PUT the whole local array back to
-   Firebase. Every add/edit/delete/stock change below uses a Firebase transaction,
-   which receives the latest server value and changes only the requested dealer/part.
-   This prevents the old 187 -> 118 overwrite problem when multiple devices/browsers
-   are open at the same time.
-*/
 function dealerShopParts(){
   const u=currentDealer();
   return u ? DB.dealerShopParts.filter(p=>String(p.dealerId)===String(u.id)) : [];
 }
-
-async function dealerShopPartsTransaction(mutator){
-  const u=currentDealer();
-  if(!u) throw new Error('Dealer session পাওয়া যায়নি। আবার Login করুন।');
-  const ref=fbDb.ref('appdata/dealerShopParts');
-  let callbackError=null;
-  const result=await ref.transaction(current=>{
-    try{
-      const serverList=Array.isArray(current) ? current.slice() : [];
-      const resultValue=mutator(serverList, u);
-      if(resultValue===undefined) return serverList;
-      return resultValue;
-    }catch(err){
-      callbackError=err;
-      return;
-    }
-  });
-  if(callbackError) throw callbackError;
-  if(!result.committed) throw new Error('Dealer Parts save বাতিল হয়েছে। আবার চেষ্টা করুন।');
-  DB.dealerShopParts=Array.isArray(result.snapshot.val()) ? result.snapshot.val() : [];
-  return DB.dealerShopParts;
-}
-
-async function addDealerShopPartSafe(part){
-  const list=await dealerShopPartsTransaction((serverList,u)=>{
-    const duplicate=serverList.some(p=>String(p.dealerId)===String(u.id) && String(p.partNo||'').trim().toLowerCase()===String(part.partNo||'').trim().toLowerCase());
-    if(duplicate) throw new Error('এই Part Number আগে থেকেই আছে।');
-    serverList.push({...part,dealerId:u.id});
-    return serverList;
-  });
-  return list.find(p=>String(p.id)===String(part.id) && String(p.dealerId)===String(part.dealerId));
-}
-
-async function updateDealerShopPartSafe(partId, changes){
-  const list=await dealerShopPartsTransaction((serverList,u)=>{
-    const idx=serverList.findIndex(p=>String(p.dealerId)===String(u.id) && Number(p.id)===Number(partId));
-    if(idx<0) throw new Error('Part টি আর পাওয়া যাচ্ছে না। অন্য ডিভাইস থেকে পরিবর্তন হয়ে থাকতে পারে।');
-    const next={...serverList[idx],...changes};
-    const duplicate=serverList.some((p,i)=>i!==idx && String(p.dealerId)===String(u.id) && String(p.partNo||'').trim().toLowerCase()===String(next.partNo||'').trim().toLowerCase());
-    if(duplicate) throw new Error('এই Part Number আগে থেকেই আছে।');
-    serverList[idx]=next;
-    return serverList;
-  });
-  return list.find(p=>String(p.dealerId)===String(u.id) && Number(p.id)===Number(partId));
-}
-
-async function deleteDealerShopPartSafe(partId){
-  return dealerShopPartsTransaction((serverList,u)=>{
-    const idx=serverList.findIndex(p=>String(p.dealerId)===String(u.id) && Number(p.id)===Number(partId));
-    if(idx<0) throw new Error('Part টি আর পাওয়া যাচ্ছে না।');
-    if(Number(serverList[idx].currentStock||0)!==0) throw new Error('Stock 0 না হলে Part delete করা যাবে না।');
-    serverList.splice(idx,1);
-    return serverList;
-  });
-}
-
-async function adjustDealerStockSafe(partId, type, qty, reason){
-  let historyRecord=null;
-  const list=await dealerShopPartsTransaction((serverList,u)=>{
-    const idx=serverList.findIndex(p=>String(p.dealerId)===String(u.id) && Number(p.id)===Number(partId));
-    if(idx<0) throw new Error('Part টি আর পাওয়া যাচ্ছে না। অন্য ডিভাইস থেকে পরিবর্তন হয়ে থাকতে পারে।');
-    const p={...serverList[idx]};
-    const prev=Number(p.currentStock||0); let next=prev,stockIn=0,stockOut=0;
-    if(type==='in'){ next=prev+qty; stockIn=qty; }
-    else if(type==='out'){ if(qty>prev) throw new Error('Stock-এর চেয়ে বেশি কমানো যাবে না।'); next=prev-qty; stockOut=qty; }
-    else { next=qty; stockIn=Math.max(0,qty-prev); stockOut=Math.max(0,prev-qty); }
-    p.currentStock=next;
-    p.updatedAt=new Date().toISOString();
-    historyRecord={part:{...p},prev,stockIn,stockOut,next,reason};
-    serverList[idx]=p;
-    return serverList;
-  });
-  if(historyRecord) addStockHistory(historyRecord.part,historyRecord.prev,historyRecord.stockIn,historyRecord.stockOut,historyRecord.next,historyRecord.reason,'');
-  return list;
-}
-
-async function deductDealerStockForMemoSafe(items, memoNo){
-  const history=[];
-  const list=await dealerShopPartsTransaction((serverList,u)=>{
-    const nextList=serverList.map(p=>({...p}));
-    for(const it of items){
-      const idx=nextList.findIndex(p=>String(p.dealerId)===String(u.id) && Number(p.id)===Number(it.partId));
-      if(idx<0) throw new Error(`একটি Dealer Part আর পাওয়া যাচ্ছে না: ${it.partId}`);
-      const p=nextList[idx];
-      const prev=Number(p.currentStock||0), out=Number(it.qty||0);
-      if(out>prev) throw new Error(`Insufficient Stock\\n${p.name}\\nCurrent Stock: ${prev}\\nRequested: ${out}`);
-      p.currentStock=prev-out;
-      p.updatedAt=new Date().toISOString();
-      history.push({part:{...p},prev,out,current:p.currentStock});
-      nextList[idx]=p;
-    }
-    return nextList;
-  });
-  history.forEach(h=>addStockHistory(h.part,h.prev,0,h.out,h.current,'Sold via Memo',memoNo));
-  return list;
-}
-
 function dealerMemos(){
   const u=currentDealer();
   return u ? DB.dealerMemos.filter(m=>String(m.dealerId)===String(u.id)) : [];
@@ -3883,7 +3726,7 @@ function dealerShopPartsHTML(){
 function renderShopPartsTable(parts){
   if(!parts.length)return '<div class="empty">এখনো কোনো My Shop Part যোগ করা হয়নি।</div>';
   return `<div style="overflow-x:auto"><table style="min-width:900px"><thead><tr><th>Part Name</th><th>Part Number</th><th>Category</th><th>Brand</th><th>Unit</th><th>Purchase</th><th>Selling</th><th>Stock</th><th>Action</th></tr></thead><tbody>${parts.map(p=>`<tr>
-    <td>${escHtml(p.name)}</td><td class="mono">${escHtml(p.partNo)}</td><td>${escHtml(p.category||'-')}</td><td>${escHtml(normalizeBrandName(p.brand)||'-')}</td><td>${escHtml(p.unit||'PCS')}</td>
+    <td>${escHtml(p.name)}</td><td class="mono">${escHtml(p.partNo)}</td><td>${escHtml(p.category||'-')}</td><td>${escHtml(p.brand||'-')}</td><td>${escHtml(p.unit||'PCS')}</td>
     <td>৳${money(p.purchasePrice)}</td><td>৳${money(p.sellingPrice)}</td><td>${Number(p.currentStock||0)}</td>
     <td><div class="row-actions"><button class="btn btn-ghost btn-sm" onclick="editDealerShopPart(${p.id})">✏️</button><button class="btn btn-danger btn-sm" onclick="deleteDealerShopPart(${p.id})">🗑️</button></div></td>
   </tr>`).join('')}</tbody></table></div>`;
@@ -3907,22 +3750,17 @@ function openDealerShopPartModal(part=null){
     const name=document.getElementById('spName').value.trim(), partNo=document.getElementById('spNo').value.trim();
     if(!name||!partNo){alert('Part Name এবং Part Number দিন।');return;}
     const now=new Date(), stock=Number(document.getElementById('spStock').value||0);
-    const common={name,partNo,category:document.getElementById('spCat').value.trim(),brand:normalizeBrandName(document.getElementById('spBrand').value.trim()),unit:document.getElementById('spUnit').value.trim()||'PCS',lowStock:Number(document.getElementById('spLow').value||5),purchasePrice:Number(document.getElementById('spPurchase').value||0),sellingPrice:Number(document.getElementById('spSelling').value||0)};
-    try{
-      if(part){
-        const oldStock=Number(part.currentStock||0);
-        const saved=await updateDealerShopPartSafe(part.id,{...common,currentStock:stock,updatedAt:new Date().toISOString()});
-        if(stock!==oldStock){addStockHistory(saved,oldStock,stock>oldStock?stock-oldStock:0,stock<oldStock?oldStock-stock:0,stock,'Manual Stock Adjustment','');await saveDB(['stockHistory']);}
-      }else{
-        const np={id:Date.now()+Math.floor(Math.random()*1000),dealerId:u.id,...common,openingStock:stock,currentStock:stock,createdAt:new Date().toISOString()};
-        const saved=await addDealerShopPartSafe(np);
-        if(stock>0){addStockHistory(saved,0,stock,0,stock,'Opening Stock','');await saveDB(['stockHistory']);}
-      }
-      // DealerShopParts is already committed by Firebase transaction. Do NOT call generic saveDB here.
-      closeModal(); go('dealerPortal');
-    }catch(err){
-      alert(err.message||'Part সেভ করা যায়নি। আবার চেষ্টা করুন।');
+    if(part){
+      const oldStock=Number(part.currentStock||0);
+      Object.assign(part,{name,partNo,category:document.getElementById('spCat').value.trim(),brand:document.getElementById('spBrand').value.trim(),unit:document.getElementById('spUnit').value.trim()||'PCS',lowStock:Number(document.getElementById('spLow').value||5),purchasePrice:Number(document.getElementById('spPurchase').value||0),sellingPrice:Number(document.getElementById('spSelling').value||0),currentStock:stock,updatedAt:now.toISOString()});
+      if(stock!==oldStock) addStockHistory(part,oldStock,stock>oldStock?stock-oldStock:0,stock<oldStock?oldStock-stock:0,stock,'Manual Stock Adjustment','');
+    }else{
+      if(dealerShopParts().some(p=>String(p.partNo).toLowerCase()===partNo.toLowerCase())){alert('এই Part Number আগে থেকেই আছে।');return;}
+      const np={id:Date.now()+Math.floor(Math.random()*1000),dealerId:u.id,name,partNo,category:document.getElementById('spCat').value.trim(),brand:document.getElementById('spBrand').value.trim(),unit:document.getElementById('spUnit').value.trim()||'PCS',lowStock:Number(document.getElementById('spLow').value||5),purchasePrice:Number(document.getElementById('spPurchase').value||0),sellingPrice:Number(document.getElementById('spSelling').value||0),openingStock:stock,currentStock:stock,createdAt:now.toISOString()};
+      DB.dealerShopParts.push(np);
+      if(stock>0)addStockHistory(np,0,stock,0,stock,'Opening Stock','');
     }
+    await saveDB(); closeModal(); go('dealerPortal');
   };
 }
 function editDealerShopPart(id){const p=dealerShopParts().find(x=>Number(x.id)===Number(id));if(p)openDealerShopPartModal(p);}
@@ -3930,10 +3768,8 @@ async function deleteDealerShopPart(id){
   const p=dealerShopParts().find(x=>Number(x.id)===Number(id));if(!p)return;
   if(Number(p.currentStock||0)!==0){alert('Stock 0 না হলে Part delete করা যাবে না।');return;}
   if(!confirm(`"${p.name}" মুছে ফেলবেন?`))return;
-  try{
-    await deleteDealerShopPartSafe(id);
-    go('dealerPortal');
-  }catch(err){ alert(err.message||'Part delete করা যায়নি।'); }
+  DB.dealerShopParts=DB.dealerShopParts.filter(x=>Number(x.id)!==Number(id));
+  await saveDB();go('dealerPortal');
 }
 function wireDealerShopParts(){
   document.getElementById('addShopPart').onclick=()=>openDealerShopPartModal();
@@ -3963,11 +3799,7 @@ function adjustDealerStock(id){
     if(q<0){alert('সঠিক Quantity দিন।');return;}
     const prev=Number(p.currentStock||0);let next=prev,stockIn=0,stockOut=0;
     if(type==='in'){next=prev+q;stockIn=q;}else if(type==='out'){if(q>prev){alert('Stock-এর চেয়ে বেশি কমানো যাবে না।');return;}next=prev-q;stockOut=q;}else{next=q;stockIn=Math.max(0,q-prev);stockOut=Math.max(0,prev-q);}
-    try{
-      await adjustDealerStockSafe(id,type,q,reason);
-      await saveDB(['stockHistory']);
-      closeModal();go('dealerPortal');
-    }catch(err){ alert(err.message||'Stock update করা যায়নি।'); }
+    p.currentStock=next;addStockHistory(p,prev,stockIn,stockOut,next,reason,'');await saveDB();closeModal();go('dealerPortal');
   };
 }
 function stockHistoryHTML(){
@@ -4385,17 +4217,10 @@ function wireMemoPage(existingDraft=null){
     // যাতে ডেটা কখনো অর্ধেক-সেভ অবস্থায় না থাকে।
     try{ await writeFinalMemoToIndex(memo); }catch(e){ alert(e.message||'Memo সেভ করা যায়নি — ইন্টারনেট সংযোগ চেক করে আবার চেষ্টা করুন।'); return; }
     DB.nextMemoNo=Math.max(Number(DB.nextMemoNo||1)+1,Number(String(st.memoNo).replace(/\D/g,''))+1);
-    try{
-      await deductDealerStockForMemoSafe(st.items.filter(x=>x.source==='dealer'),st.memoNo);
-    }catch(e){
-      alert(e.message||'Stock update করা যায়নি। Memo finalize করা হয়নি।');
-      return;
-    }
+    st.items.filter(x=>x.source==='dealer').forEach(it=>{const p=dealerShopParts().find(x=>Number(x.id)===Number(it.partId));const prev=Number(p.currentStock||0),out=Number(it.qty||0);p.currentStock=prev-out;addStockHistory(p,prev,0,out,p.currentStock,'Sold via Memo',st.memoNo);});
     DB.dealerMemos.unshift(memo);
     if(draftId)DB.dealerMemoDrafts=DB.dealerMemoDrafts.filter(x=>String(x.id)!==String(draftId));
-    clearDraftLocal();
-    await saveDB(['dealerMemos','dealerMemoDrafts','stockHistory','nextMemoNo']);
-    showSavedMemoActions(memo);
+    clearDraftLocal();await saveDB();showSavedMemoActions(memo);
   };
   redraw();
   if(initial?.lang){ setMemoLang(initial.lang); } else { applyMemoLang(); }
@@ -4679,7 +4504,7 @@ function levenshtein(a, b){
   return dp[m][n];
 }
 function vehicleCompatBlob(v){
-  if(!v._blob) v._blob = normalizeVText([v.partNo, v.partName, (v.models||[]).join(' '), normalizeBrandName(v.brand)].join(' '));
+  if(!v._blob) v._blob = normalizeVText([v.partNo, v.partName, (v.models||[]).join(' '), v.brand].join(' '));
   return v._blob;
 }
 function searchVehicleCompat(qRaw){
@@ -4700,7 +4525,7 @@ function vehicleResultCardHTML(v){
   return `<div class="part-card" style="flex-direction:column;align-items:flex-start;gap:6px;">
     <div style="display:flex;justify-content:space-between;width:100%;flex-wrap:wrap;gap:6px;">
       <div class="pn" style="font-weight:700">${v.partNo}</div>
-      ${normalizeBrandName(v.brand) ? `<span class="pill" style="background:var(--paper);color:var(--navy);border:1px solid var(--line);">${escHtml(normalizeBrandName(v.brand))}</span>` : ''}
+      ${v.brand ? `<span class="pill" style="background:var(--paper);color:var(--navy);border:1px solid var(--line);">${v.brand}</span>` : ''}
     </div>
     <div class="nm" style="font-weight:700;color:var(--text);">${v.partName||'-'}</div>
     <div style="font-size:13.5px;color:var(--text);"><b>গাড়ির মডেল:</b> ${(v.models||[]).join(', ')||'-'}</div>
@@ -6807,7 +6632,7 @@ function renderVehicleCompatTable(list){
       <td style="padding:6px" class="mono">${v.partNo}</td>
       <td style="padding:6px">${v.partName}</td>
       <td style="padding:6px">${(v.models||[]).join(', ')}</td>
-      <td style="padding:6px">${normalizeBrandName(v.brand)||'-'}</td>
+      <td style="padding:6px">${v.brand||'-'}</td>
       ${isAdmin ? `<td style="padding:6px;text-align:center"><button class="v-edit" data-id="${v.id}" style="border:none;background:none;cursor:pointer;font-size:15px;">✏️</button></td>
       <td style="padding:6px;text-align:center"><button class="v-del" data-id="${v.id}" style="border:none;background:none;cursor:pointer;font-size:15px;color:#e11d48;">🗑️</button></td>` : ''}
     </tr>`).join('')}</tbody>
@@ -6822,7 +6647,7 @@ function wireVehicleDbTab(){
     const q = normalizeVText(searchEl.value);
     const filtered = !q ? DB.vehicleCompat.slice(0,100) : DB.vehicleCompat.filter(v=>
       normalizeVText(v.partNo).includes(q) || normalizeVText(v.partName).includes(q) ||
-      normalizeVText((v.models||[]).join(' ')).includes(q) || normalizeVText(normalizeBrandName(v.brand)).includes(q)
+      normalizeVText((v.models||[]).join(' ')).includes(q) || normalizeVText(v.brand).includes(q)
     ).slice(0,200);
     document.getElementById('vehicleListWrap').innerHTML = renderVehicleCompatTable(filtered);
     wireVehicleRowButtons();
@@ -6849,7 +6674,7 @@ function wireVehicleRowButtons(){
         <div class="field"><label>পার্ট নং</label><input type="text" id="vePartNo" value="${v.partNo}"></div>
         <div class="field"><label>পার্টের নাম</label><input type="text" id="vePartName" value="${v.partName}"></div>
         <div class="field"><label>গাড়ির মডেল (কমা দিয়ে আলাদা)</label><input type="text" id="veModels" value="${(v.models||[]).join(', ')}"></div>
-        <div class="field"><label>ব্র্যান্ড</label><input type="text" id="veBrand" value="${escHtml(normalizeBrandName(v.brand))}"></div>
+        <div class="field"><label>ব্র্যান্ড</label><input type="text" id="veBrand" value="${v.brand||''}"></div>
         <div class="field"><label>ক্যাটাগরি</label><input type="text" id="veCategory" value="${v.category||''}"></div>
         <div class="field"><label>মন্তব্য</label><input type="text" id="veRemarks" value="${v.remarks||''}"></div>
         <div class="modal-actions">
@@ -6861,7 +6686,7 @@ function wireVehicleRowButtons(){
         v.partNo = document.getElementById('vePartNo').value.trim();
         v.partName = document.getElementById('vePartName').value.trim();
         v.models = document.getElementById('veModels').value.split(',').map(s=>s.trim()).filter(Boolean);
-        v.brand = normalizeBrandName(document.getElementById('veBrand').value.trim());
+        v.brand = document.getElementById('veBrand').value.trim();
         v.category = document.getElementById('veCategory').value.trim();
         v.remarks = document.getElementById('veRemarks').value.trim();
         saveDB();
@@ -6969,7 +6794,7 @@ function showVehicleUploadPreview(parsed){
     <div style="overflow-x:auto;max-height:320px;overflow-y:auto;">
       <table style="width:100%;border-collapse:collapse;min-width:520px;font-size:13px">
         <thead><tr style="background:var(--bg-2,#f4f4f4)"><th style="padding:5px;text-align:left">পার্ট নং</th><th style="padding:5px;text-align:left">নাম</th><th style="padding:5px;text-align:left">মডেল</th><th style="padding:5px;text-align:left">ব্র্যান্ড</th></tr></thead>
-        <tbody>${previewRows.map(r=>`<tr><td style="padding:5px" class="mono">${r.partNo}</td><td style="padding:5px">${r.partName}</td><td style="padding:5px">${r.models.join(', ')}</td><td style="padding:5px">${normalizeBrandName(r.brand)||'-'}</td></tr>`).join('')}</tbody>
+        <tbody>${previewRows.map(r=>`<tr><td style="padding:5px" class="mono">${r.partNo}</td><td style="padding:5px">${r.partName}</td><td style="padding:5px">${r.models.join(', ')}</td><td style="padding:5px">${r.brand||'-'}</td></tr>`).join('')}</tbody>
       </table>
     </div>
     <div class="modal-actions" style="flex-direction:column;gap:8px;align-items:stretch;margin-top:14px;">
@@ -7082,8 +6907,8 @@ async function loadVehicleCompatFromFirebase(){
     if(val && typeof val==='object'){
       const arr=Array.isArray(val)?val:Object.keys(val).sort((a,b)=>Number(a)-Number(b)).map(k=>val[k]).filter(Boolean);
       if(arr.length){
-        DB.vehicleCompat=arr.map(v=>v && typeof v==='object' ? {...v,brand:normalizeBrandName(v.brand)} : v);
-        try{ localStorage.setItem('vehicleCompatCache_v2',JSON.stringify(DB.vehicleCompat)); }catch(e){}
+        DB.vehicleCompat=arr;
+        try{ localStorage.setItem('vehicleCompatCache_v2',JSON.stringify(arr)); }catch(e){}
         return true;
       }
     }
@@ -7094,7 +6919,7 @@ async function loadVehicleCompatFromFirebase(){
   try{
     const cached=JSON.parse(localStorage.getItem('vehicleCompatCache_v2')||'null');
     if(Array.isArray(cached) && cached.length){
-      DB.vehicleCompat=cached.map(v=>v && typeof v==='object' ? {...v,brand:normalizeBrandName(v.brand)} : v);
+      DB.vehicleCompat=cached;
       console.warn('Vehicle Model Database loaded from local cache:',cached.length);
       return true;
     }
