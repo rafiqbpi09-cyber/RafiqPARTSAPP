@@ -3874,14 +3874,33 @@ async function dealerShopPartsTransaction(mutator){
 }
 
 async function addDealerShopPartSafe(part){
-  const list=await dealerShopPartsTransaction((serverList,u)=>{
-    const dataId=dealerDataId(u);
-    const duplicate=serverList.some(p=>String(p.dealerId)===String(dataId) && String(p.partNo||'').trim().toLowerCase()===String(part.partNo||'').trim().toLowerCase());
+  // Firebase Auth must be ready before the transaction. Otherwise a refresh/new
+  // device can create a local-looking record but the protected RTDB write may fail.
+  const authUser=await waitForFirebaseAuthReady(8000);
+  if(!authUser) throw new Error('Firebase Login session প্রস্তুত হয়নি। আবার চেষ্টা করুন।');
+  const u=currentDealer();
+  if(!u) throw new Error('Dealer session পাওয়া যায়নি। আবার Login করুন।');
+  const dataId=dealerDataId(u);
+  const partToSave={...part,dealerId:dataId};
+  const list=await dealerShopPartsTransaction((serverList)=>{
+    const duplicate=serverList.some(p=>String(p.dealerId)===String(dataId) && String(p.partNo||'').trim().toLowerCase()===String(partToSave.partNo||'').trim().toLowerCase());
     if(duplicate) throw new Error('এই Part Number আগে থেকেই আছে।');
-    serverList.push({...part,dealerId:dataId});
+    serverList.push(partToSave);
     return serverList;
   });
-  return list.find(p=>String(p.id)===String(part.id) && String(p.dealerId)===String(part.dealerId));
+  const saved=list.find(p=>String(p.id)===String(partToSave.id) && String(p.dealerId)===String(dataId));
+  if(!saved) throw new Error('Part Firebase-এ সেভ হয়েছে কিনা যাচাই করা যায়নি। আবার চেষ্টা করুন।');
+
+  // Read-back verification: never report success until the same record is
+  // visible from Firebase after the transaction has committed.
+  const verifySnap=await fbDb.ref('appdata/dealerShopParts').once('value');
+  const verifyList=dealerPartsArray(verifySnap.val());
+  const verified=verifyList.find(p=>String(p.id)===String(partToSave.id) && String(p.dealerId)===String(dataId));
+  if(!verified) throw new Error('Firebase-এ Part স্থায়ীভাবে সেভ হয়নি। আবার Save করুন।');
+
+  DB.dealerShopParts=verifyList;
+  try{ localStorage.setItem('dealerShopParts_cache_v2',JSON.stringify(DB.dealerShopParts)); }catch(e){}
+  return verified;
 }
 
 async function updateDealerShopPartSafe(partId, changes){
@@ -4141,8 +4160,9 @@ function openDealerShopPartModal(part=null){
         const saved=await updateDealerShopPartSafe(part.id,{...common,currentStock:stock,updatedAt:new Date().toISOString()});
         if(stock!==oldStock){addStockHistory(saved,oldStock,stock>oldStock?stock-oldStock:0,stock<oldStock?oldStock-stock:0,stock,'Manual Stock Adjustment','');await saveDB(['stockHistory']);}
       }else{
-        const np={id:Date.now()+Math.floor(Math.random()*1000),dealerId:u.id,...common,openingStock:stock,currentStock:stock,createdAt:new Date().toISOString()};
+        const np={id:Date.now()+Math.floor(Math.random()*1000),dealerId:dealerDataId(u),...common,openingStock:stock,currentStock:stock,createdAt:new Date().toISOString()};
         const saved=await addDealerShopPartSafe(np);
+        if(!saved) throw new Error('নতুন Part Firebase-এ সেভ হয়নি।');
         if(stock>0){addStockHistory(saved,0,stock,0,stock,'Opening Stock','');await saveDB(['stockHistory']);}
       }
       // DealerShopParts is already committed by Firebase transaction. Do NOT call generic saveDB here.
