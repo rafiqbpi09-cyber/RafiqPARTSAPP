@@ -1322,6 +1322,22 @@ async function saveDBAndVerifyRegistration(record, collectionName){
     !isDeletedAccount(u));
   if(!found) throw new Error('PROFILE_WRITE_FAILED');
 }
+async function waitForFirebaseAuthReady(timeoutMs=8000){
+  if(fbAuth.currentUser) return fbAuth.currentUser;
+  return await new Promise(resolve=>{
+    let done=false;
+    let timer=null;
+    const finish=(user)=>{
+      if(done) return;
+      done=true;
+      if(timer) clearTimeout(timer);
+      resolve(user||fbAuth.currentUser||null);
+    };
+    timer=setTimeout(()=>finish(null),timeoutMs);
+    try{ fbAuth.onAuthStateChanged(finish); }catch(e){ finish(null); }
+  });
+}
+
 async function loadDB(){
   let dealerPartsLoadedFromFirebase=false;
   try{
@@ -1376,18 +1392,13 @@ async function loadDB(){
       try{
         // Firebase Auth can still be restoring after a full page refresh. Wait briefly
         // so protected RTDB reads do not accidentally return 0 before the auth session is ready.
-        if(!fbAuth.currentUser){
-          await new Promise(resolve=>{
-            let done=false;
-            const finish=()=>{ if(done)return; done=true; clearTimeout(timer); resolve(); };
-            const timer=setTimeout(finish,5000);
-            try{ fbAuth.onAuthStateChanged(finish); }catch(e){ finish(); }
-          });
-        }
+        await waitForFirebaseAuthReady(8000);
+        if(!fbAuth.currentUser) throw new Error('Firebase Auth session not ready');
         const dSnap = await fbDb.ref('appdata/dealerShopParts').once('value');
         const dParts=dealerPartsArray(dSnap.val());
         DB.dealerShopParts = dParts;
         dealerPartsLoadedFromFirebase=true;
+        try{ localStorage.setItem('dealerShopParts_cache_v2',JSON.stringify(dParts)); }catch(e){}
       }catch(de){
         console.warn('Dealer shop parts SDK load failed:', de);
         try{
@@ -2066,7 +2077,7 @@ function peBottomNavHTML(){
     {key:'report',icon:'📊',label:'রিপোর্ট',onclick:"peTab='report';go('peDashboard')"},
     {key:'vehicleDb',icon:'🚗',label:'Vehicle DB',onclick:"go('vehicleModelDB')"},
       {key:'catalogue',icon:'📚',label:'Catalogue',onclick:"go('partsCatalog')"},
-    {key:'logout',icon:'🚪',label:'লগআউট',onclick:"if(confirm('লগআউট করবেন?')){DB.session={role:null,user:null};go('landing');}"}
+    {key:'logout',icon:'🚪',label:'লগআউট',onclick:"if(confirm('লগআউট করবেন?')){DB.session={role:null,user:null}; try{localStorage.removeItem('dealerSession_v2');}catch(e){} go('landing');}"}
   ], peTab);
 }
 
@@ -2793,8 +2804,12 @@ ROUTES.dealerLogin = function(){
       go('mechanicDashboard');
     } else {
       DB.session = {role:'dealer', user:u};
+      try{ localStorage.setItem('dealerSession_v2',JSON.stringify({role:'dealer',user:u})); }catch(e){}
       recordLogin(u.name, u.role, u.phone);
       dealerManageTab = 'search';
+      // Load the live Dealer Parts BEFORE opening the portal. This prevents the
+      // first render after login/refresh from showing 0 and avoids a second page.
+      await refreshDealerShopPartsFromFirebase();
       go('dealerPortal');
     }
   };
@@ -3758,6 +3773,7 @@ async function dealerShopPartsTransaction(mutator){
   if(callbackError) throw callbackError;
   if(!result.committed) throw new Error('Dealer Parts save বাতিল হয়েছে। আবার চেষ্টা করুন।');
   DB.dealerShopParts=dealerPartsArray(result.snapshot.val());
+  try{ localStorage.setItem('dealerShopParts_cache_v2',JSON.stringify(DB.dealerShopParts)); }catch(e){}
   return DB.dealerShopParts;
 }
 
@@ -4681,38 +4697,52 @@ function dealerPortalRender(){
     document.getElementById('dealerUnifiedSearchBtn').onclick=renderDealerUnifiedSearch;
   }
 }
+let dealerPartsRefreshSeq=0;
 async function refreshDealerShopPartsFromFirebase(){
+  const seq=++dealerPartsRefreshSeq;
   try{
     const u=currentDealer();
     if(!u) return;
-    // Use the Firebase SDK first. It automatically carries the authenticated user token
-    // and is reliable when RTDB rules require auth. This also correctly preserves an
-    // intentionally empty node instead of silently keeping a stale local list.
-    let latestParts=null;
-    try{
-      const snap=await fbDb.ref('appdata/dealerShopParts').once('value');
-      latestParts=dealerPartsArray(snap.val());
-    }catch(sdkErr){
-      console.warn('Dealer parts SDK refresh failed:',sdkErr);
-      let url=`${FB_URL}/appdata/dealerShopParts.json?_=${Date.now()}`;
-      if(fbAuth.currentUser){
-        const token=await fbAuth.currentUser.getIdToken(true);
-        url+=`&auth=${encodeURIComponent(token)}`;
-      }
-      const res=await fetch(url,{cache:'no-store'});
-      if(!res.ok) throw new Error(`Dealer parts load failed: ${res.status}`);
-      latestParts=dealerPartsArray(await res.json());
+    // Wait for Firebase Auth after page refresh. Never replace a known-good list with []
+    // just because Auth/network is temporarily unavailable.
+    const authUser=await waitForFirebaseAuthReady(8000);
+    if(!authUser){
+      try{
+        const cached=JSON.parse(localStorage.getItem('dealerShopParts_cache_v2')||'null');
+        if(Array.isArray(cached) && cached.length){
+          DB.dealerShopParts=cached;
+          normalizeDealerShopPartBrands();
+        }
+      }catch(e){}
+      return;
     }
-    // Firebase is the source of truth. No 100/500 item limit.
-    DB.dealerShopParts=Array.isArray(latestParts)?latestParts:[];
+    const snap=await fbDb.ref('appdata/dealerShopParts').once('value');
+    const latestParts=dealerPartsArray(snap.val());
+    if(seq!==dealerPartsRefreshSeq) return;
+    DB.dealerShopParts=latestParts;
     normalizeDealerShopPartBrands();
-    if(currentRoute==='dealerPortal' && currentDealer()){
+    try{ localStorage.setItem('dealerShopParts_cache_v2',JSON.stringify(latestParts)); }catch(e){}
+    if(currentRoute==='dealerPortal' && currentDealer() && seq===dealerPartsRefreshSeq){
+      // Re-render exactly one Dealer Portal. The main render() already clears #app.
       const app=document.getElementById('app');
       if(app) app.innerHTML='';
       dealerPortalRender();
     }
   }catch(err){
     console.warn('Latest dealer shop parts load failed:',err);
+    // Do not turn a temporary read failure into an apparent data loss.
+    try{
+      const cached=JSON.parse(localStorage.getItem('dealerShopParts_cache_v2')||'null');
+      if(Array.isArray(cached) && cached.length){
+        DB.dealerShopParts=cached;
+        normalizeDealerShopPartBrands();
+        if(currentRoute==='dealerPortal' && currentDealer() && seq===dealerPartsRefreshSeq){
+          const app=document.getElementById('app');
+          if(app) app.innerHTML='';
+          dealerPortalRender();
+        }
+      }
+    }catch(e){}
   }
 }
 ROUTES.dealerPortal=function(){
@@ -4722,144 +4752,11 @@ ROUTES.dealerPortal=function(){
 
 /* ---- Dealer Search Page ---- */
 ROUTES.dealerSearch = function(){
-  const app = document.getElementById('app');
-  app.appendChild(el(`
-    <div>
-      <div class="topbar">
-        <div class="topbar-brand">
-          <div class="brand-logo">${DB.settings.logo ? `<img src="${DB.settings.logo}" style="width:100%;height:100%;object-fit:cover;border-radius:9px">` : '🔧'}</div>
-          <div><div class="brand-name">${DB.settings.companyName}</div><div class="brand-sub">ডিলার পোর্টাল</div></div>
-        </div>
-        <div class="topbar-right">
-          <button class="btn btn-ghost btn-sm" onclick="go('dealerPortal')" style="color:#fff;border-color:rgba(255,255,255,.3)">🧾 Dealer Management</button>
-             <button class="btn btn-ghost btn-sm" onclick="go('dealerRequisition')" style="color:#fff;border-color:rgba(255,255,255,.3)">📝 রিকুইজিশন</button>
-          <button class="btn btn-ghost btn-sm theme-toggle" onclick="toggleTheme()" style="color:#fff;border-color:rgba(255,255,255,.3)">🌙</button>
-          <span class="pill">${DB.session.user.name}</span>
-          <button class="btn btn-ghost btn-sm" style="color:#fff;border-color:rgba(255,255,255,.3)" id="logout">${t('logout')}</button>
-        </div>
-      </div>
-      <div class="wrap">
-        <div class="search-hero">
-          <h2>পার্ট নম্বর সার্চ করুন</h2>
-          <p>পার্ট নম্বর/নাম, আংশিক নম্বর বা শেষের ৪/৫টি সংখ্যা দিয়েও খুঁজুন</p>
-          <div class="big-search">
-            <input type="text" id="q" placeholder="যেমনঃ 97200754 বা 0754 বা ইঞ্জিন" inputmode="text">
-            <button class="btn btn-primary" id="go">সার্চ</button>
-          </div>
-        </div>
-        <div id="results">${recentViewedHTML()}</div>
-      </div>
-    </div>
-  `));
-  document.getElementById('logout').onclick = ()=>{ DB.session={role:null,user:null}; go('landing'); };
-  const input = document.getElementById('q');
-  const PAGE = 10;
-  let currentPage = 1;
-  let currentResults = [];
-  let currentIsExact = false;
-
-  const scorePart = (p, qDigits, qText)=>{
-    const pn = String(p.partNo||'').toLowerCase();
-    const name = String(p.name||'').toLowerCase();
-    let score = 0;
-    if(qText && pn === qText) score += 1000;
-    if(qText && name === qText) score += 900;
-    if(qDigits && p.core === qDigits) score += 850;
-    if(qText && pn.includes(qText)) score += 700;
-    if(qText && name.includes(qText)) score += 600;
-    if(qDigits && p.core.includes(qDigits)) score += 500;
-    if(qDigits && pn.replace(/\D/g,'').includes(qDigits)) score += 450;
-    return score;
-  };
-  const renderPage = ()=>{
-    const results = document.getElementById('results');
-    const totalPages = Math.max(1, Math.ceil(currentResults.length/PAGE));
-    if(currentPage > totalPages) currentPage = totalPages;
-    const start = (currentPage-1)*PAGE;
-    const pageItems = currentResults.slice(start,start+PAGE);
-    let html = '';
-    if(!pageItems.length){ results.innerHTML='<div class="empty">😕 কোনো পার্ট পাওয়া যায়নি</div>'; return; }
-    if(!currentIsExact && currentResults.length) html += `<div class="group-label">কাছাকাছি/মিল থাকা আইটেম — মোট ${currentResults.length}টি</div>`;
-    pageItems.forEach(p=>{ recordRecentView(p); html += partCardHTML(p, currentIsExact, digitsOnly(input.value.trim()), true); });
-    if(totalPages>1){
-      html += `<div class="search-pagination">
-        <button class="btn btn-navy search-next" id="dealerNext" ${currentPage>=totalPages?'disabled':''}>NEXT ➜</button>
-        <span class="page-info">Page ${currentPage} / ${totalPages}</span>
-      </div>`;
-    }
-    results.innerHTML=html;
-    const next=document.getElementById('dealerNext');
-    if(next) next.onclick=()=>{ if(currentPage<totalPages){currentPage++;renderPage();window.scrollTo({top:document.getElementById('results').offsetTop-20,behavior:'smooth'});} };
-  };
-
-  const runSearch = ()=>{
-    const raw=input.value.trim();
-    const results=document.getElementById('results');
-    currentPage=1; currentResults=[]; currentIsExact=false;
-    if(!raw){ results.innerHTML=recentViewedHTML(); return; }
-    if(raw.length<3){ results.innerHTML='<div class="empty">অন্তত ৩ অক্ষর/সংখ্যা লিখুন</div>'; return; }
-    const qDigits=digitsOnly(raw), qText=raw.toLowerCase();
-    const exact=[], near=[];
-    for(const p of DB.parts){
-      const pn=String(p.partNo||'').toLowerCase(), name=String(p.name||'').toLowerCase();
-      const core=String(p.core||'');
-      if((qDigits && core===qDigits) || pn===qText){ exact.push(p); continue; }
-      if((qDigits && (core.includes(qDigits) || pn.replace(/\D/g,'').includes(qDigits))) || name.includes(qText) || pn.includes(qText)) near.push(p);
-    }
-    const list = exact.length ? exact : near;
-    if(!list.length){ results.innerHTML='<div class="empty">😕 কোনো পার্ট পাওয়া যায়নি</div>'; return; }
-    currentIsExact=exact.length>0;
-    currentResults=list.slice().sort((a,b)=>scorePart(b,qDigits,qText)-scorePart(a,qDigits,qText));
-    renderPage();
-  };
-  let searchTimer;
-  input.addEventListener('input',()=>{clearTimeout(searchTimer);searchTimer=setTimeout(runSearch,180);});
-  document.getElementById('go').onclick=runSearch;
+  // Legacy route kept only for backward compatibility; Dealer uses one unified portal.
+  dealerManageTab='search';
+  go('dealerPortal');
 };
 
-/* ---- Dealer Vehicle Model Search ---- */
-function levenshtein(a, b){
-  const m = a.length, n = b.length;
-  if(!m) return n; if(!n) return m;
-  const dp = Array.from({length:m+1}, (_,i)=>[i,...Array(n).fill(0)]);
-  for(let j=0;j<=n;j++) dp[0][j]=j;
-  for(let i=1;i<=m;i++){
-    for(let j=1;j<=n;j++){
-      dp[i][j] = a[i-1]===b[j-1] ? dp[i-1][j-1] : 1 + Math.min(dp[i-1][j], dp[i][j-1], dp[i-1][j-1]);
-    }
-  }
-  return dp[m][n];
-}
-function vehicleCompatBlob(v){
-  if(!v._blob) v._blob = normalizeVText([v.partNo, v.partName, (v.models||[]).join(' '), normalizeBrandName(v.brand)].join(' '));
-  return v._blob;
-}
-function searchVehicleCompat(qRaw){
-  const q = normalizeVText(qRaw);
-  if(!q) return [];
-  // ধাপ ১: সরাসরি partial/substring ম্যাচ (দ্রুততম)
-  let results = DB.vehicleCompat.filter(v => vehicleCompatBlob(v).includes(q));
-  if(results.length) return results.slice(0,50);
-  // ধাপ ২: বানান একটু ভুল হলে — approximate ম্যাচ (word-level Levenshtein, ছোট শব্দের জন্য tolerance কম)
-  const maxDist = q.length <= 4 ? 1 : (q.length <= 8 ? 2 : 3);
-  results = DB.vehicleCompat.filter(v=>{
-    const words = vehicleCompatBlob(v).split(' ');
-    return words.some(w => Math.abs(w.length - q.length) <= maxDist && levenshtein(w, q) <= maxDist);
-  });
-  return results.slice(0,50);
-}
-function vehicleResultCardHTML(v){
-  return `<div class="part-card" style="flex-direction:column;align-items:flex-start;gap:6px;">
-    <div style="display:flex;justify-content:space-between;width:100%;flex-wrap:wrap;gap:6px;">
-      <div class="pn" style="font-weight:700">${v.partNo}</div>
-      ${normalizeBrandName(v.brand) ? `<span class="pill" style="background:var(--paper);color:var(--navy);border:1px solid var(--line);">${escHtml(normalizeBrandName(v.brand))}</span>` : ''}
-    </div>
-    <div class="nm" style="font-weight:700;color:var(--text);">${v.partName||'-'}</div>
-    <div style="font-size:13.5px;color:var(--text);"><b>গাড়ির মডেল:</b> ${(v.models||[]).join(', ')||'-'}</div>
-    ${v.category ? `<div style="font-size:12.5px;color:var(--muted);">ক্যাটাগরি: ${v.category}</div>` : ''}
-    ${v.remarks ? `<div style="font-size:12.5px;color:var(--muted);">মন্তব্য: ${v.remarks}</div>` : ''}
-  </div>`;
-}
 ROUTES.dealerVehicleSearch = function(){
   const app = document.getElementById('app');
   app.appendChild(el(`
@@ -7320,6 +7217,13 @@ async function restoreDealerShopPartsFromStockHistory(){
       throw new Error('Firebase-এ Restore commit হয়নি। সম্ভবত অন্য ডিভাইস ইতিমধ্যে Part data লিখেছে।');
     }
     DB.dealerShopParts=dealerPartsArray(tx.snapshot.val());
+    try{ localStorage.setItem('dealerShopParts_cache_v2',JSON.stringify(DB.dealerShopParts)); }catch(e){}
+    // Verify the server immediately. A success message is shown only after the
+    // Firebase node is readable and contains the restored records.
+    const verifySnap=await ref.once('value');
+    const verified=dealerPartsArray(verifySnap.val());
+    if(verified.length!==recovered.length) throw new Error(`Restore verification failed: Firebase-এ ${verified.length}টি record পাওয়া গেছে, expected ${recovered.length}টি।`);
+    DB.dealerShopParts=verified;
     try{ await saveDB(['history']); }catch(e){ console.warn('Restore history save skipped:',e); }
     const msg=`✅ ${recovered.length}টি Part Restore হয়েছে। Firebase appdata/dealerShopParts এখন ${DB.dealerShopParts.length}টি record আছে।`;
     if(status) status.textContent=msg;
