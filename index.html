@@ -3863,6 +3863,17 @@ function dealerPartSearch(q){
   });
   return [...exact,...near.slice(0,30)].slice(0,40);
 }
+function dealerPartPurchasePrice(p){
+  const direct=Number(p?.purchasePrice||0);
+  if(direct>0) return direct;
+  // Restored Parts may not have price in stockHistory. If the same Part Number
+  // exists in the company Parts catalogue, use its current catalogue price as
+  // the fallback purchase value. This does not change Firebase data by itself.
+  const pn=String(p?.partNo||'').trim().toLowerCase();
+  if(!pn) return 0;
+  const match=DB.parts.find(x=>String(x?.partNo||'').trim().toLowerCase()===pn);
+  return Number(match?.price||0);
+}
 function dealerSummary(){
   const parts=dealerShopParts(), memos=dealerMemos();
   const today=new Date().toISOString().slice(0,10);
@@ -3873,7 +3884,7 @@ function dealerSummary(){
     low:parts.filter(p=>Number(p.currentStock||0)<=Number(p.lowStock||5)).length,
     todayMemo:todays.length,
     todaySales:todays.reduce((s,m)=>s+Number(m.grandTotal||0),0),
-    stockValue:parts.reduce((s,p)=>s+Number(p.currentStock||0)*Number(p.purchasePrice||0),0)
+    stockValue:parts.reduce((s,p)=>s+Number(p.currentStock||0)*dealerPartPurchasePrice(p),0)
   };
 }
 function dealerNavHTML(){
@@ -4038,7 +4049,7 @@ function stockHTML(){
   const parts=dealerShopParts();
   return `<div class="card-head"><h3>📦 My Stock</h3><button class="btn btn-primary btn-sm" id="stockRefresh">🔄 Refresh</button></div>
   <div class="card"><div style="overflow-x:auto"><table style="min-width:850px"><thead><tr><th>Part Name</th><th>Part Number</th><th>Category</th><th>Current Stock</th><th>Purchase</th><th>Selling</th><th>Stock Value</th><th>Status</th><th>Action</th></tr></thead><tbody>
-  ${parts.length?parts.map(p=>{const st=Number(p.currentStock||0),low=st<=Number(p.lowStock??5);return `<tr><td>${escHtml(p.name)}</td><td class="mono">${escHtml(p.partNo)}</td><td>${escHtml(p.category||'-')}</td><td><b>${st}</b> ${escHtml(p.unit||'PCS')}</td><td>৳${money(p.purchasePrice)}</td><td>৳${money(p.sellingPrice)}</td><td>৳${money(st*Number(p.purchasePrice||0))}</td><td class="${low?'stock-low':'stock-ok'}">${low?'⚠️ Low Stock':'✓ OK'}</td><td><button class="btn btn-ghost btn-sm" onclick="adjustDealerStock(${p.id})">⚙️ Adjust</button></td></tr>`}).join(''):'<tr><td colspan="9"><div class="empty">কোনো Stock Item নেই।</div></td></tr>'}
+  ${parts.length?parts.map(p=>{const st=Number(p.currentStock||0),low=st<=Number(p.lowStock??5);return `<tr><td>${escHtml(p.name)}</td><td class="mono">${escHtml(p.partNo)}</td><td>${escHtml(p.category||'-')}</td><td><b>${st}</b> ${escHtml(p.unit||'PCS')}</td><td>৳${money(p.purchasePrice)}</td><td>৳${money(p.sellingPrice)}</td><td>৳${money(st*dealerPartPurchasePrice(p))}</td><td class="${low?'stock-low':'stock-ok'}">${low?'⚠️ Low Stock':'✓ OK'}</td><td><button class="btn btn-ghost btn-sm" onclick="adjustDealerStock(${p.id})">⚙️ Adjust</button></td></tr>`}).join(''):'<tr><td colspan="9"><div class="empty">কোনো Stock Item নেই।</div></td></tr>'}
   </tbody></table></div></div>`;
 }
 function adjustDealerStock(id){
@@ -7253,12 +7264,12 @@ async function restoreDealerShopPartsFromStockHistory(){
       dealerId:h.dealerId,
       name:String(h.partName||'').trim() || `Recovered Part ${h.partId}`,
       partNo:String(h.partNo||'').trim(),
-      category:'',
+      category:(DB.parts.find(x=>String(x?.partNo||'').trim().toLowerCase()===String(h.partNo||'').trim().toLowerCase())?.category)||'',
       brand:'',
       unit:'PCS',
       lowStock:5,
-      purchasePrice:0,
-      sellingPrice:0,
+      purchasePrice:Number(DB.parts.find(x=>String(x?.partNo||'').trim().toLowerCase()===String(h.partNo||'').trim().toLowerCase())?.price||0),
+      sellingPrice:Number(DB.parts.find(x=>String(x?.partNo||'').trim().toLowerCase()===String(h.partNo||'').trim().toLowerCase())?.price||0),
       openingStock:Number(h.currentStock||0),
       currentStock:Number(h.currentStock||0),
       createdAt:h.dateISO||new Date().toISOString(),
