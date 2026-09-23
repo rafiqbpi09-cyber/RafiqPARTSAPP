@@ -1374,23 +1374,34 @@ async function loadDB(){
       // directly through the Firebase SDK. There is NO 100/500 item limit and the
       // list is never replaced by a fixed local copy.
       try{
-        // Read the dealer parts node directly from Firebase REST so the app always
-        // uses the current server data, including numeric-key objects and any count.
-        const dRes = await fetch(`${FB_URL}/appdata/dealerShopParts.json`);
-        if(dRes.ok){
-          const dSaved = await dRes.json();
-          const dParts=dealerPartsArray(dSaved);
-          DB.dealerShopParts = dParts;
-          dealerPartsLoadedFromFirebase=true;
+        // Firebase Auth can still be restoring after a full page refresh. Wait briefly
+        // so protected RTDB reads do not accidentally return 0 before the auth session is ready.
+        if(!fbAuth.currentUser){
+          await new Promise(resolve=>{
+            let done=false;
+            const finish=()=>{ if(done)return; done=true; clearTimeout(timer); resolve(); };
+            const timer=setTimeout(finish,5000);
+            try{ fbAuth.onAuthStateChanged(finish); }catch(e){ finish(); }
+          });
         }
+        const dSnap = await fbDb.ref('appdata/dealerShopParts').once('value');
+        const dParts=dealerPartsArray(dSnap.val());
+        DB.dealerShopParts = dParts;
+        dealerPartsLoadedFromFirebase=true;
       }catch(de){
-        console.warn('Dealer shop parts REST load failed:', de);
+        console.warn('Dealer shop parts SDK load failed:', de);
         try{
-          const dSnap = await fbDb.ref('appdata/dealerShopParts').once('value');
-          const dParts=dealerPartsArray(dSnap.val());
-          DB.dealerShopParts = dParts;
+          let dUrl=`${FB_URL}/appdata/dealerShopParts.json?_=${Date.now()}`;
+          if(fbAuth.currentUser){
+            const token=await fbAuth.currentUser.getIdToken();
+            dUrl+=`&auth=${encodeURIComponent(token)}`;
+          }
+          const dRes=await fetch(dUrl,{cache:'no-store'});
+          if(!dRes.ok) throw new Error(`HTTP ${dRes.status}`);
+          const dParts=dealerPartsArray(await dRes.json());
+          DB.dealerShopParts=dParts;
           dealerPartsLoadedFromFirebase=true;
-        }catch(de2){ console.warn('Dealer shop parts SDK load failed:', de2); }
+        }catch(de2){ console.warn('Dealer shop parts REST load failed:', de2); }
       }
       return;
     }
@@ -4671,20 +4682,28 @@ async function refreshDealerShopPartsFromFirebase(){
   try{
     const u=currentDealer();
     if(!u) return;
-    let url=`${FB_URL}/appdata/dealerShopParts.json`;
-    if(fbAuth.currentUser){
-      try{ const token=await fbAuth.currentUser.getIdToken(); url += `?auth=${encodeURIComponent(token)}`; }catch(e){}
+    // Use the Firebase SDK first. It automatically carries the authenticated user token
+    // and is reliable when RTDB rules require auth. This also correctly preserves an
+    // intentionally empty node instead of silently keeping a stale local list.
+    let latestParts=null;
+    try{
+      const snap=await fbDb.ref('appdata/dealerShopParts').once('value');
+      latestParts=dealerPartsArray(snap.val());
+    }catch(sdkErr){
+      console.warn('Dealer parts SDK refresh failed:',sdkErr);
+      let url=`${FB_URL}/appdata/dealerShopParts.json?_=${Date.now()}`;
+      if(fbAuth.currentUser){
+        const token=await fbAuth.currentUser.getIdToken(true);
+        url+=`&auth=${encodeURIComponent(token)}`;
+      }
+      const res=await fetch(url,{cache:'no-store'});
+      if(!res.ok) throw new Error(`Dealer parts load failed: ${res.status}`);
+      latestParts=dealerPartsArray(await res.json());
     }
-    const res=await fetch(url,{cache:'no-store'});
-    if(!res.ok) throw new Error(`Dealer parts load failed: ${res.status}`);
-    const data=await res.json();
-    const latestParts=dealerPartsArray(data);
-    if(latestParts.length){
-      // Firebase is the source of truth. No 100/500 item limit and no local overwrite.
-      DB.dealerShopParts=latestParts;
-      normalizeDealerShopPartBrands();
-      if(currentRoute==='dealerPortal' && currentDealer()) dealerPortalRender();
-    }
+    // Firebase is the source of truth. No 100/500 item limit.
+    DB.dealerShopParts=Array.isArray(latestParts)?latestParts:[];
+    normalizeDealerShopPartBrands();
+    if(currentRoute==='dealerPortal' && currentDealer()) dealerPortalRender();
   }catch(err){
     console.warn('Latest dealer shop parts load failed:',err);
   }
