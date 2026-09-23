@@ -3773,6 +3773,9 @@ async function addDealerShopPartSafe(part){
 }
 
 async function updateDealerShopPartSafe(partId, changes){
+  const u=currentDealer();
+  if(!u) throw new Error('Dealer session পাওয়া যায়নি। আবার Login করুন।');
+  const dataId=dealerDataId(u);
   const list=await dealerShopPartsTransaction((serverList,u)=>{
     const dataId=dealerDataId(u);
     const idx=serverList.findIndex(p=>String(p.dealerId)===String(dataId) && Number(p.id)===Number(partId));
@@ -3842,7 +3845,7 @@ async function deductDealerStockForMemoSafe(items, memoNo){
 
 function dealerMemos(){
   const u=currentDealer();
-  return u ? DB.dealerMemos.filter(m=>String(m.dealerId)===String(u.id)) : [];
+  return u ? DB.dealerMemos.filter(m=>String(m.dealerId)===String(dealerDataId(u))) : [];
 }
 function dealerStockHistory(){
   const u=currentDealer();
@@ -4703,7 +4706,11 @@ async function refreshDealerShopPartsFromFirebase(){
     // Firebase is the source of truth. No 100/500 item limit.
     DB.dealerShopParts=Array.isArray(latestParts)?latestParts:[];
     normalizeDealerShopPartBrands();
-    if(currentRoute==='dealerPortal' && currentDealer()) dealerPortalRender();
+    if(currentRoute==='dealerPortal' && currentDealer()){
+      const app=document.getElementById('app');
+      if(app) app.innerHTML='';
+      dealerPortalRender();
+    }
   }catch(err){
     console.warn('Latest dealer shop parts load failed:',err);
   }
