@@ -44,7 +44,7 @@ document.currentScript.parentNode.insertBefore(manifestLink, document.currentScr
 // প্রতিটি নতুন deployment/update দেওয়ার আগে এই APP_VERSION ভ্যালুটা পরিবর্তন করুন
 // (যেকোনো ইউনিক স্ট্রিং — তারিখ/সময় বা running number)। এই ভ্যালুর ভিত্তিতেই
 // সব ডিভাইস স্বয়ংক্রিয়ভাবে নতুন version detect করে reload হবে।
-window.APP_VERSION = '2026-09-23-dealer-parts-safe-write.1';
+window.APP_VERSION = '2026-09-23-dealer-parts-restore-persist.2';
 
 (function(){
   // পুরনো/legacy blob-based service worker ও পুরনো Cache Storage সম্পূর্ণ পরিষ্কার করে দেওয়া হয়,
@@ -1396,9 +1396,13 @@ async function loadDB(){
         if(!fbAuth.currentUser) throw new Error('Firebase Auth session not ready');
         const dSnap = await fbDb.ref('appdata/dealerShopParts').once('value');
         const dParts=dealerPartsArray(dSnap.val());
-        DB.dealerShopParts = dParts;
+        const repaired=syncRestoredDealerStockFromHistory(dParts);
+        DB.dealerShopParts = repaired.list;
         dealerPartsLoadedFromFirebase=true;
-        try{ localStorage.setItem('dealerShopParts_cache_v2',JSON.stringify(dParts)); }catch(e){}
+        try{ localStorage.setItem('dealerShopParts_cache_v2',JSON.stringify(DB.dealerShopParts)); }catch(e){}
+        if(repaired.changed){
+          try{ await persistDealerShopPartsRepair(repaired.list); }catch(repairErr){ console.warn('Dealer stock restore repair write skipped:',repairErr); }
+        }
       }catch(de){
         console.warn('Dealer shop parts SDK load failed:', de);
         try{
@@ -1410,8 +1414,13 @@ async function loadDB(){
           const dRes=await fetch(dUrl,{cache:'no-store'});
           if(!dRes.ok) throw new Error(`HTTP ${dRes.status}`);
           const dParts=dealerPartsArray(await dRes.json());
-          DB.dealerShopParts=dParts;
+          const repaired=syncRestoredDealerStockFromHistory(dParts);
+          DB.dealerShopParts=repaired.list;
           dealerPartsLoadedFromFirebase=true;
+          try{ localStorage.setItem('dealerShopParts_cache_v2',JSON.stringify(DB.dealerShopParts)); }catch(e){}
+          if(repaired.changed){
+            try{ await persistDealerShopPartsRepair(repaired.list); }catch(repairErr){ console.warn('Dealer stock REST repair write skipped:',repairErr); }
+          }
         }catch(de2){ console.warn('Dealer shop parts REST load failed:', de2); }
       }
       return;
@@ -1424,15 +1433,26 @@ async function loadDB(){
       const dRes = await fetch(`${FB_URL}/appdata/dealerShopParts.json`);
       if(dRes.ok){
         const dParts=dealerPartsArray(await dRes.json());
-        DB.dealerShopParts = dParts;
+        const repaired=syncRestoredDealerStockFromHistory(dParts);
+        DB.dealerShopParts = repaired.list;
         dealerPartsLoadedFromFirebase=true;
+        try{ localStorage.setItem('dealerShopParts_cache_v2',JSON.stringify(DB.dealerShopParts)); }catch(e){}
+        if(repaired.changed){
+          try{ await persistDealerShopPartsRepair(repaired.list); }catch(repairErr){ console.warn('Dealer stock fallback repair write skipped:',repairErr); }
+        }
       }
     }catch(de){
       console.warn('Dealer shop parts REST load failed:', de);
       try{
         const dSnap = await fbDb.ref('appdata/dealerShopParts').once('value');
-        DB.dealerShopParts = dealerPartsArray(dSnap.val());
+        const dParts=dealerPartsArray(dSnap.val());
+        const repaired=syncRestoredDealerStockFromHistory(dParts);
+        DB.dealerShopParts = repaired.list;
         dealerPartsLoadedFromFirebase=true;
+        try{ localStorage.setItem('dealerShopParts_cache_v2',JSON.stringify(DB.dealerShopParts)); }catch(e){}
+        if(repaired.changed){
+          try{ await persistDealerShopPartsRepair(repaired.list); }catch(repairErr){ console.warn('Dealer stock SDK fallback repair skipped:',repairErr); }
+        }
       }catch(de2){ console.warn('Dealer shop parts SDK load failed:', de2); }
     }
   }
@@ -3710,6 +3730,82 @@ function dealerPartsArray(value){
   return [];
 }
 
+/* ================= DEALER STOCK RESTORE PERSISTENCE REPAIR =================
+   Restore data comes from Stock History. On a full page refresh, the Dealer Parts
+   node is the source for the part list, while Stock History is the authoritative
+   source for the latest stock quantity of restored parts. This repair keeps the
+   restored quantity from falling back to 0 after refresh.
+*/
+function syncRestoredDealerStockFromHistory(list){
+  const arr=dealerPartsArray(list);
+  if(!arr.length || !Array.isArray(DB.stockHistory) || !DB.stockHistory.length) return {list:arr,changed:false};
+  const latest=new Map();
+
+  for(const h of DB.stockHistory){
+    if(!h || h.partId==null || String(h.partId).trim()==='') continue;
+    const key=`${String(h.dealerId??'')}|${String(h.partId)}`;
+    const t=Date.parse(h.dateISO||'') || Date.parse(String(h.date||'').replace(' ','T')) || Number(h.id)||0;
+    const old=latest.get(key);
+    if(!old || t >= old.t) latest.set(key,{h,t});
+  }
+
+  let changed=false;
+  const fixed=arr.map(p=>{
+    if(!p || !p.restoredFromStockHistory) return p;
+    const key=`${String(p.dealerId??'')}|${String(p.id)}`;
+    const rec=latest.get(key);
+    if(!rec || !rec.h) return p;
+
+    const historyStock=Number(rec.h.currentStock||0);
+    const currentStock=Number(p.currentStock||0);
+    const historyAt=rec.h.dateISO || '';
+    const oldAt=p.updatedAt || p.restoredAt || '';
+
+    // History is authoritative for a restored record when it is newer than the
+    // restore timestamp, or when the restored record has fallen back to 0.
+    const historyTime=Date.parse(historyAt)||rec.t||0;
+    const oldTime=Date.parse(oldAt)||0;
+    if(historyTime >= oldTime && currentStock !== historyStock){
+      changed=true;
+      return {
+        ...p,
+        currentStock:historyStock,
+        openingStock:Number(p.openingStock||historyStock),
+        updatedAt:historyAt || new Date(rec.t||Date.now()).toISOString(),
+        lastStockHistoryAt:historyAt || p.lastStockHistoryAt || ''
+      };
+    }
+    if(historyAt && p.lastStockHistoryAt !== historyAt){
+      changed=true;
+      return {...p,lastStockHistoryAt:historyAt};
+    }
+    return p;
+  });
+  return {list:fixed,changed};
+}
+
+async function persistDealerShopPartsRepair(list){
+  const ref=fbDb.ref('appdata/dealerShopParts');
+  const tx=await ref.transaction(current=>{
+    const server=dealerPartsArray(current);
+    if(!server.length) return list;
+    // Never replace a newer server list blindly. Merge only restored records.
+    const byKey=new Map(server.map(p=>[`${String(p?.dealerId??'')}|${String(p?.id)}`,p]));
+    for(const fixed of list){
+      if(!fixed || !fixed.restoredFromStockHistory) continue;
+      const key=`${String(fixed.dealerId??'')}|${String(fixed.id)}`;
+      if(byKey.has(key)) byKey.set(key,fixed);
+    }
+    return [...byKey.values()];
+  });
+  if(tx.committed){
+    DB.dealerShopParts=dealerPartsArray(tx.snapshot.val());
+    try{ localStorage.setItem('dealerShopParts_cache_v2',JSON.stringify(DB.dealerShopParts)); }catch(e){}
+    return true;
+  }
+  return false;
+}
+
 function currentDealer(){
   return DB.session && DB.session.role === 'dealer' ? DB.session.user : null;
 }
@@ -4719,9 +4815,13 @@ async function refreshDealerShopPartsFromFirebase(){
     const snap=await fbDb.ref('appdata/dealerShopParts').once('value');
     const latestParts=dealerPartsArray(snap.val());
     if(seq!==dealerPartsRefreshSeq) return;
-    DB.dealerShopParts=latestParts;
+    const repaired=syncRestoredDealerStockFromHistory(latestParts);
+    DB.dealerShopParts=repaired.list;
     normalizeDealerShopPartBrands();
-    try{ localStorage.setItem('dealerShopParts_cache_v2',JSON.stringify(latestParts)); }catch(e){}
+    try{ localStorage.setItem('dealerShopParts_cache_v2',JSON.stringify(DB.dealerShopParts)); }catch(e){}
+    if(repaired.changed){
+      try{ await persistDealerShopPartsRepair(repaired.list); }catch(repairErr){ console.warn('Dealer refresh stock repair skipped:',repairErr); }
+    }
     if(currentRoute==='dealerPortal' && currentDealer() && seq===dealerPartsRefreshSeq){
       // Re-render exactly one Dealer Portal. The main render() already clears #app.
       const app=document.getElementById('app');
@@ -7196,6 +7296,8 @@ async function restoreDealerShopPartsFromStockHistory(){
       openingStock:Number(h.currentStock||0),
       currentStock:Number(h.currentStock||0),
       createdAt:h.dateISO||new Date().toISOString(),
+      updatedAt:h.dateISO||new Date().toISOString(),
+      lastStockHistoryAt:h.dateISO||'',
       restoredFromStockHistory:true,
       restoredAt:new Date().toISOString()
     })).filter(p=>p.partNo || p.name);
@@ -7223,7 +7325,13 @@ async function restoreDealerShopPartsFromStockHistory(){
     const verifySnap=await ref.once('value');
     const verified=dealerPartsArray(verifySnap.val());
     if(verified.length!==recovered.length) throw new Error(`Restore verification failed: Firebase-এ ${verified.length}টি record পাওয়া গেছে, expected ${recovered.length}টি।`);
-    DB.dealerShopParts=verified;
+    const restoredRepair=syncRestoredDealerStockFromHistory(verified);
+    DB.dealerShopParts=restoredRepair.list;
+    if(restoredRepair.changed){
+      try{ await persistDealerShopPartsRepair(restoredRepair.list); }catch(e){ console.warn('Restore stock repair write skipped:',e); }
+    }else{
+      try{ localStorage.setItem('dealerShopParts_cache_v2',JSON.stringify(DB.dealerShopParts)); }catch(e){}
+    }
     try{ await saveDB(['history']); }catch(e){ console.warn('Restore history save skipped:',e); }
     const msg=`✅ ${recovered.length}টি Part Restore হয়েছে। Firebase appdata/dealerShopParts এখন ${DB.dealerShopParts.length}টি record আছে।`;
     if(status) status.textContent=msg;
