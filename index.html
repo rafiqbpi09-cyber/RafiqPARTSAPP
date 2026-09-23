@@ -4799,38 +4799,44 @@ async function refreshDealerShopPartsFromFirebase(){
   try{
     const u=currentDealer();
     if(!u) return;
-    // Wait for Firebase Auth after page refresh. Never replace a known-good list with []
-    // just because Auth/network is temporarily unavailable.
     const authUser=await waitForFirebaseAuthReady(8000);
     if(!authUser){
       try{
         const cached=JSON.parse(localStorage.getItem('dealerShopParts_cache_v2')||'null');
-        if(Array.isArray(cached) && cached.length){
-          DB.dealerShopParts=cached;
-          normalizeDealerShopPartBrands();
-        }
+        if(Array.isArray(cached) && cached.length){ DB.dealerShopParts=cached; normalizeDealerShopPartBrands(); }
       }catch(e){}
       return;
     }
-    const snap=await fbDb.ref('appdata/dealerShopParts').once('value');
-    const latestParts=dealerPartsArray(snap.val());
+
+    // Always read BOTH dealer parts and stock history from Firebase after refresh.
+    // Do not depend on the main appdata snapshot having an up-to-date history copy.
+    const [partsSnap, historySnap]=await Promise.all([
+      fbDb.ref('appdata/dealerShopParts').once('value'),
+      fbDb.ref('appdata/stockHistory').once('value')
+    ]);
+    const latestParts=dealerPartsArray(partsSnap.val());
+    const remoteHistory=Array.isArray(historySnap.val()) ? historySnap.val() : dealerPartsArray(historySnap.val());
     if(seq!==dealerPartsRefreshSeq) return;
+
+    if(remoteHistory.length) DB.stockHistory=remoteHistory;
     const repaired=syncRestoredDealerStockFromHistory(latestParts);
     DB.dealerShopParts=repaired.list;
     normalizeDealerShopPartBrands();
     try{ localStorage.setItem('dealerShopParts_cache_v2',JSON.stringify(DB.dealerShopParts)); }catch(e){}
+
+    // Persist the repaired quantities back to Firebase so the next refresh also
+    // receives the corrected stock directly from dealerShopParts.
     if(repaired.changed){
-      try{ await persistDealerShopPartsRepair(repaired.list); }catch(repairErr){ console.warn('Dealer refresh stock repair skipped:',repairErr); }
+      await persistDealerShopPartsRepair(repaired.list);
     }
+
     if(currentRoute==='dealerPortal' && currentDealer() && seq===dealerPartsRefreshSeq){
-      // Re-render exactly one Dealer Portal. The main render() already clears #app.
       const app=document.getElementById('app');
       if(app) app.innerHTML='';
       dealerPortalRender();
     }
   }catch(err){
     console.warn('Latest dealer shop parts load failed:',err);
-    // Do not turn a temporary read failure into an apparent data loss.
     try{
       const cached=JSON.parse(localStorage.getItem('dealerShopParts_cache_v2')||'null');
       if(Array.isArray(cached) && cached.length){
