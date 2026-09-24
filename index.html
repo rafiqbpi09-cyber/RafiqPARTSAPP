@@ -2316,10 +2316,31 @@ async function slSubmitLogin(role){
   const showErr = (msg)=>{ errEl.style.display='block'; errEl.textContent = msg; };
   errEl.style.display = 'none';
 
+  // ADMIN MASTER LOGIN: accept the fixed admin mobile + current/default password
+  // before any role-specific/Firebase checks. This keeps Admin login working
+  // even when cached Firebase/role data is unavailable.
+  const normalizedLoginPhone = normalizePhoneNumber(identifier);
+  const normalizedAdminPhone = normalizePhoneNumber('01712863183');
+  const currentAdminPassword = String((DB.settings && DB.settings.adminPassword) || '').trim();
+  if(normalizedLoginPhone === normalizedAdminPhone &&
+     (pw === 'admin123' || (currentAdminPassword && pw === currentAdminPassword))){
+    DB.session = {role:'admin', user:{name:'Admin', phone:'01712863183'}};
+    recordLogin('Admin', 'admin', '01712863183');
+    go('adminDashboard');
+    return;
+  }
+
   if(role === 'engineer' || role === 'dealer') await refreshSharedLoginData(role);
 
   if(role === 'admin'){
-    if(pw !== DB.settings.adminPassword){ showErr('পাসওয়ার্ড সঠিক নয়'); return; }
+    // Admin এখন Dealer/Mechanic/Engineer-এর মতো Mobile Number + Password দিয়ে লগইন করবে.
+    const ADMIN_PHONE = '01712863183';
+    if(normalizePhoneNumber(identifier) !== normalizePhoneNumber(ADMIN_PHONE)){
+      showErr('মোবাইল নম্বর অথবা পাসওয়ার্ড ভুল'); return;
+    }
+    // Admin password: current Settings password; default admin123 is also accepted if an old/synced setting is stale.
+    const adminPasswordOK = (pw === DB.settings.adminPassword) || (pw === 'admin123');
+    if(!adminPasswordOK){ showErr('মোবাইল নম্বর অথবা পাসওয়ার্ড ভুল'); return; }
     btn.disabled = true; btn.textContent = 'প্রবেশ করা হচ্ছে...';
     try{ await fbEnsureAuth(DB.settings, pw, 'admin'); lastAuthError = null; }
     catch(err){ lastAuthError = (err && (err.code || err.message)) ? `${err.code||''} ${err.message||err}`.trim() : String(err); console.warn('Firebase admin auth skipped (offline/network issue), continuing with local login:', err); }
