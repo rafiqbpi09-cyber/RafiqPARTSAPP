@@ -4158,12 +4158,12 @@ function openDealerShopPartModal(part=null){
       if(part){
         const oldStock=Number(part.currentStock||0);
         const saved=await updateDealerShopPartSafe(part.id,{...common,currentStock:stock,updatedAt:new Date().toISOString()});
-        if(stock!==oldStock){addStockHistory(saved,oldStock,stock>oldStock?stock-oldStock:0,stock<oldStock?oldStock-stock:0,stock,'Manual Stock Adjustment','');await saveDB(['stockHistory']);}
+        if(stock!==oldStock){addStockHistory(saved,oldStock,stock>oldStock?stock-oldStock:0,stock<oldStock?oldStock-stock:0,stock,'Manual Stock Adjustment','');await flushStockHistorySafe();}
       }else{
         const np={id:Date.now()+Math.floor(Math.random()*1000),dealerId:dealerDataId(u),...common,openingStock:stock,currentStock:stock,createdAt:new Date().toISOString()};
         const saved=await addDealerShopPartSafe(np);
         if(!saved) throw new Error('নতুন Part Firebase-এ সেভ হয়নি।');
-        if(stock>0){addStockHistory(saved,0,stock,0,stock,'Opening Stock','');await saveDB(['stockHistory']);}
+        if(stock>0){addStockHistory(saved,0,stock,0,stock,'Opening Stock','');await flushStockHistorySafe();}
       }
       // DealerShopParts is already committed by Firebase transaction. Do NOT call generic saveDB here.
       closeModal(); go('dealerPortal');
@@ -4187,9 +4187,47 @@ function wireDealerShopParts(){
   const s=document.getElementById('shopPartSearch');
   s.oninput=()=>{const q=s.value.trim().toLowerCase();const list=dealerShopParts().filter(p=>!q||String(p.name).toLowerCase().includes(q)||String(p.partNo).toLowerCase().includes(q)||String(p.category||'').toLowerCase().includes(q));document.getElementById('shopPartsList').innerHTML=renderShopPartsTable(list);};
 }
+let _pendingStockHistoryEntries=[];
 function addStockHistory(part,prev,inQty,outQty,current,reason,memoNumber){
   const u=currentDealer(); if(!u)return;
-  DB.stockHistory.unshift({id:Date.now()+Math.random(),dealerId:dealerDataId(u),dealerName:u.name,date:nowStr(),dateISO:new Date().toISOString(),partId:part.id,partName:part.name,partNo:part.partNo,previousStock:Number(prev||0),stockIn:Number(inQty||0),stockOut:Number(outQty||0),currentStock:Number(current||0),reason:reason||'',relatedMemoNumber:memoNumber||''});
+  const entry={id:Date.now()+Math.random(),dealerId:dealerDataId(u),dealerName:u.name,date:nowStr(),dateISO:new Date().toISOString(),partId:part.id,partName:part.name,partNo:part.partNo,previousStock:Number(prev||0),stockIn:Number(inQty||0),stockOut:Number(outQty||0),currentStock:Number(current||0),reason:reason||'',relatedMemoNumber:memoNumber||''};
+  DB.stockHistory.unshift(entry);
+  _pendingStockHistoryEntries.push(entry);
+}
+/* ================= STOCK HISTORY — SAFE CONCURRENT STORAGE =================
+   appdata/stockHistory is shared across every dealer/device. The old code path
+   (saveDB(['stockHistory'])) did a raw PATCH with this browser's full local
+   DB.stockHistory array, so whichever device saved last silently wiped out any
+   history entries another dealer/device had added in the meantime. Because the
+   restored-dealer-stock repair (syncRestoredDealerStockFromHistory) trusts the
+   latest stockHistory entry as the source of truth for a part's currentStock,
+   a wiped-out entry made a correctly-saved stock quantity revert to an older
+   (sometimes 0) value on the next refresh. This transaction merges only the
+   newly-added entries into whatever is currently on the server instead of
+   replacing the whole array, so concurrent saves from other devices are never
+   lost.
+*/
+async function flushStockHistorySafe(){
+  if(!_pendingStockHistoryEntries.length) return;
+  const pending=_pendingStockHistoryEntries;
+  _pendingStockHistoryEntries=[];
+  try{
+    const ref=fbDb.ref('appdata/stockHistory');
+    const tx=await ref.transaction(current=>{
+      const arr=dealerPartsArray(current);
+      const existingIds=new Set(arr.map(x=>String(x?.id)));
+      for(const e of pending){ if(!existingIds.has(String(e.id))){ arr.unshift(e); existingIds.add(String(e.id)); } }
+      return arr;
+    });
+    if(tx.committed){
+      DB.stockHistory=dealerPartsArray(tx.snapshot.val());
+      try{ localStorage.setItem('dealerShopParts_cache_v2'+'_history',JSON.stringify(DB.stockHistory.slice(0,500))); }catch(e){}
+    }
+  }catch(e){
+    console.warn('Stock history safe save failed, will retry next save:',e);
+    // Put the entries back so a later flush (or a future save) can try again.
+    _pendingStockHistoryEntries=pending.concat(_pendingStockHistoryEntries);
+  }
 }
 function stockHTML(){
   const parts=dealerShopParts();
@@ -4212,7 +4250,7 @@ function adjustDealerStock(id){
     if(type==='in'){next=prev+q;stockIn=q;}else if(type==='out'){if(q>prev){alert('Stock-এর চেয়ে বেশি কমানো যাবে না।');return;}next=prev-q;stockOut=q;}else{next=q;stockIn=Math.max(0,q-prev);stockOut=Math.max(0,prev-q);}
     try{
       await adjustDealerStockSafe(id,type,q,reason);
-      await saveDB(['stockHistory']);
+      await flushStockHistorySafe();
       closeModal();go('dealerPortal');
     }catch(err){ alert(err.message||'Stock update করা যায়নি।'); }
   };
@@ -4641,7 +4679,8 @@ function wireMemoPage(existingDraft=null){
     DB.dealerMemos.unshift(memo);
     if(draftId)DB.dealerMemoDrafts=DB.dealerMemoDrafts.filter(x=>String(x.id)!==String(draftId));
     clearDraftLocal();
-    await saveDB(['dealerMemos','dealerMemoDrafts','stockHistory','nextMemoNo']);
+    await saveDB(['dealerMemos','dealerMemoDrafts','nextMemoNo']);
+    await flushStockHistorySafe();
     showSavedMemoActions(memo);
   };
   redraw();
