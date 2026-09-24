@@ -4079,7 +4079,6 @@ function dealerTopbar(sub='ডিলার পোর্টাল', hideBrand=fal
 function dealerDashboardCards(){
   const s=dealerSummary();
   return `<div class="dealer-stat-grid">
-    <div class="dealer-stat"><div class="n">${DB.dealerShopParts.length}</div><div class="l">🔥 Firebase Total Parts</div></div>
     <div class="dealer-stat"><div class="n">${s.shopParts}</div><div class="l">🧩 Total My Shop Parts</div></div>
     <div class="dealer-stat"><div class="n">${s.stockItems}</div><div class="l">📦 Total Stock Items</div></div>
     <div class="dealer-stat"><div class="n">${s.low}</div><div class="l">⚠️ Low Stock Items</div></div>
@@ -7410,14 +7409,81 @@ async function restoreDealerShopPartsFromStockHistory(){
   }
 }
 
+/* ================= ADMIN: DEALER STOCK UPLOAD (per dealer id) =================
+   Admin Settings থেকে একজন নির্দিষ্ট ডিলার সিলেক্ট করে Excel দিয়ে সেই ডিলারের
+   dealerShopParts আপলোড/আপডেট করা হয়। Firebase transaction ব্যবহার করা হয় যাতে
+   অন্য কোনো ডিলারের ডেটার উপর কোনো প্রভাব না পড়ে — শুধু dealerId ম্যাচ করা
+   record-গুলোই touch হয়। */
+async function adminUploadDealerStock(dealerId, dealerName, file){
+  const authUser=await waitForFirebaseAuthReady(8000);
+  if(!authUser) throw new Error('Firebase Login session প্রস্তুত হয়নি। আবার চেষ্টা করুন।');
+  return new Promise((resolve,reject)=>{
+    const reader=new FileReader();
+    reader.onload=async(evt)=>{
+      try{
+        const wb=XLSX.read(evt.target.result,{type:'binary'});
+        const sheet=wb.Sheets[wb.SheetNames[0]];
+        const rows=XLSX.utils.sheet_to_json(sheet,{defval:''});
+        if(!rows.length){ reject(new Error('ফাইলে কোনো ডেটা পাওয়া যায়নি।')); return; }
+        let added=0, updated=0, skipped=0;
+        const dataId=String(dealerId);
+        const ref=fbDb.ref('appdata/dealerShopParts');
+        const result=await ref.transaction(current=>{
+          added=0; updated=0; skipped=0;
+          const serverList=dealerPartsArray(current).slice();
+          rows.forEach(r=>{
+            const partNo=String(r['Part Number']||r.PartNo||r['পার্ট নম্বর']||r.partno||r['Part No']||'').trim();
+            const name=String(r['Parts Name']||r.Name||r['নাম']||r.name||'').trim();
+            if(!partNo||!name){ skipped++; return; }
+            const category=String(r.Category||r['ক্যাটাগরি']||r.category||'').trim();
+            const brand=String(r.Brand||r['ব্র্যান্ড']||r.brand||'').trim();
+            const unit=String(r.Unit||r['ইউনিট']||r.unit||'').trim()||'PCS';
+            const lowStock=Number(r['Low Stock']||r['লো স্টক']||r.lowStock||5)||5;
+            const purchasePrice=parseFloat(r['Purchase Price']||r['ক্রয় মূল্য']||r.purchasePrice||0)||0;
+            const sellingPrice=parseFloat(r['Selling Price']||r['বিক্রয় মূল্য']||r.Price||r['মূল্য']||r.sellingPrice||0)||0;
+            const stock=parseFloat(r['Stock']||r['স্টক']||r['Opening Stock']||r.Qty||r['পরিমাণ']||r.currentStock||0)||0;
+            const idx=serverList.findIndex(p=>String(p.dealerId)===dataId && String(p.partNo||'').trim().toLowerCase()===partNo.toLowerCase());
+            if(idx>=0){
+              serverList[idx]={...serverList[idx],name,category,brand,unit,lowStock,purchasePrice,sellingPrice,currentStock:stock,updatedAt:new Date().toISOString()};
+              updated++;
+            }else{
+              serverList.push({id:Date.now()+Math.floor(Math.random()*1000000)+added+updated+skipped,dealerId:dataId,name,partNo,category,brand,unit,lowStock,purchasePrice,sellingPrice,openingStock:stock,currentStock:stock,createdAt:new Date().toISOString()});
+              added++;
+            }
+          });
+          return serverList;
+        });
+        if(!result.committed) throw new Error('Upload বাতিল হয়েছে। আবার চেষ্টা করুন।');
+        DB.dealerShopParts=dealerPartsArray(result.snapshot.val());
+        try{ localStorage.setItem('dealerShopParts_cache_v2',JSON.stringify(DB.dealerShopParts)); }catch(e){}
+        logHistory(`Admin: ডিলার "${dealerName}"-এর স্টক Excel আপলোড — নতুন ${added}টি, আপডেট ${updated}টি, স্কিপ ${skipped}টি`);
+        resolve({added,updated,skipped});
+      }catch(err){ reject(err); }
+    };
+    reader.onerror=()=>reject(new Error('ফাইল পড়া যায়নি।'));
+    reader.readAsBinaryString(file);
+  });
+}
 function settingsTabHTML(){
   return `
-    <div class="card" style="background:#fff8e1;border:2px solid #d97706;">
-      <h3 style="color:#b45309;">♻️ Dealer Shop Parts Recovery</h3>
-      <p class="hint">Firebase-এর <span class="mono">appdata/dealerShopParts</span> node যদি খালি/অনুপস্থিত থাকে, তাহলে <b>Stock History</b> থেকে প্রতিটি unique Part-এর সর্বশেষ record ব্যবহার করে Parts পুনরুদ্ধার করা যাবে। Existing Parts থাকলে নিরাপত্তার জন্য Restore হবে না।</p>
-      <p class="hint">বর্তমান Firebase Dealer Parts: <b>${dealerPartsArray(DB.dealerShopParts).length}</b> &nbsp; | &nbsp; Stock History: <b>${Array.isArray(DB.stockHistory)?DB.stockHistory.length:0}</b></p>
-      <button class="btn btn-primary" id="restoreDealerPartsBtn" style="margin-top:8px;">♻️ Stock History থেকে Parts Restore করুন</button>
-      <div class="hint" id="restoreDealerPartsStatus" style="margin-top:10px;"></div>
+    <div class="card" style="background:#eef2ff;border:2px solid #4338ca;">
+      <h3 style="color:#3730a3;">📤 Dealer Stock Upload (ডিলার আইডি অনুযায়ী)</h3>
+      <p class="hint">নির্দিষ্ট একজন ডিলার সিলেক্ট করে তার জন্য Excel ফাইল আপলোড করুন। এই ফাইলের সব Part শুধু সিলেক্ট করা ডিলারের আইডিতে যোগ/আপডেট হবে — অন্য কোনো ডিলারের স্টক/রোল-এ এর কোনো প্রভাব পড়বে না। Part Number ম্যাচ করলে সেই ডিলারের ঐ Part-এর তথ্য ও স্টক আপডেট হবে, না মিললে নতুন Part যোগ হবে।</p>
+      <div class="field">
+        <label>ডিলার সিলেক্ট করুন</label>
+        <select id="adminDealerStockSelect">
+          <option value="">-- ডিলার বাছাই করুন --</option>
+          ${DB.users.filter(u=>u.role==='dealer' && !isDeletedAccount(u)).sort((a,b)=>String(a.name||'').localeCompare(String(b.name||''))).map(u=>`<option value="${escHtml(String(u.id))}" data-name="${escHtml(u.name||'')}">${escHtml(u.name||'')} — ${escHtml(u.phone||'')}</option>`).join('')}
+        </select>
+      </div>
+      <div class="field">
+        <label>Excel ফাইল (.xlsx/.xls/.csv)</label>
+        <label class="btn btn-ghost file-btn">📥 ফাইল বাছাই করুন<input type="file" id="adminDealerStockFile" accept=".xlsx,.xls,.csv"></label>
+        <div class="hint" id="adminDealerStockFileName">কোনো ফাইল সিলেক্ট করা হয়নি</div>
+      </div>
+      <p class="hint">কলাম হতে পারে: <span class="mono">Part Number, Parts Name, Category, Brand, Unit, Purchase Price, Selling Price, Stock</span> (বাংলা নামও চলবে)।</p>
+      <button class="btn btn-primary" id="adminDealerStockUploadBtn" style="margin-top:8px;">📤 Stock Upload করুন</button>
+      <div class="hint" id="adminDealerStockStatus" style="margin-top:10px;"></div>
     </div>
     <div class="card" style="background:#ffebee;border:2px solid #c2041d;">
       <h3 style="color:#c2041d;">🔴 সব পুরনো পার্টস ডিলিট করে নতুন লিস্ট আপলোড</h3>
@@ -7496,8 +7562,38 @@ function settingsTabHTML(){
   `;
 }
 function wireSettingsTab(){
-  const restoreBtn=document.getElementById('restoreDealerPartsBtn');
-  if(restoreBtn) restoreBtn.onclick=restoreDealerShopPartsFromStockHistory;
+  const dlrStockFile=document.getElementById('adminDealerStockFile');
+  if(dlrStockFile) dlrStockFile.onchange=()=>{
+    const nm=document.getElementById('adminDealerStockFileName');
+    if(nm) nm.textContent=dlrStockFile.files[0]?dlrStockFile.files[0].name:'কোনো ফাইল সিলেক্ট করা হয়নি';
+  };
+  const dlrStockBtn=document.getElementById('adminDealerStockUploadBtn');
+  if(dlrStockBtn) dlrStockBtn.onclick=async()=>{
+    const sel=document.getElementById('adminDealerStockSelect');
+    const fileInput=document.getElementById('adminDealerStockFile');
+    const status=document.getElementById('adminDealerStockStatus');
+    const dealerId=sel?sel.value:'';
+    const dealerName=sel&&sel.selectedIndex>=0?(sel.options[sel.selectedIndex].dataset.name||''):'';
+    const file=fileInput&&fileInput.files[0];
+    if(!dealerId){alert('একজন ডিলার সিলেক্ট করুন।');return;}
+    if(!file){alert('একটি Excel ফাইল সিলেক্ট করুন।');return;}
+    if(!confirm(`"${dealerName}" — এই ডিলারের জন্য Stock Upload করতে চান?`))return;
+    dlrStockBtn.disabled=true; dlrStockBtn.textContent='⏳ আপলোড হচ্ছে...';
+    if(status) status.textContent='';
+    try{
+      const r=await adminUploadDealerStock(dealerId,dealerName,file);
+      if(status) status.textContent=`✅ সম্পন্ন — নতুন: ${r.added}টি, আপডেট: ${r.updated}টি, স্কিপ: ${r.skipped}টি`;
+      alert(`✅ "${dealerName}"-এর স্টক আপলোড সম্পন্ন হয়েছে।\n\nনতুন: ${r.added}টি\nআপডেট: ${r.updated}টি\nস্কিপ: ${r.skipped}টি`);
+      if(fileInput) fileInput.value='';
+      const nm=document.getElementById('adminDealerStockFileName'); if(nm) nm.textContent='কোনো ফাইল সিলেক্ট করা হয়নি';
+    }catch(err){
+      console.error('Admin dealer stock upload failed:',err);
+      if(status) status.textContent='❌ '+(err.message||err);
+      alert('❌ Upload failed: '+(err.message||err));
+    }finally{
+      dlrStockBtn.disabled=false; dlrStockBtn.textContent='📤 Stock Upload করুন';
+    }
+  };
   const delAllBtn = document.getElementById('deleteAllParts');
   if(delAllBtn){
     delAllBtn.onclick = async ()=>{
