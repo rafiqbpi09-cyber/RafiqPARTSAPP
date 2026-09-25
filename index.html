@@ -4203,7 +4203,7 @@ function renderDealerUnifiedSearch(){
 }
 function dealerShopPartsHTML(){
   const parts=dealerShopParts();
-  return `<div class="card-head"><h3>🧩 My Shop Parts (${parts.length})</h3><button class="btn btn-primary btn-sm" id="addShopPart">➕ নতুন Part Add</button></div>
+  return `<div class="card-head"><h3>🧩 My Shop Parts (${parts.length})</h3><div style="display:flex;gap:8px;flex-wrap:wrap"><label class="btn btn-ghost btn-sm file-btn">📤 Stock Upload (Excel)<input type="file" id="dealerStockUploadFile" accept=".xlsx,.xls,.csv"></label><button class="btn btn-primary btn-sm" id="addShopPart">➕ নতুন Part Add</button></div></div>
   <div class="card"><input id="shopPartSearch" type="text" placeholder="🔍 Part Name / Number দিয়ে খুঁজুন..." style="width:100%;padding:10px;border:1px solid var(--line);border-radius:9px;font-size:16px;margin-bottom:12px;">
   <div id="shopPartsList">${renderShopPartsTable(parts)}</div></div>`;
 }
@@ -4257,8 +4257,107 @@ async function deleteDealerShopPart(id){
 }
 function wireDealerShopParts(){
   document.getElementById('addShopPart').onclick=()=>openDealerShopPartModal();
+  document.getElementById('dealerStockUploadFile').onchange=handleDealerStockUpload;
   const s=document.getElementById('shopPartSearch');
   s.oninput=()=>{const q=s.value.trim().toLowerCase();const list=dealerShopParts().filter(p=>!q||String(p.name).toLowerCase().includes(q)||String(p.partNo).toLowerCase().includes(q)||String(p.category||'').toLowerCase().includes(q));document.getElementById('shopPartsList').innerHTML=renderShopPartsTable(list);};
+}
+/* ---- Dealer Stock Upload via Excel ----
+   ডিলার নিজের Shop Parts + Stock একসাথে Excel দিয়ে Bulk Upload করতে পারবেন।
+   কলাম (flexible names): Part Number, Parts Name, Category, Brand, unit, Purchase Price, Selling Price, Stock
+   যে Part Number আগে নেই -> নতুন Shop Part তৈরি হয় (Opening Stock সহ)।
+   যে Part Number আগে থেকেই আছে -> ডিলার Preview-এ চয়েস দেন: Stock IN (যোগ) নাকি Set/Overwrite। কোনো কিছু সরাসরি অটোমেটিক সেভ হয় না, Preview দেখে কনফার্ম করলেই সেভ হয়। */
+let pendingStockUpload = null;
+function handleDealerStockUpload(e){
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = (evt)=>{
+    try{
+      const wb = XLSX.read(evt.target.result, {type:'binary'});
+      const sheet = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(sheet, {defval:''});
+      if(!rows.length){ alert('❌ ফাইলে কোনো ডেটা পাওয়া যায়নি।'); e.target.value=''; return; }
+      const existing = dealerShopParts();
+      const byPartNo = new Map(existing.map(p=>[String(p.partNo).trim().toLowerCase(), p]));
+      const toCreate=[], toUpdate=[], invalid=[];
+      rows.forEach((r,idx)=>{
+        const partNo = String(r['Part Number'] ?? r.PartNo ?? r['Part No'] ?? r.partno ?? r['পার্ট নম্বর'] ?? '').trim();
+        const name = String(r['Parts Name'] ?? r['Part Name'] ?? r.Name ?? r.name ?? r['নাম'] ?? '').trim();
+        if(!partNo && !name) return; // সম্পূর্ণ খালি রো
+        if(!partNo || !name){ invalid.push({row:idx+2, partNo:partNo||'-', reason: !partNo?'Part Number খালি':'Parts Name খালি'}); return; }
+        const category = String(r.Category ?? r.category ?? r['ক্যাটাগরি'] ?? '').trim();
+        const brand = String(r.Brand ?? r.brand ?? '').trim();
+        const unit = String(r.unit ?? r.Unit ?? '').trim() || 'PCS';
+        const purchasePrice = parseFloat(r['Purchase Price'] ?? r.purchasePrice ?? r.PurchasePrice ?? 0) || 0;
+        const sellingPrice = parseFloat(r['Selling Price'] ?? r.sellingPrice ?? r.SellingPrice ?? 0) || 0;
+        const stockRaw = r.Stock ?? r.stock ?? r['স্টক'];
+        const stockQty = parseFloat(stockRaw ?? 0) || 0;
+        if(stockQty < 0){ invalid.push({row:idx+2, partNo, reason:'Stock ঋণাত্মক হতে পারবে না'}); return; }
+        const key = partNo.toLowerCase();
+        const match = byPartNo.get(key);
+        const rowData = {partNo, name, category, brand, unit, purchasePrice, sellingPrice, stockQty};
+        if(match) toUpdate.push({...rowData, existing:match});
+        else toCreate.push(rowData);
+      });
+      if(!toCreate.length && !toUpdate.length){
+        alert('❌ ফাইলে কোনো বৈধ Part পাওয়া যায়নি। কলাম চেক করুন: Part Number, Parts Name, Stock।');
+        e.target.value=''; return;
+      }
+      pendingStockUpload = {toCreate, toUpdate, invalid, fileName:file.name, mode:'add'};
+      showDealerStockUploadPreview();
+    }catch(err){
+      console.error('Dealer stock upload error:', err);
+      alert('❌ ফাইল পড়া যায়নি: ' + err.message);
+    }
+    e.target.value='';
+  };
+  reader.readAsBinaryString(file);
+}
+function showDealerStockUploadPreview(){
+  const d = pendingStockUpload; if(!d) return;
+  openModal(`<h3>📤 Stock Upload Preview</h3>
+    <p style="margin-top:0">ফাইলঃ <b>${escHtml(d.fileName)}</b></p>
+    ${d.toUpdate.length?`<div class="field"><label>বিদ্যমান Part-এর Stock কীভাবে যুক্ত হবে?</label>
+      <select id="stockUploadMode">
+        <option value="add" selected>➕ বর্তমান Stock-এর সাথে যোগ হবে (Stock IN)</option>
+        <option value="set">🔁 ফাইলের সংখ্যা দিয়ে Set/Overwrite হবে</option>
+      </select>
+    </div>`:''}
+    <ul style="line-height:1.8;padding-left:18px">
+      <li>🆕 নতুন Part যোগ হবে: <b>${d.toCreate.length}</b></li>
+      <li>♻️ বিদ্যমান Part আপডেট হবে: <b>${d.toUpdate.length}</b></li>
+      <li>⚠️ Skip (ভুল/অসম্পূর্ণ ডেটা): <b>${d.invalid.length}</b></li>
+    </ul>
+    ${d.invalid.length?`<div class="hint" style="max-height:120px;overflow:auto;border:1px solid var(--line);border-radius:8px;padding:8px">${d.invalid.map(x=>`Row ${x.row}: ${escHtml(x.partNo)} — ${escHtml(x.reason)}`).join('<br>')}</div>`:''}
+    <div class="modal-actions"><button class="btn btn-ghost" onclick="pendingStockUpload=null;closeModal()">বাতিল</button><button class="btn btn-primary" id="confirmStockUpload">✅ আপলোড কনফার্ম করুন</button></div>`);
+  if(d.toUpdate.length) document.getElementById('stockUploadMode').onchange=(ev)=>{pendingStockUpload.mode=ev.target.value;};
+  document.getElementById('confirmStockUpload').onclick=confirmDealerStockUpload;
+}
+async function confirmDealerStockUpload(){
+  const d = pendingStockUpload; if(!d) return;
+  const u = currentDealer(); if(!u) return;
+  const now = new Date();
+  let created=0, updated=0;
+  d.toCreate.forEach(r=>{
+    const np={id:Date.now()+Math.floor(Math.random()*1000000), dealerId:u.id, name:r.name, partNo:r.partNo, category:r.category, brand:r.brand, unit:r.unit, lowStock:5, purchasePrice:r.purchasePrice, sellingPrice:r.sellingPrice, openingStock:r.stockQty, currentStock:r.stockQty, createdAt:now.toISOString()};
+    DB.dealerShopParts.push(np);
+    if(r.stockQty>0) addStockHistory(np,0,r.stockQty,0,r.stockQty,'Excel Stock Upload','');
+    created++;
+  });
+  d.toUpdate.forEach(r=>{
+    const p=r.existing, prev=Number(p.currentStock||0);
+    let next=prev, stockIn=0, stockOut=0;
+    if(d.mode==='set'){ next=r.stockQty; stockIn=Math.max(0,next-prev); stockOut=Math.max(0,prev-next); }
+    else { next=prev+r.stockQty; stockIn=r.stockQty; }
+    Object.assign(p,{category:r.category||p.category, brand:r.brand||p.brand, unit:r.unit||p.unit, purchasePrice:r.purchasePrice||p.purchasePrice, sellingPrice:r.sellingPrice||p.sellingPrice, currentStock:next, updatedAt:now.toISOString()});
+    if(next!==prev) addStockHistory(p,prev,stockIn,stockOut,next,'Excel Stock Upload','');
+    updated++;
+  });
+  pendingStockUpload=null;
+  await saveDB();
+  closeModal();
+  alert(`✅ Upload সম্পন্ন হয়েছে!\n🆕 নতুন Part: ${created}টি\n♻️ Update হয়েছে: ${updated}টি`);
+  dealerManageTab='shopParts'; go('dealerPortal');
 }
 function addStockHistory(part,prev,inQty,outQty,current,reason,memoNumber){
   const u=currentDealer(); if(!u)return;
