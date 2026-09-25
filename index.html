@@ -4122,7 +4122,7 @@ function dealerSummary(){
   return {
     shopParts:parts.length,
     stockItems:parts.filter(p=>Number(p.currentStock||0)>0).length,
-    low:parts.filter(p=>Number(p.currentStock||0)<=Number(p.lowStock||5)).length,
+    low:parts.filter(p=>Number(p.currentStock||0)>0 && Number(p.currentStock||0)<=Number(p.lowStock||5)).length,
     outOfStock:parts.filter(p=>Number(p.currentStock||0)===0).length,
     todayMemo:todays.length,
     todaySales:todays.reduce((s,m)=>s+Number(m.grandTotal||0),0),
@@ -4136,7 +4136,7 @@ function showOutOfStockList(){
     <div class="modal-actions"><button class="btn btn-primary" onclick="closeModal()">ঠিক আছে</button></div>`);
 }
 function showLowStockList(){
-  const parts=dealerShopParts().filter(p=>Number(p.currentStock||0)<=Number(p.lowStock||5));
+  const parts=dealerShopParts().filter(p=>Number(p.currentStock||0)>0 && Number(p.currentStock||0)<=Number(p.lowStock||5));
   openModal(`<h3>⚠️ Low Stock Items (${parts.length})</h3>
     ${parts.length?`<div style="max-height:60vh;overflow:auto"><table style="min-width:100%"><thead><tr><th>Part Name</th><th>Part Number</th><th>Current Stock</th><th>Low Stock Alert</th></tr></thead><tbody>${parts.map(p=>`<tr><td>${escHtml(p.name)}</td><td class="mono">${escHtml(p.partNo)}</td><td><b>${Number(p.currentStock||0)}</b></td><td>${Number(p.lowStock??5)}</td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">🎉 কোনো Item Low Stock-এ নেই।</div>'}
     <div class="modal-actions"><button class="btn btn-primary" onclick="closeModal()">ঠিক আছে</button></div>`);
@@ -4259,7 +4259,7 @@ function renderDealerUnifiedSearch(){
 }
 function dealerShopPartsHTML(){
   const parts=dealerShopParts();
-  return `<div class="card-head"><h3>🧩 My Shop Parts (${parts.length})</h3><div style="display:flex;gap:8px;flex-wrap:wrap"><label class="btn btn-ghost btn-sm file-btn">📤 Stock Upload (Excel)<input type="file" id="dealerStockUploadFile" accept=".xlsx,.xls,.csv"></label><button class="btn btn-primary btn-sm" id="addShopPart">➕ নতুন Part Add</button></div></div>
+  return `<div class="card-head"><h3>🧩 My Shop Parts (${parts.length})</h3><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-ghost btn-sm" id="dealerSyncPrices">🔄 Sync Prices</button><label class="btn btn-ghost btn-sm file-btn">📤 Stock Upload (Excel)<input type="file" id="dealerStockUploadFile" accept=".xlsx,.xls,.csv"></label><button class="btn btn-primary btn-sm" id="addShopPart">➕ নতুন Part Add</button></div></div>
   <div class="card"><input id="shopPartSearch" type="text" placeholder="🔍 Part Name / Number দিয়ে খুঁজুন..." style="width:100%;padding:10px;border:1px solid var(--line);border-radius:9px;font-size:16px;margin-bottom:12px;">
   <div id="shopPartsList">${renderShopPartsTable(parts)}</div></div>`;
 }
@@ -4314,8 +4314,55 @@ async function deleteDealerShopPart(id){
 function wireDealerShopParts(){
   document.getElementById('addShopPart').onclick=()=>openDealerShopPartModal();
   document.getElementById('dealerStockUploadFile').onchange=handleDealerStockUpload;
+  document.getElementById('dealerSyncPrices').onclick=dealerSyncPricesPreview;
   const s=document.getElementById('shopPartSearch');
   s.oninput=()=>{const q=s.value.trim().toLowerCase();const list=dealerShopParts().filter(p=>!q||String(p.name).toLowerCase().includes(q)||String(p.partNo).toLowerCase().includes(q)||String(p.category||'').toLowerCase().includes(q));document.getElementById('shopPartsList').innerHTML=renderShopPartsTable(list);};
+}
+/* Dealer-side manual "Sync Prices" — pulls each shop part's Selling Price from
+   the master parts catalog (by Part Number match). Purchase Price/stock are
+   never touched — only Selling Price. Preview-then-confirm, same as Stock Upload. */
+let pendingDealerPriceSync = null;
+function dealerSyncPricesPreview(){
+  const parts=dealerShopParts();
+  const changed=[], unmatched=[], unchanged=[];
+  parts.forEach(sp=>{
+    const key=String(sp.partNo).trim().toLowerCase();
+    const master=DB.parts.find(mp=>String(mp.partNo).trim().toLowerCase()===key);
+    if(!master){ unmatched.push(sp); return; }
+    if(Number(sp.sellingPrice||0)!==Number(master.price||0)) changed.push({sp, oldPrice:Number(sp.sellingPrice||0), newPrice:Number(master.price||0)});
+    else unchanged.push(sp);
+  });
+  pendingDealerPriceSync={changed,unmatched,unchanged};
+  showDealerSyncPricesPreview();
+}
+function showDealerSyncPricesPreview(){
+  const d=pendingDealerPriceSync; if(!d) return;
+  const rows=d.changed.slice(0,20);
+  openModal(`<h3>🔄 Sync Prices from Master List</h3>
+    <p class="hint" style="margin:0 0 10px">এটা শুধু আপনার শপের পার্টগুলোর <b>Selling Price</b>-কে মূল প্রাইস লিস্টের সাথে মিলিয়ে আপডেট করবে — Stock/Purchase Price/নাম কিছুই বদলাবে না।</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
+      <span class="badge active">✅ আপডেট হবে: ${d.changed.length}</span>
+      <span class="badge inactive">➖ পরিবর্তন নেই: ${d.unchanged.length}</span>
+      <span class="badge inactive">⚠️ মূল লিস্টে পাওয়া যায়নি: ${d.unmatched.length}</span>
+    </div>
+    ${rows.length?`<div style="overflow:auto;max-height:280px;border:1px solid var(--line);border-radius:8px;"><table style="width:100%;min-width:420px;font-size:13px"><thead><tr><th style="padding:6px;text-align:left">নাম</th><th style="padding:6px;text-align:left">পার্ট নং</th><th style="padding:6px;text-align:right">পুরাতন</th><th style="padding:6px;text-align:right">নতুন</th></tr></thead><tbody>${rows.map(r=>`<tr><td style="padding:6px">${escHtml(r.sp.name)}</td><td style="padding:6px" class="mono">${escHtml(r.sp.partNo)}</td><td style="padding:6px;text-align:right">৳${money(r.oldPrice)}</td><td style="padding:6px;text-align:right;font-weight:700;color:var(--ok)">৳${money(r.newPrice)}</td></tr>`).join('')}</tbody></table></div>${d.changed.length>rows.length?`<p class="hint" style="margin-top:6px">...আরও ${d.changed.length-rows.length}টি</p>`:''}`:''}
+    <div class="modal-actions" style="margin-top:16px">
+      <button class="btn btn-ghost" onclick="pendingDealerPriceSync=null;closeModal()">বাতিল</button>
+      <button class="btn btn-primary" id="confirmDealerPriceSync" ${d.changed.length?'':'disabled'}>✅ ${d.changed.length}টি আপডেট করুন</button>
+    </div>`);
+  const btn=document.getElementById('confirmDealerPriceSync');
+  if(btn) btn.onclick=confirmDealerPriceSync;
+}
+async function confirmDealerPriceSync(){
+  const d=pendingDealerPriceSync; if(!d||!d.changed.length) return;
+  const now=new Date().toISOString();
+  d.changed.forEach(r=>{ r.sp.sellingPrice=r.newPrice; r.sp.updatedAt=now; });
+  const n=d.changed.length;
+  pendingDealerPriceSync=null;
+  await saveDB();
+  closeModal();
+  alert(`✅ ${n}টি পার্টের Selling Price আপডেট হয়েছে`);
+  dealerManageTab='shopParts'; go('dealerPortal');
 }
 /* ---- Dealer Stock Upload via Excel ----
    ডিলার নিজের Shop Parts + Stock একসাথে Excel দিয়ে Bulk Upload করতে পারবেন।
@@ -6232,6 +6279,26 @@ function exportPartsExcel(){
   XLSX.utils.book_append_sheet(wb, ws, "Parts");
   XLSX.writeFile(wb, "parts_list.xlsx");
 }
+/* Master-catalog price change → keep dealers' own shop-part Selling Price in sync.
+   Only sellingPrice is touched (that's the master list's equivalent field);
+   a dealer's own purchasePrice/stock are never touched by this. */
+function syncDealerShopPricesForParts(updates){
+  if(!updates || !updates.length) return 0;
+  const priceByPartNo = new Map(updates.map(u=>[String(u.partNo).trim().toLowerCase(), Number(u.price)]));
+  let count = 0;
+  DB.dealerShopParts.forEach(sp=>{
+    const key = String(sp.partNo).trim().toLowerCase();
+    if(priceByPartNo.has(key)){
+      const newPrice = priceByPartNo.get(key);
+      if(Number(sp.sellingPrice||0) !== newPrice){
+        sp.sellingPrice = newPrice;
+        sp.updatedAt = new Date().toISOString();
+        count++;
+      }
+    }
+  });
+  return count;
+}
 function openPartModal(part){
   const isEdit = !!part;
   openModal(`
@@ -6254,7 +6321,8 @@ function openPartModal(part){
     if(isEdit){
       Object.assign(part, {partNo,name,category,price, core: coreOf(partNo), nameLower: name.toLowerCase()});
       syncPush('editPart', {id:part.id, partNo,name,category,price});
-      logHistory(`পার্টস আপডেট: ${name} (${partNo})`);
+      const dealerUpdated = syncDealerShopPricesForParts([{partNo, price}]);
+      logHistory(`পার্টস আপডেট: ${name} (${partNo})${dealerUpdated?` — ডিলার শপে ${dealerUpdated}টি Selling Price সিংক হয়েছে`:''}`);
     } else {
       const newPart = {id: nextPartId++, partNo, name, category, price, core: coreOf(partNo), nameLower: name.toLowerCase()};
       DB.parts.push(newPart);
@@ -6467,11 +6535,12 @@ function confirmPriceUpdate(){
     u.part.price = u.newPrice;
     syncPush('editPart', {id:u.part.id, partNo:u.part.partNo, name:u.part.name, category:u.part.category, price:u.newPrice});
   });
-  logHistory(`প্রাইস আপডেট এক্সেল: ${changed.length}টি পার্টসের মূল্য আপডেট হয়েছে${unmatched.length?`, ${unmatched.length}টি মেলেনি`:''}${invalid.length?`, ${invalid.length}টি ভুল রো`:''} (${fileName})`);
+  const dealerUpdated = syncDealerShopPricesForParts(changed.map(u=>({partNo:u.part.partNo, price:u.newPrice})));
+  logHistory(`প্রাইস আপডেট এক্সেল: ${changed.length}টি পার্টসের মূল্য আপডেট হয়েছে${unmatched.length?`, ${unmatched.length}টি মেলেনি`:''}${invalid.length?`, ${invalid.length}টি ভুল রো`:''} (${fileName})${dealerUpdated?` — ডিলার শপে ${dealerUpdated}টি Selling Price সিংক হয়েছে`:''}`);
   saveDB();
   closeModal();
   pendingPriceUpdate = null;
-  showSavedToast(`✅ ${changed.length}টি পার্টসের মূল্য আপডেট হয়েছে`);
+  showSavedToast(`✅ ${changed.length}টি পার্টসের মূল্য আপডেট হয়েছে${dealerUpdated?` (ডিলার শপে ${dealerUpdated}টি সিংক)`:''}`);
   go('adminDashboard');
 }
 
