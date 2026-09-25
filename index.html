@@ -4286,12 +4286,22 @@ function openDealerShopPartModal(part=null){
     ${part?`<div class="field"><label>Current Stock</label><input id="spStock" type="number" min="0" step="0.01" value="${Number(part.currentStock||0)}"></div>`:`<div class="field"><label>Opening Stock</label><input id="spStock" type="number" min="0" step="0.01" value="0"></div>`}
     <div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">বাতিল</button><button class="btn btn-primary" id="saveShopPart">সেভ করুন</button></div>`);
   if(!part){
-    // নতুন Part যোগ করার সময় Part Number লিখতে লিখতেই মূল প্রাইস লিস্টে মিল পেলে Part Name অটো-ফিল হবে
+    // নতুন Part যোগ করার সময় Part Number লিখতে লিখতেই মূল প্রাইস লিস্টে মিল পেলে Part Name অটো-ফিল হবে।
+    // ডিলার সাধারণত পুরো কোড (যেমন SPAR.TRAC.IMPT.93654760) না লিখে শুধু মূল সংখ্যাটাই (93654760) লিখবে —
+    // তাই আগে হুবহু Part Number মিলিয়ে দেখা হয়, না মিললে শুধু সংখ্যা (core) দিয়ে ইউনিক মিল খোঁজা হয়।
     const spNoEl=document.getElementById('spNo');
     spNoEl.addEventListener('input', ()=>{
-      const key=spNoEl.value.trim().toLowerCase();
-      if(!key) return;
-      const master=DB.parts.find(mp=>String(mp.partNo).trim().toLowerCase()===key);
+      const raw=spNoEl.value.trim();
+      if(!raw) return;
+      const key=raw.toLowerCase();
+      let master=DB.parts.find(mp=>String(mp.partNo).trim().toLowerCase()===key);
+      if(!master){
+        const digits=digitsOnly(raw);
+        if(digits){
+          const matches=DB.parts.filter(mp=>mp.core===digits);
+          if(matches.length===1) master=matches[0];
+        }
+      }
       if(master) document.getElementById('spName').value=master.name;
     });
   }
