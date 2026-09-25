@@ -4347,7 +4347,15 @@ function dealerSyncPricesPreview(){
   const changed=[], unmatched=[], unchanged=[];
   parts.forEach(sp=>{
     const key=String(sp.partNo).trim().toLowerCase();
-    const master=DB.parts.find(mp=>String(mp.partNo).trim().toLowerCase()===key);
+    let master=DB.parts.find(mp=>String(mp.partNo).trim().toLowerCase()===key);
+    if(!master){
+      // ডিলার শুধু মূল সংখ্যাটা (core) সেভ করে থাকলে সেটা দিয়েও (ইউনিক মিল হলে) মেলানো হয়
+      const digits=digitsOnly(sp.partNo);
+      if(digits){
+        const coreMatches=DB.parts.filter(mp=>mp.core===digits);
+        if(coreMatches.length===1) master=coreMatches[0];
+      }
+    }
     if(!master){ unmatched.push(sp); return; }
     if(Number(sp.sellingPrice||0)!==Number(master.price||0)) changed.push({sp, oldPrice:Number(sp.sellingPrice||0), newPrice:Number(master.price||0)});
     else unchanged.push(sp);
@@ -6304,17 +6312,34 @@ function exportPartsExcel(){
    a dealer's own purchasePrice/stock are never touched by this. */
 function syncDealerShopPricesForParts(updates){
   if(!updates || !updates.length) return 0;
-  const priceByPartNo = new Map(updates.map(u=>[String(u.partNo).trim().toLowerCase(), Number(u.price)]));
+  // দুই ধাপে মেলানো হয়: (১) হুবহু Part Number, (২) দেখা যায় ডিলার অনেক সময় শুধু মূল
+  // সংখ্যাটা (core, prefix/suffix ছাড়া) সেভ করে রাখে — সেটার জন্য core দিয়েও মেলানো হয়।
+  const priceByExact = new Map();
+  const priceByCore = new Map();
+  const ambiguousCores = new Set();
+  updates.forEach(u=>{
+    const partNo = String(u.partNo||'').trim();
+    const price = Number(u.price);
+    priceByExact.set(partNo.toLowerCase(), price);
+    const core = coreOf(partNo);
+    if(core){
+      if(priceByCore.has(core) && priceByCore.get(core)!==price) ambiguousCores.add(core);
+      priceByCore.set(core, price);
+    }
+  });
+  ambiguousCores.forEach(c=>priceByCore.delete(c));
   let count = 0;
   DB.dealerShopParts.forEach(sp=>{
     const key = String(sp.partNo).trim().toLowerCase();
-    if(priceByPartNo.has(key)){
-      const newPrice = priceByPartNo.get(key);
-      if(Number(sp.sellingPrice||0) !== newPrice){
-        sp.sellingPrice = newPrice;
-        sp.updatedAt = new Date().toISOString();
-        count++;
-      }
+    let newPrice = priceByExact.has(key) ? priceByExact.get(key) : null;
+    if(newPrice===null){
+      const digits = digitsOnly(sp.partNo);
+      if(digits && priceByCore.has(digits)) newPrice = priceByCore.get(digits);
+    }
+    if(newPrice!==null && Number(sp.sellingPrice||0) !== newPrice){
+      sp.sellingPrice = newPrice;
+      sp.updatedAt = new Date().toISOString();
+      count++;
     }
   });
   return count;
