@@ -4285,6 +4285,16 @@ function openDealerShopPartModal(part=null){
     </div>
     ${part?`<div class="field"><label>Current Stock</label><input id="spStock" type="number" min="0" step="0.01" value="${Number(part.currentStock||0)}"></div>`:`<div class="field"><label>Opening Stock</label><input id="spStock" type="number" min="0" step="0.01" value="0"></div>`}
     <div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">বাতিল</button><button class="btn btn-primary" id="saveShopPart">সেভ করুন</button></div>`);
+  if(!part){
+    // নতুন Part যোগ করার সময় Part Number লিখতে লিখতেই মূল প্রাইস লিস্টে মিল পেলে Part Name অটো-ফিল হবে
+    const spNoEl=document.getElementById('spNo');
+    spNoEl.addEventListener('input', ()=>{
+      const key=spNoEl.value.trim().toLowerCase();
+      if(!key) return;
+      const master=DB.parts.find(mp=>String(mp.partNo).trim().toLowerCase()===key);
+      if(master) document.getElementById('spName').value=master.name;
+    });
+  }
   document.getElementById('saveShopPart').onclick=async()=>{
     const u=currentDealer();
     const name=document.getElementById('spName').value.trim(), partNo=document.getElementById('spNo').value.trim();
