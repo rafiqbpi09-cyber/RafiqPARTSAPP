@@ -538,11 +538,25 @@ window.APP_VERSION = '2026-09-24-login-redesign.2';
   /* ---------- Dealer Stock & Memo Management ---------- */
   .dealer-tabs{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 18px;background:var(--card);padding:7px;border:1px solid var(--line);border-radius:12px;}
   .dealer-tabs .tab{padding:9px 13px;font-size:13px;}
+  .dealer-nav-bar{margin:0 0 18px;}
+  .dealer-nav-folders{display:grid;grid-template-columns:repeat(auto-fit,minmax(78px,1fr));gap:10px;}
+  .dealer-nav-folder{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;padding:14px 6px;border-radius:14px;border:1px solid var(--line);background:var(--card);cursor:pointer;font-family:inherit;transition:.15s;}
+  .dealer-nav-folder .icon{font-size:28px;line-height:1;}
+  .dealer-nav-folder .lbl{font-size:11px;font-weight:700;color:var(--text);text-align:center;line-height:1.3;}
+  .dealer-nav-folder.active{border-color:var(--navy);box-shadow:0 0 0 1.5px var(--navy) inset;}
+  .dealer-nav-folder.open{background:var(--navy);border-color:var(--navy);}
+  .dealer-nav-folder.open .lbl{color:#fff;}
+  .dealer-nav-panel{margin-top:10px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px;display:flex;flex-direction:column;gap:2px;}
+  .dealer-nav-item{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:10px;border-radius:9px;border:none;background:none;font-family:inherit;font-size:14px;font-weight:600;color:var(--text);cursor:pointer;}
+  .dealer-nav-item:hover{background:var(--paper);}
+  .dealer-nav-item.active{background:var(--navy);color:#fff;}
   .dealer-stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:10px;margin-bottom:16px;}
   .dealer-stat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:13px;position:relative;overflow:hidden;}
   .dealer-stat::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--amber);}
   .dealer-stat .n{font-size:23px;font-weight:700;color:var(--navy);}
   .dealer-stat .l{font-size:11.5px;color:var(--muted);}
+  .dealer-stat.clickable{cursor:pointer;transition:.15s;}
+  .dealer-stat.clickable:hover{border-color:var(--navy);}
   .dealer-management-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
   .memo-items-wrap{overflow-x:auto;}
   .memo-items-table{min-width:720px;}
@@ -4109,26 +4123,67 @@ function dealerSummary(){
     shopParts:parts.length,
     stockItems:parts.filter(p=>Number(p.currentStock||0)>0).length,
     low:parts.filter(p=>Number(p.currentStock||0)<=Number(p.lowStock||5)).length,
+    outOfStock:parts.filter(p=>Number(p.currentStock||0)===0).length,
     todayMemo:todays.length,
     todaySales:todays.reduce((s,m)=>s+Number(m.grandTotal||0),0),
     stockValue:parts.reduce((s,p)=>s+Number(p.currentStock||0)*Number(p.purchasePrice||0),0)
   };
 }
-function dealerNavHTML(){
-  const tabs=[
-    ['search','🔍 Parts Search'],
-    ['memo','🧾 Create Memo'],
-    ['memoDrafts','🟡 Saved/Draft Memos'],
-    ['memoHistory','📜 Memo History'],
-    ['memoSearch','🔎 Memo Search'],
-    ['shopParts','🧩 My Shop Parts'],
-    ['stock','📦 My Stock'],
-    ['stockHistory','↕️ Stock History'],
-    ['vehicleDb','🚗 Vehicle Model DB'],
-    ['catalogue','📚 Catalogue'],
-    ['profile','👤 আমার প্রোফাইল']
+function showOutOfStockList(){
+  const parts=dealerShopParts().filter(p=>Number(p.currentStock||0)===0);
+  openModal(`<h3>🚫 Out of Stock Items (${parts.length})</h3>
+    ${parts.length?`<div style="max-height:60vh;overflow:auto"><table style="min-width:100%"><thead><tr><th>Part Name</th><th>Part Number</th><th>Category</th></tr></thead><tbody>${parts.map(p=>`<tr><td>${escHtml(p.name)}</td><td class="mono">${escHtml(p.partNo)}</td><td>${escHtml(p.category||'-')}</td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">🎉 কোনো Item Out of Stock নেই।</div>'}
+    <div class="modal-actions"><button class="btn btn-primary" onclick="closeModal()">ঠিক আছে</button></div>`);
+}
+function showLowStockList(){
+  const parts=dealerShopParts().filter(p=>Number(p.currentStock||0)<=Number(p.lowStock||5));
+  openModal(`<h3>⚠️ Low Stock Items (${parts.length})</h3>
+    ${parts.length?`<div style="max-height:60vh;overflow:auto"><table style="min-width:100%"><thead><tr><th>Part Name</th><th>Part Number</th><th>Current Stock</th><th>Low Stock Alert</th></tr></thead><tbody>${parts.map(p=>`<tr><td>${escHtml(p.name)}</td><td class="mono">${escHtml(p.partNo)}</td><td><b>${Number(p.currentStock||0)}</b></td><td>${Number(p.lowStock??5)}</td></tr>`).join('')}</tbody></table></div>`:'<div class="empty">🎉 কোনো Item Low Stock-এ নেই।</div>'}
+    <div class="modal-actions"><button class="btn btn-primary" onclick="closeModal()">ঠিক আছে</button></div>`);
+}
+/* Dealer nav — grouped/categorized like a mobile phone's Settings/File-manager app:
+   4 always-visible "folder" tiles (icon + label). Tapping a folder opens it and
+   shows the items inside as a list; tapping an item switches tab and the folder
+   closes again. The folder containing the current tab is marked active. */
+let dealerNavOpenGroup = null;
+function dealerNavGroups(){
+  return [
+    {title:'বিক্রয় ও মেমো', icon:'🧾', items:[
+      ['search','🔍','Parts Search'],
+      ['memo','🧾','Create Memo'],
+      ['memoDrafts','🟡','Saved/Draft Memos'],
+      ['memoHistory','📜','Memo History'],
+      ['memoSearch','🔎','Memo Search']
+    ]},
+    {title:'ইনভেন্টরি', icon:'📦', items:[
+      ['shopParts','🧩','My Shop Parts'],
+      ['stock','📦','My Stock'],
+      ['stockHistory','↕️','Stock History']
+    ]},
+    {title:'রেফারেন্স', icon:'📖', items:[
+      ['vehicleDb','🚗','Vehicle Model DB'],
+      ['catalogue','📚','Catalogue']
+    ]},
+    {title:'অ্যাকাউন্ট', icon:'👤', items:[
+      ['profile','👤','আমার প্রোফাইল']
+    ]}
   ];
-  return `<div class="dealer-tabs">${tabs.map(([id,label])=>{ const action=id==='vehicleDb' ? "go('vehicleModelDB')" : id==='catalogue' ? "go('partsCatalog')" : `dealerManageTab='${id}';go('dealerPortal')`; return `<button class="tab ${dealerManageTab===id?'active':''}" onclick="${action}">${label}</button>`; }).join('')}</div>`;
+}
+function dealerNavItemAction(id){
+  return id==='vehicleDb' ? "go('vehicleModelDB')" : id==='catalogue' ? "go('partsCatalog')" : `dealerManageTab='${id}';dealerNavOpenGroup=null;go('dealerPortal')`;
+}
+function dealerNavHTML(){
+  const groups=dealerNavGroups();
+  const activeTitle=groups.find(g=>g.items.some(([id])=>id===dealerManageTab))?.title;
+  const folders=groups.map(g=>{
+    const isOpen=dealerNavOpenGroup===g.title, isActive=activeTitle===g.title;
+    return `<button type="button" class="dealer-nav-folder ${isOpen?'open':''} ${isActive?'active':''}" onclick="dealerNavOpenGroup=(dealerNavOpenGroup==='${g.title}'?null:'${g.title}');go('dealerPortal')">
+      <span class="icon">📁</span><span class="lbl">${g.icon} ${g.title}</span>
+    </button>`;
+  }).join('');
+  const openGroup=groups.find(g=>g.title===dealerNavOpenGroup);
+  const itemsPanel=openGroup?`<div class="dealer-nav-panel">${openGroup.items.map(([id,icon,label])=>`<button type="button" class="dealer-nav-item ${dealerManageTab===id?'active':''}" onclick="${dealerNavItemAction(id)}"><span>${icon}</span><span>${label}</span></button>`).join('')}</div>`:'';
+  return `<div class="dealer-nav-bar"><div class="dealer-nav-folders">${folders}</div>${itemsPanel}</div>`;
 }
 function dealerProfileHTML(){
   const u = currentDealer();
@@ -4163,7 +4218,8 @@ function dealerDashboardCards(){
   return `<div class="dealer-stat-grid">
     <div class="dealer-stat"><div class="n">${s.shopParts}</div><div class="l">🧩 Total My Shop Parts</div></div>
     <div class="dealer-stat"><div class="n">${s.stockItems}</div><div class="l">📦 Total Stock Items</div></div>
-    <div class="dealer-stat"><div class="n">${s.low}</div><div class="l">⚠️ Low Stock Items</div></div>
+    <div class="dealer-stat clickable" onclick="showLowStockList()"><div class="n">${s.low}</div><div class="l">⚠️ Low Stock Items</div></div>
+    <div class="dealer-stat clickable" onclick="showOutOfStockList()"><div class="n">${s.outOfStock}</div><div class="l">🚫 Out of Stock</div></div>
     <div class="dealer-stat"><div class="n">${s.todayMemo}</div><div class="l">🧾 Today's Memo</div></div>
     <div class="dealer-stat"><div class="n">৳${money(s.todaySales)}</div><div class="l">💰 Today's Sales</div></div>
     <div class="dealer-stat"><div class="n">৳${money(s.stockValue)}</div><div class="l">📊 Total Stock Value</div></div>
