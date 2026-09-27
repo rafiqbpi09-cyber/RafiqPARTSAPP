@@ -2429,6 +2429,10 @@ ROUTES.landing = function(){
           </div>
 
           <div class="sabi-powered"><span>Powered by <b>SabihaSoft</b></span></div>
+
+          <div style="text-align:center;margin-top:10px">
+            <button type="button" id="sabiAdminLoginLink" style="background:none;border:none;color:var(--muted);font-size:12px;cursor:pointer;text-decoration:underline;padding:4px">Admin Login</button>
+          </div>
         </div>
       </section>
     </div>
@@ -2478,6 +2482,7 @@ ROUTES.landing = function(){
   document.getElementById('sabiDealerRegister').onclick = ()=>openRegister('dealer');
   document.getElementById('sabiMechanicRegister').onclick = ()=>openRegister('mechanic');
   document.getElementById('sabiEngineerRegister').onclick = ()=>go('peRegister');
+  document.getElementById('sabiAdminLoginLink').onclick = ()=>go('adminLogin');
 
   document.getElementById('simpleLoginMobile').focus();
   syncQuickSearchFABVisibility();
