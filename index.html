@@ -2429,10 +2429,7 @@ ROUTES.landing = function(){
           </div>
 
           <div class="sabi-powered"><span>Powered by <b>SabihaSoft</b></span></div>
-
-          <div style="text-align:center;margin-top:10px">
-            <button type="button" id="sabiAdminLoginLink" style="background:none;border:none;color:var(--muted);font-size:12px;cursor:pointer;text-decoration:underline;padding:4px">Admin Login</button>
-          </div>
+          <div class="sabi-admin-link"><button type="button" id="sabiAdminLogin" style="background:none;border:none;color:var(--muted,#6b7280);font-size:12.5px;text-decoration:underline;cursor:pointer;padding:6px;">🔑 Admin Login</button></div>
         </div>
       </section>
     </div>
@@ -2482,7 +2479,7 @@ ROUTES.landing = function(){
   document.getElementById('sabiDealerRegister').onclick = ()=>openRegister('dealer');
   document.getElementById('sabiMechanicRegister').onclick = ()=>openRegister('mechanic');
   document.getElementById('sabiEngineerRegister').onclick = ()=>go('peRegister');
-  document.getElementById('sabiAdminLoginLink').onclick = ()=>go('adminLogin');
+  document.getElementById('sabiAdminLogin').onclick = ()=>go('adminLogin');
 
   document.getElementById('simpleLoginMobile').focus();
   syncQuickSearchFABVisibility();
@@ -6256,6 +6253,7 @@ function partsTabHTML(){
           <button class="btn btn-ghost btn-sm" id="exportParts">📄 এক্সেল এক্সপোর্ট</button>
           <label class="btn btn-ghost btn-sm file-btn">📥 নতুন পার্টস আপলোড<input type="file" id="excelFile" accept=".xlsx,.xls,.csv"></label>
           <label class="btn btn-navy btn-sm file-btn">🔄 প্রাইস আপডেট<input type="file" id="priceUpdateFile" accept=".xlsx,.xls,.csv"></label>
+          <button class="btn btn-ghost btn-sm" id="syncAllDealerPrices">🔄 সব ডিলার Sync</button>
           <button class="btn btn-primary btn-sm" id="addPart">➕ নতুন পার্টস</button>
         </div>
       </div>
@@ -6332,6 +6330,59 @@ function wirePartsTab(){
   document.getElementById('excelFile').addEventListener('change',handleExcelUpload);
   document.getElementById('priceUpdateFile').addEventListener('change',handlePriceUpdateUpload);
   document.getElementById('exportParts').onclick=exportPartsExcel;
+  document.getElementById('syncAllDealerPrices').onclick=adminSyncAllDealerPricesPreview;
+}
+/* Admin: one-click Selling Price sync for EVERY dealer's shop parts (not just
+   the ones touched by a specific price-change event). Same exact-then-core
+   matching as the per-dealer manual sync button; preview-then-confirm. */
+let pendingAdminDealerPriceSync = null;
+function adminSyncAllDealerPricesPreview(){
+  const changed=[], unmatched=[], unchanged=[];
+  DB.dealerShopParts.forEach(sp=>{
+    const key=String(sp.partNo).trim().toLowerCase();
+    let master=DB.parts.find(mp=>String(mp.partNo).trim().toLowerCase()===key);
+    if(!master){
+      const digits=digitsOnly(sp.partNo);
+      if(digits){
+        const matches=DB.parts.filter(mp=>mp.core===digits);
+        if(matches.length===1) master=matches[0];
+      }
+    }
+    if(!master){ unmatched.push(sp); return; }
+    if(Number(sp.sellingPrice||0)!==Number(master.price||0)) changed.push({sp, oldPrice:Number(sp.sellingPrice||0), newPrice:Number(master.price||0)});
+    else unchanged.push(sp);
+  });
+  pendingAdminDealerPriceSync={changed,unmatched,unchanged};
+  showAdminSyncAllDealerPricesPreview();
+}
+function showAdminSyncAllDealerPricesPreview(){
+  const d=pendingAdminDealerPriceSync; if(!d) return;
+  const dealerCount=new Set(d.changed.map(r=>r.sp.dealerId)).size;
+  openModal(`<h3>🔄 সব ডিলারের Price Sync</h3>
+    <p class="hint" style="margin:0 0 10px">এটা <b>সব ডিলারের</b> শপ পার্টের Selling Price মূল প্রাইস লিস্টের সাথে মিলিয়ে একসাথে আপডেট করবে — Stock/Purchase Price কিছুই বদলাবে না।</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
+      <span class="badge active">✅ আপডেট হবে: ${d.changed.length} (${dealerCount} জন ডিলার)</span>
+      <span class="badge inactive">➖ পরিবর্তন নেই: ${d.unchanged.length}</span>
+      <span class="badge inactive">⚠️ মিলেনি: ${d.unmatched.length}</span>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="pendingAdminDealerPriceSync=null;closeModal()">বাতিল</button>
+      <button class="btn btn-primary" id="confirmAdminSyncAllDealerPrices" ${d.changed.length?'':'disabled'}>✅ ${d.changed.length}টি আপডেট করুন</button>
+    </div>`);
+  const btn=document.getElementById('confirmAdminSyncAllDealerPrices');
+  if(btn) btn.onclick=confirmAdminSyncAllDealerPrices;
+}
+async function confirmAdminSyncAllDealerPrices(){
+  const d=pendingAdminDealerPriceSync; if(!d||!d.changed.length) return;
+  const now=new Date().toISOString();
+  d.changed.forEach(r=>{ r.sp.sellingPrice=r.newPrice; r.sp.updatedAt=now; });
+  const n=d.changed.length, dealerCount=new Set(d.changed.map(r=>r.sp.dealerId)).size;
+  pendingAdminDealerPriceSync=null;
+  logHistory(`Admin: সব ডিলারের Price Sync — ${n}টি পার্ট, ${dealerCount} জন ডিলার`);
+  await saveDB();
+  closeModal();
+  showSavedToast(`✅ ${n}টি পার্টের Selling Price সিংক হয়েছে (${dealerCount} জন ডিলার)`);
+  go('adminDashboard');
 }
 function exportPartsExcel(){
   const data = DB.parts.map(p=>({ 'পার্ট নম্বর': displayPartNo(p.partNo), 'নাম': p.name, 'ক্যাটাগরি': p.category||'', 'মূল্য': p.price }));
