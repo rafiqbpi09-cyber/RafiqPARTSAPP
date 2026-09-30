@@ -1590,36 +1590,118 @@ async function fbEnsureAuth(record, pw, prefix, options={}){
 
 let lastSaveError = null;
 let lastAuthError = null;
+// lastSyncedSnapshot: এই ট্যাব সবশেষ যে অবস্থাটা সফলভাবে Firebase-এ পাঠিয়েছে/সেখান থেকে
+// লোড করেছে, তার প্রতিটা top-level key-র JSON স্ট্রিং। saveDB() এটার সাথে বর্তমান DB
+// তুলনা করে বুঝে নেয় ঠিক কোন key(গুলো) এই ট্যাবে আসলেই বদলেছে (বাকিগুলো অক্ষত/untouched)।
+let lastSyncedSnapshot = null;
+function buildFullPayload(){
+  return {
+    users: DB.users,
+    history: DB.history.slice(0,50),
+    settings: { companyName: DB.settings.companyName, adminPassword: DB.settings.adminPassword, logo: DB.settings.logo, recoveryEmail: DB.settings.recoveryEmail, resetOTP: DB.settings.resetOTP || null, resetOTPExpiry: DB.settings.resetOTPExpiry || null, adminLastActive: DB.settings.adminLastActive || null, adminLastLogin: DB.settings.adminLastLogin || null, authEmail: DB.settings.authEmail || null, peAccessCode: DB.settings.peAccessCode || null, quickSearchCode: DB.settings.quickSearchCode || null },
+    parts: DB.parts,
+    nextPartId: nextPartId,
+    partsSaved: true,
+    catalogs: DB.catalogs,
+    requisitions: DB.requisitions.slice(0,200),
+    nextReqNo: nextReqNo,
+    resetRequests: DB.resetRequests.slice(0,200),
+    drafts: DB.drafts.slice(0,200),
+    loginHistory: DB.loginHistory.slice(0,500),
+    partsEngineers: DB.partsEngineers,
+    nextPeId: nextPeId,
+    dealerShopParts: DB.dealerShopParts,
+    dealerMemos: DB.dealerMemos,
+    dealerMemoDrafts: DB.dealerMemoDrafts,
+    stockHistory: DB.stockHistory,
+    batteryWarranty: DB.batteryWarranty,
+    batteryWarrantyMeta: DB.batteryWarrantyMeta,
+    nextMemoNo: DB.nextMemoNo || 1
+  };
+}
+function markSyncedSnapshot(payload){
+  const snap = {};
+  for(const k in payload) snap[k] = JSON.stringify(payload[k]);
+  lastSyncedSnapshot = snap;
+}
+// এই key(গুলো) id-ভিত্তিক রেকর্ডের array — একই সময়ে দুইজন আলাদা ব্যবহারকারী (দুইজন ডিলার,
+// বা ডিলার+Admin) এদের ভিন্ন ভিন্ন রেকর্ড বদলালে যাতে একজনের সেভ আরেকজনের রেকর্ড হারিয়ে না
+// ফেলে, সেভের ঠিক আগে Firebase থেকে সবচেয়ে ফ্রেশ কপি টেনে id-বাই-id মার্জ করা হয় (নিচের
+// mergeArrayByIdBaseline)। batteryWarranty বাদ (ওর রেকর্ডে .id নেই, প্লেইন array); history/
+// loginHistory/requisitions/drafts/resetRequests বাদ (এগুলো লগ, সাইজ-ক্যাপড, ঝুঁকি কম)।
+const MERGE_KEYS = ['users','parts','partsEngineers','dealerShopParts','dealerMemos','dealerMemoDrafts','stockHistory','catalogs'];
+function mergeArrayByIdBaseline(baseline, local, remote){
+  const b = Array.isArray(baseline) ? baseline : [];
+  const l = Array.isArray(local) ? local : [];
+  const r = Array.isArray(remote) ? remote : [];
+  const bMap = new Map(b.map(x=>[String(x.id), x]));
+  const lMap = new Map(l.map(x=>[String(x.id), x]));
+  const result = new Map(r.map(x=>[String(x.id), x])); // সবচেয়ে ফ্রেশ remote-কে ভিত্তি ধরা হলো
+  // ১) local-এ নতুন বা বদলে যাওয়া রেকর্ড -> result-এ প্রতিফলিত করা হলো
+  for(const [id, rec] of lMap){
+    const baseRec = bMap.get(id);
+    if(!baseRec || JSON.stringify(baseRec) !== JSON.stringify(rec)) result.set(id, rec);
+  }
+  // ২) baseline-এ ছিল কিন্তু local-এ এখন নেই (এই ট্যাবে ডিলিট হয়েছে) -> result থেকেও বাদ
+  for(const [id] of bMap){
+    if(!lMap.has(id)) result.delete(id);
+  }
+  return Array.from(result.values());
+}
+async function fetchFreshRemoteKey(key){
+  let url = `${FB_URL}/appdata/${key}.json`;
+  if(fbAuth.currentUser){
+    const idToken = await fbAuth.currentUser.getIdToken();
+    url += `?auth=${idToken}`;
+  }
+  const res = await fetch(url);
+  if(!res.ok) throw new Error(`fresh fetch failed (${key}): ${res.status}`);
+  return res.json();
+}
 async function saveDB(dirtyKeys){
   try{
-    const fullPayload = {
-      users: DB.users,
-      history: DB.history.slice(0,50),
-      settings: { companyName: DB.settings.companyName, adminPassword: DB.settings.adminPassword, logo: DB.settings.logo, recoveryEmail: DB.settings.recoveryEmail, resetOTP: DB.settings.resetOTP || null, resetOTPExpiry: DB.settings.resetOTPExpiry || null, adminLastActive: DB.settings.adminLastActive || null, adminLastLogin: DB.settings.adminLastLogin || null, authEmail: DB.settings.authEmail || null, peAccessCode: DB.settings.peAccessCode || null, quickSearchCode: DB.settings.quickSearchCode || null },
-      parts: DB.parts,
-      nextPartId: nextPartId,
-      partsSaved: true,
-      catalogs: DB.catalogs,
-      requisitions: DB.requisitions.slice(0,200),
-      nextReqNo: nextReqNo,
-      resetRequests: DB.resetRequests.slice(0,200),
-      drafts: DB.drafts.slice(0,200),
-      loginHistory: DB.loginHistory.slice(0,500),
-      partsEngineers: DB.partsEngineers,
-      nextPeId: nextPeId,
-      dealerShopParts: DB.dealerShopParts,
-      dealerMemos: DB.dealerMemos,
-      dealerMemoDrafts: DB.dealerMemoDrafts,
-      stockHistory: DB.stockHistory,
-      batteryWarranty: DB.batteryWarranty,
-      batteryWarrantyMeta: DB.batteryWarrantyMeta,
-      nextMemoNo: DB.nextMemoNo || 1
-    };
-    // dirtyKeys দেওয়া থাকলে শুধু ঐ ক'টা key-ই পাঠানো হবে (PATCH দিয়ে — বাকি ডেটা Firebase-এ অক্ষত থাকবে)।
-    // এতে Delete History রিসেটের মতো ছোট পরিবর্তনে পুরো parts/vehicleCompat/dealerMemos ইত্যাদি বড় লিস্ট
-    // বারবার পাঠাতে হয় না, সেভ অনেক দ্রুত হয়। dirtyKeys না দিলে আগের মতোই সম্পূর্ণ ডেটা PUT হবে (কোনো পরিবর্তন নেই)।
-    const useFullSave = !Array.isArray(dirtyKeys) || dirtyKeys.length===0;
-    const payload = useFullSave ? fullPayload : Object.fromEntries(dirtyKeys.filter(k=>k in fullPayload).map(k=>[k, fullPayload[k]]));
+    const fullPayload = buildFullPayload();
+    // ★ ক্রিটিক্যাল বাগ ফিক্স (ডিলার স্টক হঠাৎ ০ হয়ে যাওয়া, নতুন/ডিলিট করা User ফিরে আসা):
+    // আগে dirtyKeys না দিলে পুরো appdata ব্লাইন্ডলি PUT (সম্পূর্ণ ওভাররাইট) হতো — এই ট্যাব যখন
+    // পেজ-লোডের পর অনেকক্ষণ খোলা থাকতো, ততক্ষণে অন্য ডিভাইস/ইউজার (আরেক ডিলার, Admin) যা কিছু
+    // বদলেছে (নতুন user, অন্য ডিলারের stock), সেই "stale" local কপি দিয়ে পুরো ডাটাবেস আবার লিখে
+    // ফেলতো — ফলে অন্যদের পরিবর্তন হারিয়ে যেত। এখন: dirtyKeys স্পষ্টভাবে না দিলে, এই ট্যাবে
+    // সবশেষ সফল sync-এর পর থেকে *আসলেই* কোন key বদলেছে তা automatically বের করে, শুধু সেই
+    // key(গুলো)-ই PATCH করা হয় — Firebase-এর অন্য (untouched) key কখনোই ছোঁয়া হয় না।
+    let autoKeys = dirtyKeys;
+    if(!Array.isArray(autoKeys) || autoKeys.length===0){
+      if(!lastSyncedSnapshot){
+        autoKeys = Object.keys(fullPayload); // প্রথমবার (এই ট্যাবে snapshot নেই) — নিরাপদ ডিফল্ট: সবকিছু
+      }else{
+        autoKeys = Object.keys(fullPayload).filter(k=>JSON.stringify(fullPayload[k]) !== lastSyncedSnapshot[k]);
+      }
+    }
+    const payload = Object.fromEntries(autoKeys.filter(k=>k in fullPayload).map(k=>[k, fullPayload[k]]));
+    // ★ দ্বিতীয় স্তরের ফিক্স — MERGE_KEYS-এর মধ্যে যেসব key এই ট্যাবে বদলেছে, তাদের জন্য
+    // ব্লাইন্ডলি local array পাঠানো হয় না। বরং Firebase থেকে ওই key-র সবচেয়ে ফ্রেশ কপি এনে,
+    // এই ট্যাবে *ঠিক কোন রেকর্ড(গুলো)* যোগ/বদল/ডিলিট হয়েছে (lastSyncedSnapshot বেসলাইনের
+    // তুলনায়) তা বের করে, সেই পরিবর্তনগুলোই ফ্রেশ remote-এর উপর বসিয়ে দেওয়া হয়। ফলে দুইজন
+    // আলাদা ডিলার ঠিক একই সময়ে তাদের নিজ নিজ (ভিন্ন) রেকর্ড বদলালেও কারো পরিবর্তন হারায় না,
+    // যেটা আগে একটা মাত্র শেয়ার্ড array-কে সরাসরি ওভাররাইট করায় ঘটতে পারত।
+    for(const k of Object.keys(payload)){
+      if(!MERGE_KEYS.includes(k) || !Array.isArray(payload[k])) continue;
+      try{
+        const baseline = lastSyncedSnapshot && lastSyncedSnapshot[k] ? JSON.parse(lastSyncedSnapshot[k]) : [];
+        const fresh = await fetchFreshRemoteKey(k);
+        const merged = mergeArrayByIdBaseline(baseline, payload[k], fresh);
+        payload[k] = merged;
+        fullPayload[k] = merged; // localStorage ব্যাকআপ ও snapshot-এও মার্জ করা (সঠিক) ফলাফলটাই যাবে
+        if(k in DB) DB[k] = merged; // অন্য কারো মাঝের পরিবর্তনও এখনই এই ট্যাবের UI-তে প্রতিফলিত হলো
+      }catch(mergeErr){
+        // ফ্রেশ ফেচ ব্যর্থ হলে (যেমন নেট সমস্যা) — আগের নিরাপদ আচরণেই ফিরে যাওয়া হলো: শুধু এই
+        // ট্যাবের local কপিটাই পাঠানো হবে এই key-র জন্য, বাকি key-গুলোর PATCH এতে প্রভাবিত হয় না।
+        console.warn('Merge skipped (falling back to local copy) for', k, mergeErr);
+      }
+    }
+    if(Object.keys(payload).length === 0){
+      lastSaveError = null;
+      return true; // কিছুই বদলায়নি — নেটওয়ার্ক কল করার দরকার নেই
+    }
     // Firebase এ সেভ — নতুন secured rules (auth != null) এর জন্য সাইন-ইন করা থাকলে ID token যুক্ত করা হয়
     let fbUrl = `${FB_URL}/appdata.json`;
     if(fbAuth.currentUser){
@@ -1627,7 +1709,7 @@ async function saveDB(dirtyKeys){
       fbUrl += `?auth=${idToken}`;
     }
     const fbRes = await fetch(fbUrl, {
-      method: useFullSave ? 'PUT' : 'PATCH',
+      method: 'PATCH',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify(payload)
     });
@@ -1638,6 +1720,10 @@ async function saveDB(dirtyKeys){
       const errText = await fbRes.text().catch(()=>String(fbRes.status));
       throw new Error(`Firebase save failed: ${fbRes.status} ${errText}`);
     }
+    // এই key(গুলো) এখন সফলভাবে সিংক হলো — snapshot আপডেট করা হলো পরের dirty-check-এর জন্য
+    // (মার্জ করা key-গুলোর ক্ষেত্রে merged মান দিয়েই — fullPayload ইতিমধ্যে সেটা ধরে রাখে)
+    if(!lastSyncedSnapshot) lastSyncedSnapshot = {};
+    for(const k of Object.keys(payload)) lastSyncedSnapshot[k] = JSON.stringify(fullPayload[k]);
     // localStorage এও সেভ (অফলাইন ব্যাকআপ) — লোকাল ব্যাকআপ সবসময় সম্পূর্ণ ডেটা রাখা হয়, যাতে অফলাইনে কোনো তথ্য না হারায়
     try{ localStorage.setItem(LS_KEY, JSON.stringify(fullPayload)); }catch(e){}
     lastSaveError = null;
@@ -1706,6 +1792,9 @@ async function loadDB(){
       DB.nextMemoNo = Number(saved.nextMemoNo || 1);
       if(saved.settings){ DB.settings.adminLastActive = saved.settings.adminLastActive || null; DB.settings.adminLastLogin = saved.settings.adminLastLogin || null; }
       if(DB.users.length) nextUserId = Math.max(...DB.users.map(u=>Number(u.id)||0))+1;
+      // এই ট্যাব এইমাত্র Firebase থেকে সত্যিকারের ফ্রেশ ডেটা পেল — saveDB()-এর dirty-key
+      // detection এই স্ন্যাপশটের সাথেই তুলনা করবে, তাই এর পর থেকে শুধু আসল পরিবর্তনগুলোই সেভ হবে।
+      markSyncedSnapshot(buildFullPayload());
       return;
     }
   }catch(e){ console.warn('Firebase load failed, trying localStorage:', e); }
@@ -1743,6 +1832,7 @@ async function loadDB(){
       else if(DB.partsEngineers.length) nextPeId = Math.max(...DB.partsEngineers.map(p=>Number(p.id)||0))+1;
       if(saved.settings){ DB.settings.adminLastActive = saved.settings.adminLastActive || null; DB.settings.adminLastLogin = saved.settings.adminLastLogin || null; }
     if(DB.users.length) nextUserId = Math.max(...DB.users.map(u=>Number(u.id)||0))+1;
+    markSyncedSnapshot(buildFullPayload());
   }catch(e){ console.error('localStorage load failed:', e); }
 }
 // পুরনো ডেমো পার্টসগুলোর একটি "ব্যাকআপ কপি" — কারণ Sheet সংযুক্ত থাকলে নিচের loadFromSheet()
