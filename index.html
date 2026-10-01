@@ -4223,6 +4223,25 @@ function dealerPartSearch(q){
   });
   return [...exact,...near.slice(0,30)].slice(0,40);
 }
+// Create Memo-এর Part সার্চ শুধুমাত্র ডিলারের নিজের Shop Stock (currentStock > 0) থেকেই
+// রেজাল্ট দেয় — Company-র পুরো ১৪ হাজার+ Parts Price List এখানে দেখানো হয় না, যাতে ডিলার
+// ভুলবশত তার কাছে নেই এমন কোনো Part মেমোতে যোগ করে না ফেলে। সাধারণ "🔍 Parts Search" ট্যাব
+// (dealerPartSearch, অপরিবর্তিত) আগের মতোই Company + নিজের Stock দুটোই দেখাবে।
+function dealerMemoPartSearch(q){
+  const raw=String(q||'').trim().toLowerCase();
+  if(!raw) return [];
+  const digits=digitsOnly(raw);
+  const own=dealerShopParts().filter(p=>Number(p.currentStock||0)>0).map(p=>({...p,_source:'dealer',_sourceLabel:"Dealer's Own Parts",_price:Number(p.sellingPrice||0)}));
+  const exact=[], near=[];
+  own.forEach(p=>{
+    const pn=String(p.partNo||'').toLowerCase();
+    const nm=String(p.name||p.partName||'').toLowerCase();
+    const core=String(p.core||coreOf(p.partNo||''));
+    if((digits && core===digits) || (!digits && pn===raw)){ p._exact=true; exact.push(p); return; }
+    if((digits && (core.includes(digits)||digits.includes(core))) || pn.includes(raw) || nm.includes(raw)){ p._exact=false; near.push(p); }
+  });
+  return [...exact,...near.slice(0,30)].slice(0,40);
+}
 function dealerSummary(){
   const parts=dealerShopParts(), memos=dealerMemos();
   const today=new Date().toISOString().slice(0,10);
@@ -4857,6 +4876,7 @@ function memoEditorHTML(draft=null){
     <div class="memo2-search-box">
       <label id="memoLblPartSearch">${ml.partSearchLabel}</label>
       <input id="memoPartSearch" type="text" placeholder="Part Number / Name / শেষের সংখ্যা লিখুন...">
+      <div class="hint" style="margin-top:4px">শুধু আপনার নিজের Shop Stock-এ থাকা Parts দেখাবে</div>
       <div id="memoPartSuggestions" style="margin-top:8px"></div>
     </div>
 
@@ -4991,7 +5011,7 @@ function wireMemoPage(existingDraft=null){
     if(existing){existing.qty=Number(existing.qty||0)+1;} else rows.push({source:p._source,sourceLabel:p._sourceLabel,name:p.name,partNo:p.partNo,partId:p.id,qty:1,unitPrice:Number(p._price||0)});
     suggest.innerHTML='';search.value='';redraw();autoSave();
   };
-  const showSuggest=()=>{const found=dealerPartSearch(search.value).slice(0,8);suggest.innerHTML=found.map((p,i)=>`<div class="part-card" data-pidx="${i}" style="cursor:pointer"><div style="flex:1"><b>${escHtml(displayPartNo(p.partNo))}</b><div class="nm">${escHtml(p.name)}</div></div><div><span class="source-badge ${p._source==='dealer'?'source-dealer':'source-company'}">${p._sourceLabel}</span><br><b>৳${money(p._price)}</b>${p._source==='dealer'?`<div class="hint">Stock: ${Number(p.currentStock||0)}</div>`:''}</div></div>`).join('');suggest.querySelectorAll('[data-pidx]').forEach(el=>el.onclick=()=>add(found[Number(el.dataset.pidx)]));};
+  const showSuggest=()=>{const found=dealerMemoPartSearch(search.value).slice(0,8);suggest.innerHTML=found.map((p,i)=>`<div class="part-card" data-pidx="${i}" style="cursor:pointer"><div style="flex:1"><b>${escHtml(displayPartNo(p.partNo))}</b><div class="nm">${escHtml(p.name)}</div></div><div><span class="source-badge ${p._source==='dealer'?'source-dealer':'source-company'}">${p._sourceLabel}</span><br><b>৳${money(p._price)}</b>${p._source==='dealer'?`<div class="hint">Stock: ${Number(p.currentStock||0)}</div>`:''}</div></div>`).join('');suggest.querySelectorAll('[data-pidx]').forEach(el=>el.onclick=()=>add(found[Number(el.dataset.pidx)]));};
   search.oninput=()=>{if(search.value.trim().length>=2)showSuggest();else suggest.innerHTML='';autoSave();};
   ['memoCustomerName','memoCustomerMobile','memoCustomerAddress','memoPaymentInfo','memoNote'].forEach(id=>{document.getElementById(id).oninput=autoSave;});
   document.getElementById('memoPaymentStatus').onchange=autoSave;
