@@ -3876,6 +3876,7 @@ ROUTES.partsCatalog=function(){
 let mechanicTab = 'search';
 ROUTES.mechanicDashboard = function(){
   if(!requireRole(['mechanic'], 'dealerLogin')) return;
+  ensureAdminNoticeWatcher();
   const u = currentMechanic();
   const app = document.getElementById('app');
   const content = mechanicTab === 'profile' ? mechanicProfileHTML() : (mechanicTab === 'tourbill' ? mechanicTourBillHTML() : mechanicSearchHTML());
@@ -5212,6 +5213,7 @@ function printDealerMemo(id){
 function dealerPortalRender(){
   const u=currentDealer();
   if(!u){go('dealerLogin');return;}
+  ensureAdminNoticeWatcher();
   let content='';
   if(dealerManageTab==='memo'){ const ed=window._editingMemoDraft||null; window._memoDraftForWire=ed; window._editingMemoDraft=null; content=memoEditorHTML(ed); }
   else if(dealerManageTab==='memoDrafts')content=memoDraftsHTML();
@@ -5815,6 +5817,73 @@ function adminShell(innerHTML){
   document.getElementById('logout').onclick = ()=>{ DB.session={role:null,user:null}; go('landing'); };
   document.getElementById('modalBg').addEventListener('click', (ev)=>{ if(ev.target.id==='modalBg') closeModal(); });
 }
+/* ================= Admin Price/Parts-Update Notification ================= */
+/* Admin যখন কোনো পার্টসের দাম/তথ্য আপডেট করেন, সব লগ-ইন করা Dealer/Mechanic/Parts
+   Engineer-এর কাছে সাথে সাথে শব্দসহ একটা পপআপ যায় (Firebase live listener দিয়ে —
+   রিফ্রেশ করা লাগে না)। যতক্ষণ না ইউজার "OK" চাপে, প্রতি ২ মিনিটে আবার একই পপআপ
+   ফিরে আসবে। OK করা হয়ে গেলে ওই নির্দিষ্ট আপডেটের জন্য আর দেখাবে না (localStorage-এ
+   মনে রাখা হয়, per-device)। */
+function pushAdminNotice(message, details){
+  try{
+    fbDb.ref('adminNotices').push({
+      message: message,
+      details: details || '',
+      createdAtMs: Date.now()
+    });
+  }catch(e){ console.warn('adminNotice push failed:', e); }
+}
+function playNoticeSound(){
+  try{
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const tone=(freq,start,dur)=>{
+      const osc=ctx.createOscillator(), gain=ctx.createGain();
+      osc.type='sine'; osc.frequency.value=freq;
+      gain.gain.setValueAtTime(0.0001, ctx.currentTime+start);
+      gain.gain.exponentialRampToValueAtTime(0.3, ctx.currentTime+start+0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime+start+dur);
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.start(ctx.currentTime+start); osc.stop(ctx.currentTime+start+dur+0.05);
+    };
+    tone(880,0,0.18); tone(1175,0.2,0.22);
+  }catch(e){ /* কিছু ব্রাউজারে ইউজার ইন্টারঅ্যাকশনের আগে অডিও ব্লকড থাকে — নীরবে স্কিপ */ }
+}
+let adminNoticeRepeatTimer = null;
+function showAdminNoticePopup(noticeId, notice){
+  playNoticeSound();
+  openModal(`<h3>📢 গুরুত্বপূর্ণ আপডেট</h3>
+    <p style="font-size:15px;font-weight:700;margin:10px 0">${escHtml(notice.message||'')}</p>
+    ${notice.details?`<div class="hint" style="white-space:pre-line;margin-bottom:14px;line-height:1.6">${escHtml(notice.details)}</div>`:''}
+    <div class="modal-actions"><button class="btn btn-primary" id="adminNoticeOk" style="width:100%">✅ বুঝেছি (OK)</button></div>`);
+  const btn=document.getElementById('adminNoticeOk');
+  if(btn) btn.onclick=()=>{
+    try{ localStorage.setItem('bn_lastAckedNotice', String(noticeId)); }catch(e){}
+    if(adminNoticeRepeatTimer){ clearInterval(adminNoticeRepeatTimer); adminNoticeRepeatTimer=null; }
+    closeModal();
+  };
+}
+let adminNoticeWatcherAttached = false;
+function ensureAdminNoticeWatcher(){
+  if(adminNoticeWatcherAttached) return;
+  const role = DB.session && DB.session.role;
+  if(!role || role==='admin') return; // Admin নিজের করা পরিবর্তনের নোটিফিকেশন নিজে দেখবে না
+  adminNoticeWatcherAttached = true;
+  fbDb.ref('adminNotices').orderByChild('createdAtMs').limitToLast(1).on('value', snap=>{
+    const val=snap.val();
+    if(!val) return;
+    const noticeId=Object.keys(val)[0], notice=val[noticeId];
+    let acked=null;
+    try{ acked=localStorage.getItem('bn_lastAckedNotice'); }catch(e){}
+    if(String(acked)===String(noticeId)) return; // আগেই OK করা হয়ে গেছে
+    if(adminNoticeRepeatTimer){ clearInterval(adminNoticeRepeatTimer); adminNoticeRepeatTimer=null; }
+    showAdminNoticePopup(noticeId, notice);
+    adminNoticeRepeatTimer=setInterval(()=>{
+      let ackedNow=null;
+      try{ ackedNow=localStorage.getItem('bn_lastAckedNotice'); }catch(e){}
+      if(String(ackedNow)===String(noticeId)){ clearInterval(adminNoticeRepeatTimer); adminNoticeRepeatTimer=null; return; }
+      showAdminNoticePopup(noticeId, notice);
+    }, 120000); // ২ মিনিট
+  });
+}
 function openModal(html){
   document.getElementById('modalBody').innerHTML = html;
   document.getElementById('modalBg').classList.add('show');
@@ -5863,6 +5932,7 @@ function peShell(innerHTML){
 ROUTES.peDashboard = function(){
   const pe = DB.session.user;
   if(!requireRole(['partsEngineer']) || !pe){ go('landing'); return; }
+  ensureAdminNoticeWatcher();
   if(peTab === 'search'){ peShell(peSearchTabHTML()); wirePeSearchTab(); }
   else if(peTab === 'requisitions'){ peShell(peRequisitionsTabHTML()); wirePeRequisitionsTab(); }
   else if(peTab === 'report'){ peShell(peReportTabHTML()); }
@@ -6562,6 +6632,7 @@ function openPartModal(part){
       syncPush('editPart', {id:part.id, partNo,name,category,price});
       const dealerUpdated = syncDealerShopPricesForParts([{partNo, price}]);
       logHistory(`পার্টস আপডেট: ${name} (${partNo})${dealerUpdated?` — ডিলার শপে ${dealerUpdated}টি Selling Price সিংক হয়েছে`:''}`);
+      pushAdminNotice('Admin একটি পার্টসের দাম/তথ্য আপডেট করেছেন', `Part: ${name} (${partNo})\nনতুন দাম: ৳${money(price)}`);
     } else {
       const newPart = {id: nextPartId++, partNo, name, category, price, core: coreOf(partNo), nameLower: name.toLowerCase()};
       DB.parts.push(newPart);
@@ -6776,6 +6847,7 @@ function confirmPriceUpdate(){
   });
   const dealerUpdated = syncDealerShopPricesForParts(changed.map(u=>({partNo:u.part.partNo, price:u.newPrice})));
   logHistory(`প্রাইস আপডেট এক্সেল: ${changed.length}টি পার্টসের মূল্য আপডেট হয়েছে${unmatched.length?`, ${unmatched.length}টি মেলেনি`:''}${invalid.length?`, ${invalid.length}টি ভুল রো`:''} (${fileName})${dealerUpdated?` — ডিলার শপে ${dealerUpdated}টি Selling Price সিংক হয়েছে`:''}`);
+  pushAdminNotice('Admin বাল্ক প্রাইস আপডেট করেছেন', `${changed.length}টি পার্টসের দাম বদলেছে (ফাইল: ${fileName})`);
   saveDB();
   closeModal();
   pendingPriceUpdate = null;
