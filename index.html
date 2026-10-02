@@ -3887,6 +3887,7 @@ ROUTES.mechanicDashboard = function(){
         <div><div class="brand-name">${escHtml(DB.settings.companyName)}</div><div class="brand-sub">Mechanic Portal</div></div>
       </div>
       <div class="topbar-right">
+        <span style="color:#fff">${adminNoticeBellHTML()}</span>
         <button class="btn btn-ghost btn-sm theme-toggle" onclick="toggleTheme()" style="color:#fff;border-color:rgba(255,255,255,.3)">🌙</button>
         <span class="pill">${escHtml(u?u.name:'')}</span>
         <button class="btn btn-ghost btn-sm" style="color:#fff;border-color:rgba(255,255,255,.3)" id="mechLogout">${t('logout')}</button>
@@ -4335,6 +4336,7 @@ function dealerTopbar(sub='ডিলার পোর্টাল', hideBrand=fal
       <div><div class="brand-name">${escHtml(DB.settings.companyName)}</div><div class="brand-sub">${sub}</div></div>
     </div>`}
     <div class="topbar-right">
+      <span style="color:#fff">${adminNoticeBellHTML()}</span>
       <button class="btn btn-ghost btn-sm" onclick="go('dealerRequisition')" style="color:#fff;border-color:rgba(255,255,255,.3)">📝 রিকুইজিশন</button>
       <button class="btn btn-ghost btn-sm theme-toggle" onclick="toggleTheme()" style="color:#fff;border-color:rgba(255,255,255,.3)">🌙</button>
       <span class="pill">${escHtml(u?u.name:'')}</span>
@@ -5825,12 +5827,21 @@ function adminShell(innerHTML){
    মনে রাখা হয়, per-device)। */
 function pushAdminNotice(message, details){
   try{
+    // fbDb.push() async ব্যর্থ হতে পারে (permission-denied ইত্যাদি) — শুধু try/catch দিয়ে এটা
+    // ধরা পড়ে না (push() সিঙ্ক্রোনাসলি থ্রো করে না), তাই .catch() দিয়ে স্পষ্টভাবে এরর ধরে Admin-কে
+    // জানানো হচ্ছে — নইলে নোটিফিকেশন চুপচাপ পাঠানো ব্যর্থ হলেও Admin কিছুই বুঝতে পারতেন না।
     fbDb.ref('adminNotices').push({
       message: message,
       details: details || '',
       createdAtMs: Date.now()
+    }).catch(err=>{
+      console.error('adminNotice push failed:', err);
+      alert('⚠️ নোটিফিকেশন পাঠানো যায়নি (Dealer/Mechanic/Engineer-রা এই আপডেটের পপআপ পাবেন না)।\n\nকারণ: ' + (err && err.message ? err.message : err));
     });
-  }catch(e){ console.warn('adminNotice push failed:', e); }
+  }catch(e){
+    console.error('adminNotice push failed:', e);
+    alert('⚠️ নোটিফিকেশন পাঠানো যায়নি।\n\nকারণ: ' + (e && e.message ? e.message : e));
+  }
 }
 // ব্রাউজারের autoplay নীতির কারণে নতুন তৈরি করা প্রতিটা AudioContext শুরুতে "suspended"
 // অবস্থায় থাকে — ইউজার পেজে অন্তত একবার ক্লিক/টাচ না করলে শব্দ বাজে না। তাই একটাই শেয়ার্ড
@@ -5867,6 +5878,27 @@ function playNoticeSound(){
     else playTones();
   }catch(e){ /* সমর্থিত না এমন ব্রাউজারে নীরবে স্কিপ */ }
 }
+// 🔔 টপবারের বেল আইকন — পপআপ মিস করলেও/বন্ধ করে দিলেও, ইউজার চাইলে বেল চেপে আবার দেখতে পারবে।
+// অপঠিত নোটিফিকেশন থাকলে বেলের উপর একটা লাল বিন্দু দেখাবে।
+let currentAdminNotice = null; // {id, notice} — সর্বশেষ নোটিস, বেল/ব্যাজের জন্য রাখা হয়
+function hasUnackedAdminNotice(){
+  if(!currentAdminNotice) return false;
+  let acked=null;
+  try{ acked=localStorage.getItem('bn_lastAckedNotice'); }catch(e){}
+  return String(acked) !== String(currentAdminNotice.id);
+}
+function updateAdminNoticeBadge(){
+  document.querySelectorAll('.admin-notice-badge').forEach(el=>{
+    el.style.display = hasUnackedAdminNotice() ? 'block' : 'none';
+  });
+}
+function reopenLastAdminNotice(){
+  if(!currentAdminNotice){ alert('এখনো কোনো নোটিফিকেশন আসেনি।'); return; }
+  showAdminNoticePopup(currentAdminNotice.id, currentAdminNotice.notice);
+}
+function adminNoticeBellHTML(){
+  return `<button type="button" id="adminNoticeBell" onclick="reopenLastAdminNotice()" title="নোটিফিকেশন" style="position:relative;background:none;border:none;font-size:19px;cursor:pointer;padding:4px 8px;line-height:1;">🔔<span class="admin-notice-badge" style="display:none;position:absolute;top:1px;right:3px;width:9px;height:9px;border-radius:50%;background:#e11d48;border:1.5px solid #fff;"></span></button>`;
+}
 let adminNoticeRepeatTimer = null;
 function showAdminNoticePopup(noticeId, notice){
   playNoticeSound();
@@ -5879,6 +5911,7 @@ function showAdminNoticePopup(noticeId, notice){
     try{ localStorage.setItem('bn_lastAckedNotice', String(noticeId)); }catch(e){}
     if(adminNoticeRepeatTimer){ clearInterval(adminNoticeRepeatTimer); adminNoticeRepeatTimer=null; }
     closeModal();
+    updateAdminNoticeBadge();
   };
 }
 let adminNoticeWatcherAttached = false;
@@ -5891,6 +5924,8 @@ function ensureAdminNoticeWatcher(){
     const val=snap.val();
     if(!val) return;
     const noticeId=Object.keys(val)[0], notice=val[noticeId];
+    currentAdminNotice = {id:noticeId, notice};
+    updateAdminNoticeBadge();
     let acked=null;
     try{ acked=localStorage.getItem('bn_lastAckedNotice'); }catch(e){}
     if(String(acked)===String(noticeId)) return; // আগেই OK করা হয়ে গেছে
@@ -5902,6 +5937,8 @@ function ensureAdminNoticeWatcher(){
       if(String(ackedNow)===String(noticeId)){ clearInterval(adminNoticeRepeatTimer); adminNoticeRepeatTimer=null; return; }
       showAdminNoticePopup(noticeId, notice);
     }, 120000); // ২ মিনিট
+  }, err=>{
+    console.error('adminNotices listener failed:', err);
   });
 }
 function openModal(html){
@@ -5922,7 +5959,8 @@ function peShell(innerHTML){
             <div style="font-weight:700;font-size:16px;">🧑‍🔧 ${pe.name}</div>
             <div style="font-size:12px;opacity:0.8;">Region: ${pe.region||'-'}</div>
           </div>
-          <div style="display:flex;gap:8px;">
+          <div style="display:flex;gap:8px;align-items:center;">
+            <span style="color:#fff">${adminNoticeBellHTML()}</span>
             <button class="btn btn-ghost btn-sm" onclick="(()=>{const t=document.createElement('div');t.innerHTML='🔄 রিফ্রেশ হচ্ছে...';t.style.cssText='position:fixed;top:20px;left:20px;background:#1f8a4c;color:#fff;padding:12px 16px;border-radius:8px;font-weight:600;z-index:9999';document.body.appendChild(t);loadDB().then(()=>{ensureCores();t.remove();go('peDashboard')})})();" style="color:#fff;border-color:rgba(255,255,255,0.3);font-size:15px;">🔄</button>
             <button class="btn btn-ghost btn-sm" id="logout" style="color:#fff;border-color:rgba(255,255,255,0.3);font-size:15px;">🚪 ${t('logout')}</button>
           </div>
