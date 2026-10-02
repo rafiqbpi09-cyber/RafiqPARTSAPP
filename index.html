@@ -5832,20 +5832,40 @@ function pushAdminNotice(message, details){
     });
   }catch(e){ console.warn('adminNotice push failed:', e); }
 }
+// ব্রাউজারের autoplay নীতির কারণে নতুন তৈরি করা প্রতিটা AudioContext শুরুতে "suspended"
+// অবস্থায় থাকে — ইউজার পেজে অন্তত একবার ক্লিক/টাচ না করলে শব্দ বাজে না। তাই একটাই শেয়ার্ড
+// AudioContext রাখা হলো, আর পেজে প্রথম যেকোনো ক্লিক/টাচেই সেটা resume করার চেষ্টা করা হয় —
+// এতে পরে Firebase notice এলে (যেটা সরাসরি কোনো ক্লিকের ভেতর থেকে আসে না) context আগে থেকেই
+// resumed থাকে বলে শব্দ ঠিকভাবে বাজে।
+let sharedAudioCtx = null;
+function getSharedAudioCtx(){
+  if(!sharedAudioCtx){
+    try{ sharedAudioCtx = new (window.AudioContext || window.webkitAudioContext)(); }catch(e){ return null; }
+  }
+  return sharedAudioCtx;
+}
+['click','touchstart','keydown'].forEach(evt=>{
+  document.addEventListener(evt, ()=>{ const c=getSharedAudioCtx(); if(c && c.state==='suspended') c.resume().catch(()=>{}); }, {passive:true});
+});
 function playNoticeSound(){
   try{
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const tone=(freq,start,dur)=>{
-      const osc=ctx.createOscillator(), gain=ctx.createGain();
-      osc.type='sine'; osc.frequency.value=freq;
-      gain.gain.setValueAtTime(0.0001, ctx.currentTime+start);
-      gain.gain.exponentialRampToValueAtTime(0.3, ctx.currentTime+start+0.02);
-      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime+start+dur);
-      osc.connect(gain); gain.connect(ctx.destination);
-      osc.start(ctx.currentTime+start); osc.stop(ctx.currentTime+start+dur+0.05);
+    const ctx = getSharedAudioCtx();
+    if(!ctx) return;
+    const playTones=()=>{
+      const tone=(freq,start,dur)=>{
+        const osc=ctx.createOscillator(), gain=ctx.createGain();
+        osc.type='sine'; osc.frequency.value=freq;
+        gain.gain.setValueAtTime(0.0001, ctx.currentTime+start);
+        gain.gain.exponentialRampToValueAtTime(0.3, ctx.currentTime+start+0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime+start+dur);
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.start(ctx.currentTime+start); osc.stop(ctx.currentTime+start+dur+0.05);
+      };
+      tone(880,0,0.18); tone(1175,0.2,0.22);
     };
-    tone(880,0,0.18); tone(1175,0.2,0.22);
-  }catch(e){ /* কিছু ব্রাউজারে ইউজার ইন্টারঅ্যাকশনের আগে অডিও ব্লকড থাকে — নীরবে স্কিপ */ }
+    if(ctx.state === 'suspended'){ ctx.resume().then(playTones).catch(()=>{}); }
+    else playTones();
+  }catch(e){ /* সমর্থিত না এমন ব্রাউজারে নীরবে স্কিপ */ }
 }
 let adminNoticeRepeatTimer = null;
 function showAdminNoticePopup(noticeId, notice){
