@@ -2664,6 +2664,9 @@ function slWireLinks(role){
 }
 // একটিমাত্র Login Card-কে নির্বাচিত Role অনুযায়ী পুনরায় আঁকে (hero/রঙ/placeholder/feature সব পাল্টায়,
 // কিন্তু কোনো নতুন route/page তৈরি হয় না — same single page)
+let slCurrentRole = null; // আগে কোথাও declare করা ছিল না — প্রথমবার landing পেজ লোড হওয়ার সময়
+// (কোনো role select করার আগেই) syncQuickSearchFABVisibility() এটা পড়তে গিয়ে
+// "ReferenceError: slCurrentRole is not defined" ছুঁড়ত
 function paintSingleLogin(role){
   slCurrentRole = role;
   const cfg = SL_ROLES[role];
