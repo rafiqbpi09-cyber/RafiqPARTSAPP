@@ -1731,8 +1731,10 @@ async function saveDB(dirtyKeys){
   }catch(e){
     lastSaveError = (e && e.message) ? e.message : String(e);
     console.error('Firebase save failed:', e);
-    // Firebase না হলে localStorage এ সেভ
-    try{ localStorage.setItem(LS_KEY, JSON.stringify({users:DB.users,history:DB.history.slice(0,50),settings:DB.settings,parts:DB.parts,nextPartId,partsSaved:true,requisitions:DB.requisitions.slice(0,200),nextReqNo,drafts:DB.drafts.slice(0,200),partsEngineers:DB.partsEngineers,nextPeId,dealerShopParts:DB.dealerShopParts,dealerMemos:DB.dealerMemos,dealerMemoDrafts:DB.dealerMemoDrafts,stockHistory:DB.stockHistory,batteryWarranty:DB.batteryWarranty,batteryWarrantyMeta:DB.batteryWarrantyMeta,nextMemoNo:DB.nextMemoNo||1})); }catch(e2){}
+    // Firebase না হলে localStorage এ সেভ — buildFullPayload() ব্যবহার করা হচ্ছে (আগে এখানে আলাদা
+    // করে লেখা অবজেক্টে catalogs/resetRequests/loginHistory বাদ পড়ে গিয়েছিল; এখন সব key-ই
+    // buildFullPayload()-এর সাথে সবসময় সিংক থাকবে, আলাদা করে দুই জায়গায় রাখতে হবে না)
+    try{ localStorage.setItem(LS_KEY, JSON.stringify(buildFullPayload())); }catch(e2){}
     // Firebase-এ আসল write ব্যর্থ হয়েছে — caller (যেমন Delete History রিসেট) এটা জেনে
     // ইউজারকে সঠিক সতর্কতা দেখাতে পারে, নাহলে সবকিছু "সেভ হয়েছে" মনে হবে অথচ রিফ্রেশে পুরনো ডেটা ফিরে আসবে
     return false;
@@ -2419,8 +2421,6 @@ function peBottomNavHTML(){
     {key:'search',icon:'🔍',label:'পার্টস সার্চ',onclick:"peTab='search';go('peDashboard')"},
     {key:'requisitions',icon:'📝',label:'রিকুইজিশন',onclick:"peTab='requisitions';go('peDashboard')"},
     {key:'report',icon:'📊',label:'রিপোর্ট',onclick:"peTab='report';go('peDashboard')"},
-    {key:'vehicleDb',icon:'🚗',label:'Vehicle DB',onclick:"go('vehicleModelDB')"},
-      {key:'vehicleDb',icon:'🚗',label:'Vehicle DB',onclick:"go('vehicleModelDB')"},
     {key:'catalogue',icon:'📚',label:'Catalogue',onclick:"go('partsCatalog')"},
     {key:'logout',icon:'🚪',label:'লগআউট',onclick:"if(confirm('লগআউট করবেন?')){DB.session={role:null,user:null};go('landing');}"}
   ], peTab);
@@ -5881,41 +5881,54 @@ function playNoticeSound(){
     else playTones();
   }catch(e){ /* সমর্থিত না এমন ব্রাউজারে নীরবে স্কিপ */ }
 }
-// 🔔 টপবারের বেল আইকন — পপআপ মিস করলেও/বন্ধ করে দিলেও, ইউজার চাইলে বেল চেপে আবার দেখতে পারবে।
-// অপঠিত নোটিফিকেশন থাকলে বেলের উপর একটা লাল বিন্দু দেখাবে।
-let currentAdminNotice = null; // {id, notice} — সর্বশেষ নোটিস, বেল/ব্যাজের জন্য রাখা হয়
-function hasUnackedAdminNotice(){
-  if(!currentAdminNotice) return false;
-  let acked=null;
-  try{ acked=localStorage.getItem('bn_lastAckedNotice'); }catch(e){}
-  return String(acked) !== String(currentAdminNotice.id);
+// 🔔 টপবারের বেল আইকন — মেসেজিং অ্যাপের মতো: যতগুলো নোটিফিকেশন এখনো "দেখা" হয়নি, বেলের উপর
+// ঠিক ততটাই সংখ্যা দেখাবে (শুধু বিন্দু না)। অ্যাপ বন্ধ থাকা অবস্থায় Admin একাধিকবার দাম বদলালেও,
+// পরে অ্যাপ খোলামাত্র সেগুলো একটার পর একটা (পুরনোটা আগে) পপআপ+শব্দ আকারে দেখানো হবে —
+// প্রতিটা আলাদাভাবে OK না করা পর্যন্ত সংখ্যাটা কমবে না, আর প্রতি ২ মিনিটে চলতি (সামনের) পপআপটা
+// আবার দেখানো হবে যতক্ষণ না OK করা হয়।
+let adminNoticeQueue = []; // এখনো না-দেখা নোটিসের তালিকা, পুরনো→নতুন ক্রমে: [{id, notice}, ...]
+function lastSeenNoticeMs(){
+  try{ return Number(localStorage.getItem('bn_lastSeenMs')||0); }catch(e){ return 0; }
+}
+function setLastSeenNoticeMs(ms){
+  try{ localStorage.setItem('bn_lastSeenMs', String(ms)); }catch(e){}
 }
 function updateAdminNoticeBadge(){
+  const n = adminNoticeQueue.length;
   document.querySelectorAll('.admin-notice-badge').forEach(el=>{
-    el.style.display = hasUnackedAdminNotice() ? 'block' : 'none';
+    if(n>0){ el.style.display='flex'; el.textContent = n>99?'99+':String(n); }
+    else el.style.display='none';
   });
 }
-function reopenLastAdminNotice(){
-  if(!currentAdminNotice){ alert('এখনো কোনো নোটিফিকেশন আসেনি।'); return; }
-  showAdminNoticePopup(currentAdminNotice.id, currentAdminNotice.notice);
-}
 function adminNoticeBellHTML(){
-  return `<button type="button" id="adminNoticeBell" onclick="reopenLastAdminNotice()" title="নোটিফিকেশন" style="position:relative;background:none;border:none;font-size:19px;cursor:pointer;padding:4px 8px;line-height:1;">🔔<span class="admin-notice-badge" style="display:none;position:absolute;top:1px;right:3px;width:9px;height:9px;border-radius:50%;background:#e11d48;border:1.5px solid #fff;"></span></button>`;
+  return `<button type="button" id="adminNoticeBell" onclick="reopenLastAdminNotice()" title="নোটিফিকেশন" style="position:relative;background:none;border:none;font-size:19px;cursor:pointer;padding:4px 8px;line-height:1;">🔔<span class="admin-notice-badge" style="display:none;position:absolute;top:-3px;right:0;min-width:16px;height:16px;padding:0 3px;border-radius:9px;background:#e11d48;border:1.5px solid #fff;color:#fff;font-size:10px;font-weight:700;align-items:center;justify-content:center;line-height:1;"></span></button>`;
 }
 let adminNoticeRepeatTimer = null;
+function showNextQueuedNotice(){
+  if(adminNoticeRepeatTimer){ clearInterval(adminNoticeRepeatTimer); adminNoticeRepeatTimer=null; }
+  if(!adminNoticeQueue.length) return;
+  showAdminNoticePopup(adminNoticeQueue[0].id, adminNoticeQueue[0].notice);
+}
 function showAdminNoticePopup(noticeId, notice){
   playNoticeSound();
   openModal(`<h3>📢 গুরুত্বপূর্ণ আপডেট</h3>
     <p style="font-size:15px;font-weight:700;margin:10px 0">${escHtml(notice.message||'')}</p>
     ${notice.details?`<div class="hint" style="white-space:pre-line;margin-bottom:14px;line-height:1.6">${escHtml(notice.details)}</div>`:''}
+    ${adminNoticeQueue.length>1?`<div class="hint" style="margin-bottom:10px">আরও ${adminNoticeQueue.length-1}টি নতুন আপডেট বাকি আছে</div>`:''}
     <div class="modal-actions"><button class="btn btn-primary" id="adminNoticeOk" style="width:100%">✅ বুঝেছি (OK)</button></div>`);
   const btn=document.getElementById('adminNoticeOk');
   if(btn) btn.onclick=()=>{
-    try{ localStorage.setItem('bn_lastAckedNotice', String(noticeId)); }catch(e){}
-    if(adminNoticeRepeatTimer){ clearInterval(adminNoticeRepeatTimer); adminNoticeRepeatTimer=null; }
-    closeModal();
+    setLastSeenNoticeMs(Number(notice.createdAtMs||Date.now()));
+    adminNoticeQueue = adminNoticeQueue.filter(x=>x.id!==noticeId);
     updateAdminNoticeBadge();
+    closeModal();
+    if(adminNoticeRepeatTimer){ clearInterval(adminNoticeRepeatTimer); adminNoticeRepeatTimer=null; }
+    if(adminNoticeQueue.length) showNextQueuedNotice(); // পরেরটা থাকলে সাথে সাথেই দেখানো হবে
   };
+}
+function reopenLastAdminNotice(){
+  if(!adminNoticeQueue.length){ alert('✅ কোনো নতুন নোটিফিকেশন নেই — সব দেখা হয়ে গেছে।'); return; }
+  showNextQueuedNotice();
 }
 let adminNoticeWatcherAttached = false;
 function ensureAdminNoticeWatcher(){
@@ -5923,23 +5936,26 @@ function ensureAdminNoticeWatcher(){
   const role = DB.session && DB.session.role;
   if(!role || role==='admin') return; // Admin নিজের করা পরিবর্তনের নোটিফিকেশন নিজে দেখবে না
   adminNoticeWatcherAttached = true;
-  fbDb.ref('adminNotices').orderByChild('createdAtMs').limitToLast(1).on('value', snap=>{
+  // এই ডিভাইসে এই ফিচার একদম প্রথমবার চালু হলে, পুরনো (ফিচার চালুর আগের) সব নোটিস একসাথে চাপিয়ে
+  // না দিয়ে, "এখন থেকে"-কে ভিত্তি ধরা হয় — শুধু এখন থেকে যা আসবে সেটাই দেখানো হবে
+  let firstRunEver=false;
+  try{ firstRunEver = localStorage.getItem('bn_lastSeenMs')===null; }catch(e){}
+  if(firstRunEver) setLastSeenNoticeMs(Date.now());
+  fbDb.ref('adminNotices').orderByChild('createdAtMs').limitToLast(50).on('value', snap=>{
     const val=snap.val();
     if(!val) return;
-    const noticeId=Object.keys(val)[0], notice=val[noticeId];
-    currentAdminNotice = {id:noticeId, notice};
+    const seenMs=lastSeenNoticeMs();
+    adminNoticeQueue = Object.keys(val).map(id=>({id, notice:val[id]}))
+      .filter(x=>Number(x.notice.createdAtMs||0) > seenMs)
+      .sort((a,b)=>Number(a.notice.createdAtMs||0)-Number(b.notice.createdAtMs||0));
     updateAdminNoticeBadge();
-    let acked=null;
-    try{ acked=localStorage.getItem('bn_lastAckedNotice'); }catch(e){}
-    if(String(acked)===String(noticeId)) return; // আগেই OK করা হয়ে গেছে
-    if(adminNoticeRepeatTimer){ clearInterval(adminNoticeRepeatTimer); adminNoticeRepeatTimer=null; }
-    showAdminNoticePopup(noticeId, notice);
-    adminNoticeRepeatTimer=setInterval(()=>{
-      let ackedNow=null;
-      try{ ackedNow=localStorage.getItem('bn_lastAckedNotice'); }catch(e){}
-      if(String(ackedNow)===String(noticeId)){ clearInterval(adminNoticeRepeatTimer); adminNoticeRepeatTimer=null; return; }
-      showAdminNoticePopup(noticeId, notice);
-    }, 120000); // ২ মিনিট
+    if(adminNoticeQueue.length && !adminNoticeRepeatTimer){
+      showNextQueuedNotice(); // app খোলা অবস্থায় নতুন নোটিস এলে, বা app খোলার সাথে সাথেই — তৎক্ষণাৎ দেখানো
+      adminNoticeRepeatTimer=setInterval(()=>{
+        if(!adminNoticeQueue.length){ clearInterval(adminNoticeRepeatTimer); adminNoticeRepeatTimer=null; return; }
+        showNextQueuedNotice();
+      }, 120000); // ২ মিনিট
+    }
   }, err=>{
     console.error('adminNotices listener failed:', err);
   });
