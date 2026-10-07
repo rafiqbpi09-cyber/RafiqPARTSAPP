@@ -4916,9 +4916,9 @@ function memoEditorHTML(draft=null){
     <div class="memo2-footer" style="flex-direction:column;">
       <div class="memo2-powered-by" style="text-align:left;font-size:11px;color:#6b7280;width:100%;">Powered by Engr. Rafiqul Islam — 01712-86-31-83</div>
       <div style="display:flex;justify-content:space-between;align-items:flex-end;width:100%;margin-top:1in;">
-        <div class="memo2-sign"><div class="memo2-sign-line"></div><span>Dealer Signature</span></div>
-        <div class="memo2-thankyou">🚜<div><b>Thank You!</b></div><div>We Appreciate Your Business</div></div>
         <div class="memo2-sign"><div class="memo2-sign-line"></div><span id="memoLblCustSign">${ml.custSign}</span></div>
+        <div class="memo2-thankyou">🚜<div><b>Thank You!</b></div><div>We Appreciate Your Business</div></div>
+        <div class="memo2-sign"><div class="memo2-sign-line"></div><span>Dealer Signature</span></div>
       </div>
     </div>
   </div>`;
@@ -5197,8 +5197,8 @@ function memoDetailsHTML(m){
 
   <div class="mp-footer">
     <div class="mp-signrow">
-      <div class="mp-sign"><div class="line"></div>Dealer Signature</div>
       <div class="mp-sign"><div class="line"></div>${ml.custSign}</div>
+      <div class="mp-sign"><div class="line"></div>Dealer Signature</div>
     </div>
     <div class="mp-bottomline">
       <span>Powered by Engr. Rafiqul Islam — 01712-86-31-83</span>
@@ -6978,6 +6978,40 @@ function resolveResetRequest(id){
   alert(`নতুন পাসওয়ার্ড সেট হয়েছে: ${np}\nদয়া করে ${u.name}-কে কল/WhatsApp করে জানিয়ে দিন।`);
   adminTab='users'; go('adminDashboard');
 }
+// Admin-এর 👥 User Management-এ, কোনো Dealer-এর নামে ক্লিক করলে তার Stock Summary
+// (dealer নিজের ড্যাশবোর্ডে যা দেখে, ঠিক সেই একই পরিসংখ্যান) একটা মোডালে দেখানো হয় —
+// নতুন কোনো Admin ট্যাব ছাড়াই। dealerSummary()-র মতোই হিসাব, শুধু currentDealer()-এর
+// বদলে যেকোনো নির্দিষ্ট dealerId দিয়ে কাজ করে (Admin তো কোনো dealer হিসেবে লগইন করা না)।
+function dealerSummaryFor(dealerId){
+  const parts = DB.dealerShopParts.filter(p=>String(p.dealerId)===String(dealerId));
+  const memos = DB.dealerMemos.filter(m=>String(m.dealerId)===String(dealerId));
+  const today = new Date().toISOString().slice(0,10);
+  const todays = memos.filter(m=>String(m.dateISO||'').slice(0,10)===today);
+  return {
+    shopParts: parts.length,
+    stockItems: parts.filter(p=>Number(p.currentStock||0)>0).length,
+    low: parts.filter(p=>Number(p.currentStock||0)>0 && Number(p.currentStock||0)<=Number(p.lowStock||5)).length,
+    outOfStock: parts.filter(p=>Number(p.currentStock||0)===0).length,
+    todayMemo: todays.length,
+    todaySales: todays.reduce((s,m)=>s+Number(m.grandTotal||0),0)
+  };
+}
+function showDealerStockSummaryModal(dealerId){
+  const u = DB.users.find(x=>Number(x.id)===Number(dealerId));
+  if(!u) return;
+  const s = dealerSummaryFor(dealerId);
+  openModal(`<h3>📊 ${escHtml(u.name)} — Stock Summary</h3>
+    <p class="hint" style="margin:0 0 12px">${escHtml(u.phone||'')}${u.region?` · ${escHtml(u.region)}`:''}</p>
+    <div class="dealer-stat-grid">
+      <div class="dealer-stat"><div class="n">${s.shopParts}</div><div class="l">🧩 Total My Shop Parts</div></div>
+      <div class="dealer-stat"><div class="n">${s.stockItems}</div><div class="l">📦 Total Stock Items</div></div>
+      <div class="dealer-stat"><div class="n">${s.low}</div><div class="l">⚠️ Low Stock Items</div></div>
+      <div class="dealer-stat"><div class="n">${s.outOfStock}</div><div class="l">🚫 Out of Stock</div></div>
+      <div class="dealer-stat"><div class="n">${s.todayMemo}</div><div class="l">🧾 Today's Memo</div></div>
+      <div class="dealer-stat"><div class="n">৳${money(s.todaySales)}</div><div class="l">💰 Today's Sales</div></div>
+    </div>
+    <div class="modal-actions"><button class="btn btn-primary" style="width:100%" onclick="closeModal()">বন্ধ করুন</button></div>`);
+}
 function usersTable(peFilter){
   if(DB.users.length===0) return `<div class="empty">কোনো ইউজার নেই</div>`;
   const pending = DB.users.filter(u=>u.pending && !isDeletedAccount(u));
@@ -7003,7 +7037,7 @@ function usersTable(peFilter){
       <thead><tr><th style="text-align:center">ডিলার বা মেকানিক নাম</th><th style="text-align:center">মোবাইল নম্বর</th><th style="text-align:center">ধরন</th><th style="text-align:center">Parts Engineer</th><th style="text-align:center">রিজিয়ন</th><th style="text-align:center">স্ট্যাটাস</th><th style="text-align:center">সংশোধন</th><th style="text-align:center">চালু/বন্ধ</th><th style="text-align:center">ডিলিট</th></tr></thead>
       <tbody>
       ${approved.map(u=>`<tr>
-        <td data-label="ডিলার বা মেকানিক নাম">${u.name}</td>
+        <td data-label="ডিলার বা মেকানিক নাম">${u.role==='dealer'?`<a href="javascript:void(0)" onclick="showDealerStockSummaryModal(${u.id})" style="color:var(--navy);font-weight:700;text-decoration:underline;cursor:pointer;" title="Stock Summary দেখুন">${escHtml(u.name)}</a>`:escHtml(u.name)}</td>
         <td class="mono" data-label="মোবাইল নম্বর">${u.phone}</td>
         <td data-label="ধরন">${u.role==='dealer'?'ডিলার':'মেকানিক'}</td>
         <td data-label="Parts Engineer">${u.peName || '<span style="color:var(--muted)">Unassigned</span>'}</td>
