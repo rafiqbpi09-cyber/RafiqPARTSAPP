@@ -550,10 +550,6 @@ window.APP_VERSION = '2026-09-24-login-redesign.2';
   .dealer-nav-item{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:10px;border-radius:9px;border:none;background:none;font-family:inherit;font-size:14px;font-weight:600;color:var(--text);cursor:pointer;}
   .dealer-nav-item:hover{background:var(--paper);}
   .dealer-nav-item.active{background:var(--navy);color:#fff;}
-  /* Touch ripple (Dealer/Mechanic/Parts Engineer) */
-  .rp-wave{position:absolute;border-radius:50%;background:rgba(255,105,180,.35);transform:scale(0);animation:rpWaveAnim .55s ease-out forwards;pointer-events:none;z-index:5;}
-  @keyframes rpWaveAnim{ to{ transform:scale(1); opacity:0; } }
-  .rp-active::after{content:"";position:absolute;inset:0;background:rgba(255,105,180,.22);pointer-events:none;border-radius:inherit;z-index:4;}
   /* Battery Warranty Check result cards */
   .b-card{background:var(--card);border-radius:12px;padding:14px;margin-bottom:12px;}
   .b-title{font-size:15px;font-weight:700;color:var(--navy);margin-bottom:10px;}
@@ -2136,44 +2132,6 @@ function toggleTheme(){
   else{ document.documentElement.setAttribute('data-theme','dark'); localStorage.setItem('mp_theme','dark'); }
 }
 applyTheme();
-
-/* ================= TOUCH RIPPLE (Dealer/Mechanic/Parts Engineer only) =================
-   যেকোনো বক্সে (বাটন, কার্ড, নেভ টাইল, ট্যাব) টাচ/ক্লিক করলে হালকা গোলাপি "ঢেউ" ছড়িয়ে পড়ে
-   আর বক্সটা হালকা গোলাপি রঙ ধরে — ছেড়ে দিলেই (pointerup/cancel) আগের রঙে ফিরে যায়।
-   পুরো অ্যাপ বারবার innerHTML দিয়ে রি-রেন্ডার হয় বলে প্রতিটা এলিমেন্টে আলাদা করে লিসেনার
-   বসানো অসম্ভব/ভঙ্গুর — তাই document-এ event delegation ব্যবহার করা হলো, যা নতুন করে আঁকা
-   যেকোনো বক্সেও স্বয়ংক্রিয়ভাবে কাজ করবে। */
-(function(){
-  const RIPPLE_ROLES = ['dealer','mechanic','partsEngineer'];
-  const RIPPLE_SELECTOR = '.btn, .dealer-stat, .dealer-nav-folder, .dealer-nav-item, .part-card, .tab, .b-card, .pill';
-  function rippleEligible(){
-    return !!(window.DB && DB.session && RIPPLE_ROLES.includes(DB.session.role));
-  }
-  function rippleStart(e){
-    if(!rippleEligible()) return;
-    const target = e.target.closest(RIPPLE_SELECTOR);
-    if(!target) return;
-    if(getComputedStyle(target).position === 'static') target.style.position = 'relative';
-    target.style.overflow = target.style.overflow || 'hidden';
-    const rect = target.getBoundingClientRect();
-    const size = Math.max(rect.width, rect.height) * 1.3;
-    const cx = (e.clientX != null ? e.clientX : rect.left + rect.width/2) - rect.left - size/2;
-    const cy = (e.clientY != null ? e.clientY : rect.top + rect.height/2) - rect.top - size/2;
-    const wave = document.createElement('span');
-    wave.className = 'rp-wave';
-    wave.style.cssText = `left:${cx}px;top:${cy}px;width:${size}px;height:${size}px;`;
-    target.appendChild(wave);
-    wave.addEventListener('animationend', ()=>wave.remove());
-    target.classList.add('rp-active');
-  }
-  function rippleEnd(){
-    document.querySelectorAll('.rp-active').forEach(el=>el.classList.remove('rp-active'));
-  }
-  document.addEventListener('pointerdown', rippleStart, {passive:true});
-  document.addEventListener('pointerup', rippleEnd, {passive:true});
-  document.addEventListener('pointercancel', rippleEnd, {passive:true});
-  document.addEventListener('pointerleave', rippleEnd, {passive:true});
-})();
 
 /* ================= APP LANGUAGE (বাংলা / English) =================
    পুরো সফটওয়্যারের Login Page ও Post-Login UI-এর জন্য একটি সাধারণ Language
