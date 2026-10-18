@@ -1,0 +1,1444 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Baby Poshak Admin</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%9B%A0%3C/text%3E%3C/svg%3E">
+<meta name="theme-color" content="#e85d8a">
+<style>
+:root{
+  --pink:#ff8fab; --pink-dark:#e85d8a; --cream:#fff8f2; --card:#ffffff;
+  --text:#3a2e2e; --muted:#8a7b7b; --border:#f0dfe3; --accent:#7fd8be;
+  --bg:var(--cream); --shadow:0 4px 14px rgba(232,93,138,.12);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){ --bg:#221a1d; --card:#2e2427; --text:#f5e9ea; --muted:#b39a9a; --border:#4a3a3d; }
+}
+*{box-sizing:border-box;}
+body{margin:0;background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,-apple-system,sans-serif;}
+header{position:sticky;top:0;z-index:10;background:linear-gradient(135deg,var(--pink),var(--pink-dark));color:#fff;padding:10px max(16px,calc((100vw - 1680px)/2 + 24px));display:flex;align-items:center;justify-content:space-between;box-shadow:var(--shadow);flex-wrap:wrap;gap:10px;}
+header h1{margin:0;font-size:20px;cursor:pointer;white-space:nowrap;}
+.navicons{display:flex;gap:18px;align-items:center;}
+.navicon{display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;font-size:11px;color:#fff;position:relative;}
+.navicon span.ic{font-size:18px;}
+.navbadge{position:absolute;top:-6px;right:-10px;background:#fff;color:var(--pink-dark);border-radius:10px;font-size:10px;font-weight:800;padding:1px 5px;}
+.navbadge.urgent{background:#ff3b30;color:#fff;animation:pulse 1.2s infinite;}
+@keyframes pulse{0%,100%{transform:scale(1);}50%{transform:scale(1.25);}}
+.newordermodal{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:60;display:flex;align-items:center;justify-content:center;padding:16px;}
+.newordercard{background:var(--card);border-radius:16px;padding:22px;max-width:360px;width:100%;text-align:center;box-shadow:0 20px 40px rgba(0,0,0,.3);}
+main{max-width:1680px;margin:0 auto;padding:16px 24px 90px;}
+.hidden{display:none !important;}
+.card{background:var(--card);border-radius:16px;padding:14px;box-shadow:var(--shadow);border:1px solid var(--border);}
+.emoji{font-size:40px;text-align:center;margin-bottom:6px;}
+.pstock{font-size:12px;color:var(--muted);}
+.pstock.low{color:#d9534f;font-weight:600;}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:30;display:flex;align-items:flex-end;justify-content:center;}
+.overlay.center{align-items:center;padding:16px;}
+.overlay.center .sheet{border-radius:16px;max-height:85vh;}
+.sheet{background:var(--card);width:100%;max-width:500px;border-radius:20px 20px 0 0;padding:20px;max-height:85vh;overflow-y:auto;position:relative;}
+.cartrow{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);}
+input,select,textarea{width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;margin:6px 0 12px;background:var(--card);color:var(--text);font-size:14px;}
+label{font-size:13px;color:var(--muted);}
+.total{font-size:18px;font-weight:700;margin:10px 0;}
+.primary{background:var(--pink-dark);color:#fff;border:none;padding:12px;border-radius:10px;font-weight:700;cursor:pointer;}
+.secondary{background:var(--border);color:var(--text);border:none;padding:12px;border-radius:10px;font-weight:600;cursor:pointer;}
+.close{position:absolute;top:14px;right:16px;background:none;border:none;font-size:20px;cursor:pointer;color:var(--muted);}
+table{width:100%;border-collapse:collapse;font-size:13px;background:var(--card);border-radius:12px;overflow:hidden;}
+th,td{padding:8px 6px;text-align:left;border-bottom:1px solid var(--border);}
+th{background:#ffe3ec;color:var(--pink-dark);text-transform:uppercase;font-size:11px;letter-spacing:.4px;}
+.smallbtn{padding:5px 9px;border-radius:6px;border:none;font-size:12px;cursor:pointer;margin-right:4px;}
+.edit{background:var(--accent);color:#083b2c;}
+.del{background:#d9534f;color:#fff;}
+.overflow-x{overflow-x:auto;}
+.statgrid{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:18px;}
+.stat{flex:1 1 120px;min-width:min-content;max-width:100%;position:relative;overflow:hidden;isolation:isolate;background:var(--card);border-radius:14px;padding:16px;box-shadow:var(--shadow);border:1px solid var(--border);text-align:center;transition:transform .3s ease,box-shadow .3s ease,border-color .3s ease;}
+/* সংখ্যা বড় হলে ঘরও সাথে বড় হয় (সংখ্যা ভাঙে না) */
+.statnum{font-size:24px;font-weight:800;color:var(--pink-dark);white-space:nowrap;position:relative;transition:color .45s ease .12s;}
+.statlabel{font-size:12px;color:var(--muted);position:relative;transition:color .45s ease .12s;}
+/* মাউস রাখলে ঢেউয়ের মতো কালার উঠে আসে, সরালে নেমে যায় */
+.stat::before,.stat::after{content:"";position:absolute;left:50%;top:180%;width:230%;aspect-ratio:1;margin-left:-115%;z-index:-1;pointer-events:none;transition:top 1.1s cubic-bezier(.45,.05,.35,1);animation:statwave 5s linear infinite paused;}
+.stat::before{border-radius:42%;background:rgba(255,143,171,.55);}
+.stat::after{border-radius:38%;background:linear-gradient(160deg,var(--pink),var(--pink-dark));animation-duration:7s;animation-direction:reverse;transition-duration:1.4s;}
+@keyframes statwave{from{transform:rotate(0deg);}to{transform:rotate(360deg);}}
+@media (hover:hover){
+  .stat:hover{transform:translateY(-3px);box-shadow:0 10px 22px rgba(232,93,138,.28);border-color:var(--pink);}
+  .stat:hover::before,.stat:hover::after{top:-95%;animation-play-state:running;}
+  .stat:hover .statnum,.stat:hover .statlabel{color:#fff;}
+}
+.stat:active::before,.stat:active::after{top:-95%;animation-play-state:running;}
+.stat:active .statnum,.stat:active .statlabel{color:#fff;}
+@media (prefers-reduced-motion:reduce){ .stat::before,.stat::after{animation:none;} }
+@media (max-width:420px){ .statnum{font-size:clamp(18px,6vw,24px);} }
+.ordercard{border:1px solid var(--border);border-radius:12px;padding:10px 12px;margin-bottom:10px;cursor:pointer;}
+.ordercard small{color:var(--muted);}
+.subtabs{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;}
+.subtabs button{background:var(--card);border:1px solid var(--border);padding:7px 12px;border-radius:8px;cursor:pointer;font-size:13px;}
+.subtabs button.active{background:var(--pink);color:#fff;border-color:var(--pink);}
+.note{font-size:12px;color:var(--muted);margin-top:10px;}
+.features-list{margin:8px 0;padding-left:18px;font-size:13px;}
+.features-list li{margin-bottom:3px;}
+table.wide{min-width:680px;}
+@media (max-width:700px){
+  main{padding:12px 12px 90px;}
+  header{padding:8px 12px;}
+  header h1{font-size:16px;}
+  .navicons{gap:12px;}
+}
+@media (max-width:380px){
+  .navicon small{display:none;}
+  .navicons{gap:10px;}
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>🛠 Baby Poshak Admin</h1>
+  <div class="navicons">
+    <div class="navicon hidden" id="notifBell" onclick="showPendingOrdersSheet()"><span class="ic">🔔</span><small>Orders</small><span class="navbadge hidden" id="notifBadge">0</span></div>
+    <a href="index.html" class="navicon" style="text-decoration:none"><span class="ic">🛍</span><small>দোকান দেখুন</small></a>
+    <div class="navicon hidden" id="logoutBtn" onclick="auth.signOut()"><span class="ic">🚪</span><small>লগআউট</small></div>
+  </div>
+</header>
+<div class="hidden" id="newOrderBanner" style="background:#2bb673;color:#fff;padding:10px 16px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;" onclick="this.classList.add('hidden');adminTab='orders';renderAdmin();">
+  <span></span><span>✕</span>
+</div>
+<main>
+  <div id="adminView"></div>
+</main>
+
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-auth-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script>
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const auth = firebase.auth();
+try{ localStorage.setItem('bp_no_track','1'); }catch(e){}
+// কোনো সেভ/ডিলিট/আপডেট ব্যর্থ হলে চুপচাপ না থেকে বার্তা দেখায়
+let _lastErrAlert = 0;
+window.addEventListener('unhandledrejection', e=>{
+  const m = (e.reason && e.reason.message) ? e.reason.message : String(e.reason||'');
+  e.preventDefault();
+  if(Date.now() - _lastErrAlert < 1500) return;
+  _lastErrAlert = Date.now();
+  if(/permission|insufficient/i.test(m)) alert('❌ সেভ/আপডেট হয়নি — অনুমতি নেই।\nFirestore Rules Publish করেছেন কি? সঠিক Admin ইমেইলে লগইন আছে কি?');
+  else if(/offline|unavailable|network/i.test(m)) alert('❌ ইন্টারনেট সংযোগে সমস্যা — আবার চেষ্টা করুন।');
+  else alert('❌ কাজটি সম্পন্ন হয়নি: ' + m);
+});
+const SHOP_NAME = "Baby Poshak";
+const SHOP_LOGO = "data:image/jpeg;base64,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"; // মেমো/ইনভয়েসের হেডারে ব্যবহৃত লোগো
+const SHOP_TAGLINE = "ছোটদের জন্য সুন্দর পোশাক, সুস্থ ও আনন্দময় শৈশবের জন্য...";
+const SHOP_PHONE = "8801712863183";
+const SHOP_FACEBOOK = "https://www.facebook.com/share/1Fc8pUEEfF/";
+
+let products = [];
+let orders = [];
+let isAdmin = false;
+
+const CATEGORIES = [
+  'Newborn Collection','Baby Boy','Baby Girl','Romper & Bodysuit',
+  'Baby Nightwear','Summer Collection','Winter Collection','Party & Occasion',
+  'Traditional Collection','Baby Gift Set','Baby Accessories','Matching Collection'
+];
+const AGE_GROUPS = ['0-3M','3-6M','6-12M','1-2Y','2-3Y','3-4Y','4-5Y','5-6Y','6-7Y','7-9Y','9-11Y'];
+const SIZES = ['0','1','2','3','4','5','6','7','8','10','12'];
+const SUBCATS = {
+  'Newborn Collection': ['Newborn Romper','Newborn Bodysuit','Sleepsuit','Baby Frock','Baby Shirt','Baby Pant','Baby Set','Swaddle','Newborn Cap','Mitten & Socks Set'],
+  'Baby Boy': ['T-Shirt','Polo Shirt','Shirt','Denim Shirt','Shorts','Long Pant','Jogger Pant','Cargo Pant','Panjabi','Kurta','Waistcoat',"Boy's Dress Set","Boy's Party Dress"],
+  'Baby Girl': ['Frock','Gown','Top','T-Shirt','Skirt','Leggings','Palazzo','Salwar Kameez','Kurti',"Girl's Dress Set",'Party Dress','Princess Dress'],
+  'Romper & Bodysuit': ['Half Sleeve Romper','Full Sleeve Romper','Sleeveless Romper','Cotton Romper','Printed Romper','Cartoon Romper','Bodysuit','Sleepsuit','Footed Romper'],
+  'Baby Nightwear': ['Night Suit','Pajama Set','Sleepsuit','Night Frock','Cotton Night Dress','Winter Night Suit'],
+  'Summer Collection': ['Cotton T-Shirt','Cotton Frock','Sleeveless Dress','Shorts','Cotton Set','Light Romper','Summer Pajama'],
+  'Winter Collection': ['Baby Jacket','Hoodie','Sweater','Cardigan','Winter Frock','Winter Pant','Winter Set','Thermal Wear','Baby Blanket'],
+  'Party & Occasion': ['Birthday Dress','Party Frock','Princess Dress','Wedding Dress','Eid Dress','Puja/Traditional Dress','Ceremony Dress','Designer Baby Dress'],
+  'Traditional Collection': ['Baby Panjabi','Baby Kurta','Panjabi Pajama Set',"Boy's Eid Set","Girl's Salwar Kameez","Girl's Kurti",'Traditional Frock'],
+  'Baby Gift Set': ['Newborn Gift Box','Baby Dress Set','Romper Gift Set','Boy Gift Set','Girl Gift Set','Birthday Gift Set','Baby Accessories Gift Set'],
+  'Baby Accessories': ['Baby Cap','Baby Socks','Baby Mittens','Baby Bib','Baby Shoes','Hair Band','Hair Clip','Headband','Baby Gloves','Baby Towel'],
+  'Matching Collection': ['Mother & Daughter','Father & Son','Brother & Sister','Family Matching','Couple & Baby Matching']
+};
+const SIZE_CHART = [
+  ['0','0–3 মাস','50–60 cm','16–18"'],['1','3–6 মাস','60–68 cm','17–19"'],['2','6–12 মাস','68–76 cm','18–20"'],
+  ['3','1–2 বছর','76–86 cm','19–21"'],['4','2–3 বছর','86–96 cm','20–22"'],['5','3–4 বছর','96–104 cm','21–23"'],
+  ['6','4–5 বছর','104–112 cm','22–24"'],['7','5–6 বছর','112–120 cm','23–25"'],['8','6–7 বছর','120–128 cm','24–26"'],
+  ['10','7–9 বছর','128–138 cm','25–28"'],['12','9–11 বছর','138–148 cm','27–30"']
+];
+
+db.collection('products').onSnapshot(snap=>{
+  products = snap.docs.map(d=>({id:d.id, ...d.data()}));
+  if(isAdmin && adminTab==='products') renderAdminBody();
+});
+let memos = [];
+let unsubMemos = null;
+let offers = [];
+let unsubOffers = null;
+let banners = [];
+let unsubBanners = null;
+let ticker = [];
+let unsubTicker = null;
+let unsubOrders = null;
+let firstOrderLoad = true;
+function beep(){
+  try{
+    const ctx = new (window.AudioContext||window.webkitAudioContext)();
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.connect(g); g.connect(ctx.destination);
+    o.frequency.value = 880; g.gain.value = 0.15;
+    o.start(); setTimeout(()=>{ o.stop(); ctx.close(); }, 300);
+  }catch(e){}
+}
+function showDataError(label, err){
+  console.error(label+' listener error', err);
+  let b = document.getElementById('dataErrorBanner');
+  if(!b){
+    b = document.createElement('div'); b.id = 'dataErrorBanner';
+    b.style.cssText = 'background:#c92a2a;color:#fff;padding:12px 16px;font-size:14px;line-height:1.7;';
+    document.querySelector('header').insertAdjacentElement('afterend', b);
+  }
+  const email = (auth.currentUser && auth.currentUser.email) || '';
+  b.innerHTML = `⚠️ <b>${esc(label)} লোড হয়নি</b> (${esc((err && (err.code || err.message)) || 'error')}).<br>সম্ভাব্য কারণ: Firestore Rules-এ Admin ইমেইল মেলেনি। আপনি এই ইমেইলে লগইন করেছেন: <b>${esc(email)}</b><br>Rules-এর <code>isAdmin()</code> অংশে হুবহু এই ইমেইল (ছোট হাতের অক্ষরে, ভুল বানান ছাড়া) আছে কিনা দেখুন। তারপর Publish করে এই পেজ রিফ্রেশ করুন।`;
+}
+function updateNotifBadge(){
+  const bell = document.getElementById('notifBell'); if(!bell) return;
+  const count = orders.filter(o=>o.status==='Pending').length;
+  bell.classList.toggle('hidden', !isAdmin);
+  const badge = document.getElementById('notifBadge');
+  badge.textContent = count;
+  badge.classList.toggle('hidden', count===0);
+  badge.classList.toggle('urgent', count>0);
+}
+function showPendingOrdersSheet(){
+  const pending = orders.filter(o=>o.status==='Pending').sort((a,b)=>orderMs(b)-orderMs(a));
+  const rows = pending.map(o=>`<div class="ordercard" onclick="closeSheet();adminTab='orders';renderAdmin();editOrder('${esc(o.id)}')">
+      <b>${esc(o.name)}</b> · ${esc(o.phone)}<br>
+      <small>${esc(o.id)} · ৳${Number(o.total)||0} · ${fmtDate(o.createdAt)}</small></div>`).join('');
+  showSheet(`<button class="close" onclick="closeSheet()">✕</button><h2>🔔 নতুন অর্ডার (${pending.length})</h2>
+    ${rows || '<p class="note">এখন কোনো নতুন/পেন্ডিং অর্ডার নেই।</p>'}`, true);
+}
+function invoiceUrl(id){ return new URL('invoice.html?id='+encodeURIComponent(id), location.href).href; }
+function openOrderInvoice(id){ window.open(invoiceUrl(id), '_blank'); }
+function shareOrderInvoice(id){
+  const o = orders.find(x=>x.id===id); if(!o) return;
+  const text = `Baby Poshak: আপনার অর্ডার ${o.id} এর মেমো/ইনভয়েস\nমোট: ৳${Number(o.total)||0}\nদেখতে বা ডাউনলোড করতে লিংকে ক্লিক করুন: ${invoiceUrl(o.id)}`;
+  window.open('https://wa.me/'+intlPhone(o.phone)+'?text='+encodeURIComponent(text));
+}
+function receiptBadge(o){
+  if(o.customerConfirmed) return '<br><small style="color:#0e9f6e;font-weight:700">✅ কাস্টমার রিসিভ করেছেন</small>';
+  if(o.status==='Shipped' || o.status==='Delivered') return '<br><small style="color:#b45309">⏳ রিসিভ নিশ্চিত হয়নি</small>';
+  return '';
+}
+function notifyReceived(o){
+  beep();
+  if('Notification' in window && Notification.permission==='granted'){
+    try{ new Notification('✅ কাস্টমার প্রোডাক্ট রিসিভ করেছেন', { body: `${o.name} — ${o.id}`, tag: 'rcv-'+o.id }); }catch(e){}
+  }
+  const m = document.createElement('div');
+  m.className = 'newordermodal';
+  m.innerHTML = `<div class="newordercard">
+      <div style="font-size:40px">✅</div>
+      <h2 style="margin:6px 0">প্রোডাক্ট রিসিভ হয়েছে!</h2>
+      <p style="font-size:15px"><b>${esc(o.name)}</b><br>${esc(o.phone)}<br><small>${esc(o.id)} · ৳${Number(o.total)||0}</small></p>
+      <button class="primary" style="width:100%;margin-bottom:8px" onclick="this.closest('.newordermodal').remove();adminTab='orders';renderAdmin();editOrder('${esc(o.id)}')">অর্ডার দেখুন (Delivered করুন)</button>
+      <button class="secondary" style="width:100%" onclick="this.closest('.newordermodal').remove()">বন্ধ করুন</button>
+    </div>`;
+  document.body.appendChild(m);
+}
+function showNewOrderPopup(o){
+  const m = document.createElement('div');
+  m.className = 'newordermodal';
+  m.innerHTML = `<div class="newordercard">
+      <div style="font-size:40px">🛒</div>
+      <h2 style="margin:6px 0">নতুন অর্ডার এসেছে!</h2>
+      <p style="font-size:15px"><b>${esc(o.name)}</b><br>${esc(o.phone)}<br>৳${Number(o.total)||0} · ${(o.items||[]).length}টি আইটেম</p>
+      <button class="primary" style="width:100%;margin-bottom:8px" onclick="this.closest('.newordermodal').remove();adminTab='orders';renderAdmin();editOrder('${esc(o.id)}')">বিস্তারিত দেখুন</button>
+      <button class="secondary" style="width:100%;margin-bottom:8px" onclick="openOrderInvoice('${esc(o.id)}')">🧾 Memo দেখুন</button>
+      <button class="secondary" style="width:100%" onclick="this.closest('.newordermodal').remove()">বন্ধ করুন</button>
+    </div>`;
+  document.body.appendChild(m);
+}
+function notifyNewOrder(o){
+  beep();
+  if('Notification' in window && Notification.permission==='granted'){
+    try{ new Notification('🛒 নতুন অর্ডার এসেছে!', { body: `${o.name} — ৳${o.total}`, tag: o.id }); }catch(e){}
+  }
+  const banner = document.getElementById('newOrderBanner');
+  if(banner){ banner.classList.remove('hidden'); banner.querySelector('span').textContent = `🛒 নতুন অর্ডার: ${o.name} — ৳${o.total}`; }
+  showNewOrderPopup(o);
+}
+auth.onAuthStateChanged(u=>{
+  isAdmin = !!u;
+  if(!u){ const eb = document.getElementById('dataErrorBanner'); if(eb) eb.remove(); }
+  if(u && !unsubOrders){
+    if('Notification' in window && Notification.permission==='default'){ Notification.requestPermission(); }
+    firstOrderLoad = true;
+    unsubOrders = db.collection('orders').orderBy('createdAt','desc').onSnapshot(snap=>{
+      if(!firstOrderLoad){
+        snap.docChanges().forEach(ch=>{
+          if(ch.type==='added') notifyNewOrder({id:ch.doc.id, ...ch.doc.data()});
+          if(ch.type==='modified'){
+            const nd = {id:ch.doc.id, ...ch.doc.data()};
+            const old = orders.find(x=>x.id===nd.id);
+            if(nd.customerConfirmed && old && !old.customerConfirmed) notifyReceived(nd);
+          }
+        });
+      }
+      firstOrderLoad = false;
+      orders = snap.docs.map(d=>({id:d.id, ...d.data()}));
+      updateNotifBadge();
+      if(isAdmin && (adminTab==='orders'||adminTab==='analytics')) renderAdminBody();
+      if(isAdmin && adminTab==='memo' && memoSubTab==='online') fillMemoList();
+    }, err=>showDataError('অর্ডার', err));
+  }
+  if(!u && unsubOrders){ unsubOrders(); unsubOrders = null; orders = []; updateNotifBadge(); }
+  if(u && !unsubMemos){
+    unsubMemos = db.collection('memos').orderBy('createdAt','desc').onSnapshot(snap=>{
+      memos = snap.docs.map(d=>({id:d.id, ...d.data()}));
+      if(isAdmin && adminTab==='memo') renderMemoTab(document.getElementById('adminBody'));
+    }, err=>showDataError('মেমো', err));
+  }
+  if(!u && unsubMemos){ unsubMemos(); unsubMemos = null; memos = []; }
+  if(u && !unsubOffers){
+    unsubOffers = db.collection('offers').orderBy('createdAt','desc').onSnapshot(snap=>{
+      offers = snap.docs.map(d=>({id:d.id, ...d.data()}));
+      if(isAdmin && adminTab==='offers') renderAdminBody();
+    }, err=>showDataError('অফার', err));
+  }
+  if(!u && unsubOffers){ unsubOffers(); unsubOffers = null; offers = []; }
+  if(u && !unsubBanners){
+    unsubBanners = db.collection('banners').onSnapshot(snap=>{
+      banners = snap.docs.map(d=>({id:d.id, ...d.data()}));
+      if(isAdmin && adminTab==='banners') renderAdminBody();
+    }, err=>showDataError('ব্যানার', err));
+  }
+  if(!u && unsubBanners){ unsubBanners(); unsubBanners = null; banners = []; }
+  if(u && !unsubTicker){
+    unsubTicker = db.collection('ticker').onSnapshot(snap=>{
+      ticker = snap.docs.map(d=>({id:d.id, ...d.data()}));
+      if(isAdmin && adminTab==='ticker') renderAdminBody();
+    }, err=>showDataError('নোটিশ বার', err));
+  }
+  if(!u && unsubTicker){ unsubTicker(); unsubTicker = null; ticker = []; }
+  renderAdmin();
+});
+
+function showSheet(html, center){
+  let ov = document.getElementById('sheetOverlay');
+  if(!ov){ ov=document.createElement('div'); ov.id='sheetOverlay'; document.body.appendChild(ov); }
+  ov.className = center ? 'overlay center' : 'overlay';
+  ov.innerHTML = `<div class="sheet">${html}</div>`;
+  ov.onclick=(e)=>{ if(e.target===ov) closeSheet(); };
+}
+function closeSheet(){ const ov=document.getElementById('sheetOverlay'); if(ov) ov.remove(); }
+
+// ---------- ADMIN ----------
+let adminTab='products';
+function renderAdmin(){
+  const lb = document.getElementById('logoutBtn'); if(lb) lb.classList.toggle('hidden', !isAdmin);
+  const el = document.getElementById('adminView');
+  if(!isAdmin){
+    el.innerHTML = `<div class="card" style="max-width:340px;margin:30px auto;">
+      <h3>Admin লগইন</h3>
+      <label>ইমেইল</label><input id="aEmail" type="email">
+      <label>পাসওয়ার্ড</label><input id="aPass" type="password">
+      <button class="primary" style="width:100%" onclick="adminLogin()">লগইন</button>
+      <p class="note">Firebase Console → Authentication এ আপনার admin ইমেইল/পাসওয়ার্ড আগে থেকে তৈরি করে নিন।</p>
+    </div>`;
+    return;
+  }
+  el.innerHTML = `
+    <p class="note" style="margin:0 0 8px">লগইন: <b>${esc((auth.currentUser && auth.currentUser.email) || '')}</b></p>
+    <div class="subtabs">
+      <button class="${adminTab==='products'?'active':''}" onclick="setAdminTab('products')">📦 প্রোডাক্ট</button>
+      <button class="${adminTab==='orders'?'active':''}" onclick="setAdminTab('orders')">🧾 অর্ডার</button>
+      <button class="${adminTab==='analytics'?'active':''}" onclick="setAdminTab('analytics')">📊 রিপোর্ট</button>
+      <button class="${adminTab==='memo'?'active':''}" onclick="setAdminTab('memo')">🧾 Memo</button>
+      <button class="${adminTab==='offers'?'active':''}" onclick="setAdminTab('offers')">🎁 অফার</button>
+      <button class="${adminTab==='visitors'?'active':''}" onclick="setAdminTab('visitors')">👥 ভিজিটর</button>
+      <button class="${adminTab==='banners'?'active':''}" onclick="setAdminTab('banners')">🖼️ ব্যানার</button>
+      <button class="${adminTab==='ticker'?'active':''}" onclick="setAdminTab('ticker')">📢 নোটিশ বার</button>
+      <button class="${adminTab==='backup'?'active':''}" onclick="setAdminTab('backup')">💾 Backup${backupOverdue()?' ⚠️':''}</button>
+    </div>
+    <div id="adminBody"></div>`;
+  renderAdminBody();
+}
+async function adminLogin(){
+  const email=document.getElementById('aEmail').value.trim();
+  const pass=document.getElementById('aPass').value;
+  try{ await auth.signInWithEmailAndPassword(email,pass); }
+  catch(e){ alert('লগইন ব্যর্থ: '+e.message); }
+}
+function setAdminTab(t){ adminTab=t; renderAdmin(); }
+function renderAdminBody(){
+  const body = document.getElementById('adminBody'); if(!body) return;
+  if(adminTab==='products'){
+    body.innerHTML = `<button class="primary" style="margin-bottom:12px" onclick="editProduct(null)">+ নতুন প্রোডাক্ট</button>
+    <div class="overflow-x"><table class="wide"><tr><th>Photo</th><th>Product</th><th>Categories</th><th>Age</th><th>Size</th><th>Price</th><th>Stock</th><th>Edit</th><th>Delete</th></tr>
+    ${products.map(p=>`<tr><td>${p.imageUrl?`<img src="${esc(p.imageUrl)}" style="width:36px;height:36px;object-fit:cover;border-radius:6px;">`:esc(p.emoji)}</td><td>${esc(p.name)}</td><td>${esc(p.category||'')}</td><td>${esc(p.ageGroup||'')}</td><td>${esc(p.size||'')}</td><td>৳${p.price}</td><td class="${p.stock<=5?'pstock low':''}">${p.stock}</td>
+      <td><button class="smallbtn edit" onclick="editProduct('${p.id}')">✏️ এডিট</button></td><td><button class="smallbtn del" onclick="deleteProduct('${p.id}')">🗑️ ডিলিট</button></td></tr>`).join('')}
+    </table></div>`;
+  } else if(adminTab==='orders'){
+    body.innerHTML = orders.length ? `<div class="overflow-x"><table class="wide"><tr><th>অর্ডার ID</th><th>কাস্টমার</th><th>মোট</th><th>স্ট্যাটাস</th><th></th></tr>
+    ${orders.map(o=>`<tr><td><small>${esc(o.id)}</small><br><small style="color:var(--muted)">${fmtDate(o.createdAt)}</small></td>
+      <td>${esc(o.name)}<br><small>${esc(o.phone)}</small></td><td>৳${Number(o.total)||0}<br><small>${esc(o.pay)}${o.trxId?' · '+esc(o.trxId):''}</small></td>
+      <td><select onchange="updateStatus('${esc(o.id)}',this.value)">${STATUSES.map(s=>`<option ${o.status===s?'selected':''}>${s}</option>`).join('')}</select>${receiptBadge(o)}${orderFlags(o).some(x=>x.high)?'<br><span class="stbadge Cancelled" title="যাচাই দরকার" style="cursor:pointer" onclick="editOrder(\''+esc(o.id)+'\')">⚠️ যাচাই</span>':''}</td>
+      <td><button class="smallbtn edit" onclick="editOrder('${esc(o.id)}')">বিস্তারিত / কুরিয়ার</button></td></tr>`).join('')}
+    </table></div>` : '<p>এখনো কোনো অর্ডার নেই।</p>';
+  } else if(adminTab==='analytics'){
+    renderReportsTab(body);
+  } else if(adminTab==='memo'){
+    renderMemoTab(body);
+  } else if(adminTab==='offers'){
+    renderOffersTab(body);
+  } else if(adminTab==='visitors'){
+    renderVisitorsTab(body);
+  } else if(adminTab==='banners'){
+    renderBannersTab(body);
+  } else if(adminTab==='ticker'){
+    renderTickerTab(body);
+  } else if(adminTab==='backup'){
+    renderBackupTab(body);
+  }
+}
+function startOfToday(){ const d=new Date(); d.setHours(0,0,0,0); return d.getTime(); }
+function orderMs(o){ return o.createdAt && o.createdAt.toMillis ? o.createdAt.toMillis() : 0; }
+function isToday(ms){ return ms >= startOfToday(); }
+function deliveredToday(o){ return (o.history||[]).some(h=>h.status==='Delivered' && h.at>=startOfToday()); }
+function renderReportsTab(body){
+    const validOrders = orders.filter(o=>o.status!=='Cancelled');
+    const totalSales = validOrders.reduce((s,o)=>s+(Number(o.total)||0),0);
+    const totalProducts = products.length;
+    const totalStockItems = products.reduce((s,p)=>s+(Number(p.stock)||0),0);
+    const lowStock = products.filter(p=>p.stock>0 && p.stock<=5).length;
+    const outOfStock = products.filter(p=>(p.stock||0)<=0).length;
+    const todaysOrders = validOrders.filter(o=>isToday(orderMs(o)));
+    const todaysDeliveredOrders = orders.filter(deliveredToday);
+    const todaysDeliveryQty = todaysDeliveredOrders.reduce((s,o)=>s+(o.items||[]).reduce((a,i)=>a+(Number(i.qty)||0),0),0);
+    const stockValue = products.reduce((s,p)=>s+(Number(p.stock)||0)*(Number(p.purchasePrice)||0),0);
+    const salesByProduct={};
+    validOrders.forEach(o=>(o.items||[]).forEach(i=>{ salesByProduct[i.name]=(salesByProduct[i.name]||0)+(Number(i.qty)||0); }));
+    const top = Object.entries(salesByProduct).sort((a,b)=>b[1]-a[1]).slice(0,5);
+    body.innerHTML = `<div class="statgrid">
+        <div class="stat"><div class="statnum">${totalProducts}</div><div class="statlabel">Total My Shop Product</div></div>
+        <div class="stat" style="cursor:pointer" onclick="showStockItemsDetail()"><div class="statnum">${totalStockItems}</div><div class="statlabel">📦 Total Stock Items</div></div>
+        <div class="stat" style="cursor:pointer" onclick="showLowStockDetail()"><div class="statnum">${lowStock}</div><div class="statlabel">⚠️ Low Stock Items</div></div>
+        <div class="stat" style="cursor:pointer" onclick="showOutOfStockDetail()"><div class="statnum">${outOfStock}</div><div class="statlabel">🚫 Out of Stock</div></div>
+        <div class="stat" style="cursor:pointer" onclick="showTodaysOrdersDetail()"><div class="statnum">${todaysOrders.length}</div><div class="statlabel">🧾 Today's Order Received</div></div>
+        <div class="stat"><div class="statnum">${todaysDeliveryQty}</div><div class="statlabel">💰 Today's Delivery Quantity</div></div>
+        <div class="stat" style="cursor:pointer" onclick="showSalesDetail()"><div class="statnum">৳${totalSales}</div><div class="statlabel">মোট বিক্রি</div></div>
+        <div class="stat" style="cursor:pointer" onclick="showOrdersDetail()"><div class="statnum">${validOrders.length}</div><div class="statlabel">মোট অর্ডার (বাতিল বাদে)</div></div>
+        <div class="stat"><div class="statnum">৳${stockValue.toFixed(2)}</div><div class="statlabel">📊 Total Stock Value</div></div>
+      </div>
+      <h3 style="margin-top:18px">প্রফিট রিপোর্ট</h3>
+      <div class="subtabs" id="profitTabs">
+        ${['today','weekly','monthly','yearly'].map(r=>`<button class="${profitRange===r?'active':''}" onclick="setProfitRange('${r}')">${{today:'Today',weekly:'Weekly',monthly:'Monthly',yearly:'Yearly'}[r]}</button>`).join('')}
+      </div>
+      <div id="profitBox"></div>
+      <h3 style="margin-top:18px">টপ সেলিং প্রোডাক্ট</h3>
+      ${top.length? '<ol>'+top.map(([n,q])=>`<li>${esc(n)} — ${q}টি বিক্রি হয়েছে</li>`).join('')+'</ol>' : '<p>এখনো ডেটা নেই।</p>'}`;
+    renderProfitBox();
+}
+let profitRange = 'today';
+function setProfitRange(r){ profitRange=r; document.querySelectorAll('#profitTabs button').forEach((b,i)=>b.classList.toggle('active', ['today','weekly','monthly','yearly'][i]===r)); renderProfitBox(); }
+function productCost(id){ const p = products.find(x=>x.id===id); return p ? (Number(p.purchasePrice)||0) : 0; }
+function orderProfit(o){ return (o.items||[]).reduce((s,i)=>s+((Number(i.price)||0)-productCost(i.id))*(Number(i.qty)||0), 0); }
+function rangeStartMs(r){
+  const d = new Date(); d.setHours(0,0,0,0);
+  if(r==='today') return d.getTime();
+  if(r==='weekly'){ d.setDate(d.getDate()-6); return d.getTime(); }
+  if(r==='monthly'){ d.setDate(d.getDate()-29); return d.getTime(); }
+  if(r==='yearly'){ d.setFullYear(d.getFullYear()-1); return d.getTime(); }
+  return d.getTime();
+}
+function renderProfitBox(){
+  const box = document.getElementById('profitBox'); if(!box) return;
+  const valid = orders.filter(o=>o.status!=='Cancelled');
+  const start = rangeStartMs(profitRange);
+  const inRange = valid.filter(o=>orderMs(o)>=start);
+  const totalProfit = inRange.reduce((s,o)=>s+orderProfit(o), 0);
+  const byDate = {};
+  inRange.forEach(o=>{ const key = o.createdAt&&o.createdAt.toDate ? o.createdAt.toDate().toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}) : 'অজানা'; byDate[key]=(byDate[key]||0)+orderProfit(o); });
+  const dateRows = Object.entries(byDate).sort((a,b)=>b[0].localeCompare(a[0]));
+  box.innerHTML = `<div class="statgrid" style="width:fit-content;min-width:200px;max-width:100%;margin-bottom:12px">
+      <div class="stat"><div class="statnum">৳${totalProfit.toFixed(2)}</div><div class="statlabel">${{today:'Today',weekly:'Weekly',monthly:'Monthly',yearly:'Yearly'}[profitRange]} Profit</div></div>
+    </div>
+    ${profitRange==='today' ? '' : `<div class="overflow-x"><table><tr><th>তারিখ</th><th>প্রফিট</th></tr>
+      ${dateRows.map(([d,v])=>`<tr><td>${d}</td><td>৳${v.toFixed(2)}</td></tr>`).join('') || '<tr><td colspan="2">কোনো ডেটা নেই</td></tr>'}
+    </table></div>`}
+    <p class="note">প্রফিট হিসাব হয় বর্তমান Purchase Price দিয়ে, তাই প্রোডাক্টের কেনা দাম পরে বদলালে পুরনো অর্ডারের প্রফিটও নতুন দামে হিসাব হবে।</p>`;
+}
+function showStockItemsDetail(){
+  const rows = products.filter(p=>(p.stock||0)>0).sort((a,b)=>b.stock-a.stock).map(p=>`<div class="cartrow"><div>${esc(p.name)}</div><div>${p.stock} পিস</div></div>`).join('');
+  showSheet(`<button class="close" onclick="closeSheet()">✕</button><h2>📦 Total Stock Items</h2>${rows || '<p class="note">কোনো স্টক নেই।</p>'}`);
+}
+function showOutOfStockDetail(){
+  const rows = products.filter(p=>(p.stock||0)<=0).map(p=>`<div class="cartrow" style="cursor:pointer" onclick="closeSheet();editProduct('${p.id}')"><div>${esc(p.name)}</div><div style="color:#c92a2a;font-weight:700">স্টক শেষ</div></div>`).join('');
+  showSheet(`<button class="close" onclick="closeSheet()">✕</button><h2>🚫 Out of Stock</h2>${rows || '<p class="note">কোনো আইটেম স্টক-আউট নেই।</p>'}`);
+}
+function showTodaysOrdersDetail(){
+  const rows = orders.filter(o=>o.status!=='Cancelled' && isToday(orderMs(o))).map(o=>`<div class="ordercard" onclick="closeSheet();adminTab='orders';renderAdmin();editOrder('${esc(o.id)}')">
+      <b>${esc(o.id)}</b> · ${esc(o.name)} · ৳${Number(o.total)||0}<br><small>${fmtDate(o.createdAt)}</small></div>`).join('');
+  showSheet(`<button class="close" onclick="closeSheet()">✕</button><h2>🧾 আজকের অর্ডার</h2>${rows || '<p class="note">আজ এখনো কোনো অর্ডার আসেনি।</p>'}`);
+}
+const STATUSES = ['Pending','Confirmed','Shipped','Delivered','Cancelled'];
+const STATUS_LABEL = {Pending:'অর্ডার পেয়েছি',Confirmed:'কনফার্মড',Shipped:'কুরিয়ারে পাঠানো হয়েছে',Delivered:'ডেলিভারড',Cancelled:'বাতিল'};
+function showSalesDetail(){
+  const valid = orders.filter(o=>o.status!=='Cancelled').sort((a,b)=>(b.createdAt&&b.createdAt.toMillis?b.createdAt.toMillis():0)-(a.createdAt&&a.createdAt.toMillis?a.createdAt.toMillis():0));
+  const total = valid.reduce((s,o)=>s+(Number(o.total)||0),0);
+  const rows = valid.map(o=>`<div class="cartrow"><div>${esc(o.name)}<br><small>${esc(o.id)} · ${fmtDate(o.createdAt)}</small></div><div>৳${Number(o.total)||0}</div></div>`).join('');
+  showSheet(`<button class="close" onclick="closeSheet()">✕</button><h2>💰 মোট বিক্রি</h2>
+    <div class="total">৳${total}</div>
+    ${rows || '<p class="note">এখনো কোনো বৈধ অর্ডার নেই।</p>'}`);
+}
+function showOrdersDetail(){
+  const valid = orders.filter(o=>o.status!=='Cancelled').sort((a,b)=>(b.createdAt&&b.createdAt.toMillis?b.createdAt.toMillis():0)-(a.createdAt&&a.createdAt.toMillis?a.createdAt.toMillis():0));
+  const rows = valid.map(o=>`<div class="ordercard" onclick="closeSheet();adminTab='orders';renderAdmin();editOrder('${esc(o.id)}')">
+      <b>${esc(o.id)}</b> · ${esc(o.name)} · ৳${Number(o.total)||0}<br>
+      <small>${STATUS_LABEL[o.status]||o.status} · ${fmtDate(o.createdAt)}</small></div>`).join('');
+  showSheet(`<button class="close" onclick="closeSheet()">✕</button><h2>🧾 মোট অর্ডার (বাতিল বাদে)</h2>
+    ${rows || '<p class="note">এখনো কোনো বৈধ অর্ডার নেই।</p>'}`);
+}
+function showLowStockDetail(){
+  const low = products.filter(p=>p.stock<=5).sort((a,b)=>a.stock-b.stock);
+  const rows = low.map(p=>`<div class="cartrow" style="cursor:pointer" onclick="closeSheet();editProduct('${p.id}')">
+      <div>${p.imageUrl?`<img src="${esc(p.imageUrl)}" style="width:28px;height:28px;object-fit:cover;border-radius:5px;vertical-align:middle;margin-right:6px;">`:esc(p.emoji)} ${esc(p.name)}</div>
+      <div class="${p.stock===0?'pstock low':''}" style="font-weight:700">${p.stock===0?'স্টক শেষ':p.stock+' পিস বাকি'}</div></div>`).join('');
+  showSheet(`<button class="close" onclick="closeSheet()">✕</button><h2>⚠️ লো-স্টক আইটেম</h2>
+    ${rows || '<p class="note">কোনো লো-স্টক আইটেম নেই।</p>'}`);
+}
+const COURIERS = ['Pathao','Steadfast','RedX','Paperfly','eCourier','Sundarban Courier','SA Paribahan','Janani Express','নিজস্ব ডেলিভারি','Other'];
+function esc(v){ return String(v==null?'':v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function fmtDate(ts){
+  if(!ts || !ts.toDate) return '';
+  return ts.toDate().toLocaleString('en-GB',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+}
+function intlPhone(p){
+  const d = String(p||'').replace(/\D/g,'');
+  if(d.startsWith('880')) return d;
+  if(d.startsWith('0')) return '88'+d;
+  return '88'+d;
+}
+function statusPatch(o, status){
+  if(o.status===status) return {};
+  return { status, history: firebase.firestore.FieldValue.arrayUnion({status, at: Date.now()}) };
+}
+function orderFlags(o){
+  const f = [], items = o.items || [];
+  const sub = items.reduce((s,i)=>s+(Number(i.price)||0)*(Number(i.qty)||0),0);
+  const calc = sub + (Number(o.deliveryCharge)||0);
+  if(Math.abs(calc - (Number(o.total)||0)) > 0.5) f.push({high:true, t:`মোট টাকা মেলেনি — অর্ডারে মোট ৳${Number(o.total)||0}, কিন্তু আইটেম + ডেলিভারি চার্জ = ৳${calc}`});
+  items.forEach(i=>{
+    const p = products.find(x=>x.id===i.id);
+    if(!(Number(i.price)>0) || !(Number(i.qty)>0)) f.push({high:true, t:`${i.name||i.id}: দাম বা পরিমাণ সঠিক নয়`});
+    else if(p && Number(i.price) < Number(p.price)) f.push({high:false, t:`${i.name||i.id}: অর্ডারে দাম ৳${i.price}, বর্তমান দাম ৳${p.price} (অফার/ছাড় না থাকলে যাচাই করুন)`});
+  });
+  if(o.trxId){
+    const dup = orders.filter(x=>x.id!==o.id && x.trxId===o.trxId);
+    if(dup.length) f.push({high:true, t:`এই Transaction ID আরও ${dup.length}টি অর্ডারে দেওয়া হয়েছে (${dup.map(x=>x.id).join(', ')}) — কনফার্ম করার আগে যাচাই করুন`});
+  }
+  return f;
+}
+function orderFlagsHtml(o){ return orderFlags(o).map(x=>`<br><b style="color:${x.high?'#c92a2a':'#b45309'}">⚠️ ${esc(x.t)}</b>`).join(''); }
+async function restockOrder(o){
+  if(!confirm('অর্ডারটি বাতিল করা হলো। প্রোডাক্টের স্টক ফেরত যোগ করবেন?')) return;
+  const failed = [];
+  for(const it of (o.items||[])){
+    try{ await db.collection('products').doc(it.id).update({ stock: firebase.firestore.FieldValue.increment(Number(it.qty)||0), sold: firebase.firestore.FieldValue.increment(-(Number(it.qty)||0)) }); }
+    catch(e){ console.warn(e); failed.push(it.name||it.id); }
+  }
+  if(failed.length) alert('❌ এই প্রোডাক্টগুলোর স্টক ফেরত যোগ হয়নি (প্রোডাক্ট ডিলিট হয়ে থাকতে পারে): ' + failed.join(', '));
+  // স্টক ফেরত দেওয়া হয়েছে — পরে অর্ডার আবার চালু করলে এটা দেখে আবার স্টক কমানো হবে
+  try{ await db.collection('orders').doc(o.id).update({ stockRestored: failed.length===0 }); }catch(e){ console.warn(e); }
+}
+async function destockOrder(o){
+  if(!o.stockRestored) return; // আগে স্টক ফেরত না দিলে আবার কমানোর দরকার নেই
+  const short = (o.items||[]).filter(it=>{ const p = products.find(x=>x.id===it.id); return !p || (Number(p.stock)||0) < (Number(it.qty)||0); });
+  const msg = 'অর্ডারটি আবার চালু করা হলো। প্রোডাক্টের স্টক আবার কমাবেন?' + (short.length ? '\n\n⚠️ স্টক কম আছে: ' + short.map(i=>i.name||i.id).join(', ') : '');
+  if(!confirm(msg)) return;
+  const failed = [];
+  for(const it of (o.items||[])){
+    try{ await db.collection('products').doc(it.id).update({ stock: firebase.firestore.FieldValue.increment(-(Number(it.qty)||0)), sold: firebase.firestore.FieldValue.increment(Number(it.qty)||0) }); }
+    catch(e){ console.warn(e); failed.push(it.name||it.id); }
+  }
+  if(failed.length) alert('❌ এই প্রোডাক্টগুলোর স্টক কমানো যায়নি: ' + failed.join(', '));
+  try{ await db.collection('orders').doc(o.id).update({ stockRestored: false }); }catch(e){ console.warn(e); }
+}
+async function updateStatus(id, status){
+  const o = orders.find(x=>x.id===id); if(!o) return;
+  const patch = statusPatch(o, status);
+  if(!Object.keys(patch).length) return;
+  await db.collection('orders').doc(id).update(patch);
+  if(status==='Cancelled') await restockOrder(o);
+  else if(o.status==='Cancelled') await destockOrder(o);
+}
+function editOrder(id){
+  const o = orders.find(x=>x.id===id); if(!o) return;
+  const items = (o.items||[]).map(i=>`<li>${esc(i.name)} × ${Number(i.qty)||0} = ৳${(Number(i.price)||0)*(Number(i.qty)||0)}</li>`).join('');
+  showSheet(`<button class="close" onclick="closeSheet()">✕</button>
+    <h2>অর্ডার ${esc(o.id)}</h2>
+    <p style="font-size:13px;line-height:1.6"><b>${esc(o.name)}</b> · ${esc(o.phone)}<br>📍 ${esc(o.addr)}<br>💳 ${esc(o.pay)} · মোট ৳${Number(o.total)||0}${o.trxId?`<br>🔖 <b>Transaction ID: ${esc(o.trxId)}</b>`:''}${orderFlagsHtml(o)}<br><small>${fmtDate(o.createdAt)}</small></p>
+    ${o.customerConfirmed ? `<p style="background:#e7f8ef;color:#0e9f6e;font-weight:700;padding:8px 12px;border-radius:8px;font-size:13px">✅ কাস্টমার প্রোডাক্ট রিসিভ নিশ্চিত করেছেন (${fmtDate(o.customerConfirmedAt)})</p>` : ((o.status==='Shipped'||o.status==='Delivered') ? `<p style="background:#fff3cd;color:#856404;padding:8px 12px;border-radius:8px;font-size:13px">⏳ কাস্টমার এখনো রিসিভ নিশ্চিত করেননি</p>` : '')}
+    <ul class="features-list">${items}</ul>
+    <label>স্ট্যাটাস</label>
+    <select id="oStatus">${STATUSES.map(s=>`<option value="${s}" ${o.status===s?'selected':''}>${s} — ${STATUS_LABEL[s]}</option>`).join('')}</select>
+    <label>কুরিয়ারের নাম</label>
+    <select id="oCourier"><option value="">— নির্বাচন করুন —</option>${COURIERS.map(c=>`<option ${o.courier===c?'selected':''}>${esc(c)}</option>`).join('')}</select>
+    <label>ট্র্যাকিং / Consignment নম্বর</label><input id="oTrackId" value="${esc(o.trackingId||'')}">
+    <label>কুরিয়ারের ট্র্যাকিং লিংক (ঐচ্ছিক)</label><input id="oTrackUrl" value="${esc(o.trackingUrl||'')}" placeholder="https://...">
+    <label>বর্তমান অবস্থা / লোকেশন (যেমন: ঢাকা হাবে পৌঁছেছে)</label><input id="oNote" value="${esc(o.trackingNote||'')}">
+    <label>সম্ভাব্য ডেলিভারি তারিখ</label><input id="oEta" type="date" value="${esc(o.estDelivery||'')}">
+    <button class="primary" style="width:100%;margin-bottom:8px" onclick="saveOrder('${esc(o.id)}')">সেভ করুন</button>
+    <button class="secondary" style="width:100%;margin-bottom:8px" onclick="whatsappCustomer('${esc(o.id)}')">📲 কাস্টমারকে WhatsApp এ জানান</button>
+    <button class="secondary" style="width:100%;margin-bottom:8px" onclick="openOrderInvoice('${esc(o.id)}')">🧾 Memo / Invoice দেখুন</button>
+    <button class="secondary" style="width:100%" onclick="shareOrderInvoice('${esc(o.id)}')">📤 Memo কাস্টমারকে WhatsApp এ শেয়ার করুন</button>`);
+}
+async function saveOrder(id){
+  const o = orders.find(x=>x.id===id); if(!o) return;
+  const status = document.getElementById('oStatus').value;
+  const trackingUrl = document.getElementById('oTrackUrl').value.trim();
+  if(trackingUrl && !/^https?:\/\//i.test(trackingUrl)){ alert('ট্র্যাকিং লিংক http:// বা https:// দিয়ে শুরু হতে হবে'); return; }
+  const patch = Object.assign(statusPatch(o,status), {
+    courier: document.getElementById('oCourier').value,
+    trackingId: document.getElementById('oTrackId').value.trim(),
+    trackingUrl,
+    trackingNote: document.getElementById('oNote').value.trim(),
+    estDelivery: document.getElementById('oEta').value
+  });
+  await db.collection('orders').doc(id).update(patch);
+  if(status==='Cancelled' && o.status!=='Cancelled') await restockOrder(o);
+  else if(o.status==='Cancelled' && status!=='Cancelled') await destockOrder(o);
+  closeSheet();
+}
+function whatsappCustomer(id){
+  const o = orders.find(x=>x.id===id); if(!o) return;
+  const site = location.href.replace(/admin\.html.*$/,'');
+  const lines = [`Baby Poshak: আপনার অর্ডার ${o.id} এর অবস্থা — ${STATUS_LABEL[o.status]||o.status}`];
+  if(o.courier) lines.push(`কুরিয়ার: ${o.courier}`);
+  if(o.trackingId) lines.push(`ট্র্যাকিং নম্বর: ${o.trackingId}`);
+  if(o.trackingNote) lines.push(`আপডেট: ${o.trackingNote}`);
+  if(o.estDelivery) lines.push(`সম্ভাব্য ডেলিভারি: ${o.estDelivery}`);
+  lines.push(`অর্ডার ট্র্যাক করুন: ${site}`);
+  window.open('https://wa.me/'+intlPhone(o.phone)+'?text='+encodeURIComponent(lines.join('\n')));
+}
+// ---------- MEMO ----------
+let memoSubTab = 'create';
+let memoDraftItems = [];
+let memoSearch = '';
+function genMemoNo(){
+  const chars = '0123456789';
+  const arr = new Uint32Array(6); crypto.getRandomValues(arr);
+  return 'M' + Array.from(arr, n=>chars[n % chars.length]).join('');
+}
+function renderMemoTab(body){
+  if(!body) return;
+  body.innerHTML = `
+    <div class="subtabs">
+      <button class="${memoSubTab==='create'?'active':''}" onclick="setMemoSubTab('create')">🧾 Create Memo</button>
+      <button class="${memoSubTab==='drafts'?'active':''}" onclick="setMemoSubTab('drafts')">🟡 Saved/Draft Memos</button>
+      <button class="${memoSubTab==='history'?'active':''}" onclick="setMemoSubTab('history')">📜 Memo History</button>
+      <button class="${memoSubTab==='online'?'active':''}" onclick="setMemoSubTab('online')">🛒 অনলাইন অর্ডার মেমো</button>
+    </div>
+    <div id="memoBody"></div>`;
+  renderMemoBody();
+}
+function setMemoSubTab(t){ memoSubTab=t; if(t==='create') memoDraftItems=[]; renderMemoBody(); }
+function renderMemoBody(){
+  const el = document.getElementById('memoBody'); if(!el) return;
+  if(memoSubTab==='create'){
+    renderMemoCreate(el);
+  } else {
+    el.innerHTML = `
+      <input id="memoSearchBox" placeholder="🔎 Memo নম্বর বা কাস্টমারের নাম দিয়ে খুঁজুন" value="${esc(memoSearch)}" oninput="setMemoSearch(this.value)">
+      ${memoSubTab==='online' ? '<p class="note" style="margin:0 0 10px">কাস্টমার অর্ডার করার সাথে সাথেই এই মেমো অটো তৈরি হয়ে যায়। Memo নম্বর = অর্ডার ID।</p>' : ''}
+      <div id="memoListBox"></div>`;
+    fillMemoList();
+  }
+}
+function fillMemoList(){
+  const box = document.getElementById('memoListBox'); if(!box) return;
+  if(memoSubTab==='online'){ box.innerHTML = renderOnlineMemoList(); return; }
+  const list = memos.filter(m=> memoSubTab==='drafts' ? m.status==='draft' : m.status==='final');
+  box.innerHTML = renderMemoList(list);
+}
+function setMemoSearch(v){ memoSearch=v; fillMemoList(); }
+function renderOnlineMemoList(){
+  const q = memoSearch.trim().toLowerCase();
+  const list = orders.slice().sort((a,b)=>orderMs(b)-orderMs(a)).filter(o=>!q || (o.id||'').toLowerCase().includes(q) || (o.name||'').toLowerCase().includes(q) || (o.phone||'').includes(q));
+  if(!list.length) return '<p class="note">কোনো অনলাইন অর্ডার মেমো পাওয়া যায়নি।</p>';
+  return list.map(o=>`<div class="ordercard" style="cursor:default">
+      <b>${esc(o.id)}</b> <span class="stbadge ${o.status==='Cancelled'?'Cancelled':''}">${esc(STATUS_LABEL[o.status]||o.status)}</span>${orderFlags(o).some(x=>x.high)?' <span class="stbadge Cancelled" title="যাচাই দরকার">⚠️ যাচাই</span>':''}<br>
+      <small>${esc(o.name)} · ${esc(o.phone)} · ৳${Number(o.total)||0} · ${fmtDate(o.createdAt)}</small>
+      <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
+        <button class="smallbtn edit" onclick="openOrderInvoice('${esc(o.id)}')">🧾 Memo দেখুন</button>
+        <button class="smallbtn edit" onclick="shareOrderInvoice('${esc(o.id)}')">📤 কাস্টমারকে শেয়ার</button>
+      </div></div>`).join('');
+}
+function renderMemoList(list){
+  const q = memoSearch.trim().toLowerCase();
+  const filtered = q ? list.filter(m=>(m.memoNo||'').toLowerCase().includes(q) || (m.customerName||'').toLowerCase().includes(q)) : list;
+  if(!filtered.length) return '<p class="note">কোনো মেমো পাওয়া যায়নি।</p>';
+  return filtered.map(m=>`<div class="ordercard" onclick="openMemo('${m.id}')">
+      <b>${esc(m.memoNo)}</b> ${m.status==='draft'?'<span class="stbadge Cancelled" style="background:#fff3cd;color:#856404">Draft</span>':'<span class="stbadge">Final</span>'}<br>
+      <small>${esc(m.customerName||'ওয়াক-ইন কাস্টমার')} · ৳${Number(m.total)||0} · ${fmtDate(m.createdAt)}</small></div>`).join('');
+}
+function renderMemoCreate(el){
+  const total = memoDraftItems.reduce((s,i)=>s+i.price*i.qty,0);
+  el.innerHTML = `
+    <label>প্রোডাক্ট যোগ করুন</label>
+    <select id="memoProdSelect">
+      <option value="">— প্রোডাক্ট বেছে নিন —</option>
+      ${products.map(p=>`<option value="${p.id}">${esc(p.name)} (স্টক: ${p.stock}, ৳${p.price})</option>`).join('')}
+    </select>
+    <button class="secondary" style="margin-bottom:14px" onclick="addMemoItem()">+ যোগ করুন</button>
+    ${memoDraftItems.length ? `<div class="overflow-x"><table><tr><th>প্রোডাক্ট</th><th>সাইজ</th><th>কালার</th><th>দাম</th><th>পরিমাণ</th><th>সাবটোটাল</th><th></th></tr>
+      ${memoDraftItems.map((i,idx)=>`<tr><td>${esc(i.name)}</td><td>${esc(i.size||'-')}</td><td>${esc(i.color||'-')}</td><td>৳${i.price}</td>
+        <td><input type="number" min="1" value="${i.qty}" style="width:70px;margin:0" onchange="setMemoQty(${idx},this.value)"></td>
+        <td>৳${(i.price*i.qty).toFixed(2)}</td>
+        <td><button class="smallbtn del" onclick="removeMemoItem(${idx})">✕</button></td></tr>`).join('')}
+      </table></div>` : '<p class="note">এখনো কোনো প্রোডাক্ট যোগ করা হয়নি।</p>'}
+    <label>Discount / ছাড় (৳, ঐচ্ছিক)</label><input id="memoDiscount" type="number" value="0">
+    <label>Delivery Charge (৳, ঐচ্ছিক)</label><input id="memoDelivery" type="number" value="0">
+    <div class="total" id="memoGrandTotalLine">মোট: ৳${total.toFixed(2)}</div>
+    <label>কাস্টমারের নাম (ঐচ্ছিক)</label><input id="memoCustName" placeholder="ওয়াক-ইন কাস্টমার">
+    <label>মোবাইল নম্বর (ঐচ্ছিক)</label><input id="memoCustPhone" placeholder="01XXXXXXXXX">
+    <label>ঠিকানা (ঐচ্ছিক)</label><input id="memoCustAddr" placeholder="যেমন: রুপাতলী, বরিশাল">
+    <label>Payment Method</label>
+    <select id="memoPay"><option>Cash on Delivery</option><option>Cash</option><option>bKash</option><option>Nagad</option><option>Pubali Bank PLC</option><option>Islami Bank PLC</option></select>
+    <label>কুরিয়ার (ঐচ্ছিক, হোম ডেলিভারি হলে)</label>
+    <select id="memoCourier"><option value="">— প্রযোজ্য নয় —</option>${COURIERS.map(c=>`<option>${esc(c)}</option>`).join('')}</select>
+    <label>ট্র্যাকিং ID (ঐচ্ছিক)</label><input id="memoTrackId" placeholder="TRK-XXXXXXXX">
+    <div class="btnrow" style="gap:8px">
+      <button class="secondary" style="flex:1" onclick="saveMemo('draft')">🟡 Draft হিসেবে সেভ করুন</button>
+      <button class="primary" style="flex:1" onclick="saveMemo('final')">✅ Memo ফাইনাল করুন (স্টক কমবে)</button>
+    </div>`;
+  const dEl = document.getElementById('memoDiscount'), cEl = document.getElementById('memoDelivery');
+  const recompute = ()=>{ const d=parseFloat(dEl.value)||0, c=parseFloat(cEl.value)||0; document.getElementById('memoGrandTotalLine').textContent = `মোট: ৳${(total-d+c).toFixed(2)}`; };
+  dEl.oninput = recompute; cEl.oninput = recompute;
+}
+function addMemoItem(){
+  const sel = document.getElementById('memoProdSelect');
+  const id = sel.value; if(!id) return;
+  const p = products.find(x=>x.id===id); if(!p) return;
+  const existing = memoDraftItems.find(i=>i.id===id);
+  if(existing) existing.qty += 1;
+  else memoDraftItems.push({id, name:p.name, price:Number(p.price)||0, qty:1, size:p.size||'', color:p.color||''});
+  renderMemoCreate(document.getElementById('memoBody'));
+}
+function setMemoQty(idx, val){ memoDraftItems[idx].qty = Math.max(1, parseInt(val)||1); renderMemoCreate(document.getElementById('memoBody')); }
+function removeMemoItem(idx){ memoDraftItems.splice(idx,1); renderMemoCreate(document.getElementById('memoBody')); }
+async function saveMemo(status){
+  if(!memoDraftItems.length){ alert('কমপক্ষে একটা প্রোডাক্ট যোগ করুন'); return; }
+  const subtotal = memoDraftItems.reduce((s,i)=>s+i.price*i.qty,0);
+  const discount = parseFloat(document.getElementById('memoDiscount').value)||0;
+  const deliveryCharge = parseFloat(document.getElementById('memoDelivery').value)||0;
+  const total = subtotal - discount + deliveryCharge;
+  const data = {
+    memoNo: genMemoNo(),
+    items: memoDraftItems,
+    subtotal, discount, deliveryCharge, total,
+    customerName: document.getElementById('memoCustName').value.trim(),
+    customerPhone: document.getElementById('memoCustPhone').value.trim(),
+    customerAddr: document.getElementById('memoCustAddr').value.trim(),
+    pay: document.getElementById('memoPay').value,
+    courier: document.getElementById('memoCourier').value,
+    trackingId: document.getElementById('memoTrackId').value.trim(),
+    status,
+    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+  };
+  if(status==='final'){
+    for(const it of memoDraftItems){
+      try{ await db.collection('products').doc(it.id).update({ stock: firebase.firestore.FieldValue.increment(-it.qty), sold: firebase.firestore.FieldValue.increment(it.qty) }); }catch(e){ console.warn(e); }
+    }
+  }
+  await db.collection('memos').add(data);
+  memoDraftItems = [];
+  alert(status==='final' ? 'Memo ফাইনাল হয়েছে ও স্টক আপডেট হয়েছে' : 'Draft হিসেবে সেভ হয়েছে');
+  setMemoSubTab(status==='final' ? 'history' : 'drafts');
+}
+function openMemo(id){
+  const m = memos.find(x=>x.id===id); if(!m) return;
+  const items = (m.items||[]).map(i=>`<li>${esc(i.name)} ${i.size?`(${esc(i.size)})`:''} ${i.color?`· ${esc(i.color)}`:''} × ${i.qty} = ৳${(i.price*i.qty).toFixed(2)}</li>`).join('');
+  const subtotal = m.subtotal!=null ? m.subtotal : (m.items||[]).reduce((s,i)=>s+i.price*i.qty,0);
+  showSheet(`<button class="close" onclick="closeSheet()">✕</button>
+    <h2>${esc(m.memoNo)} ${m.status==='draft'?'(Draft)':'(Final)'}</h2>
+    <p style="font-size:13px">👤 ${esc(m.customerName||'ওয়াক-ইন কাস্টমার')} ${m.customerPhone?'· '+esc(m.customerPhone):''}${m.customerAddr?'<br>📍 '+esc(m.customerAddr):''}<br><small>${fmtDate(m.createdAt)}</small></p>
+    <ul class="features-list">${items}</ul>
+    <p style="font-size:13px">সাবটোটাল: ৳${subtotal.toFixed(2)}${m.discount?` · ছাড়: ৳${m.discount}`:''}${m.deliveryCharge?` · ডেলিভারি: ৳${m.deliveryCharge}`:''}</p>
+    <div class="total">মোট: ৳${Number(m.total)||0} <small style="font-weight:400;color:var(--muted)">(${esc(m.pay||'')})</small></div>
+    ${m.status==='draft' ? `
+      <button class="primary" style="width:100%;margin-bottom:8px" onclick="finalizeMemo('${m.id}')">✅ ফাইনাল করুন (স্টক কমবে)</button>
+      <button class="secondary" style="width:100%;margin-bottom:8px" onclick="deleteMemo('${m.id}')">🗑️ ডিলিট করুন</button>
+    ` : `<button class="secondary" style="width:100%;margin-bottom:8px" onclick="printMemo('${m.id}')">🖨️ প্রিন্ট</button>`}
+    <button class="secondary" style="width:100%" onclick="closeSheet()">বন্ধ করুন</button>`);
+}
+async function finalizeMemo(id){
+  const m = memos.find(x=>x.id===id); if(!m) return;
+  for(const it of (m.items||[])){
+    try{ await db.collection('products').doc(it.id).update({ stock: firebase.firestore.FieldValue.increment(-it.qty), sold: firebase.firestore.FieldValue.increment(it.qty) }); }catch(e){ console.warn(e); }
+  }
+  await db.collection('memos').doc(id).update({ status:'final', finalizedAt: firebase.firestore.FieldValue.serverTimestamp() });
+  closeSheet();
+}
+async function deleteMemo(id){
+  if(!confirm('এই ড্রাফট মেমোটি ডিলিট করবেন?')) return;
+  await db.collection('memos').doc(id).delete();
+  closeSheet();
+}
+function printMemo(id){
+  const m = memos.find(x=>x.id===id); if(!m) return;
+  const w = window.open('', '_blank'); if(!w) return;
+  const subtotal = m.subtotal!=null ? m.subtotal : (m.items||[]).reduce((s,i)=>s+i.price*i.qty,0);
+  const discount = m.discount||0, deliveryCharge = m.deliveryCharge||0, grand = m.total||0;
+  const emojiFor = n => { const t=(n||'').toLowerCase(); if(t.includes('frock')||t.includes('dress')||t.includes('gown')) return '👗'; if(t.includes('pant')||t.includes('trouser')||t.includes('jogger')) return '👖'; if(t.includes('cap')||t.includes('hat')) return '🧢'; if(t.includes('shoe')||t.includes('sock')) return '🧦'; return '👕'; };
+  const rows = (m.items||[]).map((i,idx)=>`<tr>
+      <td style="text-align:center">${String(idx+1).padStart(2,'0')}</td>
+      <td><span style="font-size:22px;vertical-align:middle;margin-right:6px">${emojiFor(i.name)}</span><b>${esc(i.name)}</b></td>
+      <td style="text-align:center">${esc(i.size||'-')}</td>
+      <td style="text-align:center">${i.color?`<span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:${esc(i.color)};vertical-align:middle;margin-right:4px;border:1px solid #0002"></span>${esc(i.color)}`:'-'}</td>
+      <td style="text-align:center">${i.qty}</td>
+      <td style="text-align:right">৳${i.price}</td>
+      <td style="text-align:right;font-weight:700">৳${(i.price*i.qty).toFixed(2)}</td>
+    </tr>`).join('');
+  const qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=110x110&data=' + encodeURIComponent(SHOP_FACEBOOK);
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${esc(m.memoNo)}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&display=swap" rel="stylesheet">
+  <style>
+    body{font-family:'Segoe UI',system-ui,sans-serif;background:#fdf6f0;color:#1f2937;margin:0;padding:28px;}
+    .wrap{max-width:760px;margin:0 auto;background:#fff;border-radius:16px;padding:28px;position:relative;overflow:hidden;}
+    .topwave{position:absolute;bottom:0;left:0;right:0;height:26px;background:linear-gradient(90deg,#ffd6e8,#ffe9c7);border-radius:16px 16px 0 0;opacity:.6;z-index:0;}
+    .inner{position:relative;z-index:1;}
+    .headrow{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:14px;border-bottom:3px solid #2563eb;padding-bottom:14px;margin-bottom:18px;}
+    .brand{display:flex;align-items:center;gap:10px;}
+    .brand .bear{font-size:46px;}
+    .brand h1{margin:0;font-size:26px;background:linear-gradient(90deg,#ec4899,#2563eb);-webkit-background-clip:text;background-clip:text;color:transparent;}
+    .brand small{display:block;color:#6b7280;font-size:12px;}
+    .brand .logo{width:70px;height:70px;border-radius:50%;object-fit:cover;box-shadow:0 0 0 3px #ffd0de,0 3px 10px rgba(232,93,138,.25);}
+    .brand .bt{font-family:'Fredoka','Baloo 2','Comic Sans MS',system-ui,sans-serif;font-weight:700;}
+    .brand .line1{display:flex;align-items:center;gap:8px;line-height:1;}
+    .brand .b3s{display:inline-flex;background:#fff;border:2px solid #ffd0de;border-radius:12px;padding:3px 9px 4px;font-size:24px;box-shadow:0 2px 6px rgba(232,93,138,.18);}
+    .brand .b3s i{font-style:normal;}
+    .brand .b3s i:first-child{color:#0a7fd6;}
+    .brand .b3s i:last-child{color:#e85d8a;}
+    .brand .bname{font-size:27px;letter-spacing:.4px;}
+    .brand .bname .bl{color:#0a7fd6;}
+    .brand .bname .pk{color:#e85d8a;}
+    .brand .bt small{font-family:'Segoe UI',system-ui,sans-serif;font-weight:500;margin-top:6px;}
+    .tagline{font-size:13px;color:#1f2937;max-width:220px;line-height:1.5;}
+    .features{display:flex;flex-direction:column;gap:6px;font-size:12px;}
+    .features span{display:flex;align-items:center;gap:6px;}
+    .features i{width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:12px;}
+    .badge-invoice{display:inline-block;background:#1e3a8a;color:#fff;font-weight:800;letter-spacing:1px;padding:8px 22px;border-radius:8px;font-size:18px;margin-bottom:14px;}
+    .toprow{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:18px;}
+    .metabox{font-size:13px;line-height:1.9;}
+    .custbox{background:#eef4ff;border-radius:10px;padding:12px 16px;min-width:260px;font-size:13px;line-height:1.9;}
+    .custbox h4{margin:0 0 6px;color:#1e3a8a;}
+    table{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:14px;}
+    th{background:#2563eb;color:#fff;padding:9px 6px;font-size:12px;}
+    td{padding:9px 6px;border-bottom:1px solid #eef0f3;}
+    .totbox{margin-left:auto;width:280px;}
+    .totbox div{display:flex;justify-content:space-between;padding:7px 12px;font-size:13px;}
+    .totbox .sub{background:#f3f4f6;}
+    .totbox .disc{background:#e7f8ef;color:#0e9f6e;}
+    .totbox .dc{background:#eaf2ff;}
+    .totbox .grand{background:#1e3a8a;color:#fff;font-weight:800;font-size:15px;border-radius:0 0 8px 8px;}
+    .paycards{display:flex;gap:10px;margin:18px 0;flex-wrap:wrap;}
+    .paycards .c{flex:1;min-width:150px;border-radius:10px;padding:10px 14px;font-size:13px;}
+    .pc1{background:#ffe3ec;color:#be185d;}
+    .pc2{background:#e7f8ef;color:#0e9f6e;}
+    .pc3{background:#ffe9e9;color:#c92a2a;}
+    .botgrid{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:16px;}
+    .botbox{flex:1;min-width:220px;background:#f4f6fb;border-radius:10px;padding:12px 16px;font-size:12.5px;line-height:1.9;}
+    .qrbox{width:140px;text-align:center;font-size:11px;color:#6b7280;}
+    .footer{text-align:center;margin-top:10px;}
+    .footer .thanks{font-family:'Segoe UI',cursive;font-size:20px;color:#1e3a8a;font-weight:700;}
+    .footer small{color:#6b7280;}
+    *{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+    @page{margin:10mm;}
+    @media print{ body{background:#fff;padding:0;} .wrap{border-radius:0;} }
+  </style></head>
+  <body>
+    <div class="wrap">
+      <div class="inner">
+        <div class="headrow">
+          <div class="brand">
+            <img class="logo" src="${SHOP_LOGO}" alt="${esc(SHOP_NAME)}">
+            <div class="bt"><div class="line1"><span class="b3s"><i>3</i><i>S</i></span><span class="bname"><span class="bl">BaBy</span> <span class="pk">PoShAk</span></span></div><small>Baby &amp; Kids Clothing Store</small></div>
+          </div>
+          <div class="tagline">${esc(SHOP_TAGLINE)} 💕</div>
+          <div class="features">
+            <span><i style="background:#2563eb">👕</i> Baby Clothes</span>
+            <span><i style="background:#ec4899">😊</i> Kids Fashion</span>
+            <span><i style="background:#16a34a">✔</i> Quality Products</span>
+            <span><i style="background:#0ea5e9">🚚</i> Fast Delivery</span>
+          </div>
+        </div>
+        <div class="badge-invoice">INVOICE</div>
+        <div class="toprow">
+          <div class="metabox">
+            <b>Invoice No</b> : ${esc(m.memoNo)}<br>
+            <b>Date</b> : ${fmtDate(m.createdAt) || new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'})}<br>
+            <b>Order Status</b> : ${m.status==='draft'?'Draft':'Confirmed'}
+          </div>
+          <div class="custbox">
+            <h4>👤 Customer Information</h4>
+            <b>Name</b> : ${esc(m.customerName||'Walk-in Customer')}<br>
+            <b>Mobile</b> : ${esc(m.customerPhone||'-')}<br>
+            <b>Address</b> : ${esc(m.customerAddr||'-')}
+          </div>
+        </div>
+        <table>
+          <tr><th>SL</th><th>Product</th><th>Size</th><th>Color</th><th>Qty</th><th>Unit Price</th><th>Total</th></tr>
+          ${rows}
+        </table>
+        <div class="totbox">
+          <div class="sub"><span>Subtotal</span><span>৳${subtotal.toFixed(2)}</span></div>
+          ${discount?`<div class="disc"><span>Discount</span><span>−৳${discount.toFixed(2)}</span></div>`:''}
+          ${deliveryCharge?`<div class="dc"><span>Delivery Charge</span><span>৳${deliveryCharge.toFixed(2)}</span></div>`:''}
+          <div class="grand"><span>Grand Total</span><span>৳${grand.toFixed(2)}</span></div>
+        </div>
+        <div class="paycards">
+          <div class="c pc1"><b>Payment Method</b><br>${esc(m.pay||'Cash')}</div>
+          <div class="c pc2"><b>Paid</b><br>৳${grand.toFixed(2)}</div>
+          <div class="c pc3"><b>Due</b><br>৳0</div>
+        </div>
+        <div class="botgrid">
+          <div class="botbox">
+            <b>🚚 Delivery Information</b><br>
+            Courier : ${esc(m.courier||'-')}<br>
+            Delivery Area : ${esc(m.customerAddr||'-')}<br>
+            Tracking ID : ${esc(m.trackingId||'-')}
+          </div>
+          <div class="botbox">
+            <b>📞 Contact Us</b><br>
+            Facebook : ${esc(SHOP_NAME)}<br>
+            Phone : ${esc(SHOP_PHONE)}
+          </div>
+          <div class="qrbox"><img src="${qrUrl}" width="100" height="100"><div>Scan for Facebook</div></div>
+        </div>
+        <div class="footer">
+          <div class="thanks">Thank you for shopping with us! 💙</div>
+          <small>Please keep this invoice for exchange/warranty purposes.</small>
+        </div>
+      </div>
+      <div class="topwave"></div>
+    </div>
+    <script>window.onload = () => { const go = () => setTimeout(() => window.print(), 300); (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()).then(go, go); };<\/script>
+  </body></html>`);
+  w.document.close();
+}
+// ---------- BANNERS ----------
+const safeImg = u => /^https?:\/\//i.test(u||'') ? u : '';
+function bOrder(b){ return b.order == null ? 9999 : Number(b.order); }
+function bMs(b){ return b.createdAt && b.createdAt.toMillis ? b.createdAt.toMillis() : 0; }
+function sortedBanners(){ return banners.slice().sort((a,b)=>bOrder(a)-bOrder(b) || bMs(a)-bMs(b)); }
+function nextBannerOrder(){ return banners.reduce((m,b)=>Math.max(m, Number(b.order)||0), 0) + 1; }
+function renderBannersTab(body){
+  const list = sortedBanners();
+  body.innerHTML = `
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+      <button class="primary" onclick="editBanner(null)">+ নতুন ব্যানার</button>
+      <button class="secondary" onclick="bulkAddBanners()">📥 একসাথে অনেক ছবি যোগ করুন</button>
+    </div>
+    <p class="note" style="margin:0 0 10px">কাস্টমার পেজের একদম উপরে এই ছবিগুলো ব্যানার হয়ে ৩.৫ সেকেন্ড পর পর নিজে নিজে সরে সরে দেখাবে। শুধু Active ছবিগুলো দেখায়। সবচেয়ে ভালো ছবির মাপ ১৬০০×৬০০ পিক্সেল (প্রস্থ:উচ্চতা প্রায় ৮:৩)। ছবির লিংক postimages.org থেকে "Direct link" নিন। ⬆️⬇️ বাটনে ছবির ক্রম বদলানো যায়।</p>
+    ${list.length ? list.map((b,i)=>`<div class="ordercard" style="cursor:default">
+        <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+          <img src="${esc(safeImg(b.imageUrl))}" alt="" style="width:150px;height:56px;object-fit:cover;border-radius:8px;background:var(--border)">
+          <div style="flex:1;min-width:150px"><b>${i+1}. ${esc(b.title||'(ক্যাপশন নেই)')}</b> ${b.active!==false?'<span class="stbadge">Active</span>':'<span class="stbadge Cancelled">Inactive</span>'}<br>
+            <small>${b.productId ? '🛍️ '+esc((products.find(p=>p.id===b.productId)||{}).name||'(প্রোডাক্ট পাওয়া যায়নি)') : (b.category ? '🔗 '+esc(b.category) : 'কোনো লিংক নেই')}</small></div>
+          <div style="flex-shrink:0">
+            <button class="smallbtn edit" ${i===0?'disabled':''} onclick="moveBanner('${b.id}',-1)">⬆️</button>
+            <button class="smallbtn edit" ${i===list.length-1?'disabled':''} onclick="moveBanner('${b.id}',1)">⬇️</button>
+            <button class="smallbtn edit" onclick="editBanner('${b.id}')">✏️ এডিট</button>
+            <button class="smallbtn del" onclick="deleteBanner('${b.id}')">🗑️ ডিলিট</button>
+          </div>
+        </div></div>`).join('') : '<p class="note">এখনো কোনো ব্যানার যোগ করা হয়নি।</p>'}`;
+}
+function editBanner(id){
+  const b = id ? banners.find(x=>x.id===id) : {imageUrl:'',title:'',productId:'',category:'',active:true};
+  showSheet(`<button class="close" onclick="closeSheet()">✕</button><h2>${id?'ব্যানার এডিট':'নতুন ব্যানার'}</h2>
+    <label>ছবির লিংক (Direct link)</label>
+    <a href="https://postimages.org" target="_blank" class="secondary" style="display:inline-block;text-decoration:none;padding:8px 12px;font-size:13px;margin-bottom:8px;">📤 postimages.org খুলুন (ছবি আপলোড করে "Direct link" কপি করুন)</a>
+    <input id="bnImg" value="${esc(b.imageUrl||'')}" placeholder="https://i.postimg.cc/.../banner.jpg">
+    <label>ক্যাপশন (ঐচ্ছিক, ছবির নিচে লেখা দেখাবে)</label><input id="bnTitle" value="${esc(b.title||'')}" placeholder="যেমন: ঈদ কালেকশন এসে গেছে">
+    <label>ক্লিক করলে কোন প্রোডাক্ট খুলবে (ঐচ্ছিক)</label>
+    <select id="bnProduct"><option value="">— কোনো প্রোডাক্ট না —</option>${products.map(p=>`<option value="${p.id}" ${b.productId===p.id?'selected':''}>${esc(p.name)}</option>`).join('')}</select>
+    <label>অথবা কোন ক্যাটাগরিতে যাবে (ঐচ্ছিক)</label>
+    <select id="bnCat"><option value="">— কোনো ক্যাটাগরি না —</option>${CATEGORIES.map(c=>`<option ${b.category===c?'selected':''}>${c}</option>`).join('')}</select>
+    <label style="display:flex;align-items:center;gap:8px;"><input type="checkbox" id="bnActive" style="width:auto;margin:0;" ${b.active!==false?'checked':''}> Active (কাস্টমার পেজে দেখাবে)</label>
+    <button class="primary" style="width:100%" onclick="saveBanner('${id||''}')">সেভ করুন</button>`);
+}
+async function saveBanner(id){
+  const imageUrl = document.getElementById('bnImg').value.trim();
+  if(!safeImg(imageUrl)){ alert('ছবির লিংক http:// বা https:// দিয়ে শুরু হতে হবে'); return; }
+  const data = {
+    imageUrl,
+    title: document.getElementById('bnTitle').value.trim().slice(0,120),
+    productId: document.getElementById('bnProduct').value,
+    category: document.getElementById('bnCat').value,
+    active: document.getElementById('bnActive').checked
+  };
+  if(id){ await db.collection('banners').doc(id).update(data); }
+  else { data.order = nextBannerOrder(); data.createdAt = firebase.firestore.FieldValue.serverTimestamp(); await db.collection('banners').add(data); }
+  closeSheet();
+}
+function bulkAddBanners(){
+  showSheet(`<button class="close" onclick="closeSheet()">✕</button><h2>📥 একসাথে অনেক ছবি</h2>
+    <p class="note">প্রতি লাইনে একটা করে ছবির Direct link পেস্ট করুন। সবগুলো ব্যানার হিসেবে যোগ হবে (পরে আলাদা করে ক্যাপশন/লিংক এডিট করা যাবে)।</p>
+    <textarea id="bnBulk" rows="8" placeholder="https://i.postimg.cc/.../1.jpg&#10;https://i.postimg.cc/.../2.jpg"></textarea>
+    <button class="primary" style="width:100%" onclick="saveBulkBanners()">সব যোগ করুন</button>`);
+}
+async function saveBulkBanners(){
+  const urls = document.getElementById('bnBulk').value.split(/\s+/).map(x=>x.trim()).filter(x=>safeImg(x));
+  if(!urls.length){ alert('কমপক্ষে একটা সঠিক ছবির লিংক দিন'); return; }
+  let ord = nextBannerOrder();
+  for(const u of urls){
+    await db.collection('banners').add({ imageUrl:u, title:'', productId:'', category:'', active:true, order:ord++, createdAt:firebase.firestore.FieldValue.serverTimestamp() });
+  }
+  closeSheet();
+  alert(urls.length + 'টি ব্যানার যোগ হয়েছে');
+}
+async function moveBanner(id, dir){
+  const list = sortedBanners();
+  const i = list.findIndex(b=>b.id===id), j = i + dir;
+  if(i < 0 || j < 0 || j >= list.length) return;
+  [list[i], list[j]] = [list[j], list[i]];
+  for(let k=0; k<list.length; k++){
+    if(list[k].order !== k+1) await db.collection('banners').doc(list[k].id).update({ order:k+1 });
+  }
+}
+async function deleteBanner(id){
+  if(!confirm('এই ব্যানারটি ডিলিট করবেন?')) return;
+  await db.collection('banners').doc(id).delete();
+}
+
+// ---------- NOTICE TICKER (স্ক্রলিং নোটিশ বার) ----------
+function sortedTicker(){ return ticker.slice().sort((a,b)=>bOrder(a)-bOrder(b) || bMs(a)-bMs(b)); }
+function nextTickerOrder(){ return ticker.reduce((m,t)=>Math.max(m, Number(t.order)||0), 0) + 1; }
+function renderTickerTab(body){
+  const list = sortedTicker();
+  body.innerHTML = `
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+      <button class="primary" onclick="editTicker(null)">+ নতুন নোটিশ</button>
+    </div>
+    <p class="note" style="margin:0 0 10px">কাস্টমার পেজের হেডারের নিচে এই লেখাগুলো ডান দিক থেকে বাম দিকে একটানা চলতে থাকবে। একাধিক নোটিশ যোগ করলে নিচের ক্রমে একটার পর একটা দেখাবে। শুধু Active নোটিশগুলো দেখায়। ⬆️⬇️ বাটনে ক্রম বদলান। ইমোজি (🎉 🔥 🚚) ব্যবহার করতে পারেন।</p>
+    ${list.length ? list.map((t,i)=>`<div class="ordercard" style="cursor:default">
+        <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+          <div style="flex:1;min-width:150px"><b>${i+1}.</b> ${esc(t.text||'')} ${t.active!==false?'<span class="stbadge">Active</span>':'<span class="stbadge Cancelled">Inactive</span>'}</div>
+          <div style="flex-shrink:0">
+            <button class="smallbtn edit" ${i===0?'disabled':''} onclick="moveTicker('${t.id}',-1)">⬆️</button>
+            <button class="smallbtn edit" ${i===list.length-1?'disabled':''} onclick="moveTicker('${t.id}',1)">⬇️</button>
+            <button class="smallbtn edit" onclick="editTicker('${t.id}')">✏️ এডিট</button>
+            <button class="smallbtn del" onclick="deleteTicker('${t.id}')">🗑️ ডিলিট</button>
+          </div>
+        </div></div>`).join('') : '<p class="note">এখনো কোনো নোটিশ যোগ করা হয়নি। নোটিশ না থাকলে কাস্টমার পেজে বারটি দেখাবে না।</p>'}`;
+}
+function editTicker(id){
+  const t = id ? ticker.find(x=>x.id===id) : {text:'', active:true};
+  showSheet(`<button class="close" onclick="closeSheet()">✕</button><h2>${id?'নোটিশ এডিট':'নতুন নোটিশ'}</h2>
+    <label>নোটিশ / অফারের লেখা (সর্বোচ্চ ২০০ অক্ষর)</label>
+    <textarea id="tkText" rows="3" maxlength="200" placeholder="যেমন: 🎉 ঈদ অফার! সব বেবি ড্রেসে ২০% ছাড়">${esc(t.text||'')}</textarea>
+    <label style="display:flex;align-items:center;gap:8px;"><input type="checkbox" id="tkActive" style="width:auto;margin:0;" ${t.active!==false?'checked':''}> Active (কাস্টমার পেজে দেখাবে)</label>
+    <button class="primary" style="width:100%" onclick="saveTicker('${id||''}')">সেভ করুন</button>`);
+}
+async function saveTicker(id){
+  const text = document.getElementById('tkText').value.replace(/\s+/g,' ').trim().slice(0,200);
+  if(!text){ alert('নোটিশের লেখা দিন'); return; }
+  const data = { text, active: document.getElementById('tkActive').checked };
+  try{
+    if(id){ await db.collection('ticker').doc(id).update(data); }
+    else { data.order = nextTickerOrder(); data.createdAt = firebase.firestore.FieldValue.serverTimestamp(); await db.collection('ticker').add(data); }
+    closeSheet();
+  }catch(e){ alert('সেভ করা যায়নি: '+e.message+'\n(Firestore Rules এ ticker অংশ Publish করেছেন কি?)'); }
+}
+async function moveTicker(id, dir){
+  const list = sortedTicker();
+  const i = list.findIndex(t=>t.id===id), j = i + dir;
+  if(i < 0 || j < 0 || j >= list.length) return;
+  [list[i], list[j]] = [list[j], list[i]];
+  for(let k=0; k<list.length; k++){
+    if(list[k].order !== k+1) await db.collection('ticker').doc(list[k].id).update({ order:k+1 });
+  }
+}
+async function deleteTicker(id){
+  if(!confirm('এই নোটিশটি ডিলিট করবেন?')) return;
+  await db.collection('ticker').doc(id).delete();
+}
+
+// ---------- VISITORS ----------
+let visits = [];
+let visitsLoaded = false;
+async function loadVisits(){
+  try{
+    const snap = await db.collection('visits').orderBy('at','desc').limit(1000).get();
+    visits = snap.docs.map(d=>({id:d.id, ...d.data()}));
+    visitsLoaded = true;
+  }catch(e){
+    console.error(e);
+    const b = document.getElementById('adminBody');
+    if(b && adminTab==='visitors') b.innerHTML = '<p class="note">ভিজিটর ডেটা লোড করা যায়নি। Firestore Rules-এ visits অংশ যোগ করে Publish করা আছে কিনা দেখুন।</p>';
+    return;
+  }
+  if(isAdmin && adminTab==='visitors') renderAdminBody();
+}
+function refreshVisits(){ visitsLoaded = false; renderAdminBody(); }
+function vMs(x){ return x.at && x.at.toMillis ? x.at.toMillis() : 0; }
+function fmtDT(ms){ return ms && isFinite(ms) ? new Date(ms).toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : '-'; }
+function renderVisitorsTab(body){
+  if(!visitsLoaded){ body.innerHTML = '<p class="note">ভিজিটর ডেটা লোড হচ্ছে...</p>'; loadVisits(); return; }
+  const pure = visits.filter(x=>x.type!=='order');
+  const today0 = startOfToday(), DAY = 86400000;
+  const uniq = arr => new Set(arr.map(x=>x.vid)).size;
+  const todayV = pure.filter(x=>vMs(x)>=today0);
+  const weekV = pure.filter(x=>vMs(x)>=today0-6*DAY);
+
+  const people = {};
+  visits.forEach(x=>{
+    const p = people[x.vid] || (people[x.vid] = {vid:x.vid, count:0, first:Infinity, last:0, device:x.device||'', ref:'', name:'', phone:''});
+    if(x.type==='order'){ p.name = p.name || x.name || ''; p.phone = p.phone || x.phone || ''; return; }
+    p.count++;
+    const t = vMs(x);
+    if(t && t<p.first){ p.first = t; p.ref = x.ref || p.ref; }
+    if(t>p.last){ p.last = t; p.device = x.device || p.device; }
+  });
+  const peopleList = Object.values(people).filter(p=>p.count>0).sort((a,b)=>b.last-a.last).slice(0,100);
+
+  const refs = {};
+  pure.forEach(x=>{ const r = x.ref || 'Direct'; const o = refs[r] || (refs[r] = {n:0, ids:new Set()}); o.n++; o.ids.add(x.vid); });
+  const refRows = Object.entries(refs).sort((a,b)=>b[1].n-a[1].n);
+
+  const dayRows = [];
+  for(let i=0;i<14;i++){
+    const s = today0 - i*DAY;
+    const dv = pure.filter(x=>vMs(x)>=s && vMs(x)<s+DAY);
+    dayRows.push(`<tr><td>${new Date(s).toLocaleDateString('en-GB',{day:'2-digit',month:'short'})}</td><td>${dv.length}</td><td>${uniq(dv)}</td></tr>`);
+  }
+
+  body.innerHTML = `
+    <p class="note" style="margin:0 0 10px">কাস্টমারদের লগইন লাগে না, তাই এখানে সাইটে কে কতবার ঢুকেছে (ভিজিট) দেখানো হচ্ছে। একই ফোন/ব্রাউজার = একজন ভিজিটর। কেউ অর্ডার করলে তার নাম ও নম্বর এখানে দেখা যাবে।</p>
+    <div class="statgrid">
+      <div class="stat"><div class="statnum">${pure.length}</div><div class="statlabel">মোট ভিজিট</div></div>
+      <div class="stat"><div class="statnum">${uniq(pure)}</div><div class="statlabel">আলাদা ভিজিটর</div></div>
+      <div class="stat"><div class="statnum">${todayV.length}</div><div class="statlabel">আজকের ভিজিট</div></div>
+      <div class="stat"><div class="statnum">${uniq(todayV)}</div><div class="statlabel">আজকের ভিজিটর</div></div>
+      <div class="stat"><div class="statnum">${weekV.length}</div><div class="statlabel">শেষ ৭ দিনের ভিজিট</div></div>
+    </div>
+    <button class="secondary" style="margin-bottom:14px" onclick="refreshVisits()">🔄 রিফ্রেশ</button>
+    ${visits.length>=1000 ? '<p class="note">সর্বশেষ ১০০০টি রেকর্ড দেখানো হচ্ছে।</p>' : ''}
+
+    <h3>🔗 কাকে লিংক দিলেন? আলাদা লিংক বানান</h3>
+    <p class="note" style="margin:0 0 8px">প্রতিজনের নামে একটা করে লিংক বানিয়ে তাকে দিন। তাহলে নিচের "উৎস" তালিকায় দেখা যাবে কোন লিংক থেকে কতজন কতবার ঢুকেছে।</p>
+    <input id="trkName" placeholder="যার জন্য লিংক, যেমন: Rahim">
+    <button class="primary" style="margin-bottom:10px" onclick="makeTrackLink()">লিংক বানান</button>
+    <div id="trkLinkOut"></div>
+
+    <h3>উৎস অনুযায়ী (কোন লিংক/জায়গা থেকে এসেছে)</h3>
+    <div class="overflow-x"><table><tr><th>উৎস</th><th>ভিজিট</th><th>আলাদা ভিজিটর</th></tr>
+      ${refRows.map(([r,o])=>`<tr><td>${esc(r)}</td><td>${o.n}</td><td>${o.ids.size}</td></tr>`).join('') || '<tr><td colspan="3">এখনো কোনো ভিজিট নেই</td></tr>'}
+    </table></div>
+
+    <h3 style="margin-top:18px">ভিজিটর তালিকা (সর্বশেষ ১০০ জন)</h3>
+    <div class="overflow-x"><table class="wide"><tr><th>ভিজিটর</th><th>উৎস</th><th>ডিভাইস</th><th>ভিজিট</th><th>প্রথম</th><th>শেষ</th></tr>
+      ${peopleList.map(p=>`<tr>
+        <td>${p.name ? `<b>${esc(p.name)}</b><br><small>${esc(p.phone)}</small>` : `Visitor #${esc(p.vid.slice(-4))}`}</td>
+        <td>${esc(p.ref||'-')}</td><td>${esc(p.device||'-')}</td><td><b>${p.count}</b></td>
+        <td><small>${fmtDT(p.first)}</small></td><td><small>${fmtDT(p.last)}</small></td></tr>`).join('') || '<tr><td colspan="6">এখনো কোনো ভিজিটর নেই</td></tr>'}
+    </table></div>
+
+    <h3 style="margin-top:18px">দিন অনুযায়ী (শেষ ১৪ দিন)</h3>
+    <div class="overflow-x"><table><tr><th>তারিখ</th><th>ভিজিট</th><th>আলাদা ভিজিটর</th></tr>${dayRows.join('')}</table></div>
+    <p class="note">যে ডিভাইসে আপনি Admin পেজ খুলেছেন সেই ডিভাইসের ভিজিট গোনা হয় না, যাতে আপনার নিজের ঢোকা হিসাবে না আসে।</p>`;
+}
+function makeTrackLink(){
+  const n = document.getElementById('trkName').value.trim();
+  if(!n){ alert('যার জন্য লিংক, তার নাম লিখুন'); return; }
+  const url = new URL('./?ref='+encodeURIComponent(n), location.href).href;
+  document.getElementById('trkLinkOut').innerHTML = `<input id="trkLinkVal" readonly value="${esc(url)}">
+    <button class="secondary" style="margin-bottom:10px" onclick="copyTrackLink()">📋 লিংক কপি করুন</button>`;
+}
+function copyTrackLink(){
+  const v = document.getElementById('trkLinkVal').value;
+  if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(v).then(()=>alert('লিংক কপি হয়েছে'), ()=>alert(v)); }
+  else alert(v);
+}
+
+// ---------- OFFERS ----------
+function renderOffersTab(body){
+  body.innerHTML = `<button class="primary" style="margin-bottom:12px" onclick="editOffer(null)">+ নতুন অফার</button>
+    <p class="note" style="margin-bottom:10px">কাস্টমার পেজের বাম পাশে এই অফারগুলো একে একে (২.৫ সেকেন্ড পর পর) ঘুরে ঘুরে দেখাবে। শুধু ✅ Active অফারগুলো দেখাবে।</p>
+    ${offers.length ? offers.map(o=>`<div class="ordercard" style="cursor:default">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
+          <div><b>${esc(o.title)}</b> ${o.active?'<span class="stbadge">Active</span>':'<span class="stbadge Cancelled">Inactive</span>'}<br>
+          <small>${esc(o.description||'')}</small>${o.discount?`<br><small>🏷️ ${esc(o.discount)}</small>`:''}${o.endAt?`<br><small style="font-weight:700;color:${Number(o.endAt)<=Date.now()?'#c92a2a':'#0e9f6e'}">⏳ ${Number(o.endAt)<=Date.now()?'মেয়াদ শেষ':'শেষ হবে'}: ${fmtOfferDT(o.endAt)}</small>`:''}${o.productId?`<br><small>🛍️ ${esc((products.find(p=>p.id===o.productId)||{}).name||'(প্রোডাক্ট পাওয়া যায়নি)')}</small>`:o.category?`<br><small>🔗 ${esc(o.category)}</small>`:''}</div>
+          <div style="flex-shrink:0"><button class="smallbtn edit" onclick="editOffer('${o.id}')">✏️ এডিট</button><button class="smallbtn del" onclick="deleteOffer('${o.id}')">🗑️ ডিলিট</button></div>
+        </div></div>`).join('') : '<p class="note">এখনো কোনো অফার যোগ করা হয়নি।</p>'}`;
+}
+function editOffer(id){
+  const o = id ? offers.find(x=>x.id===id) : {title:'',description:'',discount:'',imageUrl:'',category:'',productId:'',active:true,endAt:null};
+  showSheet(`<button class="close" onclick="closeSheet()">✕</button><h2>${id?'অফার এডিট':'নতুন অফার'}</h2>
+    <label>অফারের টাইটেল</label><input id="ofTitle" value="${esc(o.title)}" placeholder="যেমন: ঈদ স্পেশাল অফার">
+    <label>বিস্তারিত</label><input id="ofDesc" value="${esc(o.description||'')}" placeholder="যেমন: সব Frock এ ২০% ছাড়">
+    <label>ডিসকাউন্ট ট্যাগ (ঐচ্ছিক, শুধু দেখানোর জন্য)</label><input id="ofDiscount" value="${esc(o.discount||'')}" placeholder="যেমন: 20% OFF">
+    <label>আসল ছাড়ের হার (%) — এটা দিলে প্রোডাক্টের দাম থেকে সত্যিই এই % কমে কাস্টমার অর্ডার করতে পারবে (নিচে "নির্দিষ্ট প্রোডাক্ট" বেছে নিলে কাজ করবে)</label>
+    <input id="ofDiscountPct" type="number" min="0" max="90" value="${o.discountPercent||''}" placeholder="যেমন: 20">
+    <label>ছবি URL (ঐচ্ছিক, না দিলে প্রোডাক্টের ছবি ব্যবহার হবে)</label><input id="ofImg" value="${esc(o.imageUrl||'')}" placeholder="https://...">
+    <label>নির্দিষ্ট প্রোডাক্ট (ঐচ্ছিক) — দিলে ক্লিক করে সরাসরি অর্ডার করা যাবে</label>
+    <select id="ofProduct"><option value="">— কোনো নির্দিষ্ট প্রোডাক্ট না —</option>${products.map(p=>`<option value="${p.id}" ${o.productId===p.id?'selected':''}>${esc(p.name)} (স্টক: ${p.stock}, ৳${p.price})</option>`).join('')}</select>
+    <label>অথবা — ক্লিক করলে কোন ক্যাটাগরিতে যাবে (ঐচ্ছিক, প্রোডাক্ট বেছে নিলে এটা লাগবে না)</label>
+    <select id="ofCat"><option value="">— কোনো নির্দিষ্ট ক্যাটাগরি না —</option>${CATEGORIES.map(c=>`<option ${o.category===c?'selected':''}>${c}</option>`).join('')}</select>
+    <label>⏳ অফার শেষ হওয়ার তারিখ ও সময় (ঐচ্ছিক) — দিলে কাস্টমার পেজে "কত দিন-ঘণ্টা-মিনিট বাকি" ঝিকমিক কাউন্টডাউনে দেখাবে, সময় পার হলে অফার নিজে থেকেই বন্ধ হয়ে যাবে (ছাড়ও থাকবে না)</label>
+    <input type="datetime-local" id="ofEnd" value="${o.endAt?toLocalInput(o.endAt):''}">
+    <div style="display:flex;flex-wrap:wrap;gap:6px;margin:-4px 0 12px">
+      <button type="button" class="smallbtn edit" onclick="setOfferEnd('today')">আজ রাত ১১:৫৯</button>
+      <button type="button" class="smallbtn edit" onclick="setOfferEnd(1)">+১ দিন</button>
+      <button type="button" class="smallbtn edit" onclick="setOfferEnd(3)">+৩ দিন</button>
+      <button type="button" class="smallbtn edit" onclick="setOfferEnd(7)">+৭ দিন</button>
+      <button type="button" class="smallbtn edit" onclick="setOfferEnd(15)">+১৫ দিন</button>
+      <button type="button" class="smallbtn del" onclick="setOfferEnd(0)">✕ মুছুন</button>
+    </div>
+    <label style="display:flex;align-items:center;gap:8px;"><input type="checkbox" id="ofActive" style="width:auto;margin:0;" ${o.active!==false?'checked':''}> Active (কাস্টমার পেজে দেখাবে)</label>
+    <button class="primary" style="width:100%" onclick="saveOffer('${id||''}')">সেভ করুন</button>`);
+}
+function toLocalInput(ms){
+  const d = new Date(Number(ms)), p = n=>String(n).padStart(2,'0');
+  return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+'T'+p(d.getHours())+':'+p(d.getMinutes());
+}
+function fmtOfferDT(ms){
+  return new Date(Number(ms)).toLocaleString('en-GB',{day:'2-digit',month:'short',year:'numeric',hour:'numeric',minute:'2-digit',hour12:true});
+}
+function setOfferEnd(v){
+  const el = document.getElementById('ofEnd'); if(!el) return;
+  if(!v){ el.value = ''; return; }
+  const d = new Date();
+  if(v==='today'){ d.setHours(23,59,0,0); }
+  else { d.setTime(Date.now() + v*86400000); d.setSeconds(0,0); }
+  el.value = toLocalInput(d.getTime());
+}
+async function saveOffer(id){
+  const title = document.getElementById('ofTitle').value.trim();
+  if(!title){ alert('অফারের টাইটেল দিন'); return; }
+  const endVal = document.getElementById('ofEnd').value;
+  let endAt = null;
+  if(endVal){
+    endAt = new Date(endVal).getTime();
+    if(isNaN(endAt)){ alert('অফার শেষের তারিখ ও সময় সঠিক নয়'); return; }
+    if(endAt <= Date.now() && !confirm('আপনার দেওয়া শেষের সময় পার হয়ে গেছে — এই অফার কাস্টমার পেজে দেখাবে না। তবুও সেভ করবেন?')) return;
+  }
+  const data = {
+    endAt,
+    title,
+    description: document.getElementById('ofDesc').value.trim(),
+    discount: document.getElementById('ofDiscount').value.trim(),
+    discountPercent: parseFloat(document.getElementById('ofDiscountPct').value)||0,
+    imageUrl: document.getElementById('ofImg').value.trim(),
+    productId: document.getElementById('ofProduct').value,
+    category: document.getElementById('ofCat').value,
+    active: document.getElementById('ofActive').checked
+  };
+  if(id){ await db.collection('offers').doc(id).update(data); }
+  else{ data.createdAt = firebase.firestore.FieldValue.serverTimestamp(); await db.collection('offers').add(data); }
+  closeSheet();
+}
+async function deleteOffer(id){
+  if(!confirm('এই অফারটি ডিলিট করবেন?')) return;
+  await db.collection('offers').doc(id).delete();
+}
+
+function editProduct(id){
+  const p = id ? products.find(x=>x.id===id) : {name:'',emoji:'👶',price:0,purchasePrice:0,originalPrice:0,stock:0,category:'',subcategory:'',ageGroup:'',imageUrl:'',extraImages:'',features:''};
+  showSheet(`<button class="close" onclick="closeSheet()">✕</button><h2>${id?'প্রোডাক্ট এডিট':'নতুন প্রোডাক্ট'}</h2>
+    <label>নাম</label><input id="pName" value="${esc(p.name)}">
+    <label>Image URL</label>
+    <a href="https://postimages.org" target="_blank" class="secondary" style="display:inline-block;text-decoration:none;padding:8px 12px;font-size:13px;margin-bottom:8px;">📤 postimages.org খুলুন (ছবি আপলোড করে "Direct link" কপি করুন)</a>
+    <input id="pImg" value="${esc(p.imageUrl||'')}" placeholder="এখানে Direct link পেস্ট করুন">
+    <label>আরও ছবি (গ্যালারি, একাধিক হলে কমা দিয়ে আলাদা করুন — ঐচ্ছিক)</label><input id="pExtraImg" value="${esc(p.extraImages||'')}" placeholder="url1, url2, url3">
+    <label>ইমোজি/আইকন (ছবি না থাকলে এটা দেখাবে)</label><input id="pEmoji" value="${esc(p.emoji)}">
+    <label>Purchase Price / কেনা দাম (৳)</label><input id="pPurchase" type="number" value="${p.purchasePrice||''}">
+    <label>Selling Price / বিক্রয় মূল্য (৳)</label><input id="pPrice" type="number" value="${p.price}">
+    <label>আগের দাম (ঐচ্ছিক — ডিসকাউন্ট দেখাতে চাইলে)</label><input id="pOldPrice" type="number" value="${p.originalPrice||''}">
+    <label>স্টক</label><input id="pStock" type="number" value="${p.stock}">
+    <label>Main Category</label>
+    <select id="pCat">${CATEGORIES.map(c=>`<option ${p.category===c?'selected':''}>${c}</option>`).join('')}</select>
+    <label>Sub-category (যেমন: Frock, Romper, T-Shirt)</label><input id="pSubcat" value="${esc(p.subcategory||'')}">
+    <label>Color (ঐচ্ছিক)</label><input id="pColor" value="${esc(p.color||'')}" placeholder="যেমন: Blue, Pink">
+    <label>Age/Size</label>
+    <select id="pAge"><option value="">— নির্বাচন করুন —</option>${AGE_GROUPS.map(a=>`<option ${p.ageGroup===a?'selected':''}>${a}</option>`).join('')}</select>
+    <label>Size Number</label>
+    <select id="pSize"><option value="">— নির্বাচন করুন —</option>${SIZES.map(s=>`<option ${p.size===s?'selected':''}>${s}</option>`).join('')}</select>
+    <details style="margin:-6px 0 12px;font-size:12px;">
+      <summary style="cursor:pointer;color:var(--muted)">📏 Size Chart দেখুন (Chest/Height রেফারেন্স)</summary>
+      <div class="overflow-x" style="margin-top:6px"><table>
+        <tr><th>Size</th><th>বয়স</th><th>Height</th><th>Chest</th></tr>
+        ${SIZE_CHART.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td><td>${r[3]}</td></tr>`).join('')}
+      </table></div>
+    </details>
+    <label>Key Features (প্রতি লাইনে একটা ফিচার লিখুন)</label>
+    <textarea id="pFeatures" rows="4" placeholder="100% Cotton\nSoft & breathable\nMachine washable">${esc(p.features||'')}</textarea>
+    <label style="display:flex;align-items:center;gap:8px;"><input type="checkbox" id="pFreeDel" style="width:auto;margin:0;" ${p.freeDelivery?'checked':''}> Free Delivery</label>
+    <button class="primary" style="width:100%" onclick="saveProduct('${id||''}')">সেভ করুন</button>`);
+}
+async function saveProduct(id){
+  const name=document.getElementById('pName').value.trim();
+  const imageUrl=document.getElementById('pImg').value.trim();
+  const extraImages=document.getElementById('pExtraImg').value.trim();
+  const emoji=document.getElementById('pEmoji').value.trim()||'👶';
+  const price=parseFloat(document.getElementById('pPrice').value)||0;
+  const purchasePrice=parseFloat(document.getElementById('pPurchase').value)||0;
+  const originalPrice=parseFloat(document.getElementById('pOldPrice').value)||0;
+  const stock=parseInt(document.getElementById('pStock').value)||0;
+  const category=document.getElementById('pCat').value;
+  const subcategory=document.getElementById('pSubcat').value.trim();
+  const color=document.getElementById('pColor').value.trim();
+  const ageGroup=document.getElementById('pAge').value;
+  const size=document.getElementById('pSize').value;
+  const features=document.getElementById('pFeatures').value.trim();
+  const freeDelivery=document.getElementById('pFreeDel').checked;
+  if(!name){ alert('প্রোডাক্টের নাম দিন'); return; }
+  const data = {name,emoji,price,purchasePrice,originalPrice,stock,category,subcategory,color,ageGroup,size,imageUrl,extraImages,features,freeDelivery};
+  if(id){ await db.collection('products').doc(id).update(data); }
+  else{ data.createdAt = firebase.firestore.FieldValue.serverTimestamp(); await db.collection('products').add(data); }
+  closeSheet();
+}
+async function deleteProduct(id){
+  if(!confirm('এই প্রোডাক্টটি ডিলিট করবেন?')) return;
+  await db.collection('products').doc(id).delete();
+}
+
+// ---------- 💾 BACKUP (A to Z ডেটা ব্যাকআপ) ----------
+const BACKUP_COLS = [['products','প্রোডাক্ট'],['orders','অর্ডার'],['memos','মেমো'],['offers','অফার'],['banners','ব্যানার'],['ticker','নোটিশ বার'],['visits','ভিজিটর']];
+const RESTORABLE = ['products','memos','offers','banners','ticker']; // Rules অনুযায়ী অর্ডার/ভিজিট ফেরত লেখা যায় না
+function backupLast(){ try{ return Number(localStorage.getItem('bp_last_backup'))||0; }catch(e){ return 0; } }
+function backupOverdue(){ const t = backupLast(); return !t || (Date.now()-t) > 7*86400000; }
+function bkSer(v){
+  if(v && typeof v.toMillis === 'function') return {__ts: v.toMillis()};
+  if(Array.isArray(v)) return v.map(bkSer);
+  if(v && typeof v === 'object'){ const o = {}; Object.keys(v).forEach(k=>{ o[k] = bkSer(v[k]); }); return o; }
+  return v;
+}
+function bkDeser(v){
+  if(Array.isArray(v)) return v.map(bkDeser);
+  if(v && typeof v === 'object'){
+    const ks = Object.keys(v);
+    if(ks.length === 1 && ks[0] === '__ts' && typeof v.__ts === 'number') return firebase.firestore.Timestamp.fromMillis(v.__ts);
+    const o = {}; ks.forEach(k=>{ o[k] = bkDeser(v[k]); }); return o;
+  }
+  return v;
+}
+function bkStamp(){ const d = new Date(), p = n=>String(n).padStart(2,'0'); return d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+'-'+p(d.getHours())+p(d.getMinutes()); }
+function bkDownload(name, text, mime){
+  const blob = new Blob([text], {type: mime});
+  const l = document.createElement('a'); l.href = URL.createObjectURL(blob); l.download = name;
+  document.body.appendChild(l); l.click();
+  setTimeout(()=>{ URL.revokeObjectURL(l.href); l.remove(); }, 1500);
+}
+function bkLastText(){
+  const t = backupLast();
+  if(!t) return '<b style="color:#c92a2a">⚠️ এখনো কোনো ব্যাকআপ নেওয়া হয়নি</b>';
+  const days = Math.floor((Date.now()-t)/86400000);
+  const when = new Date(t).toLocaleString('en-GB',{day:'2-digit',month:'short',year:'numeric',hour:'numeric',minute:'2-digit',hour12:true});
+  return `<b style="color:${days>7?'#c92a2a':'#0e9f6e'}">শেষ ব্যাকআপ: ${esc(when)} (${days===0?'আজ':days+' দিন আগে'})${days>7?' — আবার নিন ⚠️':''}</b>`;
+}
+function renderBackupTab(body){
+  body.innerHTML = `
+    <div class="ordercard" style="cursor:default">
+      <h3 style="margin:0 0 6px">💾 পুরো ডেটার ব্যাকআপ (A to Z)</h3>
+      <p class="note" style="margin:0 0 8px" id="bkLast">${bkLastText()}</p>
+      <p class="note" style="margin:0 0 10px">প্রোডাক্ট, অর্ডার, মেমো, অফার, ব্যানার ও নোটিশ বারের সব ডেটা এক ফাইলে (.json) ডাউনলোড হবে। সপ্তাহে অন্তত একবার নিন এবং ফাইলটা Google Drive বা অন্য জায়গায় রেখে দিন।</p>
+      <label style="display:flex;align-items:center;gap:8px;font-size:13px;margin-bottom:10px"><input type="checkbox" id="bkVisits" style="width:auto;margin:0"> ভিজিটর (visits) ডেটাও নিন <small style="color:var(--muted)">(ভিজিট বেশি হলে Firebase রিড বেশি লাগে)</small></label>
+      <button class="primary" style="width:100%;margin-bottom:8px" onclick="backupAll()">⬇️ পুরো ডেটা ব্যাকআপ ডাউনলোড (JSON)</button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="secondary" style="flex:1;min-width:150px" onclick="backupCsv('orders')">🧾 অর্ডার (Excel/CSV)</button>
+        <button class="secondary" style="flex:1;min-width:150px" onclick="backupCsv('products')">📦 প্রোডাক্ট (Excel/CSV)</button>
+      </div>
+      <div id="bkStatus" class="note" style="margin-top:10px"></div>
+    </div>
+    <div class="ordercard" style="cursor:default">
+      <h3 style="margin:0 0 6px">♻️ ব্যাকআপ থেকে ফিরিয়ে আনুন</h3>
+      <p class="note" style="margin:0 0 8px">ব্যাকআপ ফাইল (.json) বেছে নিন। <b>প্রোডাক্ট, মেমো, অফার, ব্যানার ও নোটিশ বার</b> ফিরে আসবে — একই ID থাকলে ব্যাকআপের ডেটা দিয়ে বদলে যাবে, এখনকার বাড়তি ডেটা মুছবে না। অর্ডার ও ভিজিটর নিরাপত্তা Rules এর কারণে ফেরত লেখা যায় না, ওগুলো শুধু রেকর্ডের জন্য ফাইলে থাকে।</p>
+      <input type="file" id="bkFile" accept=".json,application/json">
+      <button class="secondary" style="width:100%" onclick="restoreBackup()">♻️ ফিরিয়ে আনা শুরু করুন</button>
+    </div>`;
+}
+async function backupAll(){
+  const st = document.getElementById('bkStatus');
+  const withVisits = document.getElementById('bkVisits').checked;
+  const cols = BACKUP_COLS.filter(c=>withVisits || c[0] !== 'visits');
+  const out = {app:'Baby Poshak', version:1, exportedAt:new Date().toISOString(), exportedBy:(auth.currentUser && auth.currentUser.email) || '', counts:{}, data:{}};
+  for(const [name,label] of cols){
+    st.textContent = '⏳ ' + label + ' নেওয়া হচ্ছে...';
+    const snap = await db.collection(name).get();
+    out.data[name] = snap.docs.map(d=>({id:d.id, data:bkSer(d.data())}));
+    out.counts[name] = out.data[name].length;
+  }
+  bkDownload('baby-poshak-backup-' + bkStamp() + '.json', JSON.stringify(out, null, 1), 'application/json');
+  try{ localStorage.setItem('bp_last_backup', String(Date.now())); }catch(e){}
+  st.innerHTML = '✅ ব্যাকআপ ডাউনলোড হয়েছে: ' + cols.map(c=>esc(c[1]) + ' ' + out.counts[c[0]] + 'টি').join(' · ');
+  const ll = document.getElementById('bkLast'); if(ll) ll.innerHTML = bkLastText();
+}
+function csvCell(v){ const s = String(v == null ? '' : v); return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s; }
+function csvText(rows){ return '\uFEFF' + rows.map(r=>r.map(csvCell).join(',')).join('\r\n'); }
+function bkDate(ts){ const ms = ts && ts.toMillis ? ts.toMillis() : 0; return ms ? new Date(ms).toLocaleString('en-GB') : ''; }
+async function backupCsv(kind){
+  const st = document.getElementById('bkStatus');
+  st.textContent = '⏳ ডেটা নেওয়া হচ্ছে...';
+  const snap = await db.collection(kind).get();
+  const docs = snap.docs.map(d=>({id:d.id, ...d.data()}));
+  let rows;
+  if(kind === 'orders'){
+    rows = [['Order ID','Date','Name','Phone','Address','Payment','Transaction ID','Items','Delivery Area','Delivery Charge','Total','Status','Courier','Tracking ID','Customer Confirmed']];
+    docs.sort((a,b)=>(b.createdAt&&b.createdAt.toMillis?b.createdAt.toMillis():0)-(a.createdAt&&a.createdAt.toMillis?a.createdAt.toMillis():0)).forEach(o=>{
+      rows.push([o.id, bkDate(o.createdAt), o.name, o.phone, o.addr, o.pay, o.trxId||'', (o.items||[]).map(i=>i.name+' x'+i.qty+' @'+i.price).join(' | '), o.deliveryArea, o.deliveryCharge, o.total, o.status, o.courier||'', o.trackingId||'', o.customerConfirmed?'Yes':'']);
+    });
+  } else {
+    rows = [['ID','Name','Category','Sub-category','Age','Size','Color','Price','Purchase Price','Original Price','Stock','Sold','Image URL','Features']];
+    docs.forEach(p=>{ rows.push([p.id, p.name, p.category||'', p.subcategory||'', p.ageGroup||'', p.size||'', p.color||'', p.price, p.purchasePrice||0, p.originalPrice||0, p.stock, p.sold||0, p.imageUrl||'', (p.features||'').replace(/\n/g,' / ')]); });
+  }
+  bkDownload('baby-poshak-' + kind + '-' + bkStamp() + '.csv', csvText(rows), 'text/csv;charset=utf-8');
+  st.innerHTML = '✅ ' + (kind==='orders'?'অর্ডার':'প্রোডাক্ট') + ' ' + docs.length + 'টি CSV ফাইলে ডাউনলোড হয়েছে (Excel এ খুলবে)';
+}
+async function restoreBackup(){
+  const f = document.getElementById('bkFile').files[0];
+  if(!f){ alert('আগে ব্যাকআপ ফাইল (.json) বেছে নিন'); return; }
+  let j;
+  try{ j = JSON.parse(await f.text()); }catch(e){ alert('ফাইলটি পড়া যায়নি — সঠিক Baby Poshak ব্যাকআপ (.json) দিন'); return; }
+  if(!j || j.app !== 'Baby Poshak' || !j.data){ alert('এটা Baby Poshak এর ব্যাকআপ ফাইল নয়'); return; }
+  const cols = RESTORABLE.filter(c=>Array.isArray(j.data[c]) && j.data[c].length);
+  if(!cols.length){ alert('ফাইলে ফিরিয়ে আনার মতো ডেটা নেই'); return; }
+  const msg = 'ব্যাকআপের সময়: ' + (j.exportedAt || '?') + '\n\n' + cols.map(c=>c + ': ' + j.data[c].length + 'টি').join('\n') + '\n\nএই ডেটা এখনকার ডেটার ওপর লেখা হবে (একই ID থাকলে ব্যাকআপের মান বসবে, এখনকার বাড়তি ডেটা মুছবে না)। চালিয়ে যাবেন?';
+  if(!confirm(msg)) return;
+  if(!confirm('শেষবার নিশ্চিত করুন — ফিরিয়ে আনা শুরু হবে।')) return;
+  const st = document.getElementById('bkStatus');
+  let total = 0;
+  for(const c of cols){
+    const arr = j.data[c];
+    for(let i = 0; i < arr.length; i += 400){
+      st.textContent = '⏳ ' + c + ' ফিরিয়ে আনা হচ্ছে... ' + Math.min(i+400, arr.length) + '/' + arr.length;
+      const batch = db.batch();
+      arr.slice(i, i+400).forEach(x=>{ if(x && x.id && x.data) batch.set(db.collection(c).doc(x.id), bkDeser(x.data)); });
+      await batch.commit();
+    }
+    total += arr.length;
+  }
+  st.innerHTML = '✅ ' + total + 'টি ডেটা ফিরিয়ে আনা হয়েছে: ' + cols.map(esc).join(', ');
+}
+
+renderAdmin();
+</script>
+<script>
+/* অ্যাডমিনের সেভ/ডিলিট/আপডেট ব্যর্থ হলে এখন বার্তা দেখায় (আগে চুপচাপ ব্যর্থ হতো) */
+function guard(fn){
+  return async function(...args){
+    try{ return await fn.apply(this, args); }
+    catch(e){
+      console.error(e);
+      const code = e && e.code ? e.code : '';
+      alert('❌ কাজটি সম্পন্ন হয়নি' + (code==='permission-denied'
+        ? ' — অনুমতি নেই। Admin ইমেইলে লগইন আছে কি না এবং Firestore Rules Publish করা আছে কি না দেখুন।'
+        : (e && e.message ? ': ' + e.message : '')));
+    }
+  };
+}
+['updateStatus','saveOrder','saveMemo','finalizeMemo','deleteMemo','saveBanner','saveBulkBanners','moveBanner','deleteBanner','moveTicker','deleteTicker','saveOffer','deleteOffer','saveProduct','deleteProduct','restockOrder','destockOrder','backupAll','backupCsv','restoreBackup']
+  .forEach(n=>{ if(typeof window[n] === 'function') window[n] = guard(window[n]); });
+</script>
+</body>
+</html>
