@@ -550,6 +550,10 @@ window.APP_VERSION = '2026-09-24-login-redesign.2';
   .dealer-nav-item{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:10px;border-radius:9px;border:none;background:none;font-family:inherit;font-size:14px;font-weight:600;color:var(--text);cursor:pointer;}
   .dealer-nav-item:hover{background:var(--paper);}
   .dealer-nav-item.active{background:var(--navy);color:#fff;}
+  /* Touch ripple (Dealer/Mechanic/Parts Engineer) */
+  .rp-wave{position:absolute;border-radius:50%;background:rgba(255,105,180,.35);transform:scale(0);animation:rpWaveAnim .55s ease-out forwards;pointer-events:none;z-index:5;}
+  @keyframes rpWaveAnim{ to{ transform:scale(1); opacity:0; } }
+  .rp-active::after{content:"";position:absolute;inset:0;background:rgba(255,105,180,.22);pointer-events:none;border-radius:inherit;z-index:4;}
   /* Battery Warranty Check result cards */
   .b-card{background:var(--card);border-radius:12px;padding:14px;margin-bottom:12px;}
   .b-title{font-size:15px;font-weight:700;color:var(--navy);margin-bottom:10px;}
@@ -1428,6 +1432,7 @@ const DB = {
   // Battery Warranty Check — অ্যাডমিন এক্সেল আপলোড করে, Admin/Dealer/Parts Engineer সবাই Serial No দিয়ে সার্চ করতে পারে
   batteryWarranty: [],
   batteryWarrantyMeta: null,
+  dealerTargets: [],
   nextMemoNo: 1
 };
 let nextPartId = 14423, nextUserId = 3, nextReqNo = 1, nextPeId = 1;
@@ -1617,6 +1622,7 @@ function buildFullPayload(){
     stockHistory: DB.stockHistory,
     batteryWarranty: DB.batteryWarranty,
     batteryWarrantyMeta: DB.batteryWarrantyMeta,
+    dealerTargets: DB.dealerTargets,
     nextMemoNo: DB.nextMemoNo || 1
   };
 }
@@ -1630,7 +1636,7 @@ function markSyncedSnapshot(payload){
 // ফেলে, সেভের ঠিক আগে Firebase থেকে সবচেয়ে ফ্রেশ কপি টেনে id-বাই-id মার্জ করা হয় (নিচের
 // mergeArrayByIdBaseline)। batteryWarranty বাদ (ওর রেকর্ডে .id নেই, প্লেইন array); history/
 // loginHistory/requisitions/drafts/resetRequests বাদ (এগুলো লগ, সাইজ-ক্যাপড, ঝুঁকি কম)।
-const MERGE_KEYS = ['users','parts','partsEngineers','dealerShopParts','dealerMemos','dealerMemoDrafts','stockHistory','catalogs'];
+const MERGE_KEYS = ['users','parts','partsEngineers','dealerShopParts','dealerMemos','dealerMemoDrafts','stockHistory','catalogs','dealerTargets'];
 function mergeArrayByIdBaseline(baseline, local, remote){
   const b = Array.isArray(baseline) ? baseline : [];
   const l = Array.isArray(local) ? local : [];
@@ -1792,6 +1798,7 @@ async function loadDB(){
       if(Array.isArray(saved.stockHistory)) DB.stockHistory = saved.stockHistory;
       if(Array.isArray(saved.batteryWarranty)) DB.batteryWarranty = saved.batteryWarranty;
       if(saved.batteryWarrantyMeta) DB.batteryWarrantyMeta = saved.batteryWarrantyMeta;
+      if(Array.isArray(saved.dealerTargets)) DB.dealerTargets = saved.dealerTargets;
       DB.nextMemoNo = Number(saved.nextMemoNo || 1);
       if(saved.settings){ DB.settings.adminLastActive = saved.settings.adminLastActive || null; DB.settings.adminLastLogin = saved.settings.adminLastLogin || null; }
       if(DB.users.length) nextUserId = Math.max(...DB.users.map(u=>Number(u.id)||0))+1;
@@ -2129,6 +2136,44 @@ function toggleTheme(){
   else{ document.documentElement.setAttribute('data-theme','dark'); localStorage.setItem('mp_theme','dark'); }
 }
 applyTheme();
+
+/* ================= TOUCH RIPPLE (Dealer/Mechanic/Parts Engineer only) =================
+   যেকোনো বক্সে (বাটন, কার্ড, নেভ টাইল, ট্যাব) টাচ/ক্লিক করলে হালকা গোলাপি "ঢেউ" ছড়িয়ে পড়ে
+   আর বক্সটা হালকা গোলাপি রঙ ধরে — ছেড়ে দিলেই (pointerup/cancel) আগের রঙে ফিরে যায়।
+   পুরো অ্যাপ বারবার innerHTML দিয়ে রি-রেন্ডার হয় বলে প্রতিটা এলিমেন্টে আলাদা করে লিসেনার
+   বসানো অসম্ভব/ভঙ্গুর — তাই document-এ event delegation ব্যবহার করা হলো, যা নতুন করে আঁকা
+   যেকোনো বক্সেও স্বয়ংক্রিয়ভাবে কাজ করবে। */
+(function(){
+  const RIPPLE_ROLES = ['dealer','mechanic','partsEngineer'];
+  const RIPPLE_SELECTOR = '.btn, .dealer-stat, .dealer-nav-folder, .dealer-nav-item, .part-card, .tab, .b-card, .pill';
+  function rippleEligible(){
+    return !!(window.DB && DB.session && RIPPLE_ROLES.includes(DB.session.role));
+  }
+  function rippleStart(e){
+    if(!rippleEligible()) return;
+    const target = e.target.closest(RIPPLE_SELECTOR);
+    if(!target) return;
+    if(getComputedStyle(target).position === 'static') target.style.position = 'relative';
+    target.style.overflow = target.style.overflow || 'hidden';
+    const rect = target.getBoundingClientRect();
+    const size = Math.max(rect.width, rect.height) * 1.3;
+    const cx = (e.clientX != null ? e.clientX : rect.left + rect.width/2) - rect.left - size/2;
+    const cy = (e.clientY != null ? e.clientY : rect.top + rect.height/2) - rect.top - size/2;
+    const wave = document.createElement('span');
+    wave.className = 'rp-wave';
+    wave.style.cssText = `left:${cx}px;top:${cy}px;width:${size}px;height:${size}px;`;
+    target.appendChild(wave);
+    wave.addEventListener('animationend', ()=>wave.remove());
+    target.classList.add('rp-active');
+  }
+  function rippleEnd(){
+    document.querySelectorAll('.rp-active').forEach(el=>el.classList.remove('rp-active'));
+  }
+  document.addEventListener('pointerdown', rippleStart, {passive:true});
+  document.addEventListener('pointerup', rippleEnd, {passive:true});
+  document.addEventListener('pointercancel', rippleEnd, {passive:true});
+  document.addEventListener('pointerleave', rippleEnd, {passive:true});
+})();
 
 /* ================= APP LANGUAGE (বাংলা / English) =================
    পুরো সফটওয়্যারের Login Page ও Post-Login UI-এর জন্য একটি সাধারণ Language
@@ -4295,7 +4340,8 @@ function dealerNavGroups(){
     {title:'রেফারেন্স', icon:'📖', items:[
       ['vehicleDb','🚗','Vehicle Model DB'],
       ['catalogue','📚','Catalogue'],
-      ['battery','🔋','Battery Warranty Check']
+      ['battery','🔋','Battery Warranty Check'],
+      ['target','🎯','Target vs Achievement']
     ]},
     {title:'অ্যাকাউন্ট', icon:'👤', items:[
       ['profile','👤','আমার প্রোফাইল']
@@ -5232,6 +5278,7 @@ function dealerPortalRender(){
   else if(dealerManageTab==='stock')content=stockHTML();
   else if(dealerManageTab==='stockHistory')content=stockHistoryHTML();
   else if(dealerManageTab==='battery')content=batteryWarrantyHTML();
+  else if(dealerManageTab==='target')content=dealerTargetViewHTML();
   else if(dealerManageTab==='profile')content=dealerProfileHTML();
   else content=dealerPortalSearchHTML();
   document.getElementById('app').appendChild(el(`<div>${dealerTopbar('ডিলার পোর্টাল', dealerManageTab==='memo')}<div class="wrap has-bottom-nav">${dealerDashboardCards()}${dealerNavHTML()}${content}</div>${dealerBottomNavHTML()}</div><div class="modal-bg" id="modalBg"><div class="modal" id="modalBody"></div></div>`));
@@ -5241,6 +5288,7 @@ function dealerPortalRender(){
   if(dealerManageTab==='memoSearch')wireMemoSearch();
   if(dealerManageTab==='shopParts')wireDealerShopParts();
   if(dealerManageTab==='battery')wireBatteryWarrantyHTML();
+  if(dealerManageTab==='target')wireDealerTargetView();
   if(dealerManageTab==='profile')wireSelfUserProfile('dealerPortal');
   if(dealerManageTab==='search'){
     document.getElementById('dealerUnifiedSearch').addEventListener('input',()=>{clearTimeout(window._dealerSearchTimer);window._dealerSearchTimer=setTimeout(renderDealerUnifiedSearch,180);});
@@ -7016,6 +7064,163 @@ function showDealerStockSummaryModal(dealerId){
     </div>
     <div class="modal-actions"><button class="btn btn-primary" style="width:100%" onclick="closeModal()">বন্ধ করুন</button></div>`);
 }
+/* 🎯 Dealer Target vs Achievement — Admin সেট/আপডেট করে (Target যেকোনো সময়, Achievement মাস
+   শেষে), ডিলার শুধু দেখতে পারে (রিড-ওনলি, এডিট/ডিলিট করার কোনো উপায় নেই)। */
+const DT_MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const DT_CATS = [
+  {key:'tractor', label:'Tractor'},
+  {key:'rotavator', label:'Rotavator'},
+  {key:'lubOil', label:'Lub Oil'},
+  {key:'tyre', label:'Tyre'},
+  {key:'battery', label:'Battery'},
+  {key:'others', label:'Others'}
+];
+const DT_QUARTERS = {Mar:['Jan','Feb','Mar'], Jun:['Apr','May','Jun'], Sep:['Jul','Aug','Sep'], Dec:['Oct','Nov','Dec']};
+function emptyDealerTargetMonths(){
+  const m = {};
+  DT_MONTHS.forEach(mo=>{ m[mo]={}; DT_CATS.forEach(c=>{ m[mo][c.key]={target:0, ach:0}; }); });
+  return m;
+}
+function getDealerTargetRecord(dealerId, year, createIfMissing){
+  let rec = DB.dealerTargets.find(r=>String(r.dealerId)===String(dealerId) && Number(r.year)===Number(year));
+  if(!rec && createIfMissing){
+    rec = {id: Date.now()+Math.floor(Math.random()*100000), dealerId, year, months: emptyDealerTargetMonths(), updatedAt: new Date().toISOString()};
+    DB.dealerTargets.push(rec);
+  }
+  if(rec){
+    DT_MONTHS.forEach(mo=>{
+      if(!rec.months[mo]) rec.months[mo]={};
+      DT_CATS.forEach(c=>{ if(!rec.months[mo][c.key]) rec.months[mo][c.key]={target:0, ach:0}; });
+    });
+  }
+  return rec;
+}
+function dtMonthTotal(monthData, field){ return DT_CATS.reduce((s,c)=>s+Number((monthData[c.key]||{})[field]||0),0); }
+function dtPct(ach,target){ return target>0 ? Math.round((ach/target)*1000)/10 : 0; }
+function dtQuarterTotal(months, endMonth, field){
+  const list = DT_QUARTERS[endMonth];
+  if(!list) return null;
+  return list.reduce((s,mo)=>s+dtMonthTotal(months[mo]||{}, field),0);
+}
+function dtTableRowsHTML(rec, editable){
+  return DT_MONTHS.map(mo=>{
+    const md = rec.months[mo];
+    const mTarget = dtMonthTotal(md,'target'), mAch = dtMonthTotal(md,'ach');
+    const qTarget = dtQuarterTotal(rec.months, mo, 'target'), qAch = dtQuarterTotal(rec.months, mo, 'ach');
+    return `<tr>
+      <td style="padding:5px 6px;border:1px solid var(--line);font-weight:700;white-space:nowrap">${mo}</td>
+      ${DT_CATS.map(c=>{
+        const cell = md[c.key];
+        return editable
+          ? `<td style="border:1px solid var(--line);padding:0"><input type="number" min="0" class="dt-input" data-m="${mo}" data-c="${c.key}" data-f="target" value="${Number(cell.target||0)}" style="width:62px;border:none;padding:5px;text-align:right"></td>
+             <td style="border:1px solid var(--line);padding:0"><input type="number" min="0" class="dt-input" data-m="${mo}" data-c="${c.key}" data-f="ach" value="${Number(cell.ach||0)}" style="width:62px;border:none;padding:5px;text-align:right"></td>`
+          : `<td style="padding:5px 6px;border:1px solid var(--line);text-align:right">${money(cell.target)}</td>
+             <td style="padding:5px 6px;border:1px solid var(--line);text-align:right">${money(cell.ach)}</td>`;
+      }).join('')}
+      <td style="padding:5px 6px;border:1px solid var(--line);text-align:right;font-weight:700">${money(mTarget)}</td>
+      <td style="padding:5px 6px;border:1px solid var(--line);text-align:right;font-weight:700">${money(mAch)}</td>
+      <td style="padding:5px 6px;border:1px solid var(--line);text-align:right;font-weight:700">${dtPct(mAch,mTarget)}%</td>
+      <td style="padding:5px 6px;border:1px solid var(--line);text-align:right;color:var(--muted)">${qTarget!==null?money(qTarget):''}</td>
+      <td style="padding:5px 6px;border:1px solid var(--line);text-align:right;color:var(--muted)">${qAch!==null?money(qAch):''}</td>
+    </tr>`;
+  }).join('');
+}
+function dtTotalRowHTML(rec){
+  const yTarget = DT_MONTHS.reduce((s,mo)=>s+dtMonthTotal(rec.months[mo],'target'),0);
+  const yAch = DT_MONTHS.reduce((s,mo)=>s+dtMonthTotal(rec.months[mo],'ach'),0);
+  return `<tr style="background:var(--paper);font-weight:700">
+    <td style="padding:5px 6px;border:1px solid var(--line)">TTL</td>
+    ${DT_CATS.map(c=>{
+      const ct = DT_MONTHS.reduce((s,mo)=>s+Number((rec.months[mo][c.key]||{}).target||0),0);
+      const ca = DT_MONTHS.reduce((s,mo)=>s+Number((rec.months[mo][c.key]||{}).ach||0),0);
+      return `<td style="padding:5px 6px;border:1px solid var(--line);text-align:right">${money(ct)}</td><td style="padding:5px 6px;border:1px solid var(--line);text-align:right">${money(ca)}</td>`;
+    }).join('')}
+    <td style="padding:5px 6px;border:1px solid var(--line);text-align:right">${money(yTarget)}</td>
+    <td style="padding:5px 6px;border:1px solid var(--line);text-align:right">${money(yAch)}</td>
+    <td style="padding:5px 6px;border:1px solid var(--line);text-align:right">${dtPct(yAch,yTarget)}%</td>
+    <td style="padding:5px 6px;border:1px solid var(--line)"></td>
+    <td style="padding:5px 6px;border:1px solid var(--line)"></td>
+  </tr>`;
+}
+function dtTableHeadHTML(){
+  return `<thead>
+    <tr>
+      <th rowspan="2" style="padding:5px 6px;border:1px solid var(--line)">Month</th>
+      ${DT_CATS.map(c=>`<th colspan="2" style="padding:5px 6px;border:1px solid var(--line)">${c.label}</th>`).join('')}
+      <th colspan="3" style="padding:5px 6px;border:1px solid var(--line)">Monthly Total</th>
+      <th colspan="2" style="padding:5px 6px;border:1px solid var(--line)">Quarterly Total</th>
+    </tr>
+    <tr>
+      ${DT_CATS.map(()=>`<th style="padding:5px 6px;border:1px solid var(--line)">Target</th><th style="padding:5px 6px;border:1px solid var(--line)">Ach.</th>`).join('')}
+      <th style="padding:5px 6px;border:1px solid var(--line)">Target</th><th style="padding:5px 6px;border:1px solid var(--line)">Ach.</th><th style="padding:5px 6px;border:1px solid var(--line)">%</th>
+      <th style="padding:5px 6px;border:1px solid var(--line)">Target</th><th style="padding:5px 6px;border:1px solid var(--line)">Ach.</th>
+    </tr>
+  </thead>`;
+}
+function showAdminDealerTargetModal(dealerId, year){
+  year = year || new Date().getFullYear();
+  const u = DB.users.find(x=>Number(x.id)===Number(dealerId));
+  if(!u) return;
+  const rec = getDealerTargetRecord(dealerId, year, true);
+  openModal(`<h3>🎯 ${escHtml(u.name)} — Target vs Achievement</h3>
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
+      <label style="font-size:13px">বছর:</label>
+      <select id="dtYearSelect" style="padding:6px 10px;border:1px solid var(--line);border-radius:8px">
+        ${[year-1,year,year+1].map(y=>`<option value="${y}" ${y===year?'selected':''}>${y}</option>`).join('')}
+      </select>
+      <span class="hint" style="margin-left:auto">Target যেকোনো সময় বদলানো যায়; Achievement মাস শেষে পূরণ করুন</span>
+    </div>
+    <div style="overflow-x:auto">
+      <table style="border-collapse:collapse;font-size:12px;min-width:1050px">
+        ${dtTableHeadHTML()}
+        <tbody>${dtTableRowsHTML(rec,true)}${dtTotalRowHTML(rec)}</tbody>
+      </table>
+    </div>
+    <div class="modal-actions" style="margin-top:14px">
+      <button class="btn btn-ghost" onclick="closeModal()">বাতিল</button>
+      <button class="btn btn-primary" id="dtSaveBtn">✅ সেভ করুন</button>
+    </div>`);
+  document.getElementById('dtYearSelect').onchange=(e)=>showAdminDealerTargetModal(dealerId, Number(e.target.value));
+  document.getElementById('dtSaveBtn').onclick=async()=>{
+    const r = getDealerTargetRecord(dealerId, year, true);
+    document.querySelectorAll('.dt-input').forEach(inp=>{
+      const mo=inp.dataset.m, c=inp.dataset.c, f=inp.dataset.f;
+      r.months[mo][c][f] = Number(inp.value||0);
+    });
+    r.updatedAt = new Date().toISOString();
+    logHistory(`Dealer Target আপডেট: ${u.name} (${year})`);
+    await saveDB();
+    closeModal();
+    showSavedToast('✅ Target/Achievement সেভ হয়েছে');
+  };
+}
+function dealerTargetViewHTML(){
+  const u = currentDealer();
+  const year = window._dtViewYear || new Date().getFullYear();
+  window._dtViewYear = year;
+  if(!u) return '';
+  const rec = getDealerTargetRecord(u.id, year, false);
+  return `<div class="card-head"><h3>🎯 Target vs Achievement</h3></div>
+  <div class="card">
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px">
+      <label style="font-size:13px">বছর:</label>
+      <select id="dtViewYearSelect" style="padding:6px 10px;border:1px solid var(--line);border-radius:8px">
+        ${[year-1,year,year+1].map(y=>`<option value="${y}" ${y===year?'selected':''}>${y}</option>`).join('')}
+      </select>
+    </div>
+    ${!rec ? `<div class="empty">এই বছরের জন্য এখনো কোনো Target সেট করা হয়নি।</div>` : `
+    <div style="overflow-x:auto">
+      <table style="border-collapse:collapse;font-size:12px;min-width:1000px">
+        ${dtTableHeadHTML()}
+        <tbody>${dtTableRowsHTML(rec,false)}${dtTotalRowHTML(rec)}</tbody>
+      </table>
+    </div>`}
+  </div>`;
+}
+function wireDealerTargetView(){
+  const sel=document.getElementById('dtViewYearSelect');
+  if(sel) sel.onchange=(e)=>{ window._dtViewYear=Number(e.target.value); dealerManageTab='target'; go('dealerPortal'); };
+}
 function usersTable(peFilter){
   if(DB.users.length===0) return `<div class="empty">কোনো ইউজার নেই</div>`;
   const pending = DB.users.filter(u=>u.pending && !isDeletedAccount(u));
@@ -7038,7 +7243,7 @@ function usersTable(peFilter){
   }
   if(approved.length){
     html += `<div style="overflow:auto"><table class="users-table">
-      <thead><tr><th style="text-align:center">ডিলার বা মেকানিক নাম</th><th style="text-align:center">মোবাইল নম্বর</th><th style="text-align:center">ধরন</th><th style="text-align:center">Parts Engineer</th><th style="text-align:center">রিজিয়ন</th><th style="text-align:center">স্ট্যাটাস</th><th style="text-align:center">সংশোধন</th><th style="text-align:center">চালু/বন্ধ</th><th style="text-align:center">ডিলিট</th></tr></thead>
+      <thead><tr><th style="text-align:center">ডিলার বা মেকানিক নাম</th><th style="text-align:center">মোবাইল নম্বর</th><th style="text-align:center">ধরন</th><th style="text-align:center">Parts Engineer</th><th style="text-align:center">রিজিয়ন</th><th style="text-align:center">স্ট্যাটাস</th><th style="text-align:center">🎯 Target</th><th style="text-align:center">সংশোধন</th><th style="text-align:center">চালু/বন্ধ</th><th style="text-align:center">ডিলিট</th></tr></thead>
       <tbody>
       ${approved.map(u=>`<tr>
         <td data-label="ডিলার বা মেকানিক নাম">${u.role==='dealer'?`<a href="javascript:void(0)" onclick="showDealerStockSummaryModal(${u.id})" style="color:var(--navy);font-weight:700;text-decoration:underline;cursor:pointer;" title="Stock Summary দেখুন">${escHtml(u.name)}</a>`:escHtml(u.name)}</td>
@@ -7047,6 +7252,7 @@ function usersTable(peFilter){
         <td data-label="Parts Engineer">${u.peName || '<span style="color:var(--muted)">Unassigned</span>'}</td>
         <td data-label="রিজিয়ন">${u.region || '-'}</td>
         <td data-label="স্ট্যাটাস"><span class="badge ${u.active?'active':'inactive'}">${u.active?'সক্রিয়':'নিষ্ক্রিয়'}</span></td>
+        <td data-label="🎯 Target" style="text-align:center">${u.role==='dealer'?`<button class="btn btn-ghost btn-sm" onclick="showAdminDealerTargetModal(${u.id})" title="Target/Achievement সেট করুন">🎯</button>`:'-'}</td>
         <td data-label="সংশোধন" style="text-align:center"><button class="btn btn-ghost btn-sm" onclick="editUser(${u.id})">✏️</button></td>
         <td data-label="চালু/বন্ধ" style="text-align:center"><button class="btn ${u.active?'btn-danger':'btn-navy'} btn-sm" onclick="toggleUser(${u.id})">${u.active?'🔒 বন্ধ':'🔓 চালু'}</button></td>
         <td data-label="ডিলিট" style="text-align:center"><button class="btn btn-danger btn-sm" onclick="deleteUser(${u.id})">🗑️</button></td>
