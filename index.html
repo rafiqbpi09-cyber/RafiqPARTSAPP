@@ -1359,6 +1359,22 @@ window.APP_VERSION = '2026-10-19-dealer-header-layout.9';
   .dlg-st-sent{background:#d9f2e3;color:#0f5f33;} .dlg-st-failed{background:#fde8e8;color:#9b1c1c;}
   .dlg-st-pending{background:#fff0d6;color:#8a5200;} .dlg-st-notsent{background:#e5e7eb;color:#374151;}
   .dlg-muted td{opacity:.8;} .dlg-wrap code{font-size:12px;}
+
+  /* Due List / আমার হিসাব — ৪টি বক্সে hover/touch করলে ঝলকানি দিয়ে রঙ ধারণ */
+  .dlg-kpi{position:relative;overflow:hidden;cursor:pointer;transition:transform .25s ease,background .35s ease,color .35s ease,box-shadow .35s ease,border-color .35s ease;}
+  .dlg-kpi::after{content:"";position:absolute;top:0;left:-130%;width:55%;height:100%;background:linear-gradient(120deg,transparent,rgba(255,255,255,.75),transparent);transform:skewX(-20deg);pointer-events:none;}
+  .dlg-kpi:hover,.dlg-kpi:active{transform:translateY(-4px) scale(1.035);color:#fff;border-color:transparent;box-shadow:0 12px 24px rgba(0,0,0,.28);animation:dlgFlash .55s ease;}
+  .dlg-kpi:hover::after,.dlg-kpi:active::after{animation:dlgShine .85s ease;}
+  .dlg-kpi:nth-child(1):hover,.dlg-kpi:nth-child(1):active{background:linear-gradient(135deg,#e53935,#ff7043);}
+  .dlg-kpi:nth-child(2):hover,.dlg-kpi:nth-child(2):active{background:linear-gradient(135deg,#1fa65a,#4cd98a);}
+  .dlg-kpi:nth-child(3):hover,.dlg-kpi:nth-child(3):active{background:linear-gradient(135deg,#1e63d6,#4aa8ff);}
+  .dlg-kpi:nth-child(4):hover,.dlg-kpi:nth-child(4):active{background:linear-gradient(135deg,#8e24aa,#c06ad6);}
+  .dlg-kpi:hover div,.dlg-kpi:hover b,.dlg-kpi:hover span,.dlg-kpi:active div,.dlg-kpi:active b,.dlg-kpi:active span{color:#fff !important;}
+  @keyframes dlgFlash{0%{filter:brightness(1.9) saturate(1.4);}100%{filter:brightness(1) saturate(1);}}
+  @keyframes dlgShine{0%{left:-130%;}100%{left:150%;}}
+  .dlg-hero{border-radius:16px;padding:20px;text-align:center;color:#fff;margin-bottom:14px;box-shadow:0 6px 18px rgba(0,0,0,.18);}
+  .dlg-hero div{font-size:14px;opacity:.95;} .dlg-hero b{display:block;font-size:34px;margin-top:6px;}
+  .dlg-hero-due{background:linear-gradient(135deg,#d32f2f,#ff7043);} .dlg-hero-adv{background:linear-gradient(135deg,#1fa65a,#4cd98a);} .dlg-hero-ok{background:linear-gradient(135deg,#1e63d6,#4aa8ff);}
 </style>
 </head>
 <body>
@@ -4167,6 +4183,7 @@ ROUTES.mechanicDashboard = function(){
   if(mechanicTab === 'profile'){
     wireSelfUserProfile('mechanicDashboard');
   }
+  try{ DLG.selfHook(); }catch(e){}
 };
 
 /* ---- Parts Engineer Login ---- */
@@ -5489,6 +5506,7 @@ function dealerPortalRender(){
     document.getElementById('dealerUnifiedSearch').addEventListener('input',()=>{clearTimeout(window._dealerSearchTimer);window._dealerSearchTimer=setTimeout(renderDealerUnifiedSearch,180);});
     document.getElementById('dealerUnifiedSearchBtn').onclick=renderDealerUnifiedSearch;
   }
+  try{ DLG.selfHook(); }catch(e){}
 }
 ROUTES.dealerPortal=function(){dealerPortalRender();};
 
@@ -9071,7 +9089,7 @@ const SUMMARY_KEYS = ['opening','receivable','payable','deposit','payment','retu
 const SUMMARY_LABELS = {opening:'Opening',receivable:'পাওনা',payable:'দেনা',deposit:'জমা',payment:'প্রদান',return:'ফেরত',adjustment:'সমন্বয়'};
 
 const LG = {
-  vouchers:[], summaries:{}, perms:{}, audit:[], messages:{}, templates:null, msgBusy:false, msgCtx:null,
+  vouchers:[], summaries:{}, perms:{}, audit:[], messages:{}, parties:{}, msgBusy:false, msgCtx:null,
   loaded:false, loading:false, error:null, saving:false, opId:null,
   ui:{view:'due', dealerId:'', from:'', to:'', type:'', q:'', dueQ:'', dueOnly:true, auditQ:'', msgQ:'', msgStatus:'', msgDealer:'', msgLang:'bn'}
 };
@@ -9218,18 +9236,25 @@ function allowedTypes(){
 }
 function canEnter(type){ return allowedTypes().includes(type); }
 
+function allPartyList(){
+  const users=((typeof DB!=='undefined' && DB.users)||[]).filter(u=>u && !u.pending && !isDeletedAccount(u))
+    .map(u=>({id:String(u.id), name:u.name||('Dealer '+u.id), phone:u.phone||'', address:u.address||u.shopAddress||'', kind:u.role==='mechanic'?'mechanic':'dealer', hasLogin:true, peId:u.peId}));
+  const parties=Object.keys(LG.parties||{}).map(k=>LG.parties[k]).filter(p=>p && p.id)
+    .map(p=>({id:String(p.id), name:p.name, phone:p.phone||'', address:p.address||'', kind:p.kind||'other', hasLogin:false, createdById:p.createdById, createdByRole:p.createdByRole}));
+  return users.concat(parties);
+}
 function ledgerDealers(){
-  const a=actor();
-  let list=((typeof DB!=='undefined' && DB.users)||[]).filter(u=>u && u.role!=='mechanic' && !u.pending && !isDeletedAccount(u));
-  if(a && a.role==='partsEngineer') list=list.filter(u=>String(u.peId)===String(a.id));
-  return list.slice().sort((x,y)=>String(x.name||'').localeCompare(String(y.name||''),'bn'));
+  const a=actor(); let list=allPartyList();
+  if(a && a.role==='partsEngineer') list=list.filter(p=>p.hasLogin ? String(p.peId)===String(a.id) : (p.createdByRole==='partsEngineer' && String(p.createdById)===String(a.id)));
+  return list.sort((x,y)=>String(x.name||'').localeCompare(String(y.name||''),'bn'));
 }
 function dealerInfo(id){
-  const u=((typeof DB!=='undefined' && DB.users)||[]).find(x=>String(x.id)===String(id));
-  if(u) return {id:String(u.id), name:u.name||('Dealer '+u.id), phone:u.phone||'', address:u.address||u.shopAddress||'', known:true};
+  const p=allPartyList().find(x=>x.id===String(id));
+  if(p) return Object.assign({known:true},p);
   const v=LG.vouchers.find(x=>String(x.dealerId)===String(id));
-  return {id:String(id), name:v?v.dealerName:('Dealer '+id), phone:'', address:'', known:false};
+  return {id:String(id), name:v?v.dealerName:('Party '+id), phone:'', address:'', kind:(v&&v.partyKind)||'dealer', known:false};
 }
+
 function visibleVouchers(){
   const a=actor();
   if(a && a.role==='partsEngineer'){
@@ -9256,11 +9281,11 @@ async function loadAll(){
       jobs.push(withTimeout(R('permissions/'+permKey(a)).once('value'),20000));
     }
     const mi=jobs.length;
-    jobs.push(withTimeout(R('messages').once('value'),20000), withTimeout(R('settings/messageTemplates').once('value'),20000));
+    jobs.push(withTimeout(R('messages').once('value'),20000), withTimeout(R('parties').once('value'),20000));
     const res=await Promise.all(jobs);
     LG.vouchers=snapList(res[0]).filter(v=>v && v.voucherNo && v.dealerId!=null && Number.isFinite(v.effectPaisa));
     LG.summaries=(res[1]&&res[1].val&&res[1].val())||{};
-    LG.messages=(res[mi]&&res[mi].val&&res[mi].val())||{}; LG.templates=(res[mi+1]&&res[mi+1].val&&res[mi+1].val())||null;
+    LG.messages=(res[mi]&&res[mi].val&&res[mi].val())||{}; LG.parties=(res[mi+1]&&res[mi+1].val&&res[mi+1].val())||{};
     if(a.role==='admin'){
       LG.perms=(res[2]&&res[2].val&&res[2].val())||{};
       LG.audit=snapList(res[3]).reverse();
@@ -9300,8 +9325,8 @@ function normalizeInput(inp, a){
     return out;
   }
   const dealer=ledgerDealers().find(u=>String(u.id)===String(inp.dealerId));
-  if(!dealer) throw E('VALIDATION','তালিকা থেকে একজন বিদ্যমান ডিলার নির্বাচন করুন');
-  out.dealerId=String(dealer.id); out.dealerName=dealer.name||('Dealer '+dealer.id);
+  if(!dealer) throw E('VALIDATION','তালিকা থেকে একজন ডিলার/পার্টি নির্বাচন করুন');
+  out.dealerId=String(dealer.id); out.dealerName=dealer.name||('Dealer '+dealer.id); out.partyKind=dealer.kind;
   const paisa=toPaisa(inp.amount);
   if(!Number.isFinite(paisa) || paisa<=0) throw E('VALIDATION','সঠিক পরিমাণ লিখুন (০-এর বেশি, সর্বোচ্চ ২ দশমিক ঘর)');
   if(paisa>MAX_PAISA) throw E('VALIDATION','পরিমাণ অনেক বেশি — সঠিক কিনা যাচাই করুন');
@@ -9356,6 +9381,7 @@ async function saveVoucher(inp){
     createdAt:new Date().toISOString(), opId:opId
   };
   if(n.billNo) rec.billNo=n.billNo;
+  if(n.partyKind) rec.partyKind=n.partyKind;
   if(isRev){ rec.refVoucher=orig.voucherNo; rec.origType=n.origType; rec.origAmountPaisa=n.origAmountPaisa; rec.reason=n.reason; }
 
   let claimed=false, revClaimed=false, summaryApplied=false;
@@ -9503,7 +9529,7 @@ function render(){
   const admin=isAdmin();
   const views=[['due','📋 Due List / সারাংশ'],['ledger','📒 Ledger / Statement']];
   views.push(['msg','✉️ Payment Message History']);
-  if(admin){ views.push(['audit','🕵️ Audit Log']); views.push(['perm','🔑 অনুমতি']); views.push(['tpl','📝 মেসেজ টেমপ্লেট']); }
+  if(admin){ views.push(['audit','🕵️ Audit Log']); views.push(['perm','🔑 অনুমতি']); }
   if(!views.some(v=>v[0]===LG.ui.view)) LG.ui.view='due';
   const warn=[];
   if(typeof fbAuth!=='undefined' && !fbAuth.currentUser) warn.push('⚠️ Cloud সাইন-ইন সক্রিয় নেই — নতুন লেনদেন সেভ হবে না। লগআউট করে আবার লগইন করুন।');
@@ -9514,6 +9540,7 @@ function render(){
         <h3 style="margin:0">📒 দেনা-পাওনা হিসাব (Dealer Ledger)</h3>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           ${allowedTypes().length ? `<button class="btn btn-primary btn-sm" style="width:auto" onclick="DLG.openEntry()">➕ নতুন লেনদেন</button>`:''}
+          ${canCreateParty() ? `<button class="btn btn-ghost btn-sm" onclick="DLG.openParty()">👤 নতুন পার্টি</button>` : ''}
           <button class="btn btn-ghost btn-sm" onclick="DLG.reload()">🔄 রিফ্রেশ</button>
         </div>
       </div>
@@ -9529,7 +9556,6 @@ function renderBody(){
   if(LG.ui.view==='due') b.innerHTML=dueHTML();
   else if(LG.ui.view==='ledger') b.innerHTML=ledgerHTML();
   else if(LG.ui.view==='msg') b.innerHTML=historyHTML();
-  else if(LG.ui.view==='tpl' && isAdmin()) b.innerHTML=tplHTML();
   else if(LG.ui.view==='audit' && isAdmin()) b.innerHTML=auditHTML();
   else if(LG.ui.view==='perm' && isAdmin()) b.innerHTML=permHTML();
   if(LG.ui.view==='due') renderDueResults();
@@ -9557,7 +9583,7 @@ function dueHTML(){
   return `
   <div class="card">
     <div class="dlg-filters">
-      <input type="text" id="dlgDueQ" placeholder="🔍 ডিলারের নাম / মোবাইল / ID" value="${esc(LG.ui.dueQ)}" oninput="DLG.setDueQ(this.value)">
+      <input type="text" id="dlgDueQ" placeholder="🔍 নাম / মোবাইল / ID" value="${esc(LG.ui.dueQ)}" oninput="DLG.setDueQ(this.value)">
       <label class="dlg-chk"><input type="checkbox" id="dlgDueOnly" ${LG.ui.dueOnly?'checked':''} onchange="DLG.setDueOnly(this.checked)"> শুধু বকেয়া (পাওনা > ০)</label>
       <div style="display:flex;gap:8px;margin-left:auto;flex-wrap:wrap">
         <button class="btn btn-ghost btn-sm" onclick="DLG.printDue()">🖨️ Print</button>
@@ -9575,17 +9601,17 @@ function renderDueResults(){
   const admin=isAdmin(); const bad=rows.filter(r=>r.bad);
   box.innerHTML=`
     <div class="dlg-kpis">
-      <div class="dlg-kpi"><div>মোট পাওনা (ডিলারের কাছে)</div><b class="dlg-due">${fmt(recv)}</b></div>
-      <div class="dlg-kpi"><div>মোট দেনা/অগ্রিম (ডিলারকে)</div><b class="dlg-adv">${fmt(pay)}</b></div>
+      <div class="dlg-kpi"><div>মোট পাওনা (পার্টির কাছে)</div><b class="dlg-due">${fmt(recv)}</b></div>
+      <div class="dlg-kpi"><div>মোট দেনা/অগ্রিম (পার্টিকে)</div><b class="dlg-adv">${fmt(pay)}</b></div>
       <div class="dlg-kpi"><div>নিট ব্যালেন্স</div><b>${balHTML(recv-pay)}</b></div>
-      <div class="dlg-kpi"><div>বকেয়াদার ডিলার</div><b>${dueCnt} জন</b></div>
+      <div class="dlg-kpi"><div>বকেয়াদার পার্টি</div><b>${dueCnt} জন</b></div>
     </div>
     ${bad.length && admin ? `<div style="margin:8px 0"><button class="btn btn-navy btn-sm" onclick="DLG.recalcAll()">🛠️ ${bad.length}টি ডিলারের ব্যালেন্স মিলিয়ে নিন (Recalculate)</button></div>`:''}
     <div class="dlg-scroll"><table class="dlg-table">
-      <thead><tr><th>#</th><th>ডিলার</th><th>Opening</th><th>পাওনা</th><th>দেনা</th><th>জমা</th><th>প্রদান</th><th>ফেরত</th><th>সমন্বয়</th><th>বর্তমান ব্যালেন্স</th><th>শেষ জমা</th><th></th></tr></thead>
+      <thead><tr><th>#</th><th>পার্টি</th><th>Opening</th><th>পাওনা</th><th>দেনা</th><th>জমা</th><th>প্রদান</th><th>ফেরত</th><th>সমন্বয়</th><th>বর্তমান ব্যালেন্স</th><th>শেষ জমা</th><th></th></tr></thead>
       <tbody>${rows.length ? rows.map((r,i)=>`<tr>
         <td>${i+1}</td>
-        <td><b>${esc(r.info.name)}</b><div class="dlg-sub">${esc(r.info.phone)} · ID ${esc(r.id)}${r.info.known?'':' · (মুছে ফেলা)'}</div></td>
+        <td><b>${esc(r.info.name)}</b><div class="dlg-sub">${[KIND_LABELS[r.info.kind]||'', r.info.phone||'', 'ID '+r.id].filter(Boolean).map(esc).join(' · ')}${r.info.known?'':' · (মুছে ফেলা)'}</div></td>
         <td class="n">${num(r.g.opening)}</td><td class="n">${num(r.g.receivable)}</td><td class="n">${num(r.g.payable)}</td>
         <td class="n">${num(r.g.deposit)}</td><td class="n">${num(r.g.payment)}</td><td class="n">${num(r.g.return)}</td><td class="n">${num(r.g.adjustment)}</td>
         <td class="n"><b>${balHTML(r.g.balance)}</b>${r.bad?`<div class="dlg-sub dlg-due">⚠️ সংরক্ষিত: ${num(r.stored)}</div>`:''}</td>
@@ -9599,11 +9625,11 @@ function renderDueResults(){
 /* ------------------------------ UI: Ledger / Statement ------------------------------ */
 function ledgerHTML(){
   const dealers=ledgerDealers();
-  const opts=dealers.map(u=>`<option value="${esc(u.id)}" ${String(u.id)===String(LG.ui.dealerId)?'selected':''}>${esc(u.name)} (${esc(u.phone||'')} · ID ${esc(u.id)})</option>`).join('');
+  const opts=partyOptions(dealers,LG.ui.dealerId);
   return `
   <div class="card">
     <div class="dlg-filters">
-      <select id="dlgDealer" onchange="DLG.setF('dealerId',this.value)"><option value="">— সব ডিলার (Journal) —</option>${opts}</select>
+      <select id="dlgDealer" onchange="DLG.setF('dealerId',this.value)"><option value="">— সব পার্টি (Journal) —</option>${opts}</select>
       <label>থেকে <input type="date" id="dlgFrom" value="${esc(LG.ui.from)}" onchange="DLG.setF('from',this.value)"></label>
       <label>পর্যন্ত <input type="date" id="dlgTo" value="${esc(LG.ui.to)}" onchange="DLG.setF('to',this.value)"></label>
       <select id="dlgType" onchange="DLG.setF('type',this.value)"><option value="">সব ধরন</option>${Object.keys(TYPES).map(k=>`<option value="${k}" ${LG.ui.type===k?'selected':''}>${esc(TYPES[k].short)}</option>`).join('')}</select>
@@ -9642,7 +9668,7 @@ function renderLedgerResults(){
             <td class="n">${r.dr?num(r.dr):''}</td><td class="n">${r.cr?num(r.cr):''}</td>
             ${single?`<td class="n"><b>${balHTML(r.run)}</b></td>`:''}
             <td>${esc(v.createdBy||'')}</td><td class="dlg-sub">${esc(tsText(v))}</td>
-            <td style="white-space:nowrap">${(canMessage() && v.type==='DEPOSIT' && !wasRev)?`<button class="btn btn-ghost btn-sm" title="Payment Confirmation Message" onclick="DLG.openMessage('${esc(v.voucherNo)}')">✉️</button> `:''}${(admin && !isRev && !wasRev)?`<button class="btn btn-danger btn-sm" onclick="DLG.openReverse('${esc(v.voucherNo)}')">↩️ Reverse</button>`:''}</td>
+            <td style="white-space:nowrap">${(canMessage() && (v.type==='DEPOSIT'||v.type==='SALE') && !wasRev)?`<button class="btn btn-ghost btn-sm" title="Payment Confirmation Message" onclick="DLG.openMessage('${esc(v.voucherNo)}')">✉️</button> `:''}${(admin && !isRev && !wasRev)?`<button class="btn btn-danger btn-sm" onclick="DLG.openReverse('${esc(v.voucherNo)}')">↩️ Reverse</button>`:''}</td>
           </tr>`;}).join('') : `<tr><td colspan="${cols}" class="dlg-empty">এই ফিল্টারে কোনো লেনদেন নেই</td></tr>`}
       </tbody>
       <tfoot><tr><td colspan="${single?6:6}"><b>মোট (${st.rows.length}টি লেনদেন)</b></td><td class="n"><b>${num(st.dr)}</b></td><td class="n"><b>${num(st.cr)}</b></td>${single?`<td class="n"><b>${st.closing==null?'—':balHTML(st.closing)}</b></td>`:''}<td colspan="3"></td></tr></tfoot>
@@ -9694,8 +9720,8 @@ function openEntry(dealerId, prefill){
   const types=allowedTypes();
   modal(`
     <h3 style="margin:0 0 12px">➕ নতুন লেনদেন</h3>
-    <div class="field"><label>ডিলার (বিদ্যমান)</label><select id="dlgFDealer" onchange="DLG.entryPreview()">
-      <option value="">— নির্বাচন করুন —</option>${dealers.map(u=>`<option value="${esc(u.id)}" ${String(u.id)===sel?'selected':''}>${esc(u.name)} (${esc(u.phone||'')} · ID ${esc(u.id)})</option>`).join('')}</select></div>
+    <div class="field"><label>পার্টি (ডিলার / মেকানিক / কাস্টমার / অন্যান্য)</label><select id="dlgFDealer" onchange="DLG.entryPreview()">
+      <option value="">— নির্বাচন করুন —</option>${partyOptions(dealers,sel)}</select>${canCreateParty()?'<button type="button" class="btn btn-ghost btn-sm" style="margin-top:6px" onclick="DLG.openParty(\'entry\')">➕ নতুন পার্টি (কাস্টমার/অন্যান্য) যোগ করুন</button>':''}</div>
     <div class="field"><label>লেনদেনের ধরন</label><select id="dlgFType" onchange="DLG.entryTypeChanged()">
       ${types.map(k=>`<option value="${k}" ${prefill.type===k?'selected':''}>${esc(TYPES[k].bn)}</option>`).join('')}</select></div>
     <div class="field" id="dlgFSideBox" style="display:none"><label>দিক</label><select id="dlgFSide" onchange="DLG.entryPreview()">
@@ -9710,7 +9736,7 @@ function openEntry(dealerId, prefill){
         <option value="bn">বাংলা</option><option value="en">English</option><option value="both">বাংলা + English</option></select></div>
       <button type="button" class="btn btn-ghost btn-sm" onclick="DLG.entryMsgPreview()">👁️ Preview Message</button>
       <pre class="dlg-msgprev" id="dlgFMsgPrev" style="display:none"></pre>
-      <p class="hint" style="margin:6px 0 0">পেমেন্ট সেভ ও Database-এ নিশ্চিত হওয়ার পর Send SMS / Send WhatsApp বোতাম আসবে।</p>
+      <p class="hint" style="margin:6px 0 0">সেভ ও Database-এ নিশ্চিত হওয়ার পর Send WhatsApp / Send SMS বোতাম আসবে। (পার্টসের নাম ‘বিবরণ’-এ লিখলে মেসেজে যাবে)</p>
     </div>
     <div id="dlgFPreview" class="dlg-preview"></div>
     <div id="dlgFErr" class="dlg-alert" style="display:none"></div>
@@ -9725,7 +9751,8 @@ function entryTypeChanged(){
   $('dlgFSideBox').style.display = def.needSide ? '' : 'none';
   $('dlgFMethodBox').style.display = def.needMethod ? '' : 'none';
   const bb=$('dlgFBillBox'); if(bb) bb.style.display = ['DEPOSIT','SALE','RETURN'].includes(t.value) ? '' : 'none';
-  const mb=$('dlgFMsgBox'); if(mb) mb.style.display = (t.value==='DEPOSIT' && canMessage()) ? '' : 'none';
+  const mb=$('dlgFMsgBox'); if(mb) mb.style.display = ((t.value==='DEPOSIT'||t.value==='SALE') && canMessage()) ? '' : 'none';
+  const dd=$('dlgFDesc'); if(dd) dd.placeholder = t.value==='SALE' ? 'পার্টসের নাম/পরিমাণ, যেমন: Brake Pad x2, Oil Filter x1' : 'যেমন: Invoice #123 / নগদ জমা';
   entryPreview();
 }
 function entryPreview(){
@@ -9743,7 +9770,7 @@ async function submitEntry(){
   const inp={ opId:LG.opId, dealerId:$('dlgFDealer').value, type:$('dlgFType').value, side:$('dlgFSide').value,
     date:$('dlgFDate').value, amount:$('dlgFAmount').value, method:$('dlgFMethod').value, description:$('dlgFDesc').value,
     billNo: (['DEPOSIT','SALE','RETURN'].includes($('dlgFType').value) && $('dlgFBill')) ? $('dlgFBill').value : '' };
-  const wantMsg=(inp.type==='DEPOSIT' && canMessage()); const msgLang=$('dlgFLang')?$('dlgFLang').value:'bn';
+  const wantMsg=((inp.type==='DEPOSIT'||inp.type==='SALE') && canMessage()); const msgLang=$('dlgFLang')?$('dlgFLang').value:'bn';
   err.style.display='none';
   LG.saving=true; btn.disabled=true; btn.textContent='⏳ সেভ হচ্ছে...';
   try{
@@ -9878,26 +9905,42 @@ function exportDue(){
    ====================================================================== */
 const MSG_LANGS = {bn:'বাংলা', en:'English', both:'বাংলা + English'};
 const MSG_CHANNELS = {sms:'SMS', wa:'WhatsApp'};
-const DEFAULT_TEMPLATES = {
-  bn:
+// pay = টাকা জমার নিশ্চিতকরণ, sale = পার্টস সরবরাহ (বিক্রয়) বার্তা। টেমপ্লেট কোডে নির্দিষ্ট।
+const TEMPLATES = {
+  pay:{
+    bn:
 "প্রিয় {dealerName},\n\nআপনার বিলের বিপরীতে ৳{paid} টাকা সফলভাবে জমা হয়েছে।\n\n" +
-"বিল/ভাউচার: {billNo}\nরসিদ নং: {receiptNo}\nডিলার আইডি: {dealerId}\nতারিখ: {date} {time}\n" +
+"বিল/ভাউচার: {billNo}\nরসিদ নং: {receiptNo}\nআইডি: {dealerId}\nতারিখ: {date} {time}\n" +
 "জমার পরিমাণ: ৳{paid}\nপেমেন্ট মাধ্যম: {method}\nপূর্বের বকেয়া: ৳{prevDue}\nবর্তমান বকেয়া: ৳{currDue}\n\nধন্যবাদ।\nMetal Parts Limited",
-  en:
+    en:
 "Dear {dealerName},\n\nYour payment of ৳{paid} against the bill has been received successfully.\n\n" +
-"Bill/Voucher: {billNo}\nReceipt No: {receiptNo}\nDealer ID: {dealerId}\nDate: {date} {time}\n" +
+"Bill/Voucher: {billNo}\nReceipt No: {receiptNo}\nID: {dealerId}\nDate: {date} {time}\n" +
 "Paid Amount: ৳{paid}\nPayment Method: {method}\nPrevious Due: ৳{prevDue}\nCurrent Due: ৳{currDue}\n\nThank you.\nMetal Parts Limited",
-  both:
+    both:
 "প্রিয় {dealerName},\n\nআপনার বিলের বিপরীতে ৳{paid} টাকা সফলভাবে জমা হয়েছে।\n\n" +
 "Your payment of ৳{paid} against the bill has been received successfully.\n\n" +
-"বিল/ভাউচার / Bill-Voucher: {billNo}\nরসিদ নং / Receipt No: {receiptNo}\nডিলার আইডি / Dealer ID: {dealerId}\n" +
+"বিল/ভাউচার / Bill-Voucher: {billNo}\nরসিদ নং / Receipt No: {receiptNo}\nআইডি / ID: {dealerId}\n" +
 "তারিখ / Date: {date} {time}\nপেমেন্ট মাধ্যম / Payment Method: {method}\n" +
 "পূর্বের বকেয়া / Previous Due: ৳{prevDue}\nবর্তমান বকেয়া / Current Due: ৳{currDue}\n\nধন্যবাদ / Thank you.\nMetal Parts Limited"
+  },
+  sale:{
+    bn:
+"প্রিয় {dealerName},\n\nআপনাকে পার্টস সরবরাহ করা হয়েছে।\n\n" +
+"পার্টস/বিবরণ: {items}\nবিল/ভাউচার: {billNo}\nআইডি: {dealerId}\nতারিখ: {date} {time}\n" +
+"বিলের পরিমাণ: ৳{amount}\nপূর্বের বকেয়া: ৳{prevDue}\nবর্তমান বকেয়া: ৳{currDue}\n\nধন্যবাদ।\nMetal Parts Limited",
+    en:
+"Dear {dealerName},\n\nYour parts have been delivered.\n\n" +
+"Parts/Details: {items}\nBill/Voucher: {billNo}\nID: {dealerId}\nDate: {date} {time}\n" +
+"Bill Amount: ৳{amount}\nPrevious Due: ৳{prevDue}\nCurrent Due: ৳{currDue}\n\nThank you.\nMetal Parts Limited",
+    both:
+"প্রিয় {dealerName},\n\nআপনাকে পার্টস সরবরাহ করা হয়েছে।\n\nYour parts have been delivered.\n\n" +
+"পার্টস/বিবরণ / Parts-Details: {items}\nবিল/ভাউচার / Bill-Voucher: {billNo}\nআইডি / ID: {dealerId}\n" +
+"তারিখ / Date: {date} {time}\nবিলের পরিমাণ / Bill Amount: ৳{amount}\n" +
+"পূর্বের বকেয়া / Previous Due: ৳{prevDue}\nবর্তমান বকেয়া / Current Due: ৳{currDue}\n\nধন্যবাদ / Thank you.\nMetal Parts Limited"
+  }
 };
-const TPL_PLACEHOLDERS = ['dealerName','dealerId','billNo','receiptNo','date','time','paid','method','prevDue','currDue'];
-
-function getTemplates(){ return Object.assign({}, DEFAULT_TEMPLATES, (LG.templates&&typeof LG.templates==='object')?pickTpl(LG.templates):{}); }
-function pickTpl(t){ const o={}; ['bn','en','both'].forEach(k=>{ if(typeof t[k]==='string' && t[k].trim()) o[k]=t[k]; }); return o; }
+function msgKind(v){ return v && v.type==='SALE' ? 'sale' : 'pay'; }
+function getTemplates(){ return TEMPLATES; }
 
 function canMessage(){ const l=level(); return l==='admin' || l==='entry'; }
 
@@ -9939,11 +9982,11 @@ function buildMessageData(v, allVouchers){
   return {
     dealerName:v.dealerName, dealerId:String(v.dealerId), billNo:v.billNo||v.voucherNo,
     receiptNo:'RC-'+String(v.voucherNo).replace(/\D/g,''), date:v.date, time:timeHM(v.createdAt),
-    paid:num(v.amountPaisa), method:v.method||'', prevBal:prev, currBal:dealerBal
+    paid:num(v.amountPaisa), amount:num(v.amountPaisa), items:(v.description && v.description!==TYPES.SALE.short)?v.description:'—', method:v.method||'', prevBal:prev, currBal:dealerBal
   };
 }
-function renderMessage(lang, d, templates){
-  const tpl=(templates||getTemplates())[lang]; if(typeof tpl!=='string') throw E('BAD_LANG','অবৈধ ভাষা');
+function renderMessage(lang, d, kind){
+  const set=TEMPLATES[kind||'pay']; const tpl=set && set[lang]; if(typeof tpl!=='string') throw E('BAD_LANG','অবৈধ ভাষা');
   const vars=Object.assign({}, d, {prevDue:dueText(d.prevBal,lang), currDue:dueText(d.currBal,lang)});
   return tpl.replace(/\{(\w+)\}/g,(m,k)=> vars[k]!=null ? String(vars[k]) : m);
 }
@@ -9954,9 +9997,9 @@ function waLink(phone,body){ return 'https://wa.me/'+phone+'?text='+encodeURICom
 async function preparePayment(voucherNo){
   await loadAll();                                   // সবসময় Firebase থেকে নতুন করে — LocalStorage নয়
   const v=LG.vouchers.find(x=>x.voucherNo===voucherNo);
-  if(!v || v.type!=='DEPOSIT') throw E('NO_PAYMENT','এই পেমেন্ট Database-এ নিশ্চিত নয় — কোনো মেসেজ পাঠানো যাবে না');
+  if(!v || (v.type!=='DEPOSIT' && v.type!=='SALE')) throw E('NO_PAYMENT','এই লেনদেন Database-এ নিশ্চিত নয় বা মেসেজযোগ্য নয় (শুধু টাকা জমা ও পার্টস বিক্রয়) — কোনো মেসেজ পাঠানো যাবে না');
   if(!visibleVouchers().some(x=>x.voucherNo===voucherNo)) throw E('FORBIDDEN','এই ডিলারের তথ্য দেখার অনুমতি নেই');
-  if(reversedSet(LG.vouchers).has(voucherNo)) throw E('REVERSED','এই পেমেন্ট Reverse করা হয়েছে — মেসেজ পাঠানো যাবে না');
+  if(reversedSet(LG.vouchers).has(voucherNo)) throw E('REVERSED','এই লেনদেন Reverse করা হয়েছে — মেসেজ পাঠানো যাবে না');
   return v;
 }
 async function sendMessage(voucherNo, ch, lang, opts){
@@ -9971,9 +10014,10 @@ async function sendMessage(voucherNo, ch, lang, opts){
   const v=await preparePayment(voucherNo);
   const info=dealerInfo(v.dealerId);
   const phone=normalizePhone(info.phone);
-  if(!phone) throw E('NO_PHONE','এই ডিলারের সঠিক মোবাইল নম্বর নেই — আগে ডিলারের প্রোফাইলে নম্বর দিন');
+  if(!phone) throw E('NO_PHONE','এই পার্টির সঠিক মোবাইল নম্বর নেই — আগে প্রোফাইলে/পার্টি-তথ্যে নম্বর দিন');
   const data=buildMessageData(v);
-  const body=renderMessage(lang,data);
+  const kind=msgKind(v);
+  const body=renderMessage(lang,data,kind);
   const seg=smsInfo(body);
 
   // Duplicate প্রতিরোধ: প্রতি Payment × চ্যানেলে একটিই সক্রিয় চেষ্টা
@@ -10005,14 +10049,15 @@ async function sendMessage(voucherNo, ch, lang, opts){
     upd['messages/'+voucherNo+'/prevDuePaisa']=data.prevBal;
     upd['messages/'+voucherNo+'/currDuePaisa']=data.currBal;
     upd['messages/'+voucherNo+'/lang']=lang;
+    upd['messages/'+voucherNo+'/kind']=kind;
     upd['messages/'+voucherNo+'/body']=body;
     upd['messages/'+voucherNo+'/lastAt']=now;
     upd['messages/'+voucherNo+'/lastAtIso']=nowIso;
     upd['messages/'+voucherNo+'/lastBy']=a.name;
     upd['messages/'+voucherNo+'/lastById']=a.id;
     upd['audit/'+auditKey]={ts:serverTs(), at:nowIso, by:a.name, byId:a.id, byRole:a.role, action:'MSG_SEND_ATTEMPT',
-      voucherNo:voucherNo, dealerId:String(v.dealerId), dealerName:v.dealerName, type:'DEPOSIT', amountPaisa:v.amountPaisa,
-      details:MSG_CHANNELS[ch]+' · '+MSG_LANGS[lang]+(opts.resend?' · RESEND':'')+' · '+phone+' · '+seg.segments+' segment'};
+      voucherNo:voucherNo, dealerId:String(v.dealerId), dealerName:v.dealerName, type:v.type, amountPaisa:v.amountPaisa,
+      details:(kind==='sale'?'পার্টস সরবরাহ · ':'পেমেন্ট · ')+MSG_CHANNELS[ch]+' · '+MSG_LANGS[lang]+(opts.resend?' · RESEND':'')+' · '+phone+' · '+seg.segments+' segment'};
     await withTimeout(R().update(upd));
   }catch(e){
     try{ await withTimeout(R('messages/'+voucherNo+'/'+ch+'/status').set('Failed')); }catch(e2){}
@@ -10039,30 +10084,6 @@ async function resolveMessage(voucherNo, ch, outcome){
     {voucherNo:voucherNo, dealerId:m.dealerId||null, dealerName:m.dealerName||null});
   return final;
 }
-async function saveTemplates(t){
-  if(!isAdmin()) throw E('FORBIDDEN','শুধু Admin');
-  const out={};
-  ['bn','en','both'].forEach(k=>{
-    const s=String(t[k]||'').replace(/\r/g,'').trim();
-    if(!s) throw E('VALIDATION',MSG_LANGS[k]+' টেমপ্লেট খালি রাখা যাবে না');
-    if(s.length>1200) throw E('VALIDATION',MSG_LANGS[k]+' টেমপ্লেট ১২০০ অক্ষরের বেশি');
-    if(!s.includes('{paid}')) throw E('VALIDATION',MSG_LANGS[k]+' টেমপ্লেটে {paid} থাকতেই হবে');
-    const bad=(s.match(/\{(\w+)\}/g)||[]).map(x=>x.slice(1,-1)).filter(x=>!TPL_PLACEHOLDERS.includes(x));
-    if(bad.length) throw E('VALIDATION',MSG_LANGS[k]+' টেমপ্লেটে অচেনা প্লেসহোল্ডার: {'+bad.join('}, {')+'}');
-    out[k]=s;
-  });
-  const a=actor(); out.updatedBy=a.name; out.updatedAt=Date.now();
-  await withTimeout(R('settings/messageTemplates').set(out));
-  await writeAudit('TEMPLATE_UPDATE','মেসেজ টেমপ্লেট পরিবর্তন (বাংলা/English/উভয়)');
-  LG.templates=out;
-}
-async function resetTemplates(){
-  if(!isAdmin()) throw E('FORBIDDEN','শুধু Admin');
-  await withTimeout(R('settings/messageTemplates').remove());
-  await writeAudit('TEMPLATE_RESET','মেসেজ টেমপ্লেট ডিফল্টে ফেরানো');
-  LG.templates=null;
-}
-
 /* ---------- UI: Message Panel (Payment Save-এর পরে বা Ledger থেকে) ---------- */
 function chStatus(m,ch){ return (m && m[ch] && m[ch].status) ? m[ch].status : 'Not Sent'; }
 function stBadge(s){ return `<span class="dlg-badge dlg-st-${String(s).replace(/\s/g,'').toLowerCase()}">${esc(s)}</span>`; }
@@ -10101,20 +10122,20 @@ function renderMessagePanel(){
   const info=dealerInfo(v.dealerId), phone=normalizePhone(info.phone), msg=LG.messages[ctx.voucherNo]||null;
   const anyPending=['sms','wa'].some(c=>chStatus(msg,c)==='Pending');
   const lang = anyPending && msg && msg.lang ? msg.lang : ctx.lang; ctx.lang=lang;
-  const data=buildMessageData(v), body=renderMessage(lang,data), seg=smsInfo(body);
+  const kind=msgKind(v), data=buildMessageData(v), body=renderMessage(lang,data,kind), seg=smsInfo(body);
   modal(`
-    <h3 style="margin:0 0 8px">✉️ Payment Confirmation Message</h3>
+    <h3 style="margin:0 0 8px">${kind==='sale'?'🛒 পার্টস সরবরাহ বার্তা (WhatsApp/SMS)':'✉️ Payment Confirmation Message'}</h3>
     <div class="dlg-dealerbox"><b>${esc(v.dealerName)}</b> · ID ${esc(v.dealerId)} · 📞 ${esc(info.phone||'—')}<br>
-      Voucher <code>${esc(v.voucherNo)}</code> · ${esc(v.date)} ${esc(data.time)} · জমা <b>${fmt(v.amountPaisa)}</b> (${esc(v.method||'')})<br>
+      Voucher <code>${esc(v.voucherNo)}</code> · ${esc(v.date)} ${esc(data.time)} · ${kind==='sale'?'বিল':'জমা'} <b>${fmt(v.amountPaisa)}</b>${kind==='pay'?` (${esc(v.method||'')})`:''}<br>
       পূর্বের বকেয়া: <b>${balHTML(data.prevBal)}</b> → বর্তমান বকেয়া (DB থেকে পুনর্গণিত): <b>${balHTML(data.currBal)}</b></div>
-    ${phone?'':`<div class="dlg-alert">⚠️ এই ডিলারের মোবাইল নম্বর নেই বা সঠিক নয় (${esc(info.phone||'খালি')})। নম্বর যোগ না করা পর্যন্ত Send বোতাম বন্ধ থাকবে।</div>`}
+    ${phone?'':`<div class="dlg-alert">⚠️ এই পার্টির মোবাইল নম্বর নেই বা সঠিক নয় (${esc(info.phone||'খালি')})। নম্বর যোগ না করা পর্যন্ত Send বোতাম বন্ধ থাকবে।</div>`}
     <div class="field" style="margin-top:10px"><label>Message Language</label>
       <select id="dlgMLang" onchange="DLG.msgSetLang(this.value)" ${anyPending?'disabled':''}>
         ${Object.keys(MSG_LANGS).map(k=>`<option value="${k}" ${k===lang?'selected':''}>${MSG_LANGS[k]}</option>`).join('')}</select></div>
     <label style="font-size:12.5px;color:var(--muted)">Preview Message${anyPending?' (Pending চেষ্টার ভাষা)':''}</label>
     <pre class="dlg-msgprev" id="dlgMPrev">${esc(body)}</pre>
     <div class="dlg-sub" style="margin:4px 0 10px">SMS: ${seg.unicode?'Unicode':'GSM-7'} · ${seg.length} অক্ষর · <b>${seg.segments} segment</b> (প্রতি segment ${seg.perSegment}) · WhatsApp-এ একই টেক্সট</div>
-    ${chanBlock('sms',v,phone,msg)}${chanBlock('wa',v,phone,msg)}
+    ${(kind==='sale'?['wa','sms']:['sms','wa']).map(c=>chanBlock(c,v,phone,msg)).join('')}
     <div id="dlgMErr" class="dlg-alert" style="display:none"></div>
     <p class="hint" style="margin-top:8px">ℹ️ ব্রাউজার থেকে সরাসরি SMS/WhatsApp পাঠানো যায় না। Send চাপলে আপনার ফোন/ব্রাউজারে অ্যাপ খুলবে; সেখানে পাঠানোর পর এখানে “পাঠানো হয়েছে” নিশ্চিত করুন — সেটাই Sent হিসেবে সংরক্ষিত হবে।</p>
     <button class="btn btn-ghost" style="width:100%;margin-top:8px" onclick="DLG.closeModal()">বন্ধ করুন</button>`);
@@ -10147,7 +10168,8 @@ function entryMsgPreview(){
   const info=dealerInfo(did), cur=(aggregate(visibleVouchers())[did]||{balance:0}).balance, lang=$('dlgFLang').value, now=new Date();
   const d={dealerName:info.name,dealerId:did,billNo:($('dlgFBill').value.trim()||'(Voucher নম্বর সেভের পর)'),receiptNo:'(সেভের পর)',
     date:$('dlgFDate').value,time:pad2(now.getHours())+':'+pad2(now.getMinutes()),paid:num(paisa),method:$('dlgFMethod').value,prevBal:cur,currBal:cur-paisa};
-  const body=renderMessage(lang,d), seg=smsInfo(body);
+  const isSale=$('dlgFType').value==='SALE'; if(isSale){ d.currBal=cur+paisa; d.amount=num(paisa); d.items=($('dlgFDesc').value.trim()||'—'); }
+  const body=renderMessage(lang,d,isSale?'sale':'pay'), seg=smsInfo(body);
   box.style.display='block'; box.textContent=body+'\n\n— প্রাক-প্রিভিউ ('+seg.segments+' SMS segment). সেভ ও DB নিশ্চিত হওয়ার পর চূড়ান্ত মেসেজ ও Send বোতাম আসবে।';
 }
 
@@ -10155,7 +10177,7 @@ function entryMsgPreview(){
 function historyRows(){
   const vs=visibleVouchers(), rev=reversedSet(LG.vouchers);
   const needleD=String(LG.ui.msgDealer||''), needle=String(LG.ui.msgQ||'').trim().toLowerCase(), stf=LG.ui.msgStatus||'';
-  let rows=vs.filter(v=>v.type==='DEPOSIT').map(v=>{
+  let rows=vs.filter(v=>v.type==='DEPOSIT'||v.type==='SALE').map(v=>{
     const m=LG.messages[v.voucherNo]||null;
     return {v, m, reversed:rev.has(v.voucherNo), sms:chStatus(m,'sms'), wa:chStatus(m,'wa'),
             sortKey: (m&&m.lastAt) || Date.parse(v.createdAt)||0};
@@ -10169,50 +10191,155 @@ function historyHTML(){
   const dealers=ledgerDealers();
   return `<div class="card">
     <div class="dlg-filters">
-      <select onchange="DLG.setMsgF('msgDealer',this.value)"><option value="">সব ডিলার</option>${dealers.map(u=>`<option value="${esc(u.id)}" ${String(u.id)===String(LG.ui.msgDealer)?'selected':''}>${esc(u.name)} (ID ${esc(u.id)})</option>`).join('')}</select>
+      <select onchange="DLG.setMsgF('msgDealer',this.value)"><option value="">সব পার্টি</option>${partyOptions(dealers,LG.ui.msgDealer)}</select>
       <select onchange="DLG.setMsgF('msgStatus',this.value)"><option value="">সব Status</option>${['Sent','Failed','Pending','Not Sent'].map(s=>`<option ${LG.ui.msgStatus===s?'selected':''}>${s}</option>`).join('')}</select>
       <input type="text" placeholder="🔍 ডিলার / Voucher / Bill / Sent By" value="${esc(LG.ui.msgQ)}" oninput="DLG.setMsgQ(this.value)">
     </div>
-    <p class="hint" style="margin-top:8px">প্রতিটি জমা (Payment) এক সারি। Date/Time = সর্বশেষ মেসেজ-চেষ্টার সময়; কোনো মেসেজ না গেলে (Not Sent) পেমেন্টের সময় (ধূসর)।</p>
+    <p class="hint" style="margin-top:8px">প্রতিটি জমা (Payment) ও পার্টস সরবরাহ (বিক্রয়) এক সারি। Date/Time = সর্বশেষ মেসেজ-চেষ্টার সময়; কোনো মেসেজ না গেলে (Not Sent) পেমেন্টের সময় (ধূসর)।</p>
     <div id="dlgMsgResults"></div></div>`;
 }
 function renderMsgResults(){
   const box=$('dlgMsgResults'); if(!box) return; const rows=historyRows();
-  box.innerHTML=`<div class="dlg-scroll"><table class="dlg-table" style="min-width:980px"><thead><tr><th>Date</th><th>Time</th><th>Dealer</th><th>Dealer ID</th><th>Bill No</th><th>Paid Amount</th><th>Language</th><th>SMS Status</th><th>WhatsApp Status</th><th>Sent By</th><th></th></tr></thead><tbody>
+  box.innerHTML=`<div class="dlg-scroll"><table class="dlg-table" style="min-width:980px"><thead><tr><th>Date</th><th>Time</th><th>Dealer</th><th>Dealer ID</th><th>Bill No</th><th>Paid Amount</th><th>Language</th><th>SMS Status</th><th>WhatsApp Status</th><th>Sent By</th><th>ধরন</th><th></th></tr></thead><tbody>
   ${rows.length?rows.map(r=>{
     const m=r.m, iso=m&&m.lastAtIso, d=iso?new Date(iso):new Date(r.v.createdAt);
     const ds=isNaN(d)?r.v.date:d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate()), ts=isNaN(d)?'':pad2(d.getHours())+':'+pad2(d.getMinutes());
     return `<tr class="${m?'':'dlg-muted'}"><td>${esc(ds)}</td><td>${esc(ts)}</td><td>${esc(r.v.dealerName)}</td><td>${esc(r.v.dealerId)}</td>
       <td><code>${esc(r.v.billNo||r.v.voucherNo)}</code>${r.v.billNo?`<div class="dlg-sub">${esc(r.v.voucherNo)}</div>`:''}${r.reversed?'<div class="dlg-sub dlg-due">Reversed</div>':''}</td>
       <td class="n">${num(r.v.amountPaisa)}</td><td>${m&&m.lang?esc(MSG_LANGS[m.lang]||m.lang):'—'}</td>
-      <td>${stBadge(r.sms)}</td><td>${stBadge(r.wa)}</td><td>${esc((m&&m.lastBy)||'—')}</td>
-      <td>${(canMessage()&&!r.reversed)?`<button class="btn btn-ghost btn-sm" onclick="DLG.openMessage('${esc(r.v.voucherNo)}')">✉️ খুলুন</button>`:''}</td></tr>`;}).join(''):`<tr><td colspan="11" class="dlg-empty">কোনো পেমেন্ট পাওয়া যায়নি</td></tr>`}
+      <td>${stBadge(r.sms)}</td><td>${stBadge(r.wa)}</td><td>${esc((m&&m.lastBy)||'—')}</td><td>${r.v.type==='SALE'?'🛒 পার্টস':'💰 পেমেন্ট'}</td>
+      <td>${(canMessage()&&!r.reversed)?`<button class="btn btn-ghost btn-sm" onclick="DLG.openMessage('${esc(r.v.voucherNo)}')">✉️ খুলুন</button>`:''}</td></tr>`;}).join(''):`<tr><td colspan="12" class="dlg-empty">কোনো লেনদেন পাওয়া যায়নি</td></tr>`}
   </tbody></table></div>`;
 }
 function setMsgF(k,v){ LG.ui[k]=v; renderMsgResults(); }
 function setMsgQ(v){ LG.ui.msgQ=v; renderMsgResults(); }
 
-/* ---------- UI: Template Editor (Admin) ---------- */
-function tplSample(lang,tpls){
-  return renderMessage(lang,{dealerName:'করিম মটরস',dealerId:'1',billNo:'INV-101',receiptNo:'RC-000123',date:'2026-10-19',time:'14:30',paid:'20,000.00',method:'Cash',prevBal:6000050,currBal:4000050},tpls);
+
+/* ======================================================================
+   PARTIES (যে কেউ: কাস্টমার / অ্যাকাউন্টবিহীন মেকানিক / অন্যান্য) + SELF VIEW (আমার হিসাব)
+   dealerLedger/parties/{P1,P2,...} — শুধু Ledger-এর জন্য; বিদ্যমান DB.users/ডিলার ডেটা অপরিবর্তিত।
+   ====================================================================== */
+const PARTY_KINDS = {customer:'কাস্টমার', mechanic:'মেকানিক (অ্যাকাউন্টবিহীন)', other:'অন্যান্য'};
+const KIND_LABELS = {dealer:'ডিলার', mechanic:'মেকানিক', customer:'কাস্টমার', other:'অন্যান্য'};
+function canCreateParty(){ const l=level(); return l==='admin' || l==='entry'; }
+
+function partyOptions(list, sel){
+  return ['dealer','mechanic','customer','other'].map(k=>{
+    const g=list.filter(p=>p.kind===k); if(!g.length) return '';
+    return `<optgroup label="${KIND_LABELS[k]}">`+g.map(p=>`<option value="${esc(p.id)}" ${String(p.id)===String(sel)?'selected':''}>${esc(p.name)} (${esc(p.phone||'')} · ID ${esc(p.id)})</option>`).join('')+'</optgroup>';
+  }).join('');
 }
-function tplHTML(){
-  const t=getTemplates();
-  return `<div class="card"><h3 style="margin:0 0 6px">📝 মেসেজ টেমপ্লেট (Admin)</h3>
-    <p class="hint">ব্যবহারযোগ্য প্লেসহোল্ডার: ${TPL_PLACEHOLDERS.map(p=>`<code>{${p}}</code>`).join(' ')} — <code>{paid}</code> আবশ্যক। এখানে বদলালে নতুন মেসেজে প্রযোজ্য হবে; আগে পাঠানো মেসেজ অপরিবর্তিত থাকে।</p>
-    ${['bn','en','both'].map(k=>`<div class="field"><label>${MSG_LANGS[k]}</label><textarea id="dlgTpl_${k}" rows="9" style="width:100%;font-family:inherit;font-size:13px;padding:8px;border:1.5px solid var(--line);border-radius:9px;background:var(--paper);color:var(--text)">${esc(t[k])}</textarea></div>`).join('')}
-    <div id="dlgTplErr" class="dlg-alert" style="display:none"></div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-primary btn-sm" style="width:auto" onclick="DLG.tplSave()">💾 টেমপ্লেট সেভ</button>
-      <button class="btn btn-ghost btn-sm" onclick="DLG.tplReset()">↺ ডিফল্টে ফেরান</button></div></div>`;
+
+async function createParty(inp){
+  const a=actor(); if(!a) throw E('NO_ACTOR','লগইন যাচাই করা যায়নি');
+  if(typeof fbAuth!=='undefined' && !fbAuth.currentUser) throw E('NO_AUTH','Cloud সাইন-ইন সক্রিয় নেই');
+  await refreshPermissionFromServer(a);
+  if(!canCreateParty()) throw E('FORBIDDEN','নতুন পার্টি যোগ করার অনুমতি আপনার নেই');
+  const name=String(inp.name||'').trim().replace(/\s+/g,' ');
+  if(name.length<2 || name.length>80) throw E('VALIDATION','নাম ২–৮০ অক্ষরের মধ্যে দিন');
+  if(!PARTY_KINDS[inp.kind]) throw E('VALIDATION','পার্টির ধরন নির্বাচন করুন');
+  const rawPhone=String(inp.phone||'').trim(); let phone='';
+  if(rawPhone){ phone=normalizePhone(rawPhone); if(!phone) throw E('VALIDATION','মোবাইল নম্বর সঠিক নয় (যেমন 01711000000)'); }
+  const address=String(inp.address||'').trim().slice(0,200);
+  // ডুপ্লিকেট প্রতিরোধ: Database থেকে নতুন করে পড়ে একই নম্বরের পার্টি/ব্যবহারকারী আছে কি না
+  const ps=(await withTimeout(R('parties').once('value'))).val()||{}; LG.parties=ps;
+  if(phone){
+    const dup=Object.keys(ps).map(k=>ps[k]).find(p=>normalizePhone(p.phone)===phone)
+           || ((DB.users||[]).find(u=>u && !isDeletedAccount(u) && normalizePhone(u.phone)===phone));
+    if(dup) throw E('DUP_PARTY','এই মোবাইল নম্বরে ('+(dup.name||'')+') আগে থেকেই একজন আছেন — তাকেই তালিকা থেকে বেছে নিন');
+  }
+  const cr=await withTimeout(R('counters/party').transaction(x=>(Number(x)||0)+1));
+  if(!cr.committed) throw E('COUNTER','আইডি তৈরি করা যায়নি');
+  const id='P'+cr.snapshot.val(), nowIso=new Date().toISOString();
+  const rec={id:id,name:name,phone:rawPhone?phone:'',kind:inp.kind,address:address,createdBy:a.name,createdById:a.id,createdByRole:a.role,createdAt:nowIso};
+  const key=R('audit').push().key, upd={};
+  upd['parties/'+id]=rec;
+  upd['audit/'+key]={ts:serverTs(),at:nowIso,by:a.name,byId:a.id,byRole:a.role,action:'PARTY_CREATE',dealerId:id,dealerName:name,details:PARTY_KINDS[inp.kind]+(phone?' · '+phone:'')};
+  await withTimeout(R().update(upd));
+  LG.parties[id]=rec; return rec;
 }
-async function tplSave(){
-  const err=$('dlgTplErr'); err.style.display='none';
-  try{ await saveTemplates({bn:$('dlgTpl_bn').value,en:$('dlgTpl_en').value,both:$('dlgTpl_both').value}); toast('✅ টেমপ্লেট সেভ হয়েছে'); render(); }
-  catch(e){ err.style.display='block'; err.textContent='❌ '+friendlyError(e); }
+function openParty(from){
+  if(!canCreateParty()){ alert('নতুন পার্টি যোগ করার অনুমতি আপনার নেই'); return; }
+  LG.partyFrom = from==='entry' ? {type:($('dlgFType')||{}).value||''} : null; LG.saving=false;
+  modal(`<h3 style="margin:0 0 6px">👤 নতুন পার্টি যোগ</h3>
+    <p class="hint" style="margin:0 0 10px">যার সফটওয়্যারে অ্যাকাউন্ট নেই (কাস্টমার, বাইরের মেকানিক, অন্যান্য) তাকে এখানে যোগ করুন। ডিলার/মেকানিকের অ্যাকাউন্ট থাকলে তিনি তালিকায় আগে থেকেই আছেন।</p>
+    <div class="field"><label>নাম *</label><input type="text" id="dlgPName" maxlength="80"></div>
+    <div class="field"><label>মোবাইল নম্বর (WhatsApp/SMS-এর জন্য)</label><input type="text" id="dlgPPhone" inputmode="tel" placeholder="01XXXXXXXXX"></div>
+    <div class="field"><label>ধরন</label><select id="dlgPKind">${Object.keys(PARTY_KINDS).map(k=>`<option value="${k}">${PARTY_KINDS[k]}</option>`).join('')}</select></div>
+    <div class="field"><label>ঠিকানা (ঐচ্ছিক)</label><input type="text" id="dlgPAddr" maxlength="200"></div>
+    <div id="dlgFErr" class="dlg-alert" style="display:none"></div>
+    <div class="modal-actions" style="display:flex;gap:8px;margin-top:14px">
+      <button class="btn btn-ghost" style="flex:1" onclick="DLG.closeModal()">বাতিল</button>
+      <button class="btn btn-primary" style="flex:1" id="dlgFSave" onclick="DLG.submitParty()">💾 সেভ</button></div>`);
 }
-async function tplReset(){
-  if(!confirm('টেমপ্লেট ডিফল্টে ফিরিয়ে নেবেন?')) return;
-  try{ await resetTemplates(); toast('✅ ডিফল্ট টেমপ্লেট'); render(); }catch(e){ alert('❌ '+friendlyError(e)); }
+async function submitParty(){
+  if(LG.saving) return; const btn=$('dlgFSave'), err=$('dlgFErr'); err.style.display='none'; LG.saving=true; btn.disabled=true; btn.textContent='⏳ সেভ হচ্ছে...';
+  try{
+    const rec=await createParty({name:$('dlgPName').value,phone:$('dlgPPhone').value,kind:$('dlgPKind').value,address:$('dlgPAddr').value});
+    const from=LG.partyFrom; LG.saving=false; closeModal(); await loadAll().catch(()=>{}); render();
+    toast('✅ পার্টি যোগ হয়েছে — ID '+rec.id);
+    if(from) openEntry(rec.id,{type:from.type||undefined});
+  }catch(e){ LG.saving=false; btn.disabled=false; btn.textContent='💾 সেভ'; err.style.display='block'; err.textContent='❌ '+friendlyError(e)+' (সেভ হয়নি)'; }
+}
+
+/* ---------- আমার হিসাব (ডিলার/মেকানিক লগইন করে নিজের পাওনা দেখবেন) ---------- */
+async function loadMyLedger(userId){
+  const snap=await withTimeout(R('vouchers').orderByChild('dealerId').equalTo(String(userId)).once('value'),20000);
+  return snapList(snap).filter(v=>v && v.voucherNo && Number.isFinite(v.effectPaisa) && String(v.dealerId)===String(userId));
+}
+const MY={vouchers:[],loading:false,error:null,from:'',to:''};
+function myCurrent(){ const u=DB.session&&DB.session.user; return u?String(u.id):null; }
+async function myReload(){
+  const id=myCurrent(); if(!id) return; MY.loading=true; MY.error=null; renderMy();
+  try{ MY.vouchers=await loadMyLedger(id); }catch(e){ MY.error=friendlyError(e); }
+  MY.loading=false; renderMy();
+}
+function myFilter(k,v){ MY[k]=v; renderMy(true); }
+function renderMy(keepFocus){
+  const r=$('dlgMyRoot'); if(!r) return;
+  if(MY.loading){ r.innerHTML='<div class="card"><p class="hint">⏳ হিসাব লোড হচ্ছে...</p></div>'; return; }
+  if(MY.error){ r.innerHTML=`<div class="card"><div class="dlg-alert">❌ ${esc(MY.error)}</div><button class="btn btn-navy btn-sm" onclick="DLG.myReload()">🔄 আবার চেষ্টা করুন</button></div>`; return; }
+  const id=myCurrent(), g=aggregate(MY.vouchers)[id]||{balance:0,opening:0,receivable:0,deposit:0,return:0,payable:0,payment:0,adjustment:0};
+  const st=buildStatement(MY.vouchers,id,MY.from,MY.to,'',''), rev=reversedSet(MY.vouchers), bal=g.balance;
+  const hero = bal>0 ? `<div class="dlg-hero dlg-hero-due"><div>আপনার কাছে কোম্পানির মোট পাওনা</div><b>${fmt(bal)}</b></div>`
+             : bal<0 ? `<div class="dlg-hero dlg-hero-adv"><div>কোম্পানির কাছে আপনার অগ্রিম/পাওনা</div><b>${fmt(-bal)}</b></div>`
+             : `<div class="dlg-hero dlg-hero-ok"><div>বর্তমানে কোনো বকেয়া নেই</div><b>✅ ৳ 0.00</b></div>`;
+  r.innerHTML=`${hero}
+    <div class="card"><div class="dlg-kpis" style="margin-top:0">
+      <div class="dlg-kpi"><div>মোট পাওনা (পার্টস/বিল + জের)</div><b>${fmt(g.receivable+g.opening+g.payment)}</b></div>
+      <div class="dlg-kpi"><div>মোট জমা দিয়েছেন</div><b>${fmt(g.deposit)}</b></div>
+      <div class="dlg-kpi"><div>পণ্য ফেরত</div><b>${fmt(g.return)}</b></div>
+      <div class="dlg-kpi"><div>লেনদেন সংখ্যা</div><b>${MY.vouchers.length}টি</b></div></div></div>
+    <div class="card"><div class="dlg-filters">
+      <label>থেকে <input type="date" value="${esc(MY.from)}" onchange="DLG.myFilter('from',this.value)"></label>
+      <label>পর্যন্ত <input type="date" value="${esc(MY.to)}" onchange="DLG.myFilter('to',this.value)"></label>
+      <button class="btn btn-ghost btn-sm" onclick="DLG.myReload()">🔄 রিফ্রেশ</button></div>
+      <div class="dlg-scroll"><table class="dlg-table dlg-ledger" style="min-width:720px"><thead><tr><th>তারিখ</th><th>Voucher</th><th>ধরন</th><th>বিবরণ</th><th>পাওনা বৃদ্ধি</th><th>জমা/হ্রাস</th><th>ব্যালেন্স</th></tr></thead><tbody>
+      ${MY.from?`<tr class="dlg-bf"><td>${esc(MY.from)}</td><td colspan="5">পূর্বজের</td><td class="n"><b>${balHTML(st.bf)}</b></td></tr>`:''}
+      ${st.rows.length?st.rows.map(x=>`<tr class="${rev.has(x.v.voucherNo)?'dlg-reversed':''}"><td>${esc(x.v.date)}</td><td><code>${esc(x.v.voucherNo)}</code></td><td>${typeBadge(x.v)}</td><td>${esc(x.v.description)}${x.v.billNo?`<div class="dlg-sub">বিল: ${esc(x.v.billNo)}</div>`:''}</td><td class="n">${x.dr?num(x.dr):''}</td><td class="n">${x.cr?num(x.cr):''}</td><td class="n"><b>${balHTML(x.run)}</b></td></tr>`).join(''):'<tr><td colspan="7" class="dlg-empty">কোনো লেনদেন নেই</td></tr>'}
+      </tbody></table></div>
+      <p class="hint" style="margin-top:8px">এটি কোম্পানির হিসাবের রেকর্ড অনুযায়ী। কোনো অমিল থাকলে কোম্পানির সাথে যোগাযোগ করুন।</p></div>`;
+}
+ROUTE_ROLES.myLedger=['dealer','mechanic'];
+ROUTES.myLedger=function(){
+  const role=DB.session&&DB.session.role, u=DB.session&&DB.session.user;
+  if((role!=='dealer' && role!=='mechanic') || !u){ go('landing'); return; }
+  const back=role==='dealer'?'dealerPortal':'mechanicDashboard';
+  MY.vouchers=[]; MY.from=''; MY.to='';
+  document.getElementById('app').appendChild(el(`<div>
+    <div class="topbar"><div class="topbar-brand"><div class="brand-logo">📒</div><div><div class="brand-name">${esc(DB.settings.companyName)}</div><div class="brand-sub">আমার দেনা-পাওনা হিসাব</div></div></div>
+      <div class="topbar-right"><button class="btn btn-ghost btn-sm" style="color:#fff;border-color:rgba(255,255,255,.3)" onclick="go('${back}')">⬅️ ফিরে যান</button></div></div>
+    <div class="wrap"><div class="dlg-wrap" id="dlgMyRoot"></div></div></div>`));
+  myReload();
+};
+function selfHook(){
+  const role=DB.session&&DB.session.role; if(role!=='dealer' && role!=='mechanic') return;
+  if(document.getElementById('dlgSelfTab')) return;
+  const folders=document.querySelector('.dealer-nav-folders');       // ডিলার পোর্টালের নেভিগেশন
+  const tabs=document.querySelector('.dealer-tabs');                  // মেকানিক ড্যাশবোর্ডের ট্যাব
+  const b=document.createElement('button'); b.id='dlgSelfTab'; b.type='button'; b.setAttribute('onclick',"go('myLedger')");
+  if(folders){ b.className='dealer-nav-folder'; b.innerHTML='<span class="icon">📒</span><span class="lbl">📒 আমার হিসাব</span>'; folders.insertBefore(b,folders.firstChild); }
+  else if(tabs){ b.className='tab'; b.textContent='📒 আমার হিসাব'; tabs.insertBefore(b,tabs.firstChild); }
 }
 
 /* ------------------------------ Parts Engineer hook ------------------------------ */
@@ -10237,8 +10364,9 @@ window.DLG={
   tabHTML, wire, reload, setView, setDueQ, setDueOnly, setF, setQ, setAuditQ, clearFilters, openLedger,
   openEntry, entryTypeChanged, entryPreview, submitEntry, openReverse, submitReverse, closeModal,
   printStatement, printDue, exportLedger, exportDue, recalcAll, changePerm, peHook,
-  openMessage, msgSetLang, msgSend, msgResolve, entryMsgPreview, setMsgF, setMsgQ, tplSave, tplReset,
-  _t:{sendMessage,resolveMessage,preparePayment,buildMessageData,renderMessage,smsInfo,normalizePhone,saveTemplates,resetTemplates,getTemplates,DEFAULT_TEMPLATES,toPaisa,fmt,num,effectOf,aggregate,buildStatement,saveVoucher,applySummary,blankSummary,mismatches,recalcDealer,loadAll,LG,TYPES,catDelta,setPermission,level}
+  openParty, submitParty, myReload, myFilter, openMessage, msgSetLang, msgSend, msgResolve, entryMsgPreview, setMsgF, setMsgQ,
+  selfHook,
+  _t:{sendMessage,resolveMessage,preparePayment,buildMessageData,renderMessage,smsInfo,normalizePhone,createParty,loadMyLedger,TEMPLATES,toPaisa,fmt,num,effectOf,aggregate,buildStatement,saveVoucher,applySummary,blankSummary,mismatches,recalcDealer,loadAll,LG,TYPES,catDelta,setPermission,level}
 };
 })();
 </script>
