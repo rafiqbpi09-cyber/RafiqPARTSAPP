@@ -1298,6 +1298,62 @@ window.APP_VERSION = '2026-10-19-dealer-header-layout.9';
   .sabi-role-btn .big{font-size:22px;}
 }
 
+  /* ===== DEALER LEDGER (দেনা-পাওনা হিসাব) — নতুন স্টাইল; সব ক্লাস dlg- দিয়ে শুরু ===== */
+  .dlg-wrap .card{margin-bottom:14px;}
+  .dlg-wrap .card + .card{margin-top:0;}
+  .dlg-wrap .hint{font-size:12.5px;color:var(--muted);}
+  .dlg-filters{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
+  .dlg-filters input[type=text],.dlg-filters input[type=date],.dlg-filters select{padding:8px 10px;border:1.5px solid var(--line);border-radius:9px;font-size:13.5px;font-family:inherit;background:#fbfcfe;color:var(--text);min-width:130px;}
+  [data-theme="dark"] .dlg-filters input,[data-theme="dark"] .dlg-filters select,[data-theme="dark"] .dlg-modal input,[data-theme="dark"] .dlg-modal select{background:#0f1720;color:var(--text);}
+  .dlg-filters label{font-size:12.5px;color:var(--muted);display:flex;align-items:center;gap:5px;}
+  .dlg-chk{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text);}
+  .dlg-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;margin-top:10px;}
+  .dlg-table{width:100%;border-collapse:collapse;font-size:13px;min-width:760px;color:var(--text);}
+  .dlg-table th{background:var(--paper);color:var(--muted);font-weight:700;text-align:left;padding:8px 9px;border-bottom:2px solid var(--line);white-space:nowrap;font-size:12px;}
+  .dlg-table td{padding:8px 9px;border-bottom:1px solid var(--line);vertical-align:top;}
+  .dlg-table tfoot td{background:var(--paper);border-top:2px solid var(--line);}
+  .dlg-table td.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;}
+  .dlg-ledger{min-width:1000px;}
+  .dlg-sub{font-size:11.5px;color:var(--muted);}
+  .dlg-empty{text-align:center;color:var(--muted);padding:22px !important;}
+  .dlg-bf td{background:var(--paper);font-style:italic;}
+  .dlg-reversed td{opacity:.55;text-decoration:line-through;}
+  .dlg-reversed td .btn,.dlg-reversed td .dlg-sub{text-decoration:none;}
+  .dlg-due{color:#c23b3b;font-weight:700;}
+  .dlg-adv{color:#1f8a4c;font-weight:700;}
+  .dlg-zero{color:var(--muted);}
+  .dlg-badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11.5px;font-weight:700;background:#e8edf4;color:#12233d;white-space:nowrap;}
+  .dlg-t-sale{background:#fde8e8;color:#9b1c1c;}
+  .dlg-t-payable{background:#e0f2e9;color:#14683a;}
+  .dlg-t-deposit{background:#d9f2e3;color:#0f5f33;}
+  .dlg-t-payment{background:#fff0d6;color:#8a5200;}
+  .dlg-t-return{background:#e6eefc;color:#1d4fa3;}
+  .dlg-t-adjustment{background:#efe6fb;color:#5b2aa0;}
+  .dlg-t-opening{background:#e5e7eb;color:#374151;}
+  .dlg-t-reversal{background:#fbe1f0;color:#a0145f;}
+  .dlg-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-top:12px;}
+  .dlg-kpi{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:10px 12px;font-size:12px;color:var(--muted);}
+  .dlg-kpi b{display:block;font-size:16px;margin-top:3px;color:var(--text);}
+  .dlg-alert{background:#fdeceb;border:1px solid #f1b8b4;color:#8f2020;border-radius:10px;padding:9px 12px;font-size:13px;margin:8px 0;}
+  .dlg-dealerbox{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:9px 12px;font-size:13.5px;margin:10px 0 0;color:var(--text);}
+  .dlg-preview{background:var(--paper);border-radius:10px;padding:9px 12px;font-size:13px;color:var(--text);margin-top:4px;}
+  .dlg-modal-bg{position:fixed;inset:0;background:rgba(10,18,30,.6);display:none;align-items:center;justify-content:center;padding:16px;z-index:100000;}
+  .dlg-modal-bg.show{display:flex;}
+  .dlg-modal{background:#fff;color:var(--text);border-radius:16px;width:100%;max-width:460px;padding:22px;max-height:92vh;overflow:auto;}
+  [data-theme="dark"] .dlg-modal{background:var(--card);}
+  .dlg-modal .field input,.dlg-modal .field select{width:100%;}
+  #dlgPrintArea{display:none;}
+  .dlg-print{font-family:'Hind Siliguri',sans-serif;color:#000;background:#fff;padding:8mm;}
+  .dlg-print h2,.dlg-print h3{margin:0 0 4px;text-align:center;}
+  .dlg-print table{width:100%;border-collapse:collapse;font-size:11.5px;margin-top:8px;}
+  .dlg-print th,.dlg-print td{border:1px solid #333;padding:4px 6px;text-align:left;}
+  .dlg-print td.n{text-align:right;}
+  @media print{
+    body.printing-dlg{visibility:hidden !important;background:#fff !important;}
+    body.printing-dlg #dlgPrintArea,body.printing-dlg #dlgPrintArea *{visibility:visible !important;}
+    body.printing-dlg #dlgPrintArea{display:block !important;position:absolute;left:0;top:0;width:100%;}
+  }
+  .dlg-ledger td:nth-child(1),.dlg-ledger td:nth-child(2),.dlg-ledger td:last-child,.dlg-table .btn{white-space:nowrap;}
 </style>
 </head>
 <body>
@@ -2561,6 +2617,7 @@ function adminSidebarHTML(activeKey){
     ['catalogue','📚','Catalogue', "go('partsCatalog')"],
     ['partsEngineers','🧑‍🔧','Parts Engineer', "adminTab='partsEngineers';go('adminDashboard')"],
     ['battery','🔋','Battery Warranty Check', "adminTab='battery';go('adminDashboard')"],
+    ['dealerLedger','📒','দেনা-পাওনা হিসাব', "adminTab='dealerLedger';go('adminDashboard')"],
     ['settings','🔧','সেটিংস', "adminTab='settings';go('adminDashboard')"],
     ['tourBills','🧾','Tour Bill Receive Report', "adminTab='tourBills';go('adminDashboard')"]
   ];
@@ -2590,6 +2647,7 @@ function showAdminMoreMenu(){
       <button class="btn btn-ghost btn-block" onclick="closeModal();go('partsCatalog')">📚 Catalogue</button>
       <button class="btn btn-ghost btn-block" onclick="closeModal();adminTab='partsEngineers';go('adminDashboard')">🧑‍🔧 Parts Engineer</button>
       <button class="btn btn-ghost btn-block" onclick="closeModal();adminTab='battery';go('adminDashboard')">🔋 Battery Warranty Check</button>
+      <button class="btn btn-ghost btn-block" onclick="closeModal();adminTab='dealerLedger';go('adminDashboard')">📒 দেনা-পাওনা হিসাব</button>
       <button class="btn btn-ghost btn-block" onclick="closeModal();adminTab='settings';go('adminDashboard')">🔧 সেটিংস</button>
       <button class="btn btn-ghost btn-block" onclick="closeModal()">বাতিল</button>
     </div>`);
@@ -6199,7 +6257,9 @@ ROUTES.peDashboard = function(){
   else if(peTab === 'report'){ peShell(peReportTabHTML()); }
   else if(peTab === 'profile'){ peShell(peProfileHTML()); wirePeProfileTab(); }
   else if(peTab === 'battery'){ peShell(batteryWarrantyHTML()); wireBatteryWarrantyHTML(); }
+  else if(peTab === 'dealerLedger'){ peShell(DLG.tabHTML()); DLG.wire(); }
   else { peShell(peUsersTabHTML()); wirePeUsersTab(); }
+  try{ DLG.peHook(); }catch(e){}
 };
 function peProfileHTML(){
   const pe = DB.session.user;
@@ -6573,6 +6633,12 @@ ROUTES.adminDashboard = function(){
               <div style="font-size:10.5px;color:#6b7280;margin-top:3px;">Serial No দিয়ে ওয়ারেন্টি চেক ও শিট আপলোড</div>
             </div>
 
+            <div style="background:#fff;border-radius:14px;padding:22px 11px;text-align:center;cursor:pointer;transition:all 0.25s;box-shadow:0 3px 11px rgba(0,0,0,0.16);" onclick="adminTab='dealerLedger';go('adminDashboard');" onmouseover="this.style.transform='translateY(-6px)'" onmouseout="this.style.transform='translateY(0)'">
+              <div style="width:48px;height:48px;border-radius:13px;background:#e3ddc4;display:flex;align-items:center;justify-content:center;font-size:24px;margin:0 auto 11px;">📒</div>
+              <div style="font-size:13px;font-weight:700;color:#1a2233;">দেনা-পাওনা হিসাব</div>
+              <div style="font-size:10.5px;color:#6b7280;margin-top:3px;">Dealer Ledger, Due List ও Statement</div>
+            </div>
+
             <div style="background:#fff;border-radius:14px;padding:22px 11px;text-align:center;cursor:pointer;transition:all 0.25s;box-shadow:0 3px 11px rgba(0,0,0,0.16);" onclick="adminTab='settings';go('adminDashboard');" onmouseover="this.style.transform='translateY(-6px)'" onmouseout="this.style.transform='translateY(0)'">
               <div style="width:48px;height:48px;border-radius:13px;background:#e3ddc4;display:flex;align-items:center;justify-content:center;font-size:24px;margin:0 auto 11px;">🔧</div>
               <div style="font-size:13px;font-weight:700;color:#1a2233;">সেটিংস</div>
@@ -6598,6 +6664,7 @@ ROUTES.adminDashboard = function(){
   else if(adminTab==='battery') { adminShell(adminBatteryWarrantyHTML()); wireAdminBatteryWarranty(); }
   else if(adminTab==='settings') { adminShell(settingsTabHTML()); wireSettingsTab(); }
   else if(adminTab==='tourBills') { adminShell(adminTourBillTabHTML()); wireTourBillAdminTab(); }
+  else if(adminTab==='dealerLedger') { adminShell(DLG.tabHTML()); DLG.wire(); }
 };
 
 /* ---- Dashboard tab ---- */
@@ -8940,6 +9007,864 @@ function handleBatteryExcelUpload(e){
 }
 /* ===== END BATTERY WARRANTY ===== */
 
+</script>
+<script id="dealer-ledger-module">
+/* =====================================================================
+   DEALER LEDGER (দেনা-পাওনা হিসাব) — নতুন, স্বয়ংসম্পূর্ণ মডিউল
+   ---------------------------------------------------------------------
+   • বিদ্যমান `appdata` নোড বা saveDB()/loadDB()-কে এই মডিউল স্পর্শ করে না।
+   • সব ডেটা আলাদা Firebase path-এ: dealerLedger/
+       vouchers/{voucherNo}   → অপরিবর্তনীয় (append-only) লেনদেন
+       dealers/{dealerId}     → ডিলারভিত্তিক সারাংশ (Opening, মোট, বর্তমান ব্যালেন্স)
+       counters/voucher       → ইউনিক Voucher নম্বর কাউন্টার
+       opIndex/{opId}         → Double-save প্রতিরোধ (idempotency key)
+       reversals/{voucherNo}  → কোন Voucher Reverse হয়েছে (একবারের বেশি নয়)
+       audit/{pushId}         → Audit Log (append-only)
+       permissions/pe_{id}    → Parts Engineer-এর Ledger অনুমতি
+   • বিদ্যমান ডিলার = DB.users (role !== 'mechanic'); নতুন ডিলার তৈরি করা হয় না।
+   • টাকার অঙ্ক পয়সায় (integer) সংরক্ষিত — floating-point ভুল নেই।
+   • ব্যালেন্স চিহ্ন: ধনাত্মক (+) = ডিলারের কাছে কোম্পানির পাওনা,
+                       ঋণাত্মক (−) = ডিলারকে কোম্পানির দেনা / অগ্রিম জমা।
+
+   প্রস্তাবিত Firebase Realtime Database Rules (বিদ্যমান rules-এর সাথে যোগ করুন,
+   বিদ্যমান অংশ মুছবেন না):
+     "dealerLedger": {
+       ".read": "auth != null",
+       "vouchers": { ".indexOn": ["dealerId","date"],
+                     "$v": { ".write": "auth != null && !data.exists()" } },
+       "audit":    { "$k": { ".write": "auth != null && !data.exists()" } },
+       "counters": { ".write": "auth != null" },
+       "dealers":  { ".write": "auth != null" },
+       "opIndex":  { ".write": "auth != null" },
+       "reversals":{ ".write": "auth != null" },
+       "permissions": { ".write": "auth != null" }
+     }
+   (vouchers ও audit-এর `!data.exists()` নিয়ম থাকলে সার্ভার-স্তরেও পুরোনো হিসাব
+    Overwrite/Delete করা অসম্ভব হয়।)
+   ===================================================================== */
+(function(){
+'use strict';
+
+const ROOT = 'dealerLedger';
+const TIMEOUT_MS = 15000;
+const MAX_PAISA = 100000000000; // ৳ 1,000,000,000.00
+
+const TYPES = {
+  OPENING:    {bn:'Opening Balance (প্রারম্ভিক জের)', short:'Opening',   cat:'opening',    sign:0,  needSide:true},
+  SALE:       {bn:'পাওনা — বিক্রয়/বিল',               short:'পাওনা',     cat:'receivable', sign:+1},
+  PAYABLE:    {bn:'দেনা — ডিলারকে প্রদেয়',            short:'দেনা',      cat:'payable',    sign:-1},
+  DEPOSIT:    {bn:'টাকা জমা — ডিলার থেকে গৃহীত',       short:'টাকা জমা',  cat:'deposit',    sign:-1, needMethod:true},
+  PAYMENT:    {bn:'টাকা প্রদান — ডিলারকে প্রদত্ত',     short:'টাকা প্রদান',cat:'payment',   sign:+1, needMethod:true},
+  RETURN:     {bn:'পণ্য ফেরত',                          short:'পণ্য ফেরত', cat:'return',     sign:-1},
+  ADJUSTMENT: {bn:'সমন্বয় (Adjustment)',                short:'সমন্বয়',   cat:'adjustment', sign:0,  needSide:true},
+  REVERSAL:   {bn:'Reversal (বাতিল-সংশোধন)',            short:'Reversal',  cat:'reversal',   sign:0}
+};
+const ENTRY_TYPES = ['SALE','PAYABLE','DEPOSIT','PAYMENT','RETURN','OPENING','ADJUSTMENT'];
+const ENTRY_LEVEL_TYPES = ['SALE','PAYABLE','DEPOSIT','PAYMENT','RETURN']; // 'entry' permission
+const METHODS = ['Cash','bKash','Nagad','Rocket','Bank Transfer','Cheque','Other'];
+const SUMMARY_KEYS = ['opening','receivable','payable','deposit','payment','return','adjustment'];
+const SUMMARY_LABELS = {opening:'Opening',receivable:'পাওনা',payable:'দেনা',deposit:'জমা',payment:'প্রদান',return:'ফেরত',adjustment:'সমন্বয়'};
+
+const LG = {
+  vouchers:[], summaries:{}, perms:{}, audit:[],
+  loaded:false, loading:false, error:null, saving:false, opId:null,
+  ui:{view:'due', dealerId:'', from:'', to:'', type:'', q:'', dueQ:'', dueOnly:true, auditQ:''}
+};
+
+/* ------------------------------ helpers ------------------------------ */
+function E(code,msg){ const e=new Error(msg||code); e.code=code; return e; }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function bn2en(s){ return String(s).replace(/[০-৯]/g,d=>'০১২৩৪৫৬৭৮৯'.indexOf(d)); }
+function toPaisa(v){
+  const s=bn2en(v).trim().replace(/,/g,'');
+  if(!/^\d+(\.\d{1,2})?$/.test(s)) return NaN;
+  const parts=s.split('.');
+  return parseInt(parts[0],10)*100 + parseInt(((parts[1]||'')+'00').slice(0,2),10);
+}
+function groupInt(n){
+  const s=String(n); if(s.length<=3) return s;
+  const last3=s.slice(-3); const rest=s.slice(0,-3).replace(/\B(?=(\d{2})+(?!\d))/g,',');
+  return rest+','+last3;
+}
+function num(p){ const neg=p<0; const a=Math.abs(p); return (neg?'-':'')+groupInt(Math.floor(a/100))+'.'+String(a%100).padStart(2,'0'); }
+function fmt(p){ return '৳ '+num(p); }
+function balText(p){ return p>0 ? fmt(p)+' (পাওনা)' : p<0 ? fmt(-p)+' (দেনা/অগ্রিম)' : fmt(0)+' (নিষ্পন্ন)'; }
+function balHTML(p){
+  const cls = p>0 ? 'dlg-due' : p<0 ? 'dlg-adv' : 'dlg-zero';
+  return `<span class="${cls}">${esc(balText(p))}</span>`;
+}
+function pad2(n){ return String(n).padStart(2,'0'); }
+function todayISO(){ const d=new Date(); return d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate()); }
+function validDate(s){
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
+  const d=new Date(s+'T00:00:00'); if(isNaN(d)) return false;
+  return d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate())===s;
+}
+function tsText(v){
+  const t = v.createdAt ? new Date(v.createdAt) : null;
+  if(!t || isNaN(t)) return '';
+  return t.getFullYear()+'-'+pad2(t.getMonth()+1)+'-'+pad2(t.getDate())+' '+pad2(t.getHours())+':'+pad2(t.getMinutes())+':'+pad2(t.getSeconds());
+}
+function newOpId(){
+  try{ if(window.crypto && crypto.randomUUID) return crypto.randomUUID().replace(/-/g,''); }catch(e){}
+  return 'op'+Date.now().toString(36)+Math.random().toString(36).slice(2,10);
+}
+function withTimeout(p,ms){
+  return new Promise((res,rej)=>{
+    const t=setTimeout(()=>rej(E('TIMEOUT','সার্ভার থেকে সময়মতো উত্তর আসেনি')),ms||TIMEOUT_MS);
+    Promise.resolve(p).then(v=>{clearTimeout(t);res(v);},e=>{clearTimeout(t);rej(e);});
+  });
+}
+function R(path){ const r=fbDb.ref(ROOT); return path ? r.child(path) : r; }
+function serverTs(){ try{ return firebase.database.ServerValue.TIMESTAMP; }catch(e){ return Date.now(); } }
+
+/* ------------------------------ accounting engine ------------------------------ */
+// effect = ডিলারের ব্যালেন্সে প্রভাব (পয়সায়, চিহ্নসহ)। + = ডিলারের কাছে পাওনা বাড়ে।
+function effectOf(type, paisa, side){
+  if(type==='OPENING' || type==='ADJUSTMENT') return side==='PAY' ? -paisa : paisa; // RECV = +, PAY = −
+  const t=TYPES[type]; if(!t || !t.sign) throw E('BAD_TYPE','অবৈধ লেনদেনের ধরন');
+  return t.sign*paisa;
+}
+// কোন সারাংশ-ঘরে কত যোগ হবে (Reversal মূল ঘরেই বিপরীত যোগ হয়)
+function catDelta(v){
+  if(v.type==='REVERSAL'){
+    const ot=TYPES[v.origType]; if(!ot) return ['adjustment', v.effectPaisa];
+    if(v.origType==='OPENING' || v.origType==='ADJUSTMENT') return [ot.cat, v.effectPaisa];
+    return [ot.cat, -v.origAmountPaisa];
+  }
+  const t=TYPES[v.type];
+  if(v.type==='OPENING' || v.type==='ADJUSTMENT') return [t.cat, v.effectPaisa];
+  return [t.cat, v.amountPaisa];
+}
+function blankSummary(){
+  return {openingPaisa:0,receivablePaisa:0,payablePaisa:0,depositPaisa:0,paymentPaisa:0,returnPaisa:0,adjustmentPaisa:0,
+          balancePaisa:0,txnCount:0,openingSet:false,lastVoucher:'',updatedAt:0};
+}
+function applySummary(cur, v, sigma){
+  const s=Object.assign(blankSummary(), cur||{});
+  s.balancePaisa += sigma*v.effectPaisa;
+  s.txnCount += sigma;
+  const kd=catDelta(v); s[kd[0]+'Paisa'] += sigma*kd[1];
+  if(v.type==='OPENING') s.openingSet = sigma>0;
+  if(v.type==='REVERSAL' && v.origType==='OPENING') s.openingSet = !(sigma>0);
+  if(sigma>0) s.lastVoucher=v.voucherNo;
+  s.updatedAt=Date.now();
+  return s;
+}
+function reversedSet(vs){
+  const set=new Set(); (vs||[]).forEach(v=>{ if(v.type==='REVERSAL' && v.refVoucher) set.add(v.refVoucher); }); return set;
+}
+function cmpVouchers(a,b){
+  if(a.date!==b.date) return a.date<b.date?-1:1;
+  const na=parseInt(String(a.voucherNo).replace(/\D/g,''),10)||0, nb=parseInt(String(b.voucherNo).replace(/\D/g,''),10)||0;
+  return na-nb;
+}
+// ডিলারভিত্তিক সারাংশ, সরাসরি Voucher থেকে (সত্যের উৎস)
+function aggregate(vs){
+  const rev=reversedSet(vs), m={};
+  (vs||[]).forEach(v=>{
+    const d=m[v.dealerId]||(m[v.dealerId]={balance:0,opening:0,receivable:0,payable:0,deposit:0,payment:0,return:0,adjustment:0,count:0,lastDeposit:'',openingSet:false});
+    d.balance+=v.effectPaisa; d.count++;
+    const kd=catDelta(v); d[kd[0]]+=kd[1];
+    if(v.type==='DEPOSIT' && !rev.has(v.voucherNo) && v.date>d.lastDeposit) d.lastDeposit=v.date;
+  });
+  Object.keys(m).forEach(id=>{
+    m[id].openingSet = (vs||[]).some(v=>String(v.dealerId)===id && v.type==='OPENING' && !rev.has(v.voucherNo));
+  });
+  return m;
+}
+function buildStatement(vs, dealerId, from, to, type, q){
+  const all=(vs||[]).filter(v=>!dealerId || String(v.dealerId)===String(dealerId)).slice().sort(cmpVouchers);
+  let bf=0;
+  if(from) all.forEach(v=>{ if(v.date<from) bf+=v.effectPaisa; });
+  let rows=all.filter(v=>(!from||v.date>=from)&&(!to||v.date<=to));
+  if(type) rows=rows.filter(v=>v.type===type);
+  const needle=String(q||'').trim().toLowerCase();
+  if(needle){
+    rows=rows.filter(v=>[v.voucherNo,v.description,v.dealerName,TYPES[v.type]&&TYPES[v.type].short,v.method,v.createdBy,(v.amountPaisa/100).toFixed(2)]
+      .some(x=>String(x==null?'':x).toLowerCase().includes(needle)));
+  }
+  let run=bf, dr=0, cr=0;
+  const out=rows.map(v=>{
+    const e=v.effectPaisa; if(e>0) dr+=e; else cr+=-e;
+    run+=e; return {v, dr:e>0?e:0, cr:e<0?-e:0, run};
+  });
+  const filteredByType = !!(type||needle);
+  return {rows:out, bf, dr, cr, closing: filteredByType ? null : bf+dr-cr, fullBalance: all.reduce((s,v)=>s+v.effectPaisa,0)};
+}
+
+/* ------------------------------ identity & permissions ------------------------------ */
+function actor(){
+  const s=(typeof DB!=='undefined' && DB.session)||{};
+  if(s.role==='admin') return {role:'admin', id:'admin', name:'Admin'};
+  if(s.role==='partsEngineer' && s.user) return {role:'partsEngineer', id:String(s.user.id), name:s.user.name||('PE-'+s.user.id)};
+  return null;
+}
+function permKey(a){ return a && a.role==='partsEngineer' ? 'pe_'+a.id : null; }
+function level(){
+  const a=actor(); if(!a) return 'none';
+  if(a.role==='admin') return 'admin';
+  const p=LG.perms[permKey(a)]; return (p && (p.level==='view'||p.level==='entry')) ? p.level : 'none';
+}
+function isAdmin(){ return level()==='admin'; }
+function canView(){ return level()!=='none'; }
+function allowedTypes(){
+  const l=level(); if(l==='admin') return ENTRY_TYPES.slice(); if(l==='entry') return ENTRY_LEVEL_TYPES.slice(); return [];
+}
+function canEnter(type){ return allowedTypes().includes(type); }
+
+function ledgerDealers(){
+  const a=actor();
+  let list=((typeof DB!=='undefined' && DB.users)||[]).filter(u=>u && u.role!=='mechanic' && !u.pending && !isDeletedAccount(u));
+  if(a && a.role==='partsEngineer') list=list.filter(u=>String(u.peId)===String(a.id));
+  return list.slice().sort((x,y)=>String(x.name||'').localeCompare(String(y.name||''),'bn'));
+}
+function dealerInfo(id){
+  const u=((typeof DB!=='undefined' && DB.users)||[]).find(x=>String(x.id)===String(id));
+  if(u) return {id:String(u.id), name:u.name||('Dealer '+u.id), phone:u.phone||'', address:u.address||u.shopAddress||'', known:true};
+  const v=LG.vouchers.find(x=>String(x.dealerId)===String(id));
+  return {id:String(id), name:v?v.dealerName:('Dealer '+id), phone:'', address:'', known:false};
+}
+function visibleVouchers(){
+  const a=actor();
+  if(a && a.role==='partsEngineer'){
+    const ids=new Set(ledgerDealers().map(u=>String(u.id)));
+    return LG.vouchers.filter(v=>ids.has(String(v.dealerId)));
+  }
+  return LG.vouchers;
+}
+
+/* ------------------------------ data load ------------------------------ */
+function snapList(snap){
+  const val=snap && snap.val ? snap.val() : null; if(!val) return [];
+  return Array.isArray(val) ? val.filter(Boolean) : Object.keys(val).map(k=>val[k]).filter(Boolean);
+}
+async function loadAll(){
+  const a=actor(); if(!a) throw E('NO_ACTOR','লগইন যাচাই করা যায়নি');
+  LG.loading=true; LG.error=null;
+  try{
+    const jobs=[ withTimeout(R('vouchers').once('value'),20000), withTimeout(R('dealers').once('value'),20000) ];
+    if(a.role==='admin'){
+      jobs.push(withTimeout(R('permissions').once('value'),20000));
+      jobs.push(withTimeout(R('audit').limitToLast(500).once('value'),20000));
+    }else{
+      jobs.push(withTimeout(R('permissions/'+permKey(a)).once('value'),20000));
+    }
+    const res=await Promise.all(jobs);
+    LG.vouchers=snapList(res[0]).filter(v=>v && v.voucherNo && v.dealerId!=null && Number.isFinite(v.effectPaisa));
+    LG.summaries=(res[1]&&res[1].val&&res[1].val())||{};
+    if(a.role==='admin'){
+      LG.perms=(res[2]&&res[2].val&&res[2].val())||{};
+      LG.audit=snapList(res[3]).reverse();
+    }else{
+      const p=res[2]&&res[2].val&&res[2].val(); LG.perms={}; if(p) LG.perms[permKey(a)]=p;
+    }
+    LG.loaded=true;
+  }catch(e){
+    LG.error=friendlyError(e); throw e;
+  }finally{ LG.loading=false; }
+}
+async function refreshPermissionFromServer(a){
+  if(a.role!=='partsEngineer') return;
+  const snap=await withTimeout(R('permissions/'+permKey(a)).once('value'));
+  const p=snap.val(); if(p) LG.perms[permKey(a)]=p; else delete LG.perms[permKey(a)];
+}
+function friendlyError(e){
+  const code=(e&&e.code)||''; const msg=(e&&e.message)||String(e);
+  if(/permission_denied/i.test(code+' '+msg)) return 'Firebase Rules এই path-এ (dealerLedger) অনুমতি দিচ্ছে না। Firebase Console → Realtime Database → Rules-এ dealerLedger-এর নিয়ম যোগ করুন (কোডের শুরুর মন্তব্যে নমুনা আছে)।';
+  if(code==='TIMEOUT') return 'সার্ভার থেকে সময়মতো উত্তর আসেনি — ইন্টারনেট সংযোগ পরীক্ষা করুন।';
+  return msg;
+}
+
+/* ------------------------------ validation ------------------------------ */
+function normalizeInput(inp, a){
+  const type=String(inp.type||'');
+  if(!TYPES[type]) throw E('VALIDATION','লেনদেনের ধরন নির্বাচন করুন');
+  if(!canEnter(type) && type!=='REVERSAL') throw E('FORBIDDEN','এই ধরনের লেনদেন করার অনুমতি আপনার নেই');
+  if(type==='REVERSAL' && !isAdmin()) throw E('FORBIDDEN','Reversal শুধু Admin করতে পারবেন');
+  const out={type};
+  if(type==='REVERSAL'){
+    out.refVoucher=String(inp.refVoucher||'');
+    out.reason=String(inp.reason||'').trim();
+    if(!out.refVoucher) throw E('VALIDATION','কোন Voucher Reverse হবে তা নির্দিষ্ট নয়');
+    if(out.reason.length<3) throw E('VALIDATION','Reverse করার কারণ লিখুন (কমপক্ষে ৩ অক্ষর)');
+    out.date=todayISO();
+    return out;
+  }
+  const dealer=ledgerDealers().find(u=>String(u.id)===String(inp.dealerId));
+  if(!dealer) throw E('VALIDATION','তালিকা থেকে একজন বিদ্যমান ডিলার নির্বাচন করুন');
+  out.dealerId=String(dealer.id); out.dealerName=dealer.name||('Dealer '+dealer.id);
+  const paisa=toPaisa(inp.amount);
+  if(!Number.isFinite(paisa) || paisa<=0) throw E('VALIDATION','সঠিক পরিমাণ লিখুন (০-এর বেশি, সর্বোচ্চ ২ দশমিক ঘর)');
+  if(paisa>MAX_PAISA) throw E('VALIDATION','পরিমাণ অনেক বেশি — সঠিক কিনা যাচাই করুন');
+  out.amountPaisa=paisa;
+  const date=String(inp.date||'');
+  if(!validDate(date)) throw E('VALIDATION','সঠিক তারিখ দিন');
+  if(date>todayISO()) throw E('VALIDATION','ভবিষ্যতের তারিখে লেনদেন করা যাবে না');
+  if(date<'2000-01-01') throw E('VALIDATION','তারিখ অস্বাভাবিক পুরোনো');
+  out.date=date;
+  const t=TYPES[type];
+  if(t.needSide){ if(inp.side!=='RECV' && inp.side!=='PAY') throw E('VALIDATION','দিক নির্বাচন করুন (পাওনা / দেনা)'); out.side=inp.side; }
+  else out.side=t.sign>0?'RECV':'PAY';
+  if(t.needMethod){ if(!METHODS.includes(inp.method)) throw E('VALIDATION','Payment Method নির্বাচন করুন'); out.method=inp.method; }
+  else out.method='N/A';
+  const desc=String(inp.description||'').trim();
+  if((type==='ADJUSTMENT') && desc.length<3) throw E('VALIDATION','সমন্বয়ের কারণ/বিবরণ লিখুন');
+  if(desc.length>300) throw E('VALIDATION','বিবরণ ৩০০ অক্ষরের বেশি হতে পারবে না');
+  out.description=desc || t.short;
+  out.effectPaisa=effectOf(type,paisa,out.side);
+  return out;
+}
+
+/* ------------------------------ SAVE (idempotent, verified) ------------------------------ */
+async function saveVoucher(inp){
+  const a=actor(); if(!a) throw E('NO_ACTOR','লগইন যাচাই করা যায়নি');
+  if(typeof fbAuth!=='undefined' && !fbAuth.currentUser) throw E('NO_AUTH','Cloud সাইন-ইন সক্রিয় নেই — লগআউট করে আবার লগইন করুন। (সেভ করা হয়নি)');
+  const opId=String(inp.opId||''); if(!/^[A-Za-z0-9]{8,64}$/.test(opId)) throw E('VALIDATION','অভ্যন্তরীণ ত্রুটি: অবৈধ অপারেশন আইডি');
+  await refreshPermissionFromServer(a);
+  const n=normalizeInput(inp,a);
+  const isRev = n.type==='REVERSAL';
+  let orig=null;
+
+  if(isRev){
+    const os=await withTimeout(R('vouchers/'+n.refVoucher).once('value'));
+    orig=os.val();
+    if(!orig) throw E('VALIDATION','মূল Voucher পাওয়া যায়নি');
+    if(orig.type==='REVERSAL') throw E('VALIDATION','Reversal Voucher-কে আবার Reverse করা যায় না');
+    n.dealerId=String(orig.dealerId); n.dealerName=orig.dealerName;
+    n.amountPaisa=orig.amountPaisa; n.effectPaisa=-orig.effectPaisa;
+    n.origType=orig.type; n.origAmountPaisa=orig.amountPaisa; n.side=n.effectPaisa>=0?'RECV':'PAY';
+    n.method=orig.method||'N/A';
+    n.description='Reversal of '+orig.voucherNo+' ('+(TYPES[orig.type]?TYPES[orig.type].short:orig.type)+') — '+n.reason;
+  }
+
+  const rec={
+    dealerId:n.dealerId, dealerName:n.dealerName, type:n.type, side:n.side, date:n.date,
+    description:n.description, amountPaisa:n.amountPaisa, amount:n.amountPaisa/100, effectPaisa:n.effectPaisa,
+    method:n.method, createdBy:a.name, createdById:a.id, createdByRole:a.role,
+    createdAt:new Date().toISOString(), opId:opId
+  };
+  if(isRev){ rec.refVoucher=orig.voucherNo; rec.origType=n.origType; rec.origAmountPaisa=n.origAmountPaisa; rec.reason=n.reason; }
+
+  let claimed=false, revClaimed=false, summaryApplied=false;
+  try{
+    // ১) Double-save প্রতিরোধ — এই opId আগে ব্যবহৃত হয়েছে কি?
+    const c=await withTimeout(R('opIndex/'+opId).transaction(cur=> cur===null ? {state:'claimed',at:Date.now(),by:a.name} : undefined));
+    if(!c.committed){
+      const ex=c.snapshot.val()||{};
+      if(ex.voucherNo) return {ok:true, duplicate:true, voucherNo:ex.voucherNo};
+      throw E('IN_PROGRESS','এই লেনদেনটি আগে একবার সেভ করার চেষ্টা হয়েছে। Ledger রিফ্রেশ করে দেখুন সেভ হয়েছে কি না; না হলে ফর্ম বন্ধ করে নতুন করে এন্ট্রি দিন।');
+    }
+    claimed=true;
+
+    // ২) Reversal হলে — একই Voucher দুবার Reverse ঠেকানো
+    if(isRev){
+      const rc=await withTimeout(R('reversals/'+orig.voucherNo).transaction(cur=> cur===null ? {state:'claimed',at:Date.now(),by:a.name} : undefined));
+      if(!rc.committed) throw E('ALREADY_REVERSED','এই Voucher ইতিমধ্যে Reverse করা হয়েছে');
+      revClaimed=true;
+    }
+
+    // ৩) ইউনিক Voucher নম্বর
+    const cr=await withTimeout(R('counters/voucher').transaction(x=>(Number(x)||0)+1));
+    if(!cr.committed) throw E('COUNTER','Voucher নম্বর তৈরি করা যায়নি');
+    rec.voucherNo='DL-'+String(cr.snapshot.val()).padStart(6,'0');
+    const exist=await withTimeout(R('vouchers/'+rec.voucherNo).once('value'));
+    if(exist.val()) throw E('DUP_VOUCHER','Voucher নম্বর সংঘর্ষ — আবার চেষ্টা করুন');
+
+    // ৪) ডিলারের সারাংশ/ব্যালেন্স অ্যাটমিক আপডেট
+    let blocked=null;
+    const sr=await withTimeout(R('dealers/'+rec.dealerId).transaction(cur=>{
+      const s=Object.assign(blankSummary(),cur||{});
+      if(rec.type==='OPENING' && s.openingSet){ blocked='OPENING_EXISTS'; return; }
+      return applySummary(s,rec,+1);
+    }));
+    if(!sr.committed) throw E(blocked||'SUMMARY_ABORTED', blocked==='OPENING_EXISTS' ? 'এই ডিলারের Opening Balance আগেই দেওয়া আছে। পরিবর্তন করতে মূল Voucher Reverse করুন অথবা সমন্বয় (Adjustment) করুন।' : 'ব্যালেন্স আপডেট করা যায়নি');
+    summaryApplied=true;
+    const balanceAfter=sr.snapshot.val().balancePaisa;
+
+    // ৫) Voucher + opIndex + (reversal) + audit — একটিমাত্র অ্যাটমিক রাইট
+    const auditKey=R('audit').push().key;
+    const stored=Object.assign({},rec,{serverTs:serverTs(), balanceAfterPaisa:balanceAfter});
+    const upd={};
+    upd['vouchers/'+rec.voucherNo]=stored;
+    upd['opIndex/'+opId]={state:'done',voucherNo:rec.voucherNo,at:Date.now()};
+    if(isRev) upd['reversals/'+orig.voucherNo]={state:'done',voucherNo:rec.voucherNo,at:Date.now(),by:a.name,reason:n.reason};
+    upd['audit/'+auditKey]={ts:serverTs(), at:rec.createdAt, by:a.name, byId:a.id, byRole:a.role,
+      action:isRev?'VOUCHER_REVERSE':'VOUCHER_CREATE', voucherNo:rec.voucherNo, dealerId:rec.dealerId, dealerName:rec.dealerName,
+      type:rec.type, amountPaisa:rec.amountPaisa, effectPaisa:rec.effectPaisa, balanceAfterPaisa:balanceAfter,
+      details:rec.description, refVoucher:isRev?orig.voucherNo:null};
+    try{
+      await withTimeout(R().update(upd));
+    }catch(e){
+      if(e.code==='TIMEOUT'){
+        // নিশ্চিত নই — সার্ভারে কী আছে দেখি; অনিশ্চিত অবস্থায় কিছুই Rollback করা হবে না
+        try{
+          const chk=await withTimeout(R('opIndex/'+opId).once('value'),8000);
+          const cv=chk.val(); if(cv && cv.state==='done') return {ok:true, voucherNo:cv.voucherNo, balanceAfterPaisa:balanceAfter};
+        }catch(e2){}
+        const u=E('UNCERTAIN','সংযোগ সমস্যায় Save নিশ্চিত হয়নি। আবার Save করার আগে Ledger রিফ্রেশ করে দেখুন লেনদেনটি এসেছে কি না। (একই ফর্মে আবার Save করলে ডুপ্লিকেট হবে না।)');
+        throw u;
+      }
+      throw e;
+    }
+    return {ok:true, voucherNo:rec.voucherNo, balanceAfterPaisa:balanceAfter};
+  }catch(e){
+    if(e.code!=='UNCERTAIN'){
+      if(summaryApplied){ try{ await withTimeout(R('dealers/'+rec.dealerId).transaction(cur=> cur ? applySummary(cur,rec,-1) : cur)); }catch(e2){ console.warn('ledger rollback failed',e2); } }
+      if(revClaimed){ try{ await withTimeout(R('reversals/'+orig.voucherNo).remove()); }catch(e2){} }
+      if(claimed){ try{ await withTimeout(R('opIndex/'+opId).remove()); }catch(e2){} }
+    }
+    throw e;
+  }
+}
+
+async function writeAudit(action, details, extra){
+  const a=actor(); if(!a) return;
+  const key=R('audit').push().key;
+  await withTimeout(R('audit/'+key).set(Object.assign({ts:serverTs(), at:new Date().toISOString(), by:a.name, byId:a.id, byRole:a.role, action, details:details||''}, extra||{})));
+}
+
+/* ------------------------------ admin utilities ------------------------------ */
+function mismatches(){
+  const agg=aggregate(LG.vouchers), out=[];
+  const ids=new Set(Object.keys(agg).concat(Object.keys(LG.summaries||{})));
+  ids.forEach(id=>{
+    const calc=(agg[id]&&agg[id].balance)||0, st=LG.summaries[id]; const stored=st?Number(st.balancePaisa)||0:0;
+    if(calc!==stored) out.push({dealerId:id, calc, stored});
+  });
+  return out;
+}
+async function recalcDealer(dealerId){
+  if(!isAdmin()) throw E('FORBIDDEN','শুধু Admin');
+  const mine=LG.vouchers.filter(v=>String(v.dealerId)===String(dealerId));
+  let s=blankSummary(); mine.slice().sort(cmpVouchers).forEach(v=>{ s=applySummary(s,v,+1); });
+  s.updatedAt=Date.now();
+  await withTimeout(R('dealers/'+dealerId).set(s));
+  await writeAudit('RECALCULATE','সারাংশ Voucher থেকে পুনর্গণনা — ব্যালেন্স '+num(s.balancePaisa),{dealerId:String(dealerId),balanceAfterPaisa:s.balancePaisa});
+  LG.summaries[dealerId]=s;
+}
+async function setPermission(peId, lvl){
+  if(!isAdmin()) throw E('FORBIDDEN','শুধু Admin');
+  if(!['none','view','entry'].includes(lvl)) throw E('VALIDATION','অবৈধ অনুমতি');
+  const pe=(DB.partsEngineers||[]).find(p=>String(p.id)===String(peId)); if(!pe) throw E('VALIDATION','Parts Engineer পাওয়া যায়নি');
+  const a=actor(); const key='pe_'+peId;
+  if(lvl==='none') await withTimeout(R('permissions/'+key).remove());
+  else await withTimeout(R('permissions/'+key).set({level:lvl,name:pe.name||'',updatedBy:a.name,updatedAt:Date.now()}));
+  await writeAudit('PERMISSION_SET',(pe.name||peId)+' → '+lvl,{targetId:String(peId)});
+  if(lvl==='none') delete LG.perms[key]; else LG.perms[key]={level:lvl,name:pe.name||''};
+}
+
+/* ------------------------------ UI: helpers ------------------------------ */
+function $(id){ return document.getElementById(id); }
+function toast(msg,bad){
+  if(!bad && typeof showSavedToast==='function'){ showSavedToast(msg); return; }
+  alert(msg);
+}
+function companyName(){ return (DB.settings&&DB.settings.companyName)||''; }
+function typeBadge(v){
+  const t=TYPES[v.type]; const cls='dlg-t-'+String(v.type||'').toLowerCase();
+  return `<span class="dlg-badge ${cls}">${esc(t?t.short:v.type)}</span>`;
+}
+function root(){ return $('dlgRoot'); }
+function setRoot(html){ const r=root(); if(r) r.innerHTML=html; }
+
+/* ------------------------------ UI: shell ------------------------------ */
+function tabHTML(){
+  return `<div class="dlg-wrap"><div id="dlgRoot"><div class="card"><p class="hint">⏳ Ledger লোড হচ্ছে...</p></div></div></div>`;
+}
+async function wire(){
+  LG.ui.view = LG.ui.view || 'due';
+  setRoot(`<div class="card"><p class="hint">⏳ Ledger লোড হচ্ছে...</p></div>`);
+  try{ await loadAll(); }catch(e){ /* LG.error set */ }
+  render();
+}
+function render(){
+  if(!root()) return;
+  if(LG.error && !LG.loaded){
+    setRoot(`<div class="card"><h3 style="margin:0 0 8px">📒 দেনা-পাওনা হিসাব</h3><div class="dlg-alert">❌ ${esc(LG.error)}</div><button class="btn btn-navy btn-sm" onclick="DLG.reload()">🔄 আবার চেষ্টা করুন</button></div>`);
+    return;
+  }
+  if(!canView()){
+    setRoot(`<div class="card"><h3 style="margin:0 0 8px">📒 দেনা-পাওনা হিসাব</h3><div class="dlg-alert">🔒 এই ফিচার দেখার অনুমতি আপনার নেই। Admin-এর কাছে অনুমতি চান।</div></div>`);
+    return;
+  }
+  const admin=isAdmin();
+  const views=[['due','📋 Due List / সারাংশ'],['ledger','📒 Ledger / Statement']];
+  if(admin){ views.push(['audit','🕵️ Audit Log']); views.push(['perm','🔑 অনুমতি']); }
+  if(!views.some(v=>v[0]===LG.ui.view)) LG.ui.view='due';
+  const warn=[];
+  if(typeof fbAuth!=='undefined' && !fbAuth.currentUser) warn.push('⚠️ Cloud সাইন-ইন সক্রিয় নেই — নতুন লেনদেন সেভ হবে না। লগআউট করে আবার লগইন করুন।');
+  if(admin){ const mm=mismatches(); if(mm.length) warn.push(`⚠️ ${mm.length}টি ডিলারের সংরক্ষিত ব্যালেন্স Voucher-এর হিসাবের সাথে মিলছে না। (Due List-এ "মিলিয়ে নিন" বোতাম আছে।)`); }
+  setRoot(`
+    <div class="card">
+      <div class="card-head" style="flex-wrap:wrap;gap:8px">
+        <h3 style="margin:0">📒 দেনা-পাওনা হিসাব (Dealer Ledger)</h3>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          ${allowedTypes().length ? `<button class="btn btn-primary btn-sm" style="width:auto" onclick="DLG.openEntry()">➕ নতুন লেনদেন</button>`:''}
+          <button class="btn btn-ghost btn-sm" onclick="DLG.reload()">🔄 রিফ্রেশ</button>
+        </div>
+      </div>
+      <p class="hint" style="margin:6px 0 10px">ব্যালেন্স: <b class="dlg-due">+ পাওনা</b> = ডিলার কোম্পানিকে দেবে · <b class="dlg-adv">− দেনা/অগ্রিম</b> = কোম্পানি ডিলারকে দেবে। পুরোনো লেনদেন Edit/Delete হয় না — ভুল হলে Reversal বা সমন্বয় করুন।</p>
+      ${warn.map(w=>`<div class="dlg-alert">${esc(w)}</div>`).join('')}
+      <div class="tabs" style="margin:10px 0 0">${views.map(v=>`<button class="tab ${LG.ui.view===v[0]?'active':''}" onclick="DLG.setView('${v[0]}')">${v[1]}</button>`).join('')}</div>
+    </div>
+    <div id="dlgBody"></div>`);
+  renderBody();
+}
+function renderBody(){
+  const b=$('dlgBody'); if(!b) return;
+  if(LG.ui.view==='due') b.innerHTML=dueHTML();
+  else if(LG.ui.view==='ledger') b.innerHTML=ledgerHTML();
+  else if(LG.ui.view==='audit' && isAdmin()) b.innerHTML=auditHTML();
+  else if(LG.ui.view==='perm' && isAdmin()) b.innerHTML=permHTML();
+  if(LG.ui.view==='due') renderDueResults();
+  if(LG.ui.view==='ledger') renderLedgerResults();
+  if(LG.ui.view==='audit') renderAuditResults();
+}
+
+/* ------------------------------ UI: Due list ------------------------------ */
+function dueRows(){
+  const vs=visibleVouchers(), agg=aggregate(vs);
+  const ids=new Set(ledgerDealers().map(u=>String(u.id))); Object.keys(agg).forEach(id=>ids.add(id));
+  const needle=String(LG.ui.dueQ||'').trim().toLowerCase();
+  let rows=Array.from(ids).map(id=>{
+    const info=dealerInfo(id), g=agg[id]||{balance:0,opening:0,receivable:0,payable:0,deposit:0,payment:0,return:0,adjustment:0,count:0,lastDeposit:''};
+    const st=LG.summaries[id]; const stored=st?Number(st.balancePaisa)||0:0;
+    return {id,info,g,stored,bad:(isAdmin() && stored!==g.balance)};
+  });
+  if(needle) rows=rows.filter(r=>[r.info.name,r.info.phone,r.id].some(x=>String(x).toLowerCase().includes(needle)));
+  if(LG.ui.dueOnly) rows=rows.filter(r=>r.g.balance>0);
+  rows.sort((x,y)=>y.g.balance-x.g.balance || String(x.info.name).localeCompare(String(y.info.name),'bn'));
+  return rows;
+}
+function dueHTML(){
+  return `
+  <div class="card">
+    <div class="dlg-filters">
+      <input type="text" id="dlgDueQ" placeholder="🔍 ডিলারের নাম / মোবাইল / ID" value="${esc(LG.ui.dueQ)}" oninput="DLG.setDueQ(this.value)">
+      <label class="dlg-chk"><input type="checkbox" id="dlgDueOnly" ${LG.ui.dueOnly?'checked':''} onchange="DLG.setDueOnly(this.checked)"> শুধু বকেয়া (পাওনা > ০)</label>
+      <div style="display:flex;gap:8px;margin-left:auto;flex-wrap:wrap">
+        <button class="btn btn-ghost btn-sm" onclick="DLG.printDue()">🖨️ Print</button>
+        <button class="btn btn-ghost btn-sm" onclick="DLG.exportDue()">📄 Excel</button>
+      </div>
+    </div>
+    <div id="dlgDueResults"></div>
+  </div>`;
+}
+function renderDueResults(){
+  const box=$('dlgDueResults'); if(!box) return;
+  const rows=dueRows();
+  const all=aggregate(visibleVouchers()); let recv=0,pay=0,dueCnt=0;
+  Object.keys(all).forEach(id=>{ const b=all[id].balance; if(b>0){recv+=b;dueCnt++;} else if(b<0) pay+=-b; });
+  const admin=isAdmin(); const bad=rows.filter(r=>r.bad);
+  box.innerHTML=`
+    <div class="dlg-kpis">
+      <div class="dlg-kpi"><div>মোট পাওনা (ডিলারের কাছে)</div><b class="dlg-due">${fmt(recv)}</b></div>
+      <div class="dlg-kpi"><div>মোট দেনা/অগ্রিম (ডিলারকে)</div><b class="dlg-adv">${fmt(pay)}</b></div>
+      <div class="dlg-kpi"><div>নিট ব্যালেন্স</div><b>${balHTML(recv-pay)}</b></div>
+      <div class="dlg-kpi"><div>বকেয়াদার ডিলার</div><b>${dueCnt} জন</b></div>
+    </div>
+    ${bad.length && admin ? `<div style="margin:8px 0"><button class="btn btn-navy btn-sm" onclick="DLG.recalcAll()">🛠️ ${bad.length}টি ডিলারের ব্যালেন্স মিলিয়ে নিন (Recalculate)</button></div>`:''}
+    <div class="dlg-scroll"><table class="dlg-table">
+      <thead><tr><th>#</th><th>ডিলার</th><th>Opening</th><th>পাওনা</th><th>দেনা</th><th>জমা</th><th>প্রদান</th><th>ফেরত</th><th>সমন্বয়</th><th>বর্তমান ব্যালেন্স</th><th>শেষ জমা</th><th></th></tr></thead>
+      <tbody>${rows.length ? rows.map((r,i)=>`<tr>
+        <td>${i+1}</td>
+        <td><b>${esc(r.info.name)}</b><div class="dlg-sub">${esc(r.info.phone)} · ID ${esc(r.id)}${r.info.known?'':' · (মুছে ফেলা)'}</div></td>
+        <td class="n">${num(r.g.opening)}</td><td class="n">${num(r.g.receivable)}</td><td class="n">${num(r.g.payable)}</td>
+        <td class="n">${num(r.g.deposit)}</td><td class="n">${num(r.g.payment)}</td><td class="n">${num(r.g.return)}</td><td class="n">${num(r.g.adjustment)}</td>
+        <td class="n"><b>${balHTML(r.g.balance)}</b>${r.bad?`<div class="dlg-sub dlg-due">⚠️ সংরক্ষিত: ${num(r.stored)}</div>`:''}</td>
+        <td>${esc(r.g.lastDeposit||'—')}</td>
+        <td style="white-space:nowrap"><button class="btn btn-ghost btn-sm" onclick="DLG.openLedger('${esc(r.id)}')">📒 Ledger</button>
+          ${allowedTypes().length?`<button class="btn btn-ghost btn-sm" onclick="DLG.openEntry('${esc(r.id)}')">➕</button>`:''}</td>
+      </tr>`).join('') : `<tr><td colspan="12" class="dlg-empty">কোনো ডিলার পাওয়া যায়নি</td></tr>`}</tbody>
+    </table></div>`;
+}
+
+/* ------------------------------ UI: Ledger / Statement ------------------------------ */
+function ledgerHTML(){
+  const dealers=ledgerDealers();
+  const opts=dealers.map(u=>`<option value="${esc(u.id)}" ${String(u.id)===String(LG.ui.dealerId)?'selected':''}>${esc(u.name)} (${esc(u.phone||'')} · ID ${esc(u.id)})</option>`).join('');
+  return `
+  <div class="card">
+    <div class="dlg-filters">
+      <select id="dlgDealer" onchange="DLG.setF('dealerId',this.value)"><option value="">— সব ডিলার (Journal) —</option>${opts}</select>
+      <label>থেকে <input type="date" id="dlgFrom" value="${esc(LG.ui.from)}" onchange="DLG.setF('from',this.value)"></label>
+      <label>পর্যন্ত <input type="date" id="dlgTo" value="${esc(LG.ui.to)}" onchange="DLG.setF('to',this.value)"></label>
+      <select id="dlgType" onchange="DLG.setF('type',this.value)"><option value="">সব ধরন</option>${Object.keys(TYPES).map(k=>`<option value="${k}" ${LG.ui.type===k?'selected':''}>${esc(TYPES[k].short)}</option>`).join('')}</select>
+      <input type="text" id="dlgQ" placeholder="🔍 Voucher / বিবরণ / পরিমাণ" value="${esc(LG.ui.q)}" oninput="DLG.setQ(this.value)">
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 0">
+      <button class="btn btn-ghost btn-sm" onclick="DLG.clearFilters()">✖ ফিল্টার মুছুন</button>
+      <button class="btn btn-ghost btn-sm" onclick="DLG.printStatement()">🖨️ Statement Print</button>
+      <button class="btn btn-ghost btn-sm" onclick="DLG.exportLedger()">📄 Excel Export</button>
+    </div>
+    <div id="dlgLedgerResults"></div>
+  </div>`;
+}
+function currentStatement(){
+  return buildStatement(visibleVouchers(), LG.ui.dealerId, LG.ui.from, LG.ui.to, LG.ui.type, LG.ui.q);
+}
+function renderLedgerResults(){
+  const box=$('dlgLedgerResults'); if(!box) return;
+  const st=currentStatement(); const single=!!LG.ui.dealerId; const admin=isAdmin();
+  const rev=reversedSet(LG.vouchers);
+  const info=single?dealerInfo(LG.ui.dealerId):null;
+  const cols=single?12:12;
+  box.innerHTML=`
+    ${single?`<div class="dlg-dealerbox"><b>${esc(info.name)}</b> · ${esc(info.phone)} · ID ${esc(info.id)} &nbsp;|&nbsp; সর্বমোট বর্তমান ব্যালেন্স: <b>${balHTML(st.fullBalance)}</b></div>`:''}
+    <div class="dlg-scroll"><table class="dlg-table dlg-ledger">
+      <thead><tr><th>তারিখ</th><th>Voucher</th>${single?'':'<th>ডিলার</th>'}<th>ধরন</th><th>বিবরণ</th><th>Method</th><th>পাওনা বৃদ্ধি (Dr)</th><th>পাওনা হ্রাস (Cr)</th>${single?'<th>ব্যালেন্স</th>':''}<th>Created By</th><th>Timestamp</th><th></th></tr></thead>
+      <tbody>
+        ${(single && LG.ui.from) ? `<tr class="dlg-bf"><td>${esc(LG.ui.from)}</td><td colspan="${single?5:6}">পূর্বজের (Brought Forward)</td><td class="n"></td><td class="n"></td><td class="n"><b>${balHTML(st.bf)}</b></td><td colspan="3"></td></tr>`:''}
+        ${st.rows.length ? st.rows.map(r=>{
+          const v=r.v, isRev=v.type==='REVERSAL', wasRev=rev.has(v.voucherNo);
+          return `<tr class="${wasRev?'dlg-reversed':''}">
+            <td>${esc(v.date)}</td><td><code>${esc(v.voucherNo)}</code></td>
+            ${single?'':`<td>${esc(v.dealerName)}<div class="dlg-sub">ID ${esc(v.dealerId)}</div></td>`}
+            <td>${typeBadge(v)}${wasRev?'<div class="dlg-sub dlg-due">Reversed</div>':''}</td>
+            <td>${esc(v.description)}</td><td>${esc(v.method||'')}</td>
+            <td class="n">${r.dr?num(r.dr):''}</td><td class="n">${r.cr?num(r.cr):''}</td>
+            ${single?`<td class="n"><b>${balHTML(r.run)}</b></td>`:''}
+            <td>${esc(v.createdBy||'')}</td><td class="dlg-sub">${esc(tsText(v))}</td>
+            <td>${(admin && !isRev && !wasRev)?`<button class="btn btn-danger btn-sm" onclick="DLG.openReverse('${esc(v.voucherNo)}')">↩️ Reverse</button>`:''}</td>
+          </tr>`;}).join('') : `<tr><td colspan="${cols}" class="dlg-empty">এই ফিল্টারে কোনো লেনদেন নেই</td></tr>`}
+      </tbody>
+      <tfoot><tr><td colspan="${single?6:6}"><b>মোট (${st.rows.length}টি লেনদেন)</b></td><td class="n"><b>${num(st.dr)}</b></td><td class="n"><b>${num(st.cr)}</b></td>${single?`<td class="n"><b>${st.closing==null?'—':balHTML(st.closing)}</b></td>`:''}<td colspan="3"></td></tr></tfoot>
+    </table></div>
+    ${single && st.closing==null?'<p class="hint">ℹ️ ধরন/সার্চ ফিল্টার চালু থাকায় চলতি ব্যালেন্স আংশিক — সম্পূর্ণ Closing Balance দেখতে ফিল্টার মুছুন।</p>':''}`;
+}
+
+/* ------------------------------ UI: Audit & Permissions ------------------------------ */
+function auditHTML(){
+  return `<div class="card"><div class="dlg-filters"><input type="text" id="dlgAuditQ" placeholder="🔍 Audit Log সার্চ" value="${esc(LG.ui.auditQ)}" oninput="DLG.setAuditQ(this.value)"></div><p class="hint">শেষ ৫০০টি এন্ট্রি দেখানো হচ্ছে। Audit Log যোগ-মাত্র (append-only) — মোছা বা বদলানো যায় না।</p><div id="dlgAuditResults"></div></div>`;
+}
+function renderAuditResults(){
+  const box=$('dlgAuditResults'); if(!box) return;
+  const n=String(LG.ui.auditQ||'').trim().toLowerCase();
+  let rows=LG.audit; if(n) rows=rows.filter(a=>[a.action,a.by,a.voucherNo,a.dealerName,a.details,a.dealerId].some(x=>String(x==null?'':x).toLowerCase().includes(n)));
+  box.innerHTML=`<div class="dlg-scroll"><table class="dlg-table"><thead><tr><th>সময়</th><th>ব্যবহারকারী</th><th>Action</th><th>Voucher</th><th>ডিলার</th><th>পরিমাণ/প্রভাব</th><th>বিবরণ</th></tr></thead><tbody>
+    ${rows.length?rows.map(a=>`<tr><td class="dlg-sub">${esc(a.at?String(a.at).replace('T',' ').slice(0,19):'')}</td><td>${esc(a.by||'')} <span class="dlg-sub">(${esc(a.byRole||'')})</span></td><td><b>${esc(a.action)}</b></td><td><code>${esc(a.voucherNo||'')}</code></td><td>${esc(a.dealerName||a.dealerId||'')}</td><td class="n">${a.amountPaisa!=null?num(a.amountPaisa)+(a.effectPaisa!=null?` <span class="dlg-sub">(${a.effectPaisa>=0?'+':''}${num(a.effectPaisa)})</span>`:''):''}</td><td>${esc(a.details||'')}</td></tr>`).join(''):`<tr><td colspan="7" class="dlg-empty">কোনো Audit এন্ট্রি নেই</td></tr>`}
+  </tbody></table></div>`;
+}
+function permHTML(){
+  const pes=(DB.partsEngineers||[]).filter(p=>p && !isDeletedAccount(p));
+  return `<div class="card"><h3 style="margin:0 0 6px">🔑 Parts Engineer-এর Ledger অনুমতি</h3>
+    <p class="hint">Admin-এর সব অনুমতি আছে (Opening, সমন্বয়, Reversal, Audit Log, অনুমতি ব্যবস্থাপনা শুধু Admin)।<br><b>শুধু দেখা</b> = নিজের অধীন ডিলারদের Ledger/Statement দেখা। <b>এন্ট্রি</b> = দেখা + পাওনা/দেনা/জমা/প্রদান/ফেরত এন্ট্রি।</p>
+    <div class="dlg-scroll"><table class="dlg-table"><thead><tr><th>Parts Engineer</th><th>Region</th><th>অনুমতি</th></tr></thead><tbody>
+    ${pes.length?pes.map(p=>{ const cur=(LG.perms['pe_'+p.id]||{}).level||'none';
+      return `<tr><td>${esc(p.name)}<div class="dlg-sub">${esc(p.engineerId||'')}</div></td><td>${esc(p.region||'')}</td><td>
+        <select onchange="DLG.changePerm('${esc(p.id)}',this)">
+          <option value="none" ${cur==='none'?'selected':''}>অনুমতি নেই</option>
+          <option value="view" ${cur==='view'?'selected':''}>শুধু দেখা</option>
+          <option value="entry" ${cur==='entry'?'selected':''}>দেখা + এন্ট্রি</option></select></td></tr>`;}).join(''):`<tr><td colspan="3" class="dlg-empty">কোনো Parts Engineer নেই</td></tr>`}
+    </tbody></table></div></div>`;
+}
+
+/* ------------------------------ UI: modal ------------------------------ */
+function modal(html){
+  let bg=$('dlgModalBg');
+  if(!bg){ bg=document.createElement('div'); bg.id='dlgModalBg'; bg.className='dlg-modal-bg'; bg.innerHTML='<div class="dlg-modal" id="dlgModalBody"></div>'; document.body.appendChild(bg); }
+  $('dlgModalBody').innerHTML=html; bg.classList.add('show');
+}
+function closeModal(){ const bg=$('dlgModalBg'); if(bg){ bg.classList.remove('show'); const b=$('dlgModalBody'); if(b) b.innerHTML=''; } LG.saving=false; }
+
+function openEntry(dealerId, prefill){
+  if(!allowedTypes().length){ alert('এন্ট্রি করার অনুমতি আপনার নেই'); return; }
+  prefill=prefill||{};
+  LG.opId=newOpId(); LG.saving=false;
+  const dealers=ledgerDealers();
+  if(!dealers.length){ alert('কোনো ডিলার পাওয়া যায়নি'); return; }
+  const sel=String(dealerId||prefill.dealerId||LG.ui.dealerId||'');
+  const types=allowedTypes();
+  modal(`
+    <h3 style="margin:0 0 12px">➕ নতুন লেনদেন</h3>
+    <div class="field"><label>ডিলার (বিদ্যমান)</label><select id="dlgFDealer" onchange="DLG.entryPreview()">
+      <option value="">— নির্বাচন করুন —</option>${dealers.map(u=>`<option value="${esc(u.id)}" ${String(u.id)===sel?'selected':''}>${esc(u.name)} (${esc(u.phone||'')} · ID ${esc(u.id)})</option>`).join('')}</select></div>
+    <div class="field"><label>লেনদেনের ধরন</label><select id="dlgFType" onchange="DLG.entryTypeChanged()">
+      ${types.map(k=>`<option value="${k}" ${prefill.type===k?'selected':''}>${esc(TYPES[k].bn)}</option>`).join('')}</select></div>
+    <div class="field" id="dlgFSideBox" style="display:none"><label>দিক</label><select id="dlgFSide" onchange="DLG.entryPreview()">
+      <option value="RECV">ডিলারের কাছে পাওনা (+)</option><option value="PAY">ডিলারকে দেনা/অগ্রিম (−)</option></select></div>
+    <div class="field"><label>তারিখ</label><input type="date" id="dlgFDate" max="${todayISO()}" value="${esc(prefill.date||todayISO())}"></div>
+    <div class="field"><label>পরিমাণ (৳)</label><input type="text" inputmode="decimal" id="dlgFAmount" placeholder="যেমন 25000.50" value="${esc(prefill.amount||'')}" oninput="DLG.entryPreview()"></div>
+    <div class="field" id="dlgFMethodBox"><label>Payment Method</label><select id="dlgFMethod">${METHODS.map(m=>`<option>${m}</option>`).join('')}</select></div>
+    <div class="field"><label>বিবরণ (Description)</label><input type="text" id="dlgFDesc" maxlength="300" placeholder="যেমন: Invoice #123 / নগদ জমা" value="${esc(prefill.description||'')}"></div>
+    <div id="dlgFPreview" class="dlg-preview"></div>
+    <div id="dlgFErr" class="dlg-alert" style="display:none"></div>
+    <div class="modal-actions" style="display:flex;gap:8px;margin-top:14px">
+      <button class="btn btn-ghost" style="flex:1" onclick="DLG.closeModal()">বাতিল</button>
+      <button class="btn btn-primary" style="flex:1" id="dlgFSave" onclick="DLG.submitEntry()">💾 সেভ করুন</button>
+    </div>`);
+  entryTypeChanged();
+}
+function entryTypeChanged(){
+  const t=$('dlgFType'); if(!t) return; const def=TYPES[t.value]||{};
+  $('dlgFSideBox').style.display = def.needSide ? '' : 'none';
+  $('dlgFMethodBox').style.display = def.needMethod ? '' : 'none';
+  entryPreview();
+}
+function entryPreview(){
+  const box=$('dlgFPreview'); if(!box) return;
+  const did=$('dlgFDealer').value, type=$('dlgFType').value, paisa=toPaisa($('dlgFAmount').value);
+  if(!did){ box.innerHTML=''; return; }
+  const cur=(aggregate(visibleVouchers())[did]||{balance:0}).balance;
+  let after=null;
+  if(Number.isFinite(paisa) && paisa>0){ try{ after=cur+effectOf(type,paisa,$('dlgFSide').value); }catch(e){} }
+  box.innerHTML=`বর্তমান ব্যালেন্স: <b>${balHTML(cur)}</b>${after!=null?`<br>এই এন্ট্রির পর: <b>${balHTML(after)}</b>`:''}`;
+}
+async function submitEntry(){
+  if(LG.saving) return;             // double-click প্রতিরোধ
+  const btn=$('dlgFSave'), err=$('dlgFErr');
+  const inp={ opId:LG.opId, dealerId:$('dlgFDealer').value, type:$('dlgFType').value, side:$('dlgFSide').value,
+    date:$('dlgFDate').value, amount:$('dlgFAmount').value, method:$('dlgFMethod').value, description:$('dlgFDesc').value };
+  err.style.display='none';
+  LG.saving=true; btn.disabled=true; btn.textContent='⏳ সেভ হচ্ছে...';
+  try{
+    const res=await saveVoucher(inp);
+    LG.saving=false; LG.opId=null;
+    closeModal();
+    await loadAll().catch(()=>{});
+    render();
+    toast(res.duplicate ? `ℹ️ এই লেনদেন আগেই সেভ হয়েছে (${res.voucherNo}) — ডুপ্লিকেট তৈরি হয়নি` : `✅ সেভ হয়েছে — Voucher ${res.voucherNo}`);
+  }catch(e){
+    LG.saving=false; btn.disabled=false; btn.textContent='💾 সেভ করুন';
+    err.style.display='block'; err.textContent='❌ '+friendlyError(e)+(e.code==='UNCERTAIN'?'':' (সেভ হয়নি)');
+  }
+}
+function openReverse(voucherNo){
+  const v=LG.vouchers.find(x=>x.voucherNo===voucherNo); if(!v) return;
+  LG.opId=newOpId(); LG.saving=false;
+  modal(`<h3 style="margin:0 0 8px">↩️ Voucher Reverse</h3>
+    <div class="dlg-dealerbox"><code>${esc(v.voucherNo)}</code> · ${esc(v.date)} · ${esc(v.dealerName)}<br>${esc(TYPES[v.type]?TYPES[v.type].short:v.type)} — ${esc(v.description)}<br>পরিমাণ: <b>${num(v.amountPaisa)}</b> (প্রভাব ${v.effectPaisa>=0?'+':''}${num(v.effectPaisa)})</div>
+    <p class="hint">মূল Voucher অক্ষত থাকবে। একটি নতুন Reversal Voucher তৈরি হয়ে বিপরীত প্রভাব দেবে এবং Audit Log-এ লেখা হবে।</p>
+    <div class="field"><label>Reverse করার কারণ (আবশ্যক)</label><input type="text" id="dlgRevReason" maxlength="200"></div>
+    <label class="dlg-chk"><input type="checkbox" id="dlgRevRedo"> Reverse-এর পর সঠিক তথ্য দিয়ে নতুন এন্ট্রি খুলুন</label>
+    <div id="dlgFErr" class="dlg-alert" style="display:none"></div>
+    <div class="modal-actions" style="display:flex;gap:8px;margin-top:14px">
+      <button class="btn btn-ghost" style="flex:1" onclick="DLG.closeModal()">বাতিল</button>
+      <button class="btn btn-danger" style="flex:1" id="dlgFSave" onclick="DLG.submitReverse('${esc(v.voucherNo)}')">↩️ Reverse করুন</button>
+    </div>`);
+}
+async function submitReverse(voucherNo){
+  if(LG.saving) return;
+  const btn=$('dlgFSave'), err=$('dlgFErr'); const redo=$('dlgRevRedo').checked;
+  const v=LG.vouchers.find(x=>x.voucherNo===voucherNo);
+  err.style.display='none'; LG.saving=true; btn.disabled=true; btn.textContent='⏳ হচ্ছে...';
+  try{
+    const res=await saveVoucher({opId:LG.opId, type:'REVERSAL', refVoucher:voucherNo, reason:$('dlgRevReason').value});
+    LG.saving=false; LG.opId=null; closeModal();
+    await loadAll().catch(()=>{}); render();
+    toast(`✅ Reverse হয়েছে — Reversal Voucher ${res.voucherNo}`);
+    if(redo && v && v.type!=='REVERSAL') openEntry(v.dealerId,{type:v.type,date:v.date,amount:(v.amountPaisa/100).toFixed(2),description:v.description});
+  }catch(e){
+    LG.saving=false; btn.disabled=false; btn.textContent='↩️ Reverse করুন';
+    err.style.display='block'; err.textContent='❌ '+friendlyError(e)+(e.code==='UNCERTAIN'?'':' (Reverse হয়নি)');
+  }
+}
+
+/* ------------------------------ UI: actions ------------------------------ */
+async function reload(){ setRoot(`<div class="card"><p class="hint">⏳ লোড হচ্ছে...</p></div>`); try{ await loadAll(); }catch(e){} render(); }
+function setView(v){ LG.ui.view=v; render(); }
+function setDueQ(v){ LG.ui.dueQ=v; renderDueResults(); }
+function setDueOnly(v){ LG.ui.dueOnly=!!v; renderDueResults(); }
+function setF(k,v){ LG.ui[k]=v; renderLedgerResults(); }
+function setQ(v){ LG.ui.q=v; renderLedgerResults(); }
+function setAuditQ(v){ LG.ui.auditQ=v; renderAuditResults(); }
+function clearFilters(){ LG.ui.from=''; LG.ui.to=''; LG.ui.type=''; LG.ui.q=''; LG.ui.dealerId=''; renderBody(); }
+function openLedger(id){ LG.ui.view='ledger'; LG.ui.dealerId=String(id); LG.ui.from=''; LG.ui.to=''; LG.ui.type=''; LG.ui.q=''; render(); }
+async function recalcAll(){
+  if(!confirm('সংরক্ষিত ব্যালেন্স Voucher থেকে পুনর্গণনা করে ঠিক করা হবে (Voucher অপরিবর্তিত থাকবে)। চালিয়ে যাবেন?')) return;
+  try{
+    for(const m of mismatches()) await recalcDealer(m.dealerId);
+    await loadAll(); render(); toast('✅ ব্যালেন্স মিলিয়ে নেওয়া হয়েছে');
+  }catch(e){ alert('❌ '+friendlyError(e)); }
+}
+async function changePerm(peId, selectEl){
+  try{ await setPermission(peId, selectEl.value); toast('✅ অনুমতি আপডেট হয়েছে'); }
+  catch(e){ alert('❌ '+friendlyError(e)); render(); }
+}
+
+/* ------------------------------ Print / Excel ------------------------------ */
+function printHTML(html){
+  let area=$('dlgPrintArea'); if(!area){ area=document.createElement('div'); area.id='dlgPrintArea'; document.body.appendChild(area); }
+  area.innerHTML=html; document.body.classList.add('printing-dlg');
+  const done=()=>{ document.body.classList.remove('printing-dlg'); window.removeEventListener('afterprint',done); };
+  window.addEventListener('afterprint',done); setTimeout(()=>{ try{ window.print(); }catch(e){ done(); } },50);
+  setTimeout(done,60000);
+}
+function periodText(){ return (LG.ui.from||LG.ui.to) ? `${LG.ui.from||'শুরু'} থেকে ${LG.ui.to||todayISO()}` : 'সম্পূর্ণ সময়কাল'; }
+function printStatement(){
+  const st=currentStatement(); const single=!!LG.ui.dealerId; const info=single?dealerInfo(LG.ui.dealerId):null;
+  const rows=st.rows.map(r=>`<tr><td>${esc(r.v.date)}</td><td>${esc(r.v.voucherNo)}</td>${single?'':`<td>${esc(r.v.dealerName)}</td>`}<td>${esc(TYPES[r.v.type]?TYPES[r.v.type].short:r.v.type)}</td><td>${esc(r.v.description)}</td><td>${esc(r.v.method||'')}</td><td class="n">${r.dr?num(r.dr):''}</td><td class="n">${r.cr?num(r.cr):''}</td>${single?`<td class="n">${esc(num(r.run))}</td>`:''}</tr>`).join('');
+  printHTML(`<div class="dlg-print">
+    <h2>${esc(companyName())}</h2><h3>${single?'ডিলার স্টেটমেন্ট (Dealer Ledger Statement)':'লেনদেন জার্নাল (সব ডিলার)'}</h3>
+    ${single?`<p><b>${esc(info.name)}</b> · মোবাইল: ${esc(info.phone)} · Dealer ID: ${esc(info.id)}</p>`:''}
+    <p>সময়কাল: ${esc(periodText())} · প্রিন্ট: ${esc(tsText({createdAt:new Date().toISOString()}))}</p>
+    <table><thead><tr><th>তারিখ</th><th>Voucher</th>${single?'':'<th>ডিলার</th>'}<th>ধরন</th><th>বিবরণ</th><th>Method</th><th>পাওনা বৃদ্ধি (Dr)</th><th>পাওনা হ্রাস (Cr)</th>${single?'<th>ব্যালেন্স</th>':''}</tr></thead><tbody>
+    ${single&&LG.ui.from?`<tr><td colspan="${single?8:7}">পূর্বজের (Brought Forward)</td><td class="n">${esc(num(st.bf))}</td></tr>`:''}${rows}</tbody>
+    <tfoot><tr><td colspan="${single?6:6}"><b>মোট</b></td><td class="n"><b>${num(st.dr)}</b></td><td class="n"><b>${num(st.cr)}</b></td>${single?`<td class="n"><b>${st.closing==null?'':esc(num(st.closing))}</b></td>`:''}</tr></tfoot></table>
+    ${single&&st.closing!=null?`<p><b>Closing Balance: ${esc(balText(st.closing))}</b></p>`:''}
+    <p style="font-size:11px">ধনাত্মক ব্যালেন্স = ডিলারের কাছে কোম্পানির পাওনা; ঋণাত্মক = কোম্পানির দেনা/অগ্রিম।</p>
+    <div style="display:flex;justify-content:space-between;margin-top:46px"><span>_______________<br>ডিলারের স্বাক্ষর</span><span>_______________<br>কর্তৃপক্ষের স্বাক্ষর</span></div></div>`);
+}
+function printDue(){
+  const rows=dueRows();
+  printHTML(`<div class="dlg-print"><h2>${esc(companyName())}</h2><h3>Due List (ডিলারভিত্তিক পাওনা)</h3><p>তারিখ: ${todayISO()}</p>
+    <table><thead><tr><th>#</th><th>ডিলার</th><th>মোবাইল</th><th>Opening</th><th>পাওনা</th><th>দেনা</th><th>জমা</th><th>প্রদান</th><th>ফেরত</th><th>সমন্বয়</th><th>ব্যালেন্স</th></tr></thead><tbody>
+    ${rows.map((r,i)=>`<tr><td>${i+1}</td><td>${esc(r.info.name)} (ID ${esc(r.id)})</td><td>${esc(r.info.phone)}</td><td class="n">${num(r.g.opening)}</td><td class="n">${num(r.g.receivable)}</td><td class="n">${num(r.g.payable)}</td><td class="n">${num(r.g.deposit)}</td><td class="n">${num(r.g.payment)}</td><td class="n">${num(r.g.return)}</td><td class="n">${num(r.g.adjustment)}</td><td class="n"><b>${esc(balText(r.g.balance))}</b></td></tr>`).join('')}
+    </tbody><tfoot><tr><td colspan="10"><b>মোট নিট</b></td><td class="n"><b>${esc(balText(rows.reduce((s,r)=>s+r.g.balance,0)))}</b></td></tr></tfoot></table></div>`);
+}
+function xlsxSave(wb,name){
+  if(typeof XLSX==='undefined'){ alert('Excel লাইব্রেরি লোড হয়নি (ইন্টারনেট সংযোগ দেখুন)'); return; }
+  XLSX.writeFile(wb,name);
+}
+function exportLedger(){
+  const st=currentStatement(); const single=!!LG.ui.dealerId; const info=single?dealerInfo(LG.ui.dealerId):null;
+  const aoa=[[companyName()],[single?'Dealer Ledger Statement':'Dealer Ledger Journal']];
+  if(single) aoa.push(['Dealer',info.name,'Mobile',info.phone,'Dealer ID',info.id]);
+  aoa.push(['Period',periodText()],[]);
+  aoa.push(['Date','Voucher No','Dealer ID','Dealer','Type','Description','Method','Dr (পাওনা বৃদ্ধি)','Cr (পাওনা হ্রাস)']
+    .concat(single?['Balance']:[]).concat(['Created By','Timestamp']));
+  if(single && LG.ui.from) aoa.push([LG.ui.from,'','','','Brought Forward','','','','',st.bf/100,'','']);
+  st.rows.forEach(r=>{ const v=r.v;
+    aoa.push([v.date,v.voucherNo,v.dealerId,v.dealerName,TYPES[v.type]?TYPES[v.type].short:v.type,v.description,v.method||'',r.dr/100,r.cr/100].concat(single?[r.run/100]:[]).concat([v.createdBy||'',tsText(v)])); });
+  aoa.push([]); aoa.push(['','','','','','','Total',st.dr/100,st.cr/100].concat(single&&st.closing!=null?[st.closing/100]:[]));
+  const ws=XLSX.utils.aoa_to_sheet(aoa); const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Ledger');
+  xlsxSave(wb,`dealer_ledger_${single?('dealer'+info.id+'_'):'all_'}${todayISO()}.xlsx`);
+}
+function exportDue(){
+  const rows=dueRows();
+  const aoa=[[companyName()],['Due List — '+todayISO()],[],['#','Dealer ID','Dealer','Mobile','Opening','Receivable','Payable','Deposit','Payment','Return','Adjustment','Balance (+Due / -Advance)','Last Deposit']];
+  rows.forEach((r,i)=>aoa.push([i+1,r.id,r.info.name,r.info.phone,r.g.opening/100,r.g.receivable/100,r.g.payable/100,r.g.deposit/100,r.g.payment/100,r.g.return/100,r.g.adjustment/100,r.g.balance/100,r.g.lastDeposit||'']));
+  aoa.push([],['','','','Total Net','','','','','','','',rows.reduce((s,r)=>s+r.g.balance,0)/100]);
+  const ws=XLSX.utils.aoa_to_sheet(aoa); const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Due List');
+  xlsxSave(wb,`dealer_due_list_${todayISO()}.xlsx`);
+}
+
+/* ------------------------------ Parts Engineer hook ------------------------------ */
+async function peHook(){
+  const a=actor(); if(!a || a.role!=='partsEngineer') return;
+  try{
+    await refreshPermissionFromServer(a);
+    if(!canView()) return;
+    const btns=Array.from(document.querySelectorAll('button[onclick]'));
+    const anchor=btns.find(b=>/peTab='report'/.test(b.getAttribute('onclick')||'') && !b.classList.contains('bottom-nav-item'));
+    if(!anchor || document.getElementById('dlgPeTabBtn')) return;
+    const active = (typeof peTab!=='undefined' && peTab==='dealerLedger');
+    const b=document.createElement('button');
+    b.id='dlgPeTabBtn'; b.className='btn btn-sm '+(active?'btn-primary':'btn-ghost');
+    if(!active) b.style.cssText='color:#fff;border-color:rgba(255,255,255,0.3);';
+    b.textContent='📒 দেনা-পাওনা'; b.setAttribute('onclick',"peTab='dealerLedger';go('peDashboard')");
+    anchor.insertAdjacentElement('afterend',b);
+  }catch(e){ /* অনুমতি যাচাই ব্যর্থ হলে বোতাম দেখানো হবে না */ }
+}
+
+window.DLG={
+  tabHTML, wire, reload, setView, setDueQ, setDueOnly, setF, setQ, setAuditQ, clearFilters, openLedger,
+  openEntry, entryTypeChanged, entryPreview, submitEntry, openReverse, submitReverse, closeModal,
+  printStatement, printDue, exportLedger, exportDue, recalcAll, changePerm, peHook,
+  _t:{toPaisa,fmt,num,effectOf,aggregate,buildStatement,saveVoucher,applySummary,blankSummary,mismatches,recalcDealer,loadAll,LG,TYPES,catDelta,setPermission,level}
+};
+})();
 </script>
 </body>
 </html>
