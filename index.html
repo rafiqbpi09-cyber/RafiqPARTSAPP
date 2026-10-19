@@ -44,7 +44,7 @@ document.currentScript.parentNode.insertBefore(manifestLink, document.currentScr
 // প্রতিটি নতুন deployment/update দেওয়ার আগে এই APP_VERSION ভ্যালুটা পরিবর্তন করুন
 // (যেকোনো ইউনিক স্ট্রিং — তারিখ/সময় বা running number)। এই ভ্যালুর ভিত্তিতেই
 // সব ডিভাইস স্বয়ংক্রিয়ভাবে নতুন version detect করে reload হবে।
-window.APP_VERSION = '2026-10-19-sticky-side-fill.6';
+window.APP_VERSION = '2026-10-19-topbar-wrap.7';
 
 (function(){
   // পুরনো/legacy blob-based service worker ও পুরনো Cache Storage সম্পূর্ণ পরিষ্কার করে দেওয়া হয়,
@@ -376,6 +376,11 @@ window.APP_VERSION = '2026-10-19-sticky-side-fill.6';
   .brand-name{font-weight:700;font-size:15.5px;}
   .brand-sub{font-size:11.5px;color:#9db1cd;}
   .topbar-right{display:flex;align-items:center;gap:12px;}
+  /* মোবাইলে টপবারের বাটন (রিকুইজিশন/থিম/নাম/লগআউট) স্ক্রিনের বাইরে কেটে না গিয়ে পরের লাইনে নেমে আসবে */
+  @media(max-width:700px){
+    .topbar-right{flex-wrap:wrap;gap:8px;width:100%;min-width:0;}
+    .topbar-right .btn{white-space:nowrap;}
+  }
   .pill{background:rgba(255,255,255,.1);padding:6px 12px;border-radius:20px;font-size:12.5px;}
 
   .wrap{max-width:1100px;margin:0 auto;padding:22px 18px 60px;padding-left:max(18px, env(safe-area-inset-left));padding-right:max(18px, env(safe-area-inset-right));}
