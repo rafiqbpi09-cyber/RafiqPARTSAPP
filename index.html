@@ -44,7 +44,7 @@ document.currentScript.parentNode.insertBefore(manifestLink, document.currentScr
 // প্রতিটি নতুন deployment/update দেওয়ার আগে এই APP_VERSION ভ্যালুটা পরিবর্তন করুন
 // (যেকোনো ইউনিক স্ট্রিং — তারিখ/সময় বা running number)। এই ভ্যালুর ভিত্তিতেই
 // সব ডিভাইস স্বয়ংক্রিয়ভাবে নতুন version detect করে reload হবে।
-window.APP_VERSION = '2026-10-19-topbar-wrap.7';
+window.APP_VERSION = '2026-10-19-dealer-header-trim.8';
 
 (function(){
   // পুরনো/legacy blob-based service worker ও পুরনো Cache Storage সম্পূর্ণ পরিষ্কার করে দেওয়া হয়,
@@ -2538,6 +2538,7 @@ function showDealerMoreMenu(){
       <button class="btn btn-ghost btn-block" onclick="closeModal();go('partsCatalog')">📚 Catalogue</button>
       <button class="btn btn-ghost btn-block" onclick="closeModal();go('dealerRequisition')">📝 রিকুইজিশন</button>
       <button class="btn btn-ghost btn-block" onclick="closeModal();dealerManageTab='profile';go('dealerPortal')">👤 আমার প্রোফাইল</button>
+      <button class="btn btn-ghost btn-block" onclick="closeModal();toggleTheme()">🌙 ডার্ক / লাইট মোড</button>
       <button class="btn btn-ghost btn-block" onclick="closeModal()">বাতিল</button>
     </div>`);
 }
@@ -4513,8 +4514,6 @@ function dealerTopbar(sub='ডিলার পোর্টাল', hideBrand=fal
     </div>`}
     <div class="topbar-right">
       <span style="color:#fff">${adminNoticeBellHTML()}</span>
-      <button class="btn btn-ghost btn-sm" onclick="go('dealerRequisition')" style="color:#fff;border-color:rgba(255,255,255,.3)">📝 রিকুইজিশন</button>
-      <button class="btn btn-ghost btn-sm theme-toggle" onclick="toggleTheme()" style="color:#fff;border-color:rgba(255,255,255,.3)">🌙</button>
       <span class="pill">${escHtml(u?u.name:'')}</span>
       <button class="btn btn-ghost btn-sm" style="color:#fff;border-color:rgba(255,255,255,.3)" id="dealerLogout">${t('logout')}</button>
     </div>
