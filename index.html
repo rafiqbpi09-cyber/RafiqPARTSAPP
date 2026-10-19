@@ -1354,6 +1354,11 @@ window.APP_VERSION = '2026-10-19-dealer-header-layout.9';
     body.printing-dlg #dlgPrintArea{display:block !important;position:absolute;left:0;top:0;width:100%;}
   }
   .dlg-ledger td:nth-child(1),.dlg-ledger td:nth-child(2),.dlg-ledger td:last-child,.dlg-table .btn{white-space:nowrap;}
+  .dlg-msgprev{white-space:pre-wrap;word-break:break-word;background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:10px;font-family:inherit;font-size:13px;color:var(--text);max-height:240px;overflow:auto;margin:6px 0;}
+  .dlg-chan{border:1px solid var(--line);border-radius:10px;padding:10px;margin:8px 0;color:var(--text);}
+  .dlg-st-sent{background:#d9f2e3;color:#0f5f33;} .dlg-st-failed{background:#fde8e8;color:#9b1c1c;}
+  .dlg-st-pending{background:#fff0d6;color:#8a5200;} .dlg-st-notsent{background:#e5e7eb;color:#374151;}
+  .dlg-muted td{opacity:.8;} .dlg-wrap code{font-size:12px;}
 </style>
 </head>
 <body>
@@ -9066,9 +9071,9 @@ const SUMMARY_KEYS = ['opening','receivable','payable','deposit','payment','retu
 const SUMMARY_LABELS = {opening:'Opening',receivable:'পাওনা',payable:'দেনা',deposit:'জমা',payment:'প্রদান',return:'ফেরত',adjustment:'সমন্বয়'};
 
 const LG = {
-  vouchers:[], summaries:{}, perms:{}, audit:[],
+  vouchers:[], summaries:{}, perms:{}, audit:[], messages:{}, templates:null, msgBusy:false, msgCtx:null,
   loaded:false, loading:false, error:null, saving:false, opId:null,
-  ui:{view:'due', dealerId:'', from:'', to:'', type:'', q:'', dueQ:'', dueOnly:true, auditQ:''}
+  ui:{view:'due', dealerId:'', from:'', to:'', type:'', q:'', dueQ:'', dueOnly:true, auditQ:'', msgQ:'', msgStatus:'', msgDealer:'', msgLang:'bn'}
 };
 
 /* ------------------------------ helpers ------------------------------ */
@@ -9250,9 +9255,12 @@ async function loadAll(){
     }else{
       jobs.push(withTimeout(R('permissions/'+permKey(a)).once('value'),20000));
     }
+    const mi=jobs.length;
+    jobs.push(withTimeout(R('messages').once('value'),20000), withTimeout(R('settings/messageTemplates').once('value'),20000));
     const res=await Promise.all(jobs);
     LG.vouchers=snapList(res[0]).filter(v=>v && v.voucherNo && v.dealerId!=null && Number.isFinite(v.effectPaisa));
     LG.summaries=(res[1]&&res[1].val&&res[1].val())||{};
+    LG.messages=(res[mi]&&res[mi].val&&res[mi].val())||{}; LG.templates=(res[mi+1]&&res[mi+1].val&&res[mi+1].val())||null;
     if(a.role==='admin'){
       LG.perms=(res[2]&&res[2].val&&res[2].val())||{};
       LG.audit=snapList(res[3]).reverse();
@@ -9312,6 +9320,9 @@ function normalizeInput(inp, a){
   if((type==='ADJUSTMENT') && desc.length<3) throw E('VALIDATION','সমন্বয়ের কারণ/বিবরণ লিখুন');
   if(desc.length>300) throw E('VALIDATION','বিবরণ ৩০০ অক্ষরের বেশি হতে পারবে না');
   out.description=desc || t.short;
+  const bill=String(inp.billNo||'').trim();
+  if(bill.length>40) throw E('VALIDATION','বিল নম্বর ৪০ অক্ষরের বেশি হতে পারবে না');
+  if(bill) out.billNo=bill;
   out.effectPaisa=effectOf(type,paisa,out.side);
   return out;
 }
@@ -9344,6 +9355,7 @@ async function saveVoucher(inp){
     method:n.method, createdBy:a.name, createdById:a.id, createdByRole:a.role,
     createdAt:new Date().toISOString(), opId:opId
   };
+  if(n.billNo) rec.billNo=n.billNo;
   if(isRev){ rec.refVoucher=orig.voucherNo; rec.origType=n.origType; rec.origAmountPaisa=n.origAmountPaisa; rec.reason=n.reason; }
 
   let claimed=false, revClaimed=false, summaryApplied=false;
@@ -9490,7 +9502,8 @@ function render(){
   }
   const admin=isAdmin();
   const views=[['due','📋 Due List / সারাংশ'],['ledger','📒 Ledger / Statement']];
-  if(admin){ views.push(['audit','🕵️ Audit Log']); views.push(['perm','🔑 অনুমতি']); }
+  views.push(['msg','✉️ Payment Message History']);
+  if(admin){ views.push(['audit','🕵️ Audit Log']); views.push(['perm','🔑 অনুমতি']); views.push(['tpl','📝 মেসেজ টেমপ্লেট']); }
   if(!views.some(v=>v[0]===LG.ui.view)) LG.ui.view='due';
   const warn=[];
   if(typeof fbAuth!=='undefined' && !fbAuth.currentUser) warn.push('⚠️ Cloud সাইন-ইন সক্রিয় নেই — নতুন লেনদেন সেভ হবে না। লগআউট করে আবার লগইন করুন।');
@@ -9515,11 +9528,14 @@ function renderBody(){
   const b=$('dlgBody'); if(!b) return;
   if(LG.ui.view==='due') b.innerHTML=dueHTML();
   else if(LG.ui.view==='ledger') b.innerHTML=ledgerHTML();
+  else if(LG.ui.view==='msg') b.innerHTML=historyHTML();
+  else if(LG.ui.view==='tpl' && isAdmin()) b.innerHTML=tplHTML();
   else if(LG.ui.view==='audit' && isAdmin()) b.innerHTML=auditHTML();
   else if(LG.ui.view==='perm' && isAdmin()) b.innerHTML=permHTML();
   if(LG.ui.view==='due') renderDueResults();
   if(LG.ui.view==='ledger') renderLedgerResults();
   if(LG.ui.view==='audit') renderAuditResults();
+  if(LG.ui.view==='msg') renderMsgResults();
 }
 
 /* ------------------------------ UI: Due list ------------------------------ */
@@ -9626,7 +9642,7 @@ function renderLedgerResults(){
             <td class="n">${r.dr?num(r.dr):''}</td><td class="n">${r.cr?num(r.cr):''}</td>
             ${single?`<td class="n"><b>${balHTML(r.run)}</b></td>`:''}
             <td>${esc(v.createdBy||'')}</td><td class="dlg-sub">${esc(tsText(v))}</td>
-            <td>${(admin && !isRev && !wasRev)?`<button class="btn btn-danger btn-sm" onclick="DLG.openReverse('${esc(v.voucherNo)}')">↩️ Reverse</button>`:''}</td>
+            <td style="white-space:nowrap">${(canMessage() && v.type==='DEPOSIT' && !wasRev)?`<button class="btn btn-ghost btn-sm" title="Payment Confirmation Message" onclick="DLG.openMessage('${esc(v.voucherNo)}')">✉️</button> `:''}${(admin && !isRev && !wasRev)?`<button class="btn btn-danger btn-sm" onclick="DLG.openReverse('${esc(v.voucherNo)}')">↩️ Reverse</button>`:''}</td>
           </tr>`;}).join('') : `<tr><td colspan="${cols}" class="dlg-empty">এই ফিল্টারে কোনো লেনদেন নেই</td></tr>`}
       </tbody>
       <tfoot><tr><td colspan="${single?6:6}"><b>মোট (${st.rows.length}টি লেনদেন)</b></td><td class="n"><b>${num(st.dr)}</b></td><td class="n"><b>${num(st.cr)}</b></td>${single?`<td class="n"><b>${st.closing==null?'—':balHTML(st.closing)}</b></td>`:''}<td colspan="3"></td></tr></tfoot>
@@ -9688,6 +9704,14 @@ function openEntry(dealerId, prefill){
     <div class="field"><label>পরিমাণ (৳)</label><input type="text" inputmode="decimal" id="dlgFAmount" placeholder="যেমন 25000.50" value="${esc(prefill.amount||'')}" oninput="DLG.entryPreview()"></div>
     <div class="field" id="dlgFMethodBox"><label>Payment Method</label><select id="dlgFMethod">${METHODS.map(m=>`<option>${m}</option>`).join('')}</select></div>
     <div class="field"><label>বিবরণ (Description)</label><input type="text" id="dlgFDesc" maxlength="300" placeholder="যেমন: Invoice #123 / নগদ জমা" value="${esc(prefill.description||'')}"></div>
+    <div class="field" id="dlgFBillBox" style="display:none"><label>বিল নং (ঐচ্ছিক)</label><input type="text" id="dlgFBill" maxlength="40" placeholder="খালি থাকলে Voucher নম্বর ব্যবহার হবে" value="${esc(prefill.billNo||'')}"></div>
+    <div id="dlgFMsgBox" style="display:none;border:1px dashed var(--line);border-radius:10px;padding:10px;margin:6px 0">
+      <div class="field" style="margin-bottom:6px"><label>Message Language</label><select id="dlgFLang" onchange="DLG.entryMsgPreview()">
+        <option value="bn">বাংলা</option><option value="en">English</option><option value="both">বাংলা + English</option></select></div>
+      <button type="button" class="btn btn-ghost btn-sm" onclick="DLG.entryMsgPreview()">👁️ Preview Message</button>
+      <pre class="dlg-msgprev" id="dlgFMsgPrev" style="display:none"></pre>
+      <p class="hint" style="margin:6px 0 0">পেমেন্ট সেভ ও Database-এ নিশ্চিত হওয়ার পর Send SMS / Send WhatsApp বোতাম আসবে।</p>
+    </div>
     <div id="dlgFPreview" class="dlg-preview"></div>
     <div id="dlgFErr" class="dlg-alert" style="display:none"></div>
     <div class="modal-actions" style="display:flex;gap:8px;margin-top:14px">
@@ -9700,6 +9724,8 @@ function entryTypeChanged(){
   const t=$('dlgFType'); if(!t) return; const def=TYPES[t.value]||{};
   $('dlgFSideBox').style.display = def.needSide ? '' : 'none';
   $('dlgFMethodBox').style.display = def.needMethod ? '' : 'none';
+  const bb=$('dlgFBillBox'); if(bb) bb.style.display = ['DEPOSIT','SALE','RETURN'].includes(t.value) ? '' : 'none';
+  const mb=$('dlgFMsgBox'); if(mb) mb.style.display = (t.value==='DEPOSIT' && canMessage()) ? '' : 'none';
   entryPreview();
 }
 function entryPreview(){
@@ -9715,7 +9741,9 @@ async function submitEntry(){
   if(LG.saving) return;             // double-click প্রতিরোধ
   const btn=$('dlgFSave'), err=$('dlgFErr');
   const inp={ opId:LG.opId, dealerId:$('dlgFDealer').value, type:$('dlgFType').value, side:$('dlgFSide').value,
-    date:$('dlgFDate').value, amount:$('dlgFAmount').value, method:$('dlgFMethod').value, description:$('dlgFDesc').value };
+    date:$('dlgFDate').value, amount:$('dlgFAmount').value, method:$('dlgFMethod').value, description:$('dlgFDesc').value,
+    billNo: (['DEPOSIT','SALE','RETURN'].includes($('dlgFType').value) && $('dlgFBill')) ? $('dlgFBill').value : '' };
+  const wantMsg=(inp.type==='DEPOSIT' && canMessage()); const msgLang=$('dlgFLang')?$('dlgFLang').value:'bn';
   err.style.display='none';
   LG.saving=true; btn.disabled=true; btn.textContent='⏳ সেভ হচ্ছে...';
   try{
@@ -9725,6 +9753,7 @@ async function submitEntry(){
     await loadAll().catch(()=>{});
     render();
     toast(res.duplicate ? `ℹ️ এই লেনদেন আগেই সেভ হয়েছে (${res.voucherNo}) — ডুপ্লিকেট তৈরি হয়নি` : `✅ সেভ হয়েছে — Voucher ${res.voucherNo}`);
+    if(wantMsg) openMessage(res.voucherNo,msgLang);   // Save সফল ও DB থেকে পুনরায় লোড হওয়ার পরেই
   }catch(e){
     LG.saving=false; btn.disabled=false; btn.textContent='💾 সেভ করুন';
     err.style.display='block'; err.textContent='❌ '+friendlyError(e)+(e.code==='UNCERTAIN'?'':' (সেভ হয়নি)');
@@ -9840,6 +9869,352 @@ function exportDue(){
   xlsxSave(wb,`dealer_due_list_${todayISO()}.xlsx`);
 }
 
+
+/* ======================================================================
+   PAYMENT CONFIRMATION MESSAGE (SMS / WhatsApp)
+   dealerLedger/messages/{voucherNo} = { ...meta, sms:{status,...}, wa:{status,...} }
+   dealerLedger/settings/messageTemplates = { bn, en, both }
+   Status: Pending → Sent | Failed ; (কোনো রেকর্ড নেই = Not Sent)
+   ====================================================================== */
+const MSG_LANGS = {bn:'বাংলা', en:'English', both:'বাংলা + English'};
+const MSG_CHANNELS = {sms:'SMS', wa:'WhatsApp'};
+const DEFAULT_TEMPLATES = {
+  bn:
+"প্রিয় {dealerName},\n\nআপনার বিলের বিপরীতে ৳{paid} টাকা সফলভাবে জমা হয়েছে।\n\n" +
+"বিল/ভাউচার: {billNo}\nরসিদ নং: {receiptNo}\nডিলার আইডি: {dealerId}\nতারিখ: {date} {time}\n" +
+"জমার পরিমাণ: ৳{paid}\nপেমেন্ট মাধ্যম: {method}\nপূর্বের বকেয়া: ৳{prevDue}\nবর্তমান বকেয়া: ৳{currDue}\n\nধন্যবাদ।\nMetal Parts Limited",
+  en:
+"Dear {dealerName},\n\nYour payment of ৳{paid} against the bill has been received successfully.\n\n" +
+"Bill/Voucher: {billNo}\nReceipt No: {receiptNo}\nDealer ID: {dealerId}\nDate: {date} {time}\n" +
+"Paid Amount: ৳{paid}\nPayment Method: {method}\nPrevious Due: ৳{prevDue}\nCurrent Due: ৳{currDue}\n\nThank you.\nMetal Parts Limited",
+  both:
+"প্রিয় {dealerName},\n\nআপনার বিলের বিপরীতে ৳{paid} টাকা সফলভাবে জমা হয়েছে।\n\n" +
+"Your payment of ৳{paid} against the bill has been received successfully.\n\n" +
+"বিল/ভাউচার / Bill-Voucher: {billNo}\nরসিদ নং / Receipt No: {receiptNo}\nডিলার আইডি / Dealer ID: {dealerId}\n" +
+"তারিখ / Date: {date} {time}\nপেমেন্ট মাধ্যম / Payment Method: {method}\n" +
+"পূর্বের বকেয়া / Previous Due: ৳{prevDue}\nবর্তমান বকেয়া / Current Due: ৳{currDue}\n\nধন্যবাদ / Thank you.\nMetal Parts Limited"
+};
+const TPL_PLACEHOLDERS = ['dealerName','dealerId','billNo','receiptNo','date','time','paid','method','prevDue','currDue'];
+
+function getTemplates(){ return Object.assign({}, DEFAULT_TEMPLATES, (LG.templates&&typeof LG.templates==='object')?pickTpl(LG.templates):{}); }
+function pickTpl(t){ const o={}; ['bn','en','both'].forEach(k=>{ if(typeof t[k]==='string' && t[k].trim()) o[k]=t[k]; }); return o; }
+
+function canMessage(){ const l=level(); return l==='admin' || l==='entry'; }
+
+// বাংলাদেশি মোবাইল নম্বর → 8801XXXXXXXXX (অবৈধ হলে '')
+function normalizePhone(p){
+  const s=bn2en(p||'').replace(/[\s\-()+.]/g,'');
+  if(/^8801[3-9]\d{8}$/.test(s)) return s;
+  if(/^01[3-9]\d{8}$/.test(s)) return '88'+s;
+  return '';
+}
+
+// SMS segment গণনা (GSM-7 হলে 160/153, নইলে Unicode UCS-2: 70/67)
+const GSM_BASIC="@£$¥èéùìòÇ\nØø\rÅåΔ_ΦΓΛΩΠΨΣΘΞÆæßÉ !\"#¤%&'()*+,-./0123456789:;<=>?¡ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÑÜ§¿abcdefghijklmnopqrstuvwxyzäöñüà";
+const GSM_EXT="^{}\\[~]|€";
+function smsInfo(text){
+  const t=String(text||''); let uni=false, len=0;
+  for(const ch of t){ if(GSM_BASIC.includes(ch)) len++; else if(GSM_EXT.includes(ch)) len+=2; else { uni=true; break; } }
+  let single,multi;
+  if(uni){ len=0; for(const ch of t) len+=(ch.codePointAt(0)>0xFFFF?2:1); single=70; multi=67; } else { single=160; multi=153; }
+  const segments = len===0 ? 0 : (len<=single ? 1 : Math.ceil(len/multi));
+  return {unicode:uni, length:len, segments, perSegment:(segments>1?multi:single)};
+}
+
+function dueText(balance, lang){
+  if(balance>0) return num(balance);
+  if(balance===0) return '0.00';
+  const adv=num(-balance);
+  return '0.00 ('+(lang==='en'?'Advance ৳'+adv : lang==='bn'?'অগ্রিম ৳'+adv : 'অগ্রিম/Advance ৳'+adv)+')';
+}
+function timeHM(iso){ const d=iso?new Date(iso):null; return (d&&!isNaN(d)) ? pad2(d.getHours())+':'+pad2(d.getMinutes()) : ''; }
+
+// সব সংখ্যা Voucher + Database-এর প্রকৃত ডেটা থেকে (LG.vouchers = এইমাত্র Firebase থেকে পড়া)
+function buildMessageData(v, allVouchers){
+  const vs=allVouchers||LG.vouchers;
+  const dealerBal=vs.filter(x=>String(x.dealerId)===String(v.dealerId)).reduce((s,x)=>s+x.effectPaisa,0);
+  let prev;
+  if(Number.isFinite(v.balanceAfterPaisa)) prev=v.balanceAfterPaisa-v.effectPaisa;
+  else prev=vs.filter(x=>String(x.dealerId)===String(v.dealerId) && cmpVouchers(x,v)<0).reduce((s,x)=>s+x.effectPaisa,0);
+  return {
+    dealerName:v.dealerName, dealerId:String(v.dealerId), billNo:v.billNo||v.voucherNo,
+    receiptNo:'RC-'+String(v.voucherNo).replace(/\D/g,''), date:v.date, time:timeHM(v.createdAt),
+    paid:num(v.amountPaisa), method:v.method||'', prevBal:prev, currBal:dealerBal
+  };
+}
+function renderMessage(lang, d, templates){
+  const tpl=(templates||getTemplates())[lang]; if(typeof tpl!=='string') throw E('BAD_LANG','অবৈধ ভাষা');
+  const vars=Object.assign({}, d, {prevDue:dueText(d.prevBal,lang), currDue:dueText(d.currBal,lang)});
+  return tpl.replace(/\{(\w+)\}/g,(m,k)=> vars[k]!=null ? String(vars[k]) : m);
+}
+function smsLink(phone,body){ return 'sms:+'+phone+'?&body='+encodeURIComponent(body); }
+function waLink(phone,body){ return 'https://wa.me/'+phone+'?text='+encodeURIComponent(body); }
+
+/* ---------- পাঠানোর মূল লজিক (UI-নিরপেক্ষ) ---------- */
+async function preparePayment(voucherNo){
+  await loadAll();                                   // সবসময় Firebase থেকে নতুন করে — LocalStorage নয়
+  const v=LG.vouchers.find(x=>x.voucherNo===voucherNo);
+  if(!v || v.type!=='DEPOSIT') throw E('NO_PAYMENT','এই পেমেন্ট Database-এ নিশ্চিত নয় — কোনো মেসেজ পাঠানো যাবে না');
+  if(!visibleVouchers().some(x=>x.voucherNo===voucherNo)) throw E('FORBIDDEN','এই ডিলারের তথ্য দেখার অনুমতি নেই');
+  if(reversedSet(LG.vouchers).has(voucherNo)) throw E('REVERSED','এই পেমেন্ট Reverse করা হয়েছে — মেসেজ পাঠানো যাবে না');
+  return v;
+}
+async function sendMessage(voucherNo, ch, lang, opts){
+  opts=opts||{};
+  const a=actor(); if(!a) throw E('NO_ACTOR','লগইন যাচাই করা যায়নি');
+  if(typeof fbAuth!=='undefined' && !fbAuth.currentUser) throw E('NO_AUTH','Cloud সাইন-ইন সক্রিয় নেই');
+  if(!MSG_CHANNELS[ch]) throw E('BAD_CHANNEL','অবৈধ চ্যানেল');
+  if(!MSG_LANGS[lang]) throw E('BAD_LANG','অবৈধ ভাষা');
+  await refreshPermissionFromServer(a);
+  if(!canMessage()) throw E('FORBIDDEN','পেমেন্ট মেসেজ পাঠানোর অনুমতি আপনার নেই');
+  if(opts.resend && !isAdmin()) throw E('FORBIDDEN','আবার পাঠানো (Resend) শুধু Admin করতে পারবেন');
+  const v=await preparePayment(voucherNo);
+  const info=dealerInfo(v.dealerId);
+  const phone=normalizePhone(info.phone);
+  if(!phone) throw E('NO_PHONE','এই ডিলারের সঠিক মোবাইল নম্বর নেই — আগে ডিলারের প্রোফাইলে নম্বর দিন');
+  const data=buildMessageData(v);
+  const body=renderMessage(lang,data);
+  const seg=smsInfo(body);
+
+  // Duplicate প্রতিরোধ: প্রতি Payment × চ্যানেলে একটিই সক্রিয় চেষ্টা
+  let blocked=null; const now=Date.now(), nowIso=new Date().toISOString();
+  const res=await withTimeout(R('messages/'+voucherNo+'/'+ch).transaction(cur=>{
+    const base={by:a.name, byId:a.id, at:now, atIso:nowIso, lang:lang};
+    if(cur==null) return Object.assign({status:'Pending',attempts:1,resends:0},base);
+    if(cur.status==='Failed') return Object.assign({},cur,base,{status:'Pending',attempts:(cur.attempts||0)+1});
+    if(cur.status==='Sent'){
+      if(opts.resend) return Object.assign({},cur,base,{status:'Pending',attempts:(cur.attempts||0)+1,resends:(cur.resends||0)+1,everSent:true});
+      blocked='MSG_SENT'; return;
+    }
+    blocked='MSG_PENDING'; return;
+  }));
+  if(!res.committed){
+    throw E(blocked||'MSG_BLOCKED', blocked==='MSG_SENT' ? 'এই পেমেন্টের মেসেজ এই চ্যানেলে ইতিমধ্যে পাঠানো হয়েছে — ডুপ্লিকেট আটকানো হলো'
+      : 'এই চ্যানেলে একটি চেষ্টা চলমান (Pending) — আগে সেটির ফল (পাঠানো হয়েছে/হয়নি) জানান');
+  }
+  // meta + audit — একটিমাত্র রাইট; ব্যর্থ হলে চেষ্টাটি Failed করে দেওয়া হয় (লিংক খোলা হয় না)
+  try{
+    const auditKey=R('audit').push().key, upd={};
+    upd['messages/'+voucherNo+'/voucherNo']=voucherNo;
+    upd['messages/'+voucherNo+'/dealerId']=String(v.dealerId);
+    upd['messages/'+voucherNo+'/dealerName']=v.dealerName;
+    upd['messages/'+voucherNo+'/phone']=phone;
+    upd['messages/'+voucherNo+'/billNo']=data.billNo;
+    upd['messages/'+voucherNo+'/receiptNo']=data.receiptNo;
+    upd['messages/'+voucherNo+'/paidPaisa']=v.amountPaisa;
+    upd['messages/'+voucherNo+'/prevDuePaisa']=data.prevBal;
+    upd['messages/'+voucherNo+'/currDuePaisa']=data.currBal;
+    upd['messages/'+voucherNo+'/lang']=lang;
+    upd['messages/'+voucherNo+'/body']=body;
+    upd['messages/'+voucherNo+'/lastAt']=now;
+    upd['messages/'+voucherNo+'/lastAtIso']=nowIso;
+    upd['messages/'+voucherNo+'/lastBy']=a.name;
+    upd['messages/'+voucherNo+'/lastById']=a.id;
+    upd['audit/'+auditKey]={ts:serverTs(), at:nowIso, by:a.name, byId:a.id, byRole:a.role, action:'MSG_SEND_ATTEMPT',
+      voucherNo:voucherNo, dealerId:String(v.dealerId), dealerName:v.dealerName, type:'DEPOSIT', amountPaisa:v.amountPaisa,
+      details:MSG_CHANNELS[ch]+' · '+MSG_LANGS[lang]+(opts.resend?' · RESEND':'')+' · '+phone+' · '+seg.segments+' segment'};
+    await withTimeout(R().update(upd));
+  }catch(e){
+    try{ await withTimeout(R('messages/'+voucherNo+'/'+ch+'/status').set('Failed')); }catch(e2){}
+    throw e;
+  }
+  return {ok:true, body, phone, seg, channel:ch, url: ch==='sms'?smsLink(phone,body):waLink(phone,body)};
+}
+async function resolveMessage(voucherNo, ch, outcome){
+  const a=actor(); if(!a) throw E('NO_ACTOR','লগইন যাচাই করা যায়নি');
+  if(outcome!=='Sent' && outcome!=='Failed') throw E('VALIDATION','অবৈধ ফল');
+  await refreshPermissionFromServer(a);
+  if(!canMessage()) throw E('FORBIDDEN','অনুমতি নেই');
+  let blocked=false, final=outcome; const now=Date.now(), nowIso=new Date().toISOString();
+  const res=await withTimeout(R('messages/'+voucherNo+'/'+ch).transaction(cur=>{
+    if(!cur || cur.status!=='Pending'){ blocked=true; return; }
+    // Resend ব্যর্থ হলে আগের সফল 'Sent' অবস্থা বহাল থাকে
+    final = (outcome==='Failed' && cur.everSent) ? 'Sent' : outcome;
+    return Object.assign({},cur,{status:final, resolvedAt:now, resolvedAtIso:nowIso, resolvedBy:a.name, resolvedById:a.id, lastOutcome:outcome});
+  }));
+  if(!res.committed) throw E('NOT_PENDING','এই চেষ্টা এখন Pending নয়');
+  const m=(await withTimeout(R('messages/'+voucherNo).once('value'))).val()||{};
+  await withTimeout(R('messages/'+voucherNo+'/lastAt').set(now));
+  await writeAudit('MSG_STATUS', MSG_CHANNELS[ch]+' → '+outcome+(final!==outcome?' (পূর্বের Sent বহাল)':''),
+    {voucherNo:voucherNo, dealerId:m.dealerId||null, dealerName:m.dealerName||null});
+  return final;
+}
+async function saveTemplates(t){
+  if(!isAdmin()) throw E('FORBIDDEN','শুধু Admin');
+  const out={};
+  ['bn','en','both'].forEach(k=>{
+    const s=String(t[k]||'').replace(/\r/g,'').trim();
+    if(!s) throw E('VALIDATION',MSG_LANGS[k]+' টেমপ্লেট খালি রাখা যাবে না');
+    if(s.length>1200) throw E('VALIDATION',MSG_LANGS[k]+' টেমপ্লেট ১২০০ অক্ষরের বেশি');
+    if(!s.includes('{paid}')) throw E('VALIDATION',MSG_LANGS[k]+' টেমপ্লেটে {paid} থাকতেই হবে');
+    const bad=(s.match(/\{(\w+)\}/g)||[]).map(x=>x.slice(1,-1)).filter(x=>!TPL_PLACEHOLDERS.includes(x));
+    if(bad.length) throw E('VALIDATION',MSG_LANGS[k]+' টেমপ্লেটে অচেনা প্লেসহোল্ডার: {'+bad.join('}, {')+'}');
+    out[k]=s;
+  });
+  const a=actor(); out.updatedBy=a.name; out.updatedAt=Date.now();
+  await withTimeout(R('settings/messageTemplates').set(out));
+  await writeAudit('TEMPLATE_UPDATE','মেসেজ টেমপ্লেট পরিবর্তন (বাংলা/English/উভয়)');
+  LG.templates=out;
+}
+async function resetTemplates(){
+  if(!isAdmin()) throw E('FORBIDDEN','শুধু Admin');
+  await withTimeout(R('settings/messageTemplates').remove());
+  await writeAudit('TEMPLATE_RESET','মেসেজ টেমপ্লেট ডিফল্টে ফেরানো');
+  LG.templates=null;
+}
+
+/* ---------- UI: Message Panel (Payment Save-এর পরে বা Ledger থেকে) ---------- */
+function chStatus(m,ch){ return (m && m[ch] && m[ch].status) ? m[ch].status : 'Not Sent'; }
+function stBadge(s){ return `<span class="dlg-badge dlg-st-${String(s).replace(/\s/g,'').toLowerCase()}">${esc(s)}</span>`; }
+function extOpen(url){
+  try{ const a=document.createElement('a'); a.href=url; if(/^https?:/.test(url)){ a.target='_blank'; a.rel='noopener'; } document.body.appendChild(a); a.click(); a.remove(); }catch(e){}
+}
+async function openMessage(voucherNo, lang){
+  modal(`<h3 style="margin:0 0 10px">✉️ Payment Confirmation Message</h3><p class="hint">⏳ Database থেকে পেমেন্টের তথ্য যাচাই হচ্ছে...</p>`);
+  LG.msgCtx={voucherNo:voucherNo, lang:(lang&&MSG_LANGS[lang])?lang:(LG.ui.msgLang||'bn')};
+  try{ await preparePayment(voucherNo); }
+  catch(e){ modal(`<h3 style="margin:0 0 10px">✉️ Payment Confirmation Message</h3><div class="dlg-alert">❌ ${esc(friendlyError(e))}</div><button class="btn btn-ghost" style="width:100%" onclick="DLG.closeModal()">বন্ধ করুন</button>`); return; }
+  renderMessagePanel();
+}
+function chanBlock(ch, v, phone, msg){
+  const label=MSG_CHANNELS[ch], icon=ch==='sms'?'📱':'💬', st=chStatus(msg,ch), rec=(msg&&msg[ch])||{};
+  const can=canMessage();
+  let inner='';
+  if(!can) inner=`<button class="btn btn-ghost btn-sm" disabled>🔒 অনুমতি নেই</button>`;
+  else if(!phone) inner=`<button class="btn btn-ghost btn-sm" disabled>${icon} Send ${label}</button>`;
+  else if(st==='Pending'){
+    const link = msg && msg.body ? (ch==='sms'?smsLink(msg.phone||phone,msg.body):waLink(msg.phone||phone,msg.body)) : '';
+    inner=`<div class="dlg-sub" style="margin-bottom:6px">⏳ অ্যাপ খোলা হয়েছে — মেসেজটি পাঠালে নিচে নিশ্চিত করুন।</div>
+      ${link?`<a class="btn btn-ghost btn-sm" href="${esc(link)}" ${ch==='wa'?'target="_blank" rel="noopener"':''} style="display:inline-block;text-decoration:none;margin-right:6px">${icon} ${label} অ্যাপ আবার খুলুন</a>`:''}
+      <button class="btn btn-success btn-sm" onclick="DLG.msgResolve('${ch}','Sent')">✅ পাঠানো হয়েছে</button>
+      <button class="btn btn-danger btn-sm" onclick="DLG.msgResolve('${ch}','Failed')">❌ পাঠানো যায়নি</button>`;
+  }
+  else if(st==='Sent') inner=`<button class="btn btn-ghost btn-sm" disabled>✅ ইতিমধ্যে পাঠানো হয়েছে</button>
+      ${isAdmin()?`<button class="btn btn-ghost btn-sm" onclick="DLG.msgSend('${ch}',true)">↻ আবার পাঠান (Resend)</button>`:''}`;
+  else inner=`<button class="btn btn-primary btn-sm" style="width:auto" onclick="DLG.msgSend('${ch}',false)">${icon} Send ${label}${st==='Failed'?' (আবার চেষ্টা)':''}</button>`;
+  const when = rec.atIso ? ` · ${esc(String(rec.atIso).replace('T',' ').slice(0,16))} · ${esc(rec.by||'')}` : '';
+  return `<div class="dlg-chan"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px"><b>${icon} ${label}</b><span>${stBadge(st)}<span class="dlg-sub">${when}</span></span></div>${inner}</div>`;
+}
+function renderMessagePanel(){
+  const ctx=LG.msgCtx; if(!ctx) return;
+  const v=LG.vouchers.find(x=>x.voucherNo===ctx.voucherNo); if(!v) return;
+  const info=dealerInfo(v.dealerId), phone=normalizePhone(info.phone), msg=LG.messages[ctx.voucherNo]||null;
+  const anyPending=['sms','wa'].some(c=>chStatus(msg,c)==='Pending');
+  const lang = anyPending && msg && msg.lang ? msg.lang : ctx.lang; ctx.lang=lang;
+  const data=buildMessageData(v), body=renderMessage(lang,data), seg=smsInfo(body);
+  modal(`
+    <h3 style="margin:0 0 8px">✉️ Payment Confirmation Message</h3>
+    <div class="dlg-dealerbox"><b>${esc(v.dealerName)}</b> · ID ${esc(v.dealerId)} · 📞 ${esc(info.phone||'—')}<br>
+      Voucher <code>${esc(v.voucherNo)}</code> · ${esc(v.date)} ${esc(data.time)} · জমা <b>${fmt(v.amountPaisa)}</b> (${esc(v.method||'')})<br>
+      পূর্বের বকেয়া: <b>${balHTML(data.prevBal)}</b> → বর্তমান বকেয়া (DB থেকে পুনর্গণিত): <b>${balHTML(data.currBal)}</b></div>
+    ${phone?'':`<div class="dlg-alert">⚠️ এই ডিলারের মোবাইল নম্বর নেই বা সঠিক নয় (${esc(info.phone||'খালি')})। নম্বর যোগ না করা পর্যন্ত Send বোতাম বন্ধ থাকবে।</div>`}
+    <div class="field" style="margin-top:10px"><label>Message Language</label>
+      <select id="dlgMLang" onchange="DLG.msgSetLang(this.value)" ${anyPending?'disabled':''}>
+        ${Object.keys(MSG_LANGS).map(k=>`<option value="${k}" ${k===lang?'selected':''}>${MSG_LANGS[k]}</option>`).join('')}</select></div>
+    <label style="font-size:12.5px;color:var(--muted)">Preview Message${anyPending?' (Pending চেষ্টার ভাষা)':''}</label>
+    <pre class="dlg-msgprev" id="dlgMPrev">${esc(body)}</pre>
+    <div class="dlg-sub" style="margin:4px 0 10px">SMS: ${seg.unicode?'Unicode':'GSM-7'} · ${seg.length} অক্ষর · <b>${seg.segments} segment</b> (প্রতি segment ${seg.perSegment}) · WhatsApp-এ একই টেক্সট</div>
+    ${chanBlock('sms',v,phone,msg)}${chanBlock('wa',v,phone,msg)}
+    <div id="dlgMErr" class="dlg-alert" style="display:none"></div>
+    <p class="hint" style="margin-top:8px">ℹ️ ব্রাউজার থেকে সরাসরি SMS/WhatsApp পাঠানো যায় না। Send চাপলে আপনার ফোন/ব্রাউজারে অ্যাপ খুলবে; সেখানে পাঠানোর পর এখানে “পাঠানো হয়েছে” নিশ্চিত করুন — সেটাই Sent হিসেবে সংরক্ষিত হবে।</p>
+    <button class="btn btn-ghost" style="width:100%;margin-top:8px" onclick="DLG.closeModal()">বন্ধ করুন</button>`);
+}
+function msgSetLang(l){ if(!MSG_LANGS[l]) return; LG.ui.msgLang=l; if(LG.msgCtx) LG.msgCtx.lang=l; renderMessagePanel(); }
+function msgErr(e){ const b=$('dlgMErr'); if(b){ b.style.display='block'; b.textContent='❌ '+friendlyError(e); } }
+async function msgSend(ch, resend){
+  const ctx=LG.msgCtx; if(!ctx || LG.msgBusy) return;
+  if(resend && !confirm('এই পেমেন্টের মেসেজ আগেই পাঠানো হয়েছে। আবার পাঠাতে চান? (Audit Log-এ লেখা হবে)')) return;
+  LG.msgBusy=true;
+  try{
+    const r=await sendMessage(ctx.voucherNo,ch,ctx.lang,{resend:!!resend});
+    await loadAll().catch(()=>{}); renderMessagePanel(); extOpen(r.url);
+  }catch(e){
+    await loadAll().catch(()=>{}); renderMessagePanel(); msgErr(e);
+  }finally{ LG.msgBusy=false; }
+}
+async function msgResolve(ch, outcome){
+  const ctx=LG.msgCtx; if(!ctx || LG.msgBusy) return; LG.msgBusy=true;
+  try{ await resolveMessage(ctx.voucherNo,ch,outcome); await loadAll().catch(()=>{}); renderMessagePanel(); toast(outcome==='Sent'?'✅ Sent হিসেবে সংরক্ষিত':'ℹ️ Failed হিসেবে সংরক্ষিত — আবার চেষ্টা করা যাবে');}
+  catch(e){ msgErr(e); }
+  finally{ LG.msgBusy=false; }
+}
+// Payment Entry ফর্মে (সেভের আগে) প্রাথমিক প্রিভিউ — চূড়ান্ত সংখ্যা সেভের পর DB থেকে পুনর্গণিত হবে
+function entryMsgPreview(){
+  const box=$('dlgFMsgPrev'); if(!box) return;
+  const did=$('dlgFDealer').value, paisa=toPaisa($('dlgFAmount').value);
+  if(!did){ box.style.display='block'; box.textContent='আগে ডিলার নির্বাচন করুন'; return; }
+  if(!Number.isFinite(paisa)||paisa<=0){ box.style.display='block'; box.textContent='আগে সঠিক পরিমাণ লিখুন'; return; }
+  const info=dealerInfo(did), cur=(aggregate(visibleVouchers())[did]||{balance:0}).balance, lang=$('dlgFLang').value, now=new Date();
+  const d={dealerName:info.name,dealerId:did,billNo:($('dlgFBill').value.trim()||'(Voucher নম্বর সেভের পর)'),receiptNo:'(সেভের পর)',
+    date:$('dlgFDate').value,time:pad2(now.getHours())+':'+pad2(now.getMinutes()),paid:num(paisa),method:$('dlgFMethod').value,prevBal:cur,currBal:cur-paisa};
+  const body=renderMessage(lang,d), seg=smsInfo(body);
+  box.style.display='block'; box.textContent=body+'\n\n— প্রাক-প্রিভিউ ('+seg.segments+' SMS segment). সেভ ও DB নিশ্চিত হওয়ার পর চূড়ান্ত মেসেজ ও Send বোতাম আসবে।';
+}
+
+/* ---------- UI: Message History ---------- */
+function historyRows(){
+  const vs=visibleVouchers(), rev=reversedSet(LG.vouchers);
+  const needleD=String(LG.ui.msgDealer||''), needle=String(LG.ui.msgQ||'').trim().toLowerCase(), stf=LG.ui.msgStatus||'';
+  let rows=vs.filter(v=>v.type==='DEPOSIT').map(v=>{
+    const m=LG.messages[v.voucherNo]||null;
+    return {v, m, reversed:rev.has(v.voucherNo), sms:chStatus(m,'sms'), wa:chStatus(m,'wa'),
+            sortKey: (m&&m.lastAt) || Date.parse(v.createdAt)||0};
+  });
+  if(needleD) rows=rows.filter(r=>String(r.v.dealerId)===needleD);
+  if(stf) rows=rows.filter(r=>r.sms===stf||r.wa===stf);
+  if(needle) rows=rows.filter(r=>[r.v.dealerName,r.v.dealerId,r.v.voucherNo,r.v.billNo,r.m&&r.m.lastBy].some(x=>String(x==null?'':x).toLowerCase().includes(needle)));
+  return rows.sort((a,b)=>b.sortKey-a.sortKey);
+}
+function historyHTML(){
+  const dealers=ledgerDealers();
+  return `<div class="card">
+    <div class="dlg-filters">
+      <select onchange="DLG.setMsgF('msgDealer',this.value)"><option value="">সব ডিলার</option>${dealers.map(u=>`<option value="${esc(u.id)}" ${String(u.id)===String(LG.ui.msgDealer)?'selected':''}>${esc(u.name)} (ID ${esc(u.id)})</option>`).join('')}</select>
+      <select onchange="DLG.setMsgF('msgStatus',this.value)"><option value="">সব Status</option>${['Sent','Failed','Pending','Not Sent'].map(s=>`<option ${LG.ui.msgStatus===s?'selected':''}>${s}</option>`).join('')}</select>
+      <input type="text" placeholder="🔍 ডিলার / Voucher / Bill / Sent By" value="${esc(LG.ui.msgQ)}" oninput="DLG.setMsgQ(this.value)">
+    </div>
+    <p class="hint" style="margin-top:8px">প্রতিটি জমা (Payment) এক সারি। Date/Time = সর্বশেষ মেসেজ-চেষ্টার সময়; কোনো মেসেজ না গেলে (Not Sent) পেমেন্টের সময় (ধূসর)।</p>
+    <div id="dlgMsgResults"></div></div>`;
+}
+function renderMsgResults(){
+  const box=$('dlgMsgResults'); if(!box) return; const rows=historyRows();
+  box.innerHTML=`<div class="dlg-scroll"><table class="dlg-table" style="min-width:980px"><thead><tr><th>Date</th><th>Time</th><th>Dealer</th><th>Dealer ID</th><th>Bill No</th><th>Paid Amount</th><th>Language</th><th>SMS Status</th><th>WhatsApp Status</th><th>Sent By</th><th></th></tr></thead><tbody>
+  ${rows.length?rows.map(r=>{
+    const m=r.m, iso=m&&m.lastAtIso, d=iso?new Date(iso):new Date(r.v.createdAt);
+    const ds=isNaN(d)?r.v.date:d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate()), ts=isNaN(d)?'':pad2(d.getHours())+':'+pad2(d.getMinutes());
+    return `<tr class="${m?'':'dlg-muted'}"><td>${esc(ds)}</td><td>${esc(ts)}</td><td>${esc(r.v.dealerName)}</td><td>${esc(r.v.dealerId)}</td>
+      <td><code>${esc(r.v.billNo||r.v.voucherNo)}</code>${r.v.billNo?`<div class="dlg-sub">${esc(r.v.voucherNo)}</div>`:''}${r.reversed?'<div class="dlg-sub dlg-due">Reversed</div>':''}</td>
+      <td class="n">${num(r.v.amountPaisa)}</td><td>${m&&m.lang?esc(MSG_LANGS[m.lang]||m.lang):'—'}</td>
+      <td>${stBadge(r.sms)}</td><td>${stBadge(r.wa)}</td><td>${esc((m&&m.lastBy)||'—')}</td>
+      <td>${(canMessage()&&!r.reversed)?`<button class="btn btn-ghost btn-sm" onclick="DLG.openMessage('${esc(r.v.voucherNo)}')">✉️ খুলুন</button>`:''}</td></tr>`;}).join(''):`<tr><td colspan="11" class="dlg-empty">কোনো পেমেন্ট পাওয়া যায়নি</td></tr>`}
+  </tbody></table></div>`;
+}
+function setMsgF(k,v){ LG.ui[k]=v; renderMsgResults(); }
+function setMsgQ(v){ LG.ui.msgQ=v; renderMsgResults(); }
+
+/* ---------- UI: Template Editor (Admin) ---------- */
+function tplSample(lang,tpls){
+  return renderMessage(lang,{dealerName:'করিম মটরস',dealerId:'1',billNo:'INV-101',receiptNo:'RC-000123',date:'2026-10-19',time:'14:30',paid:'20,000.00',method:'Cash',prevBal:6000050,currBal:4000050},tpls);
+}
+function tplHTML(){
+  const t=getTemplates();
+  return `<div class="card"><h3 style="margin:0 0 6px">📝 মেসেজ টেমপ্লেট (Admin)</h3>
+    <p class="hint">ব্যবহারযোগ্য প্লেসহোল্ডার: ${TPL_PLACEHOLDERS.map(p=>`<code>{${p}}</code>`).join(' ')} — <code>{paid}</code> আবশ্যক। এখানে বদলালে নতুন মেসেজে প্রযোজ্য হবে; আগে পাঠানো মেসেজ অপরিবর্তিত থাকে।</p>
+    ${['bn','en','both'].map(k=>`<div class="field"><label>${MSG_LANGS[k]}</label><textarea id="dlgTpl_${k}" rows="9" style="width:100%;font-family:inherit;font-size:13px;padding:8px;border:1.5px solid var(--line);border-radius:9px;background:var(--paper);color:var(--text)">${esc(t[k])}</textarea></div>`).join('')}
+    <div id="dlgTplErr" class="dlg-alert" style="display:none"></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-primary btn-sm" style="width:auto" onclick="DLG.tplSave()">💾 টেমপ্লেট সেভ</button>
+      <button class="btn btn-ghost btn-sm" onclick="DLG.tplReset()">↺ ডিফল্টে ফেরান</button></div></div>`;
+}
+async function tplSave(){
+  const err=$('dlgTplErr'); err.style.display='none';
+  try{ await saveTemplates({bn:$('dlgTpl_bn').value,en:$('dlgTpl_en').value,both:$('dlgTpl_both').value}); toast('✅ টেমপ্লেট সেভ হয়েছে'); render(); }
+  catch(e){ err.style.display='block'; err.textContent='❌ '+friendlyError(e); }
+}
+async function tplReset(){
+  if(!confirm('টেমপ্লেট ডিফল্টে ফিরিয়ে নেবেন?')) return;
+  try{ await resetTemplates(); toast('✅ ডিফল্ট টেমপ্লেট'); render(); }catch(e){ alert('❌ '+friendlyError(e)); }
+}
+
 /* ------------------------------ Parts Engineer hook ------------------------------ */
 async function peHook(){
   const a=actor(); if(!a || a.role!=='partsEngineer') return;
@@ -9862,7 +10237,8 @@ window.DLG={
   tabHTML, wire, reload, setView, setDueQ, setDueOnly, setF, setQ, setAuditQ, clearFilters, openLedger,
   openEntry, entryTypeChanged, entryPreview, submitEntry, openReverse, submitReverse, closeModal,
   printStatement, printDue, exportLedger, exportDue, recalcAll, changePerm, peHook,
-  _t:{toPaisa,fmt,num,effectOf,aggregate,buildStatement,saveVoucher,applySummary,blankSummary,mismatches,recalcDealer,loadAll,LG,TYPES,catDelta,setPermission,level}
+  openMessage, msgSetLang, msgSend, msgResolve, entryMsgPreview, setMsgF, setMsgQ, tplSave, tplReset,
+  _t:{sendMessage,resolveMessage,preparePayment,buildMessageData,renderMessage,smsInfo,normalizePhone,saveTemplates,resetTemplates,getTemplates,DEFAULT_TEMPLATES,toPaisa,fmt,num,effectOf,aggregate,buildStatement,saveVoucher,applySummary,blankSummary,mismatches,recalcDealer,loadAll,LG,TYPES,catDelta,setPermission,level}
 };
 })();
 </script>
