@@ -44,7 +44,7 @@ document.currentScript.parentNode.insertBefore(manifestLink, document.currentScr
 // প্রতিটি নতুন deployment/update দেওয়ার আগে এই APP_VERSION ভ্যালুটা পরিবর্তন করুন
 // (যেকোনো ইউনিক স্ট্রিং — তারিখ/সময় বা running number)। এই ভ্যালুর ভিত্তিতেই
 // সব ডিভাইস স্বয়ংক্রিয়ভাবে নতুন version detect করে reload হবে।
-window.APP_VERSION = '2026-10-25-mobile-sidebar-settings-catalog-jolt.1';
+window.APP_VERSION = '2026-10-26-admin-nav-quicksearch-center.1';
 
 (function(){
   // পুরনো/legacy blob-based service worker ও পুরনো Cache Storage সম্পূর্ণ পরিষ্কার করে দেওয়া হয়,
@@ -1490,6 +1490,22 @@ window.APP_VERSION = '2026-10-25-mobile-sidebar-settings-catalog-jolt.1';
   .bottom-nav-item .bn-icon{width:34px;height:34px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:18px;background:transparent;transition:.15s;}
   .bottom-nav-item.active{color:#1f8a4c;font-weight:700;}
   .bottom-nav-item.active .bn-icon{background:#e3ddc4;}
+  /* Admin center Quick Search — elevated dark circle in the middle of bottom nav */
+  .bottom-nav-item.bn-quick-search{position:relative;top:-14px;color:#12233d;font-weight:700;}
+  .bottom-nav-item.bn-quick-search .bn-icon{
+    width:54px;height:54px;border-radius:50%;
+    background:linear-gradient(135deg,#12233d,#1c3358);color:#fff;font-size:22px;
+    box-shadow:0 6px 18px rgba(18,35,61,.42);border:3px solid #fff;
+  }
+  .bottom-nav-item.bn-quick-search.active .bn-icon,
+  .bottom-nav-item.bn-quick-search:active .bn-icon{
+    background:linear-gradient(135deg,#1c3358,#12233d);transform:scale(.96);
+  }
+  .bottom-nav-item.bn-quick-search span:last-child{font-size:11px;margin-top:1px;}
+  /* Mobile: floating FAB redundant — Quick Search lives in bottom nav center */
+  @media(max-width:899px){
+    #qsFab{display:none !important;}
+  }
   .has-bottom-nav{padding-bottom:76px;}
   /* ---- Home-style Card Grid (Landing / quick menus) ---- */
   .home-card-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;}
@@ -1604,17 +1620,21 @@ window.APP_VERSION = '2026-10-25-mobile-sidebar-settings-catalog-jolt.1';
     80%{background:#e4dcff;border-color:#7c5cff;}
   }
   .catalog-card{position:relative;background:linear-gradient(180deg,#fffdf7 0%,var(--card) 100%);border:1px solid #d9d2c2;border-radius:12px;padding:18px 14px 14px;box-shadow:0 3px 10px rgba(18,35,61,.08);min-height:154px;display:flex;flex-direction:column;justify-content:space-between;overflow:visible;margin-top:7px;
-    animation:catalogColorJolt 2.8s ease-in-out infinite;will-change:box-shadow,border-color;}
-  .catalog-card:nth-child(2n){animation-delay:.35s;}
-  .catalog-card:nth-child(3n){animation-delay:.7s;}
-  .catalog-card:nth-child(4n){animation-delay:1.05s;}
-  .catalog-card:nth-child(5n){animation-delay:1.4s;}
-  .catalog-card::before{content:"";position:absolute;left:-1px;top:-8px;width:58px;height:18px;background:#e8ddbd;border:1px solid #d9d2c2;border-bottom:0;border-radius:9px 9px 0 0;animation:catalogTabJolt 2.8s ease-in-out infinite;}
-  .catalog-card:nth-child(2n)::before{animation-delay:.35s;}
-  .catalog-card:nth-child(3n)::before{animation-delay:.7s;}
-  .catalog-card:nth-child(4n)::before{animation-delay:1.05s;}
-  .catalog-card:nth-child(5n)::before{animation-delay:1.4s;}
+    transition:box-shadow .2s,border-color .2s;-webkit-tap-highlight-color:transparent;cursor:pointer;}
+  .catalog-card::before{content:"";position:absolute;left:-1px;top:-8px;width:58px;height:18px;background:#e8ddbd;border:1px solid #d9d2c2;border-bottom:0;border-radius:9px 9px 0 0;transition:background .2s,border-color .2s;}
   .catalog-card::after{content:"📁";position:absolute;left:12px;top:-5px;font-size:13px;}
+  /* শুধু মাউস হোভার / টাচ করা বক্সেই কালার ঝলকানি */
+  .catalog-card:hover,
+  .catalog-card:active,
+  .catalog-card.touch-glow{
+    animation:catalogColorJolt 2.2s ease-in-out infinite;
+    will-change:box-shadow,border-color;
+  }
+  .catalog-card:hover::before,
+  .catalog-card:active::before,
+  .catalog-card.touch-glow::before{
+    animation:catalogTabJolt 2.2s ease-in-out infinite;
+  }
   .catalog-folder-icon{font-size:28px;line-height:1;margin-bottom:7px;}
   .catalog-card h4{margin:0 0 7px;color:var(--text);font-size:15px;font-weight:800;word-break:break-word;}
   .catalog-date{font-size:11px;color:var(--muted);line-height:1.45;margin-bottom:10px;}
@@ -3393,7 +3413,7 @@ function showSavedToast(msg){
 }
 // Bottom navigation bar (Dealer/PE/Admin) — items: [{key,icon,label,onclick}]
 function bottomNavHTML(items, activeKey){
-  return `<div class="bottom-nav">${items.map(it=>`<button type="button" class="bottom-nav-item ${activeKey===it.key?'active':''}" onclick="${it.onclick}"><span class="bn-icon">${it.icon}</span><span>${it.label}</span></button>`).join('')}</div>`;
+  return `<div class="bottom-nav">${items.map(it=>`<button type="button" class="bottom-nav-item ${activeKey===it.key?'active':''}${it.cls?' '+it.cls:''}" onclick="${it.onclick}"><span class="bn-icon">${it.icon}</span><span>${it.label}</span></button>`).join('')}</div>`;
 }
 function dealerBottomNavHTML(){
   return bottomNavHTML([
@@ -3497,8 +3517,8 @@ function adminBottomNavHTML(){
   return bottomNavHTML([
     {key:'home',icon:'🏠',label:'হোম',onclick:"adminTab=null;go('adminDashboard')"},
     {key:'parts',icon:'⚙️',label:'পার্টস',onclick:"adminTab='parts';go('adminDashboard')"},
+    {key:'quickSearch',icon:'🔍',label:'সার্চ',cls:'bn-quick-search',onclick:"openQuickSearch()"},
     {key:'users',icon:'👥',label:'ইউজার',onclick:"adminTab='users';go('adminDashboard')"},
-    {key:'history',icon:'📅',label:'হিস্টোরি',onclick:"adminTab='history';go('adminDashboard')"},
     {key:'more',icon:'➕',label:'আরও',onclick:"showAdminMoreMenu()"}
   ], adminTab||'home');
 }
@@ -3506,6 +3526,7 @@ function showAdminMoreMenu(){
   openModal(`<h3>আরও অপশন</h3>
     <div class="modal-actions" style="flex-direction:column;align-items:stretch;gap:8px;">
       <button class="btn btn-ghost btn-block" onclick="closeModal();adminTab='dashboard';go('adminDashboard')">📊 ড্যাশবোর্ড</button>
+      <button class="btn btn-ghost btn-block" onclick="closeModal();adminTab='history';go('adminDashboard')">📅 আপডেট হিস্টোরি</button>
       <button class="btn btn-ghost btn-block" onclick="closeModal();adminTab='requisitions';go('adminDashboard')">📝 রিকুইজিশন হিস্টরি</button>
       <button class="btn btn-ghost btn-block" onclick="closeModal();adminTab='loginActivity';go('adminDashboard')">📶 লগইন অ্যাক্টিভিটি</button>
       <button class="btn btn-ghost btn-block" onclick="closeModal();adminTab='vehicleDb';go('adminDashboard')">🚗 Vehicle Model DB</button>
@@ -4883,7 +4904,7 @@ function catalogOpenUrl(url){const id=catalogFileId(url);return id?`https://driv
 function catalogValidLink(url){return /^https:\/\/drive\.google\.com\//i.test(String(url||'').trim());}
 function catalogCardHTML(c,isAdmin){
   const updated=c.updatedAtDisplay||c.createdAtDisplay||'—';
-  return `<div class="catalog-card"><div><div class="catalog-folder-icon">📂</div><h4>${escHtml(c.model||'Unnamed Model')}</h4><div class="catalog-date">Last updated:<br>${escHtml(updated)}${c.updatedBy?` — ${escHtml(c.updatedBy)}`:''}</div></div><div class="catalog-actions"><button class="btn btn-navy btn-sm" onclick="openPartsCatalogPdf('${escHtml(c.id)}')">📖 View PDF</button>${isAdmin?`<button class="btn btn-ghost btn-sm" onclick="editPartsCatalog('${escHtml(c.id)}')">Edit</button>`:''}</div></div>`;
+  return `<div class="catalog-card" ontouchstart="this.classList.add('touch-glow')" ontouchend="this.classList.remove('touch-glow')" ontouchcancel="this.classList.remove('touch-glow')"><div><div class="catalog-folder-icon">📂</div><h4>${escHtml(c.model||'Unnamed Model')}</h4><div class="catalog-date">Last updated:<br>${escHtml(updated)}${c.updatedBy?` — ${escHtml(c.updatedBy)}`:''}</div></div><div class="catalog-actions"><button class="btn btn-navy btn-sm" onclick="openPartsCatalogPdf('${escHtml(c.id)}')">📖 View PDF</button>${isAdmin?`<button class="btn btn-ghost btn-sm" onclick="editPartsCatalog('${escHtml(c.id)}')">Edit</button>`:''}</div></div>`;
 }
 function partsCatalogHTML(){
   const isAdmin=DB.session?.role==='admin', list=catalogList();
@@ -11213,7 +11234,7 @@ window.DLG={
 
 /* Admin site-wide touch glow — event delegation */
 (function(){
-  const SEL = '.admin-menu-card, .admin-mod-card, .admin-kpi, .admin-outer .card, .admin-content .card, .dash-bleed-top .card, .admin-outer .stat, .admin-content .stat, .dash-bleed-top .stat, .admin-outer .part-card, .admin-content .part-card, .admin-sidebar-nav button';
+  const SEL = '.admin-menu-card, .admin-mod-card, .admin-kpi, .admin-outer .card, .admin-content .card, .dash-bleed-top .card, .admin-outer .stat, .admin-content .stat, .dash-bleed-top .stat, .admin-outer .part-card, .admin-content .part-card, .admin-sidebar-nav button, .catalog-card';
   function isAdminUI(){
     try{ return !!(DB && DB.session && DB.session.role === 'admin'); }catch(e){ return false; }
   }
