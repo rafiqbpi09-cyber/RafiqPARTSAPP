@@ -44,7 +44,7 @@ document.currentScript.parentNode.insertBefore(manifestLink, document.currentScr
 // প্রতিটি নতুন deployment/update দেওয়ার আগে এই APP_VERSION ভ্যালুটা পরিবর্তন করুন
 // (যেকোনো ইউনিক স্ট্রিং — তারিখ/সময় বা running number)। এই ভ্যালুর ভিত্তিতেই
 // সব ডিভাইস স্বয়ংক্রিয়ভাবে নতুন version detect করে reload হবে।
-window.APP_VERSION = '2026-10-26-mobile-home-image-style.1';
+window.APP_VERSION = '2026-10-26-search-input-wide-btn-sm.1';
 
 (function(){
   // পুরনো/legacy blob-based service worker ও পুরনো Cache Storage সম্পূর্ণ পরিষ্কার করে দেওয়া হয়,
@@ -455,21 +455,32 @@ window.APP_VERSION = '2026-10-26-mobile-home-image-style.1';
   .search-hero{background:linear-gradient(135deg,#0f2744,#163a5c 55%,#1a4a6e);border-radius:18px;padding:20px 18px 18px;color:#fff;margin-bottom:18px;box-shadow:0 10px 28px rgba(15,39,68,.28);}
   .search-hero h2{margin:0 0 6px;font-size:16.5px;font-weight:800;display:flex;align-items:center;gap:8px;}
   .search-hero p{margin:0 0 14px;font-size:12.5px;color:#b7c9df;line-height:1.5;}
-  .search-hero .big-search{display:flex;gap:8px;align-items:stretch;}
+  .search-hero .big-search{display:flex;gap:8px;align-items:center;width:100%;}
   .search-hero .big-search input{
-    flex:1;min-width:0;padding:12px 14px;border:none;border-radius:12px;font-size:14.5px;font-family:inherit;
-    background:#fff;color:#0f172a;box-shadow:inset 0 0 0 1px rgba(255,255,255,.15);
+    flex:1 1 auto;min-width:0;width:100%;padding:13px 14px;border:none;border-radius:12px;
+    font-size:16px;font-family:'JetBrains Mono',monospace;font-weight:600;letter-spacing:.3px;
+    background:#fff;color:#0f172a;box-shadow:0 1px 2px rgba(0,0,0,.06);
   }
-  .search-hero .big-search input:focus{outline:none;box-shadow:0 0 0 3px rgba(251,191,36,.35);}
+  .search-hero .big-search input::placeholder{font-weight:500;letter-spacing:0;opacity:.55;font-family:'Hind Siliguri',sans-serif;}
+  .search-hero .big-search input:focus{outline:none;box-shadow:0 0 0 3px rgba(251,191,36,.4);}
+  /* Search button: compact, fixed — input stays wide */
   .search-hero .big-search .btn-primary,
   .search-hero .big-search button.btn-primary{
+    flex:0 0 auto;width:auto;min-width:0;max-width:88px;
     background:linear-gradient(180deg,#fbbf24,#f59e0b)!important;color:#1c1917!important;font-weight:800;
-    border:none;border-radius:12px;padding:12px 18px;white-space:nowrap;box-shadow:0 4px 12px rgba(245,158,11,.35);
+    border:none;border-radius:12px;padding:11px 12px;font-size:13px;line-height:1.2;
+    white-space:nowrap;box-shadow:0 3px 10px rgba(245,158,11,.35);
   }
   .search-hero .big-search .btn-primary:hover{filter:brightness(1.05);}
-  .big-search{display:flex;gap:8px;}
-  .big-search input{flex:1;padding:13px 16px;border-radius:11px;border:none;font-size:16px;font-family:'JetBrains Mono',monospace;}
-  .big-search .btn{padding:13px 20px;}
+  .big-search{display:flex;gap:8px;align-items:center;width:100%;}
+  .big-search input{flex:1 1 auto;min-width:0;padding:13px 14px;border-radius:11px;border:none;font-size:16px;font-family:'JetBrains Mono',monospace;font-weight:600;}
+  .big-search .btn,.big-search .btn-primary{flex:0 0 auto;padding:11px 12px;font-size:13px;max-width:88px;white-space:nowrap;}
+  @media(max-width:420px){
+    .search-hero .big-search .btn-primary,
+    .search-hero .big-search button.btn-primary,
+    .big-search .btn,.big-search .btn-primary{max-width:76px;padding:11px 10px;font-size:12.5px;}
+    .search-hero .big-search input,.big-search input{font-size:15.5px;padding:12px 12px;}
+  }
 
   .part-card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:10px;display:flex;justify-content:space-between;gap:12px;align-items:center;}
   .part-card.exact{background:#fff6ea;border:1.5px solid var(--amber);box-shadow:0 2px 10px -4px rgba(226,134,31,.35);}
