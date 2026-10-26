@@ -44,7 +44,7 @@ document.currentScript.parentNode.insertBefore(manifestLink, document.currentScr
 // প্রতিটি নতুন deployment/update দেওয়ার আগে এই APP_VERSION ভ্যালুটা পরিবর্তন করুন
 // (যেকোনো ইউনিক স্ট্রিং — তারিখ/সময় বা running number)। এই ভ্যালুর ভিত্তিতেই
 // সব ডিভাইস স্বয়ংক্রিয়ভাবে নতুন version detect করে reload হবে।
-window.APP_VERSION = '2026-10-26-dataloss-fixes.1';
+window.APP_VERSION = '2026-10-26-mobile-text-clear.3';
 
 (function(){
   // পুরনো/legacy blob-based service worker ও পুরনো Cache Storage সম্পূর্ণ পরিষ্কার করে দেওয়া হয়,
@@ -2259,6 +2259,16 @@ window.APP_VERSION = '2026-10-26-dataloss-fixes.1';
   .dlg-st-sent{background:#d9f2e3;color:#0f5f33;} .dlg-st-failed{background:#fde8e8;color:#9b1c1c;}
   .dlg-st-pending{background:#fff0d6;color:#8a5200;} .dlg-st-notsent{background:#e5e7eb;color:#374151;}
   .dlg-muted td{opacity:.8;} .dlg-wrap code{font-size:12px;}
+  /* ===== দেনা-পাওনা পেজ: পুরো পেজ ফিট হবে, দরকার হলে টেবিলের ভেতরে ডানে-বামে স্ক্রল থাকবে ===== */
+  .dlg-wrap,.dlg-wrap #dlgRoot,.dlg-wrap .card{min-width:0;max-width:100%;box-sizing:border-box;}
+  .dlg-scroll{max-width:100%;scrollbar-width:thin;overscroll-behavior-x:contain;}
+  .dlg-scroll .dlg-table{min-width:0 !important;}
+  .admin-home-main:has(.dlg-wrap){max-width:100% !important;}
+  @media(max-width:640px){
+    .dlg-table{font-size:12px;}
+    .dlg-table th{padding:6px 5px;font-size:11px;}
+    .dlg-table td{padding:6px 5px;}
+  }
 
   /* Due List / আমার হিসাব — ৪টি বক্সে hover/touch করলে ঝলকানি দিয়ে রঙ ধারণ */
   .dlg-kpi{position:relative;overflow:hidden;cursor:pointer;transition:transform .25s ease,background .35s ease,color .35s ease,box-shadow .35s ease,border-color .35s ease;}
@@ -2275,6 +2285,25 @@ window.APP_VERSION = '2026-10-26-dataloss-fixes.1';
   .dlg-hero{border-radius:16px;padding:20px;text-align:center;color:#fff;margin-bottom:14px;box-shadow:0 6px 18px rgba(0,0,0,.18);}
   .dlg-hero div{font-size:14px;opacity:.95;} .dlg-hero b{display:block;font-size:34px;margin-top:6px;}
   .dlg-hero-due{background:linear-gradient(135deg,#d32f2f,#ff7043);} .dlg-hero-adv{background:linear-gradient(135deg,#1fa65a,#4cd98a);} .dlg-hero-ok{background:linear-gradient(135deg,#1e63d6,#4aa8ff);}
+
+  /* ===== মোবাইল/ডার্ক থিমে লেখা কালো ও স্পষ্ট — অ্যাডমিন প্যানেল (Parts/User/Vehicle/দেনা-পাওনা), Parts Engineer ও ক্যাটালগ ===== */
+  .admin-content,.admin-outer .card,.admin-outer .stat,.admin-outer .part-card,.admin-outer .tabs,.catalog-card{
+    --text:#000000;--muted:#1f2937;--card:#ffffff;--paper:#f2f4f7;--line:#cbd5e1;
+  }
+  .admin-content{color:#000 !important;backdrop-filter:none !important;-webkit-backdrop-filter:none !important;}
+  .admin-outer{-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;}
+  .admin-kpi .lbl,.admin-mod-card .desc,.admin-content .hint{color:#1f2937 !important;}
+  .admin-kpi .sub{color:#15803d !important;}
+  [data-theme="dark"] .admin-content :is(input,select,textarea),
+  [data-theme="dark"] .admin-outer .card :is(input,select,textarea){background:#fff !important;color:#000 !important;}
+  .admin-content :is(input,textarea)::placeholder{color:#4b5563;opacity:1;}
+  /* টাচ ডিভাইসে: লেখার উপর সাদা ঝলক-বক্স ও scale (যাতে লেখা ঝাপসা হয়) বন্ধ — বর্ডার গ্লো থাকছে */
+  @media (hover:none),(pointer:coarse){
+    .admin-outer :is(.card,.part-card,.stat):is(:hover,:active,.touch-glow){transform:none !important;animation:none !important;}
+    .admin-outer :is(.card,.part-card):is(:hover,:active,.touch-glow)::before{opacity:0 !important;animation:none !important;display:none !important;}
+    .admin-mod-card:is(:hover,:active,.touch-glow),.admin-kpi:is(:hover,:active,.touch-glow){transform:translateY(-2px) !important;}
+    .admin-mod-card:is(:hover,:active,.touch-glow)::before,.admin-kpi:is(:hover,:active,.touch-glow)::before{opacity:0 !important;animation:none !important;display:none !important;}
+  }
 </style>
 </head>
 <body>
@@ -11714,6 +11743,34 @@ function adminTopSearchFilter(q){
   });
 }
 
+</script>
+<script>
+/* দেনা-পাওনা টেবিল অটো-ফিট: স্ক্রিনের চেয়ে চওড়া হলে টেবিল ছোট (zoom) করে পুরো পেজে আনে;
+   তাতেও না ধরলে .dlg-scroll-এর ডানে-বামে স্ক্রল কাজ করে। */
+(function(){
+  if(window.__dlgFitInit) return; window.__dlgFitInit = true;
+  function fitOne(box){
+    var t = box.querySelector('table.dlg-table'); if(!t) return;
+    t.style.zoom = '';
+    var cw = box.clientWidth; if(!cw) return;
+    var nw = t.scrollWidth;
+    if(nw <= cw + 1) return;
+    var min = window.innerWidth <= 640 ? 0.7 : 0.8;
+    t.style.zoom = Math.max(min, cw / nw).toFixed(3);
+  }
+  function fitAll(){
+    try{ document.querySelectorAll('.dlg-scroll').forEach(fitOne); }catch(e){}
+  }
+  var raf = 0;
+  function schedule(){ if(raf) return; raf = requestAnimationFrame(function(){ raf = 0; fitAll(); }); }
+  try{
+    new MutationObserver(function(){ if(document.querySelector('.dlg-scroll')) schedule(); })
+      .observe(document.body, {childList:true, subtree:true});
+  }catch(e){}
+  window.addEventListener('resize', schedule);
+  window.addEventListener('orientationchange', schedule);
+  schedule();
+})();
 </script>
 </body>
 </html>
