@@ -44,7 +44,7 @@ document.currentScript.parentNode.insertBefore(manifestLink, document.currentScr
 // প্রতিটি নতুন deployment/update দেওয়ার আগে এই APP_VERSION ভ্যালুটা পরিবর্তন করুন
 // (যেকোনো ইউনিক স্ট্রিং — তারিখ/সময় বা running number)। এই ভ্যালুর ভিত্তিতেই
 // সব ডিভাইস স্বয়ংক্রিয়ভাবে নতুন version detect করে reload হবে।
-window.APP_VERSION = '2026-10-26-mobile-text-clear.3';
+window.APP_VERSION = '2026-10-26-ledger-font-plus4.4';
 
 (function(){
   // পুরনো/legacy blob-based service worker ও পুরনো Cache Storage সম্পূর্ণ পরিষ্কার করে দেওয়া হয়,
@@ -2286,6 +2286,32 @@ window.APP_VERSION = '2026-10-26-mobile-text-clear.3';
   .dlg-hero div{font-size:14px;opacity:.95;} .dlg-hero b{display:block;font-size:34px;margin-top:6px;}
   .dlg-hero-due{background:linear-gradient(135deg,#d32f2f,#ff7043);} .dlg-hero-adv{background:linear-gradient(135deg,#1fa65a,#4cd98a);} .dlg-hero-ok{background:linear-gradient(135deg,#1e63d6,#4aa8ff);}
 
+  /* ===== দেনা-পাওনা: মোবাইল/ট্যাবলেটে সব লেখা +৪px বড় (পড়ার সুবিধা) ===== */
+  @media(max-width:900px){
+    .dlg-wrap .dlg-table,.dlg-modal .dlg-table{font-size:16px;}
+    .dlg-wrap .dlg-table th,.dlg-modal .dlg-table th{font-size:15px;padding:8px 7px;}
+    .dlg-wrap .dlg-table td,.dlg-modal .dlg-table td{font-size:16px;padding:8px 7px;}
+    .dlg-wrap .hint,.dlg-modal .hint{font-size:16.5px;}
+    .dlg-wrap .dlg-sub,.dlg-modal .dlg-sub{font-size:15.5px;}
+    .dlg-wrap .dlg-badge,.dlg-modal .dlg-badge{font-size:15.5px;}
+    .dlg-wrap .dlg-kpi,.dlg-modal .dlg-kpi{font-size:16px;}
+    .dlg-wrap .dlg-kpi b,.dlg-modal .dlg-kpi b{font-size:20px;}
+    .dlg-wrap .dlg-filters input[type=text],.dlg-wrap .dlg-filters input[type=date],.dlg-wrap .dlg-filters select{font-size:17.5px;}
+    .dlg-wrap .dlg-filters label,.dlg-wrap .dlg-chk{font-size:16.5px;}
+    .dlg-wrap .dlg-alert,.dlg-modal .dlg-alert{font-size:17px;}
+    .dlg-wrap .dlg-dealerbox,.dlg-modal .dlg-dealerbox{font-size:17.5px;}
+    .dlg-wrap .dlg-preview,.dlg-modal .dlg-preview,.dlg-wrap .dlg-msgprev,.dlg-modal .dlg-msgprev{font-size:17px;}
+    .dlg-wrap .btn,.dlg-modal .btn{font-size:18.5px;}
+    .dlg-wrap .btn-sm,.dlg-modal .btn-sm{font-size:17px;}
+    .dlg-wrap .tab{font-size:17.5px;}
+    .dlg-wrap .card h3,.dlg-modal h3{font-size:19.5px;}
+    .dlg-wrap .field label,.dlg-modal .field label{font-size:16.5px;}
+    .dlg-wrap .field input,.dlg-wrap .field select,.dlg-modal .field input,.dlg-modal .field select,.dlg-modal textarea,.dlg-wrap textarea{font-size:18.5px;}
+    .dlg-wrap [style*="font-size:11px"],.dlg-modal [style*="font-size:11px"]{font-size:15px !important;}
+    .dlg-wrap [style*="font-size:12.5px"],.dlg-modal [style*="font-size:12.5px"]{font-size:16.5px !important;}
+    .dlg-wrap [style*="font-size:16px"],.dlg-modal [style*="font-size:16px"]{font-size:20px !important;}
+    .dlg-wrap [style*="font-size:18px"],.dlg-modal [style*="font-size:18px"]{font-size:22px !important;}
+  }
   /* ===== মোবাইল/ডার্ক থিমে লেখা কালো ও স্পষ্ট — অ্যাডমিন প্যানেল (Parts/User/Vehicle/দেনা-পাওনা), Parts Engineer ও ক্যাটালগ ===== */
   .admin-content,.admin-outer .card,.admin-outer .stat,.admin-outer .part-card,.admin-outer .tabs,.catalog-card{
     --text:#000000;--muted:#1f2937;--card:#ffffff;--paper:#f2f4f7;--line:#cbd5e1;
@@ -11755,7 +11781,7 @@ function adminTopSearchFilter(q){
     var cw = box.clientWidth; if(!cw) return;
     var nw = t.scrollWidth;
     if(nw <= cw + 1) return;
-    var min = window.innerWidth <= 640 ? 0.7 : 0.8;
+    var min = window.innerWidth <= 900 ? 0.9 : 0.8;
     t.style.zoom = Math.max(min, cw / nw).toFixed(3);
   }
   function fitAll(){
