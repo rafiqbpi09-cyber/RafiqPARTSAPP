@@ -44,7 +44,7 @@ document.currentScript.parentNode.insertBefore(manifestLink, document.currentScr
 // প্রতিটি নতুন deployment/update দেওয়ার আগে এই APP_VERSION ভ্যালুটা পরিবর্তন করুন
 // (যেকোনো ইউনিক স্ট্রিং — তারিখ/সময় বা running number)। এই ভ্যালুর ভিত্তিতেই
 // সব ডিভাইস স্বয়ংক্রিয়ভাবে নতুন version detect করে reload হবে।
-window.APP_VERSION = '2026-10-26-ledger-font-plus4.4';
+window.APP_VERSION = '2026-10-26-touch-color-kpi-red.5';
 
 (function(){
   // পুরনো/legacy blob-based service worker ও পুরনো Cache Storage সম্পূর্ণ পরিষ্কার করে দেওয়া হয়,
@@ -2311,6 +2311,25 @@ window.APP_VERSION = '2026-10-26-ledger-font-plus4.4';
     .dlg-wrap [style*="font-size:12.5px"],.dlg-modal [style*="font-size:12.5px"]{font-size:16.5px !important;}
     .dlg-wrap [style*="font-size:16px"],.dlg-modal [style*="font-size:16px"]{font-size:20px !important;}
     .dlg-wrap [style*="font-size:18px"],.dlg-modal [style*="font-size:18px"]{font-size:22px !important;}
+  }
+  /* ===== (১) পার্টস ম্যানেজমেন্ট (অ্যাডমিন): আইটেমে টাচ করলে বক্স রঙ ধরে (লেখা কালো, স্পষ্ট); ছাড়লে আগের অবস্থা ===== */
+  .admin-outer .part-card.part-card.touch-glow{
+    background:#ffe08a !important;border-color:#e0a100 !important;
+    box-shadow:0 0 0 2px rgba(224,161,0,.55),0 4px 14px rgba(0,0,0,.12) !important;
+  }
+  .admin-outer .part-card.part-card.touch-glow::after{opacity:0 !important;}
+  .admin-outer .part-card.part-card.touch-glow :is(.pn,.nm,.pr,div,b,span){color:#000 !important;}
+  /* ===== (২) দেনা-পাওনা: সারিতে চাপ/হোভার করলে পুরো সারি (শেষের বাটন কলাম পর্যন্ত) একই রঙে ===== */
+  .dlg-table tbody tr:is(:hover,:active) > td,
+  .dlg-table tbody tr:is(:hover,:active) > th{background:#fff1c2 !important;}
+  .dlg-table tbody tr:is(:hover,:active) > td :is(b,div,span,code){color:inherit;}
+  /* ===== (৩) দেনা-পাওনা টপ: "মোট পাওনা (পার্টির কাছে)" বড়, বোল্ড, লাল ===== */
+  .dlg-wrap .dlg-kpis .dlg-kpi.dlg-kpi-recv{border:2px solid #dc2626;}
+  .dlg-wrap .dlg-kpis .dlg-kpi.dlg-kpi-recv > div:first-child{color:#dc2626;font-weight:800;font-size:15px;}
+  .dlg-wrap .dlg-kpis .dlg-kpi.dlg-kpi-recv b{color:#dc2626;font-weight:900;font-size:clamp(26px,7vw,36px);line-height:1.15;overflow-wrap:anywhere;}
+  @media(max-width:640px){
+    .dlg-wrap .dlg-kpis .dlg-kpi.dlg-kpi-recv{grid-column:1/-1;}
+    .dlg-wrap .dlg-kpis .dlg-kpi.dlg-kpi-recv > div:first-child{font-size:18px;}
   }
   /* ===== মোবাইল/ডার্ক থিমে লেখা কালো ও স্পষ্ট — অ্যাডমিন প্যানেল (Parts/User/Vehicle/দেনা-পাওনা), Parts Engineer ও ক্যাটালগ ===== */
   .admin-content,.admin-outer .card,.admin-outer .stat,.admin-outer .part-card,.admin-outer .tabs,.catalog-card{
@@ -10955,7 +10974,7 @@ function renderDueResults(){
   const shownDue = rows.filter(r=>r.g.balance>0).length;
   box.innerHTML=`
     <div class="dlg-kpis">
-      <div class="dlg-kpi"><div>মোট পাওনা (পার্টির কাছে)</div><b class="dlg-due">${fmt(recv)}</b></div>
+      <div class="dlg-kpi dlg-kpi-recv"><div>মোট পাওনা (পার্টির কাছে)</div><b class="dlg-due">${fmt(recv)}</b></div>
       <div class="dlg-kpi"><div>মোট দেনা/অগ্রিম (পার্টিকে)</div><b class="dlg-adv">${fmt(pay)}</b></div>
       <div class="dlg-kpi"><div>নিট ব্যালেন্স</div><b>${balHTML(recv-pay)}</b></div>
       <div class="dlg-kpi"><div>বকেয়াদার পার্টি</div><b>${dueCnt} জন</b><div class="dlg-sub">তালিকায় দেখাচ্ছে: ${rows.length} জন</div></div>
