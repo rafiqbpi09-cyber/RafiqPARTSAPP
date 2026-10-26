@@ -44,7 +44,7 @@ document.currentScript.parentNode.insertBefore(manifestLink, document.currentScr
 // প্রতিটি নতুন deployment/update দেওয়ার আগে এই APP_VERSION ভ্যালুটা পরিবর্তন করুন
 // (যেকোনো ইউনিক স্ট্রিং — তারিখ/সময় বা running number)। এই ভ্যালুর ভিত্তিতেই
 // সব ডিভাইস স্বয়ংক্রিয়ভাবে নতুন version detect করে reload হবে।
-window.APP_VERSION = '2026-10-26-touch-color-kpi-red.5';
+window.APP_VERSION = '2026-10-26-due-kpi-parts-touch-sticky.6';
 
 (function(){
   // পুরনো/legacy blob-based service worker ও পুরনো Cache Storage সম্পূর্ণ পরিষ্কার করে দেওয়া হয়,
@@ -2330,6 +2330,22 @@ window.APP_VERSION = '2026-10-26-touch-color-kpi-red.5';
   @media(max-width:640px){
     .dlg-wrap .dlg-kpis .dlg-kpi.dlg-kpi-recv{grid-column:1/-1;}
     .dlg-wrap .dlg-kpis .dlg-kpi.dlg-kpi-recv > div:first-child{font-size:18px;}
+  }
+  /* ===== অ্যাডমিন হোম: "ডিলার ডিউ" বক্স — বড়, বোল্ড, লাল ===== */
+  .admin-kpi.admin-kpi-due .lbl{color:#dc2626 !important;font-weight:800 !important;font-size:15px !important;}
+  .admin-kpi.admin-kpi-due .num{color:#dc2626 !important;font-weight:900 !important;font-size:clamp(22px,6vw,30px) !important;line-height:1.15;overflow-wrap:anywhere;}
+  .admin-kpi.admin-kpi-due .sub{color:#dc2626 !important;font-weight:800 !important;font-size:12px !important;}
+  /* ===== পার্টস ম্যানেজমেন্ট টেবিলের সারিতে টাচ করলে সারি রঙ ধরে (লেখা কালো); ছাড়লে আগের অবস্থা ===== */
+  .parts-table tbody tr:is(.pt-touch,:active){background:#ffe08a !important;border-color:#e0a100 !important;}
+  .parts-table tbody tr:is(.pt-touch,:active) > td{background:#ffe08a !important;color:#000 !important;}
+  .parts-table tbody tr:is(.pt-touch,:active) > td *{color:#000 !important;}
+  /* ===== দেনা-পাওনা সারি: টাচ করলে পুরো সারি হলুদ; ফোনে বাটন কলাম ডানে আটকে থাকে (➕ সবসময় দেখা যায়) ===== */
+  .dlg-table tbody tr.row-touch > td{background:#fff1c2 !important;}
+  @media(max-width:900px){
+    .dlg-due-table th:last-child,.dlg-due-table td:last-child{position:sticky;right:0;z-index:3;background:#fff;box-shadow:-8px 0 10px -8px rgba(0,0,0,.35);}
+    .dlg-due-table thead th:last-child{background:var(--paper);}
+    .dlg-wrap .dlg-due-table td:last-child .btn{display:block;width:100%;margin:0 0 6px;text-align:center;font-size:15px;padding:7px 9px;}
+    .dlg-wrap .dlg-due-table td:last-child .btn:last-child{margin-bottom:0;}
   }
   /* ===== মোবাইল/ডার্ক থিমে লেখা কালো ও স্পষ্ট — অ্যাডমিন প্যানেল (Parts/User/Vehicle/দেনা-পাওনা), Parts Engineer ও ক্যাটালগ ===== */
   .admin-content,.admin-outer .card,.admin-outer .stat,.admin-outer .part-card,.admin-outer .tabs,.catalog-card{
@@ -7896,7 +7912,7 @@ ROUTES.adminDashboard = function(){
           <div class="admin-kpi-row">
             <div class="admin-kpi"><div class="ic" style="background:#e0e7ff;">👥</div><div class="meta"><div class="lbl">মোট ব্যবহারকারী</div><div class="num">${(DB.users||[]).filter(u=>u&&!u.deleted).length}</div><div class="sub">সক্রিয় অ্যাকাউন্ট</div></div></div>
             <div class="admin-kpi"><div class="ic" style="background:#dcfce7;">⚙️</div><div class="meta"><div class="lbl">পার্টস</div><div class="num">${(DB.parts||[]).length}</div><div class="sub">ক্যাটালগে তালিকাভুক্ত</div></div></div>
-            <div class="admin-kpi" style="cursor:pointer" role="button" tabindex="0" onclick="openAdminDueList()" ontouchstart="this.classList.add('touch-glow')" ontouchend="this.classList.remove('touch-glow')" ontouchcancel="this.classList.remove('touch-glow')"><div class="ic" style="background:#fee2e2;">💰</div><div class="meta"><div class="lbl">ডিলার ডিউ</div><div class="num" id="adminDueKpiNum">…</div><div class="sub" id="adminDueKpiSub" style="color:#dc2626">চাপলে বকেয়া তালিকা</div></div></div>
+            <div class="admin-kpi admin-kpi-due" style="cursor:pointer" role="button" tabindex="0" onclick="openAdminDueList()" ontouchstart="this.classList.add('touch-glow')" ontouchend="this.classList.remove('touch-glow')" ontouchcancel="this.classList.remove('touch-glow')"><div class="ic" style="background:#fee2e2;">💰</div><div class="meta"><div class="lbl">ডিলার ডিউ</div><div class="num" id="adminDueKpiNum">…</div><div class="sub" id="adminDueKpiSub" style="color:#dc2626">চাপলে বকেয়া তালিকা</div></div></div>
             <div class="admin-kpi"><div class="ic" style="background:#f3e8ff;">🧑‍🔧</div><div class="meta"><div class="lbl">Parts Engineer</div><div class="num">${(DB.partsEngineers||[]).length}</div><div class="sub">নিবন্ধিত</div></div></div>
           </div>
           <div class="admin-mod-grid">
@@ -10981,7 +10997,7 @@ function renderDueResults(){
     </div>
     <p class="hint" style="margin:6px 0 10px">💡 কোনো পার্টির <b>বিস্তারিত</b> চাপলে ডিউ ডিটেইলস ও পেমেন্ট লিস্ট দেখাবে। তালিকায় এখন <b>${rows.length} জন</b>${LG.ui.dueOnly?` (শুধু বকেয়া: ${shownDue})`:''}।</p>
     ${bad.length && admin ? `<div style="margin:8px 0"><button class="btn btn-navy btn-sm" onclick="DLG.recalcAll()">🛠️ ${bad.length}টি ডিলারের ব্যালেন্স মিলিয়ে নিন (Recalculate)</button></div>`:''}
-    <div class="dlg-scroll"><table class="dlg-table">
+    <div class="dlg-scroll"><table class="dlg-table dlg-due-table">
       <thead><tr><th>#</th><th>পার্টি</th><th>Opening</th><th>পাওনা</th><th>দেনা</th><th>জমা</th><th>প্রদান</th><th>ফেরত</th><th>সমন্বয়</th><th>বর্তমান ব্যালেন্স</th><th>শেষ জমা</th><th>পেমেন্ট</th><th></th></tr></thead>
       <tbody>${rows.length ? rows.map((r,i)=>{
         const pc=partyPaymentList(r.id).length;
@@ -11815,6 +11831,29 @@ function adminTopSearchFilter(q){
   window.addEventListener('resize', schedule);
   window.addEventListener('orientationchange', schedule);
   schedule();
+})();
+(function(){
+  if(window.__rowTouchInit) return; window.__rowTouchInit = true;
+  var cur = null, cls = '', sx = 0, sy = 0, tm = 0;
+  function rowOf(e){ return (e.target && e.target.closest) ? e.target.closest('.parts-table tbody tr, .dlg-table tbody tr') : null; }
+  function clear(delay){
+    var r = cur, c = cls; cur = null; if(!r) return;
+    clearTimeout(tm);
+    tm = setTimeout(function(){ r.classList.remove(c); }, delay || 0);
+  }
+  document.addEventListener('touchstart', function(e){
+    var r = rowOf(e); if(!r) return;
+    if(cur && cur !== r){ cur.classList.remove(cls); }
+    cur = r; cls = r.closest('.parts-table') ? 'pt-touch' : 'row-touch';
+    var p = e.touches[0]; sx = p.clientX; sy = p.clientY;
+    r.classList.add(cls);
+  }, {passive:true});
+  document.addEventListener('touchmove', function(e){
+    if(!cur) return; var p = e.touches[0];
+    if(Math.abs(p.clientX - sx) > 10 || Math.abs(p.clientY - sy) > 10) clear(0);
+  }, {passive:true});
+  document.addEventListener('touchend', function(){ clear(220); }, {passive:true});
+  document.addEventListener('touchcancel', function(){ clear(0); }, {passive:true});
 })();
 </script>
 </body>
