@@ -44,7 +44,7 @@ document.currentScript.parentNode.insertBefore(manifestLink, document.currentScr
 // প্রতিটি নতুন deployment/update দেওয়ার আগে এই APP_VERSION ভ্যালুটা পরিবর্তন করুন
 // (যেকোনো ইউনিক স্ট্রিং — তারিখ/সময় বা running number)। এই ভ্যালুর ভিত্তিতেই
 // সব ডিভাইস স্বয়ংক্রিয়ভাবে নতুন version detect করে reload হবে।
-window.APP_VERSION = '2026-10-26-search-nav-mobile-only.1';
+window.APP_VERSION = '2026-10-26-dataloss-fixes.1';
 
 (function(){
   // পুরনো/legacy blob-based service worker ও পুরনো Cache Storage সম্পূর্ণ পরিষ্কার করে দেওয়া হয়,
@@ -2590,6 +2590,9 @@ async function fbEnsureAuth(record, pw, prefix, options={}){
 }
 
 let lastSaveError = null;
+// ★ Firebase থেকে সত্যিকারের লোড সফল না হলে DB হয় ডেমো/ডিফল্ট নয়তো পুরনো localStorage কপি —
+// সেই অবস্থায় সেভ করলে আসল ডেটা ওভাররাইট হতে পারে, তাই সেভ আটকে দেওয়া হয়।
+let remoteLoaded = false;
 let lastAuthError = null;
 // lastSyncedSnapshot: এই ট্যাব সবশেষ যে অবস্থাটা সফলভাবে Firebase-এ পাঠিয়েছে/সেখান থেকে
 // লোড করেছে, তার প্রতিটা top-level key-র JSON স্ট্রিং। saveDB() এটার সাথে বর্তমান DB
@@ -2598,16 +2601,16 @@ let lastSyncedSnapshot = null;
 function buildFullPayload(){
   return {
     users: DB.users,
-    history: DB.history.slice(0,50),
+    history: DB.history.slice(0,1000),
     settings: { companyName: DB.settings.companyName, adminPassword: DB.settings.adminPassword, logo: DB.settings.logo, recoveryEmail: DB.settings.recoveryEmail, resetOTP: DB.settings.resetOTP || null, resetOTPExpiry: DB.settings.resetOTPExpiry || null, adminLastActive: DB.settings.adminLastActive || null, adminLastLogin: DB.settings.adminLastLogin || null, authEmail: DB.settings.authEmail || null, peAccessCode: DB.settings.peAccessCode || null, quickSearchCode: DB.settings.quickSearchCode || null },
     parts: DB.parts,
     nextPartId: nextPartId,
     partsSaved: true,
     catalogs: DB.catalogs,
-    requisitions: DB.requisitions.slice(0,200),
+    requisitions: DB.requisitions,
     nextReqNo: nextReqNo,
-    resetRequests: DB.resetRequests.slice(0,200),
-    drafts: DB.drafts.slice(0,200),
+    resetRequests: DB.resetRequests,
+    drafts: DB.drafts,
     loginHistory: DB.loginHistory.slice(0,500),
     partsEngineers: DB.partsEngineers,
     nextPeId: nextPeId,
@@ -2635,14 +2638,44 @@ const MERGE_KEYS = ['users','parts','partsEngineers','dealerShopParts','dealerMe
 function mergeArrayByIdBaseline(baseline, local, remote){
   const b = Array.isArray(baseline) ? baseline : [];
   const l = Array.isArray(local) ? local : [];
-  const r = Array.isArray(remote) ? remote : [];
+  // Firebase কখনো array-কে {0:..,1:..} অবজেক্ট হিসেবে ফেরত দেয় — আগে সেটাকে [] ধরা হতো (সব রেকর্ড মুছে যাওয়ার ঝুঁকি)
+  const r = Array.isArray(remote) ? remote : ((remote && typeof remote === 'object') ? Object.values(remote) : []);
   const bMap = new Map(b.map(x=>[String(x.id), x]));
   const lMap = new Map(l.map(x=>[String(x.id), x]));
   const result = new Map(r.map(x=>[String(x.id), x])); // সবচেয়ে ফ্রেশ remote-কে ভিত্তি ধরা হলো
   // ১) local-এ নতুন বা বদলে যাওয়া রেকর্ড -> result-এ প্রতিফলিত করা হলো
+  const allowReassign = b.length > 0; // baseline খালি থাকলে (প্রথম সেটআপ) আগের আচরণ
   for(const [id, rec] of lMap){
     const baseRec = bMap.get(id);
-    if(!baseRec || JSON.stringify(baseRec) !== JSON.stringify(rec)) result.set(id, rec);
+    if(!baseRec){
+      // ★ এই ট্যাবে নতুন তৈরি রেকর্ডের id যদি Firebase-এ অন্য কারো আলাদা রেকর্ডের সাথে মিলে যায়
+      // (পুরনো ট্যাবে counter পিছিয়ে থাকার কারণে), তাহলে ওভাররাইট না করে নতুন id দেওয়া হয়।
+      if(allowReassign && result.has(id) && /^\d+$/.test(id) && JSON.stringify(result.get(id)) !== JSON.stringify(rec)){
+        let mx = 0;
+        for(const k of result.keys()) if(/^\d+$/.test(k)) mx = Math.max(mx, Number(k));
+        for(const k of lMap.keys()) if(/^\d+$/.test(k)) mx = Math.max(mx, Number(k));
+        rec.id = (typeof rec.id === 'number') ? (mx+1) : String(mx+1);
+        result.set(String(mx+1), rec);
+        continue;
+      }
+      result.set(id, rec);
+    }else if(JSON.stringify(baseRec) !== JSON.stringify(rec)){
+      // ★ একই রেকর্ড অন্য কেউও বদলে থাকলে পুরো রেকর্ড ওভাররাইট নয় — শুধু এই ট্যাবে আসলেই বদলানো field-গুলো
+      // Firebase-এর সর্বশেষ রেকর্ডের উপর বসে। (যেমন Admin-এর পুরনো ট্যাব থেকে price sync করলে ডিলারের নতুন stock
+      // আগের মানে ফিরে যেত — stock 0 হওয়ার একটা বাস্তব পথ।)
+      const remRec = result.get(id);
+      if(remRec && typeof remRec === 'object' && typeof rec === 'object' && typeof baseRec === 'object' &&
+         JSON.stringify(remRec) !== JSON.stringify(baseRec)){
+        const m = Object.assign({}, remRec);
+        for(const f of Object.keys(rec)){
+          if(JSON.stringify(rec[f]) !== JSON.stringify(baseRec[f])) m[f] = rec[f];
+        }
+        for(const f of Object.keys(baseRec)){ if(!(f in rec)) delete m[f]; }
+        result.set(id, m);
+      }else{
+        result.set(id, rec);
+      }
+    }
   }
   // ২) baseline-এ ছিল কিন্তু local-এ এখন নেই (এই ট্যাবে ডিলিট হয়েছে) -> result থেকেও বাদ
   for(const [id] of bMap){
@@ -2660,8 +2693,85 @@ async function fetchFreshRemoteKey(key){
   if(!res.ok) throw new Error(`fresh fetch failed (${key}): ${res.status}`);
   return res.json();
 }
+// ★ settings-এর ক্ষেত্রে field-by-field merge: এই ট্যাবে আসলেই বদলানো field-গুলোই শুধু Firebase-এর সর্বশেষ কপির
+// উপর বসে। আগে পুরো settings অবজেক্ট ওভাররাইট হতো — পুরনো ট্যাব থেকে adminLastActive-এর মতো সাধারণ আপডেটেও
+// অন্য ট্যাবে বদলানো adminPassword/peAccessCode/logo আগের মানে ফিরে যেত।
+// ★ স্টক বদলানোর ঠিক আগে Firebase থেকে সর্বশেষ dealerShopParts এনে লোকাল কপি হালনাগাদ করা হয়, যাতে পুরনো
+// (stale) মানের উপর হিসাব করে স্টক ভুল/০ হয়ে না যায়। এই ট্যাবে অসেভড পরিবর্তন থাকলে কিছু করা হয় না (merge সামলাবে)।
+async function refreshDealerStock(){
+  try{
+    if(!remoteLoaded || !lastSyncedSnapshot) return;
+    const k = 'dealerShopParts';
+    if(JSON.stringify(DB[k]) !== lastSyncedSnapshot[k]) return;
+    const fresh = await fetchFreshRemoteKey(k);
+    const arr = Array.isArray(fresh) ? fresh : ((fresh && typeof fresh === 'object') ? Object.values(fresh) : []);
+    if(arr.length === 0 && DB[k].length > 0) return; // সন্দেহজনক খালি রেসপন্স — লোকাল কপি রেখে দেওয়া হলো
+    DB[k] = arr;
+    lastSyncedSnapshot[k] = JSON.stringify(arr);
+  }catch(e){ console.warn('refreshDealerStock failed', e); }
+}
+function mergeObjectByFieldBaseline(baseline, local, remote){
+  const b = (baseline && typeof baseline==='object') ? baseline : {};
+  const l = (local && typeof local==='object') ? local : {};
+  const r = (remote && typeof remote==='object') ? remote : {};
+  const norm = v => JSON.stringify(v===undefined ? null : v);
+  const result = Object.assign({}, r);
+  for(const k of Object.keys(l)){
+    if(norm(l[k]) !== norm(b[k])) result[k] = l[k];
+  }
+  return result;
+}
+// ★ localStorage ব্যাকআপ: পুরো ডেটা কোটায় না ধরলে ধাপে ধাপে হালকা কপি লেখা হয় (আগে ব্যর্থ হলে চুপচাপ কিছুই লেখা হতো না)।
+// রিটার্ন: কোন ধাপে লেখা গেছে (0=পূর্ণ, 1=হালকা, 2=ন্যূনতম) অথবা -1 (কিছুই লেখা যায়নি)।
+function saveLocalBackup(payload){
+  const tiers = [
+    p => p,
+    p => Object.assign({}, p, { batteryWarranty: [], batteryWarrantyMeta: null, stockHistory: [], history: (p.history||[]).slice(0,50), loginHistory: [] }),
+    p => Object.assign({}, p, { batteryWarranty: [], batteryWarrantyMeta: null, stockHistory: [], history: [], loginHistory: [], drafts: [], dealerMemoDrafts: [], settings: Object.assign({}, p.settings, { logo: '' }) })
+  ];
+  for(let i=0;i<tiers.length;i++){
+    try{ localStorage.setItem(LS_KEY, JSON.stringify(tiers[i](payload))); return i; }catch(e){}
+  }
+  return -1;
+}
+// ★ সেভ ব্যর্থ হলে ইউজারকে সবসময় দৃশ্যমান সতর্কতা — saveDB() এর ৫৭টি call site রিটার্ন ভ্যালু চেক করে না,
+// তাই সতর্কতা এখানে কেন্দ্রীয়ভাবে দেখানো হয়। পরের সফল সেভে নিজে থেকেই সরে যায়।
+function showSaveFailure(reason, blocked){
+  try{
+    let b=document.getElementById('saveFailBanner');
+    if(!b){
+      b=document.createElement('div');
+      b.id='saveFailBanner';
+      b.style.cssText='position:fixed;left:8px;right:8px;top:calc(env(safe-area-inset-top,0px) + 8px);z-index:2147483000;background:#c23b3b;color:#fff;padding:12px 14px;border-radius:10px;font-weight:600;font-size:14px;line-height:1.5;box-shadow:0 6px 24px rgba(0,0,0,.35);display:flex;gap:10px;align-items:flex-start;';
+      b.innerHTML='<div style="flex:1"><div>⚠️ সেভ হয়নি! ইন্টারনেট/পারমিশন চেক করুন — রিফ্রেশ করলে এই পরিবর্তন হারিয়ে যাবে।</div><div id="saveFailReason" style="font-weight:400;font-size:12px;opacity:.9;margin-top:4px;word-break:break-word"></div></div><button type="button" id="saveFailRetry" style="background:#fff;color:#c23b3b;border:0;border-radius:8px;padding:8px 12px;font-weight:700;cursor:pointer;white-space:nowrap">🔄 আবার চেষ্টা</button>';
+      document.body.appendChild(b);
+      document.getElementById('saveFailRetry').onclick=async function(){
+        if(window._saveFailBlocked){ location.reload(); return; }
+        this.disabled=true; this.textContent='⏳...';
+        const ok=await saveDB();
+        this.disabled=false; this.textContent='🔄 আবার চেষ্টা';
+        if(ok) showSavedToast('✅ সেভ হয়েছে');
+      };
+    }
+    window._saveFailBlocked = !!blocked;
+    const rb=document.getElementById('saveFailRetry');
+    if(rb) rb.textContent = blocked ? '🔄 রিলোড' : '🔄 আবার চেষ্টা';
+    const r=document.getElementById('saveFailReason');
+    if(r) r.textContent=String(reason||'').slice(0,200);
+    b.style.display='flex';
+  }catch(e){}
+}
+function hideSaveFailure(){
+  try{ const b=document.getElementById('saveFailBanner'); if(b) b.style.display='none'; }catch(e){}
+}
 async function saveDB(dirtyKeys){
   try{
+    if(!remoteLoaded){
+      // লোড ব্যর্থ — ডিফল্ট/পুরনো ডেটা দিয়ে Firebase ওভাররাইট করা হবে না
+      lastSaveError = 'Firebase থেকে ডেটা লোড হয়নি, তাই সেভ আটকে রাখা হয়েছে (আসল ডেটা সুরক্ষার জন্য)';
+      showSaveFailure(lastSaveError, true);
+      return false;
+    }
     const fullPayload = buildFullPayload();
     // ★ ক্রিটিক্যাল বাগ ফিক্স (ডিলার স্টক হঠাৎ ০ হয়ে যাওয়া, নতুন/ডিলিট করা User ফিরে আসা):
     // আগে dirtyKeys না দিলে পুরো appdata ব্লাইন্ডলি PUT (সম্পূর্ণ ওভাররাইট) হতো — এই ট্যাব যখন
@@ -2697,8 +2807,39 @@ async function saveDB(dirtyKeys){
       }catch(mergeErr){
         // ফ্রেশ ফেচ ব্যর্থ হলে (যেমন নেট সমস্যা) — আগের নিরাপদ আচরণেই ফিরে যাওয়া হলো: শুধু এই
         // ট্যাবের local কপিটাই পাঠানো হবে এই key-র জন্য, বাকি key-গুলোর PATCH এতে প্রভাবিত হয় না।
-        console.warn('Merge skipped (falling back to local copy) for', k, mergeErr);
+        // ★ আগে এখানে stale local কপি দিয়ে পুরো key লিখে দেওয়া হতো (অন্যদের পরিবর্তন মুছে যেত)।
+        // এখন সেভ বাতিল — banner দেখাবে, ইউজার আবার চেষ্টা করতে পারবে।
+        console.warn('Merge fetch failed — save aborted for', k, mergeErr);
+        throw new Error('অন্যদের সর্বশেষ ডেটা আনা যায়নি ('+k+'), তাই সেভ আটকে রাখা হয়েছে: '+((mergeErr&&mergeErr.message)||mergeErr));
       }
+    }
+    if('settings' in payload){
+      const _sBase = (lastSyncedSnapshot && lastSyncedSnapshot.settings) ? JSON.parse(lastSyncedSnapshot.settings) : {};
+      const _sFresh = await fetchFreshRemoteKey('settings'); // ব্যর্থ হলে বাইরের catch-এ গিয়ে সেভ বাতিল
+      const _sMerged = mergeObjectByFieldBaseline(_sBase, payload.settings, _sFresh);
+      const _nullable = ['resetOTP','resetOTPExpiry','adminLastActive','adminLastLogin','authEmail','peAccessCode','quickSearchCode'];
+      for(const f of Object.keys(payload.settings)){
+        const v = _sMerged[f];
+        if(v !== undefined) DB.settings[f] = v;
+        else if(_nullable.includes(f)) DB.settings[f] = null; // অন্য কেউ মুছে দিয়েছে
+      }
+      payload.settings = _sMerged;
+      fullPayload.settings = buildFullPayload().settings; // snapshot DB.settings-এর সাথে মিলিয়ে রাখা
+    }
+    // ★ কাউন্টার (nextPartId/nextPeId/nextReqNo/nextMemoNo) কখনো পিছিয়ে যাবে না: Firebase-এর বর্তমান মান
+    // ও ডেটার সর্বোচ্চ id+1 — এই তিনটির মধ্যে সবচেয়ে বড়টা নেওয়া হয়।
+    const _maxId = arr => (Array.isArray(arr) ? arr : []).reduce((m,x)=>Math.max(m, Number(x && x.id)||0), 0) + 1;
+    const _counters = {
+      nextPartId: { set:v=>{ nextPartId=v; }, floor:()=>_maxId(DB.parts) },
+      nextPeId:   { set:v=>{ nextPeId=v; },   floor:()=>_maxId(DB.partsEngineers) },
+      nextReqNo:  { set:v=>{ nextReqNo=v; },  floor:()=>1 },
+      nextMemoNo: { set:v=>{ DB.nextMemoNo=v; }, floor:()=>1 }
+    };
+    for(const ck of Object.keys(_counters)){
+      if(!(ck in payload)) continue;
+      const remoteV = Number(await fetchFreshRemoteKey(ck)) || 0; // ব্যর্থ হলে বাইরের catch-এ গিয়ে সেভ বাতিল
+      const v = Math.max(Number(fullPayload[ck])||0, remoteV, _counters[ck].floor());
+      fullPayload[ck] = v; payload[ck] = v; _counters[ck].set(v);
     }
     if(Object.keys(payload).length === 0){
       lastSaveError = null;
@@ -2727,8 +2868,9 @@ async function saveDB(dirtyKeys){
     if(!lastSyncedSnapshot) lastSyncedSnapshot = {};
     for(const k of Object.keys(payload)) lastSyncedSnapshot[k] = JSON.stringify(fullPayload[k]);
     // localStorage এও সেভ (অফলাইন ব্যাকআপ) — লোকাল ব্যাকআপ সবসময় সম্পূর্ণ ডেটা রাখা হয়, যাতে অফলাইনে কোনো তথ্য না হারায়
-    try{ localStorage.setItem(LS_KEY, JSON.stringify(fullPayload)); }catch(e){}
+    saveLocalBackup(fullPayload);
     lastSaveError = null;
+    hideSaveFailure();
     return true;
   }catch(e){
     lastSaveError = (e && e.message) ? e.message : String(e);
@@ -2736,7 +2878,8 @@ async function saveDB(dirtyKeys){
     // Firebase না হলে localStorage এ সেভ — buildFullPayload() ব্যবহার করা হচ্ছে (আগে এখানে আলাদা
     // করে লেখা অবজেক্টে catalogs/resetRequests/loginHistory বাদ পড়ে গিয়েছিল; এখন সব key-ই
     // buildFullPayload()-এর সাথে সবসময় সিংক থাকবে, আলাদা করে দুই জায়গায় রাখতে হবে না)
-    try{ localStorage.setItem(LS_KEY, JSON.stringify(buildFullPayload())); }catch(e2){}
+    const _lsTier = saveLocalBackup(buildFullPayload());
+    showSaveFailure(lastSaveError + (_lsTier === -1 ? ' — ⚠️ ডিভাইসে অফলাইন ব্যাকআপও রাখা যায়নি (স্টোরেজ ভর্তি)' : ''));
     // Firebase-এ আসল write ব্যর্থ হয়েছে — caller (যেমন Delete History রিসেট) এটা জেনে
     // ইউজারকে সঠিক সতর্কতা দেখাতে পারে, নাহলে সবকিছু "সেভ হয়েছে" মনে হবে অথচ রিফ্রেশে পুরনো ডেটা ফিরে আসবে
     return false;
@@ -2756,6 +2899,7 @@ async function loadDB(){
   try{
     const res = await fetch(`${FB_URL}/appdata.json`);
     const saved = await res.json();
+    if(res.ok && !(saved && saved.error)) remoteLoaded = true;
     if(saved && saved.users){
       if(Array.isArray(saved.users)) DB.users = saved.users;
       if(Array.isArray(saved.history)) DB.history = saved.history;
@@ -2837,6 +2981,16 @@ async function loadDB(){
       else if(DB.partsEngineers.length) nextPeId = Math.max(...DB.partsEngineers.map(p=>Number(p.id)||0))+1;
       if(saved.settings){ DB.settings.adminLastActive = saved.settings.adminLastActive || null; DB.settings.adminLastLogin = saved.settings.adminLastLogin || null; }
     if(DB.users.length) nextUserId = Math.max(...DB.users.map(u=>Number(u.id)||0))+1;
+    // ★ আগে এই ফলব্যাক লোডার নিচের key-গুলো ফেরত আনত না (অফলাইনে ডিলারের স্টক/মেমো খালি দেখাত)
+    if(Array.isArray(saved.catalogs)) DB.catalogs = saved.catalogs;
+    if(Array.isArray(saved.dealerShopParts)) DB.dealerShopParts = saved.dealerShopParts;
+    if(Array.isArray(saved.dealerMemos)) DB.dealerMemos = saved.dealerMemos;
+    if(Array.isArray(saved.dealerMemoDrafts)) DB.dealerMemoDrafts = saved.dealerMemoDrafts;
+    if(Array.isArray(saved.stockHistory)) DB.stockHistory = saved.stockHistory;
+    if(Array.isArray(saved.batteryWarranty)) DB.batteryWarranty = saved.batteryWarranty;
+    if(saved.batteryWarrantyMeta) DB.batteryWarrantyMeta = saved.batteryWarrantyMeta;
+    if(Array.isArray(saved.dealerTargets)) DB.dealerTargets = saved.dealerTargets;
+    DB.nextMemoNo = Number(saved.nextMemoNo || 1);
     markSyncedSnapshot(buildFullPayload());
   }catch(e){ console.error('localStorage load failed:', e); }
 }
@@ -5671,7 +5825,17 @@ function openDealerShopPartModal(part=null){
     const u=currentDealer();
     const name=document.getElementById('spName').value.trim(), partNo=document.getElementById('spNo').value.trim();
     if(!name||!partNo){alert('Part Name এবং Part Number দিন।');return;}
-    const now=new Date(), stock=Number(document.getElementById('spStock').value||0);
+    const now=new Date();
+    if(part){
+      await refreshDealerStock();
+      const fp=dealerShopParts().find(x=>Number(x.id)===Number(part.id));
+      if(!fp){alert('Part পাওয়া যায়নি — পেজ রিফ্রেশ করে আবার চেষ্টা করুন।');return;}
+      if(Number(fp.currentStock||0)!==Number(part.currentStock||0)){alert(`⚠️ এই Part-এর Stock এখন ${Number(fp.currentStock||0)} (আপনি দেখছিলেন ${Number(part.currentStock||0)}) — অন্য ডিভাইস/ট্যাব থেকে বদলেছে। Edit আবার খুলে নতুন মান দেখে সেভ করুন।`);closeModal();go('dealerPortal');return;}
+      part=fp;
+    }
+    const _spStockEl=document.getElementById('spStock');
+    // Stock ঘর খালি/অনুপস্থিত হলে ০ ধরা হবে না — বর্তমান স্টকই থাকবে
+    const stock=(part && (!_spStockEl || String(_spStockEl.value).trim()==='')) ? Number(part.currentStock||0) : Number((_spStockEl&&_spStockEl.value)||0);
     if(part){
       const oldStock=Number(part.currentStock||0);
       Object.assign(part,{name,partNo,category:document.getElementById('spCat').value.trim(),brand:document.getElementById('spBrand').value.trim(),unit:document.getElementById('spUnit').value.trim()||'PCS',lowStock:Number(document.getElementById('spLow').value||5),purchasePrice:Number(document.getElementById('spPurchase').value||0),sellingPrice:Number(document.getElementById('spSelling').value||0),currentStock:stock,updatedAt:now.toISOString()});
@@ -5784,7 +5948,9 @@ function handleDealerStockUpload(e){
         const purchasePrice = parseFloat(r['Purchase Price'] ?? r.purchasePrice ?? r.PurchasePrice ?? 0) || 0;
         const sellingPrice = parseFloat(r['Selling Price'] ?? r.sellingPrice ?? r.SellingPrice ?? 0) || 0;
         const stockRaw = r.Stock ?? r.stock ?? r['স্টক'];
-        const stockQty = parseFloat(stockRaw ?? 0) || 0;
+        const _sn = parseFloat(stockRaw);
+        // Stock কলাম না থাকলে/ঘর খালি বা সংখ্যা না হলে null — "০" নয়, যাতে Set মোডে বিদ্যমান স্টক শূন্য না হয়ে যায়
+        const stockQty = (String(stockRaw ?? '').trim()==='' || isNaN(_sn)) ? null : _sn;
         if(stockQty < 0){ invalid.push({row:idx+2, partNo, reason:'Stock ঋণাত্মক হতে পারবে না'}); return; }
         const key = partNo.toLowerCase();
         const match = byPartNo.get(key);
@@ -5829,19 +5995,31 @@ function showDealerStockUploadPreview(){
 async function confirmDealerStockUpload(){
   const d = pendingStockUpload; if(!d) return;
   const u = currentDealer(); if(!u) return;
+  await refreshDealerStock();
+  // রিফ্রেশের পর বিদ্যমান Part-গুলো সর্বশেষ অবজেক্টের সাথে মিলিয়ে নেওয়া (পুরনো অবজেক্টে বদলালে সেভ হতো না)
+  d.toUpdate = d.toUpdate.map(r=>{ const fp = dealerShopParts().find(x=>Number(x.id)===Number(r.existing.id)); return fp ? Object.assign(r,{existing:fp}) : null; }).filter(Boolean);
+  if(d.mode==='set'){
+    const zeroing = d.toUpdate.filter(r=>r.stockQty===0 && Number(r.existing.currentStock||0)>0).length;
+    const blanks = d.toUpdate.filter(r=>r.stockQty===null).length;
+    if(zeroing>0 && !confirm(`⚠️ সতর্কতা: Set/Overwrite মোডে ${zeroing}টি Part-এর Stock ০ হয়ে যাবে।\nআপনি কি নিশ্চিত?`)) return;
+    if(blanks>0) alert(`ℹ️ ${blanks}টি Part-এর Stock ঘর খালি/অনুপস্থিত — এগুলোর বর্তমান Stock অপরিবর্তিত থাকবে।`);
+  }
   const now = new Date();
   let created=0, updated=0;
   d.toCreate.forEach(r=>{
-    const np={id:Date.now()+Math.floor(Math.random()*1000000), dealerId:u.id, name:r.name, partNo:r.partNo, category:r.category, brand:r.brand, unit:r.unit, lowStock:5, purchasePrice:r.purchasePrice, sellingPrice:r.sellingPrice, openingStock:r.stockQty, currentStock:r.stockQty, createdAt:now.toISOString()};
+    const np={id:Date.now()+Math.floor(Math.random()*1000000), dealerId:u.id, name:r.name, partNo:r.partNo, category:r.category, brand:r.brand, unit:r.unit, lowStock:5, purchasePrice:r.purchasePrice, sellingPrice:r.sellingPrice, openingStock:(r.stockQty||0), currentStock:(r.stockQty||0), createdAt:now.toISOString()};
     DB.dealerShopParts.push(np);
-    if(r.stockQty>0) addStockHistory(np,0,r.stockQty,0,r.stockQty,'Excel Stock Upload','');
+    if((r.stockQty||0)>0) addStockHistory(np,0,r.stockQty,0,r.stockQty,'Excel Stock Upload','');
     created++;
   });
   d.toUpdate.forEach(r=>{
     const p=r.existing, prev=Number(p.currentStock||0);
     let next=prev, stockIn=0, stockOut=0;
-    if(d.mode==='set'){ next=r.stockQty; stockIn=Math.max(0,next-prev); stockOut=Math.max(0,prev-next); }
-    else { next=prev+r.stockQty; stockIn=r.stockQty; }
+    if(d.mode==='set'){
+      if(r.stockQty===null){ next=prev; } // Stock ঘর খালি — স্টক ছোঁয়া হবে না
+      else { next=r.stockQty; stockIn=Math.max(0,next-prev); stockOut=Math.max(0,prev-next); }
+    }
+    else { const add=(r.stockQty||0); next=prev+add; stockIn=add; }
     Object.assign(p,{category:r.category||p.category, brand:r.brand||p.brand, unit:r.unit||p.unit, purchasePrice:r.purchasePrice||p.purchasePrice, sellingPrice:r.sellingPrice||p.sellingPrice, currentStock:next, updatedAt:now.toISOString()});
     if(next!==prev) addStockHistory(p,prev,stockIn,stockOut,next,'Excel Stock Upload','');
     updated++;
@@ -5873,9 +6051,13 @@ function adjustDealerStock(id){
   document.getElementById('saveAdj').onclick=async()=>{
     const type=document.getElementById('adjType').value,q=Number(document.getElementById('adjQty').value||0),reason=document.getElementById('adjReason').value.trim()||'Manual Adjustment';
     if(q<0){alert('সঠিক Quantity দিন।');return;}
-    const prev=Number(p.currentStock||0);let next=prev,stockIn=0,stockOut=0;
+    await refreshDealerStock();
+    const pf=dealerShopParts().find(x=>Number(x.id)===Number(id));
+    if(!pf){alert('Part পাওয়া যায়নি — পেজ রিফ্রেশ করে আবার চেষ্টা করুন।');return;}
+    if(Number(pf.currentStock||0)!==Number(p.currentStock||0)){alert(`⚠️ এই Part-এর Stock এখন ${Number(pf.currentStock||0)} (আপনি দেখছিলেন ${Number(p.currentStock||0)}) — অন্য ডিভাইস/ট্যাব থেকে বদলেছে। নতুন মান দেখে আবার Adjust করুন।`);closeModal();go('dealerPortal');return;}
+    const prev=Number(pf.currentStock||0);let next=prev,stockIn=0,stockOut=0;
     if(type==='in'){next=prev+q;stockIn=q;}else if(type==='out'){if(q>prev){alert('Stock-এর চেয়ে বেশি কমানো যাবে না।');return;}next=prev-q;stockOut=q;}else{next=q;stockIn=Math.max(0,q-prev);stockOut=Math.max(0,prev-q);}
-    p.currentStock=next;addStockHistory(p,prev,stockIn,stockOut,next,reason,'');await saveDB();closeModal();go('dealerPortal');
+    pf.currentStock=next;addStockHistory(pf,prev,stockIn,stockOut,next,reason,'');await saveDB();closeModal();go('dealerPortal');
   };
 }
 function stockHistoryHTML(){
@@ -6281,6 +6463,7 @@ function wireMemoPage(existingDraft=null){
     if(!st.customerName){alert('Customer Name দিন।');return;}
     if(!st.items.length){alert('কমপক্ষে একটি Part add করুন।');return;}
     if(st.discount>st.subtotal){alert('Discount Subtotal-এর চেয়ে বেশি হতে পারবে না।');return;}
+    await refreshDealerStock();
     for(const it of st.items){
       if(it.source!=='dealer')continue;
       const p=dealerShopParts().find(x=>Number(x.id)===Number(it.partId));
@@ -9590,11 +9773,40 @@ function wireSettingsTab(){
       if(count === 0){ alert('পার্টস লিস্ট ইতিমধ্যে খালি।'); return; }
       if(!confirm(`সত্যিই সব ${count}টি পার্টস স্থায়ীভাবে ডিলিট করতে চান? এটি Firebase থেকেও মুছে যাবে, ফিরে পাওয়া যাবে না।`)) return;
       if(!confirm(`নিশ্চিত করুন — ${count}টি পার্টস ডিলিট হয়ে যাবে। এগিয়ে যাবেন?`)) return;
+      // ★ মোছার আগে স্বয়ংক্রিয় ব্যাকআপ (Excel, ব্যর্থ হলে CSV) — ব্যাকআপ না হলে ডিলিট বাতিল
+      try{
+        const rows = DB.parts.map(p=>({'Part Number':p.partNo,'Parts Name':p.name,'Category':p.category||'','Price':p.price||0}));
+        const stamp = new Date().toISOString().slice(0,16).replace(/[:T]/g,'-');
+        try{
+          const wb = XLSX.utils.book_new();
+          XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), 'Parts');
+          XLSX.writeFile(wb, `parts-backup-${stamp}.xlsx`);
+        }catch(xe){
+          const csv = '\uFEFF' + ['Part Number,Parts Name,Category,Price'].concat(rows.map(r=>[r['Part Number'],r['Parts Name'],r['Category'],r['Price']].map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(','))).join('\n');
+          const a = document.createElement('a');
+          a.href = URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
+          a.download = `parts-backup-${stamp}.csv`;
+          document.body.appendChild(a); a.click(); a.remove();
+        }
+      }catch(be){
+        console.error('Parts backup failed:', be);
+        alert('❌ ব্যাকআপ ফাইল তৈরি করা যায়নি, তাই ডিলিট বাতিল করা হয়েছে। (' + (be && be.message ? be.message : be) + ')');
+        return;
+      }
+      if(!confirm('✅ ব্যাকআপ ফাইল ডাউনলোড হয়েছে।\n\nফাইলটি আপনার ডিভাইসে পেয়েছেন কি না নিশ্চিত করে "OK" চাপুন — এরপর সব পার্টস ডিলিট হবে।')) return;
       delAllBtn.disabled = true;
       delAllBtn.textContent = '⏳ ডিলিট হচ্ছে...';
+      const partsBackup = DB.parts;
       DB.parts = [];
       logHistory(`সব পার্টস ডিলিট করা হয়েছে (${count}টি)`);
-      await saveDB();
+      const delOk = await saveDB();
+      if(!delOk){
+        DB.parts = partsBackup;
+        delAllBtn.disabled = false;
+        delAllBtn.textContent = `🗑️ সব পার্টস ডিলিট করুন (${count}টি)`;
+        alert('❌ ডিলিট সেভ হয়নি — পার্টস আগের অবস্থায় ফিরিয়ে রাখা হয়েছে। ইন্টারনেট/পারমিশন চেক করে আবার চেষ্টা করুন।');
+        return;
+      }
       document.getElementById('deleteAllOk').style.display = 'block';
       setTimeout(()=>{
         adminTab = 'parts';
