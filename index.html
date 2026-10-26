@@ -44,7 +44,7 @@ document.currentScript.parentNode.insertBefore(manifestLink, document.currentScr
 // প্রতিটি নতুন deployment/update দেওয়ার আগে এই APP_VERSION ভ্যালুটা পরিবর্তন করুন
 // (যেকোনো ইউনিক স্ট্রিং — তারিখ/সময় বা running number)। এই ভ্যালুর ভিত্তিতেই
 // সব ডিভাইস স্বয়ংক্রিয়ভাবে নতুন version detect করে reload হবে।
-window.APP_VERSION = '2026-10-26-ledger-font-custom.7';
+window.APP_VERSION = '2026-10-26-due-btn-keep.9';
 
 (function(){
   // পুরনো/legacy blob-based service worker ও পুরনো Cache Storage সম্পূর্ণ পরিষ্কার করে দেওয়া হয়,
@@ -2325,16 +2325,16 @@ window.APP_VERSION = '2026-10-26-ledger-font-custom.7';
   .dlg-table tbody tr:is(:hover,:active) > td :is(b,div,span,code){color:inherit;}
   /* ===== (৩) দেনা-পাওনা টপ: "মোট পাওনা (পার্টির কাছে)" বড়, বোল্ড, লাল ===== */
   .dlg-wrap .dlg-kpis .dlg-kpi.dlg-kpi-recv{border:2px solid #dc2626;}
-  .dlg-wrap .dlg-kpis .dlg-kpi.dlg-kpi-recv > div:first-child{color:#dc2626;font-weight:800;font-size:15px;}
-  .dlg-wrap .dlg-kpis .dlg-kpi.dlg-kpi-recv b{color:#dc2626;font-weight:900;font-size:clamp(26px,7vw,36px);line-height:1.15;overflow-wrap:anywhere;}
+  .dlg-wrap .dlg-kpis .dlg-kpi.dlg-kpi-recv > div:first-child{color:#dc2626;font-weight:800;font-size:16.5px;}
+  .dlg-wrap .dlg-kpis .dlg-kpi.dlg-kpi-recv b{color:#dc2626;font-weight:900;font-size:16.5px;line-height:1.15;overflow-wrap:anywhere;}
   @media(max-width:640px){
     .dlg-wrap .dlg-kpis .dlg-kpi.dlg-kpi-recv{grid-column:1/-1;}
-    .dlg-wrap .dlg-kpis .dlg-kpi.dlg-kpi-recv > div:first-child{font-size:18px;}
+    .dlg-wrap .dlg-kpis .dlg-kpi.dlg-kpi-recv > div:first-child{font-size:16.5px;}
   }
   /* ===== অ্যাডমিন হোম: "ডিলার ডিউ" বক্স — বড়, বোল্ড, লাল ===== */
-  .admin-kpi.admin-kpi-due .lbl{color:#dc2626 !important;font-weight:800 !important;font-size:15px !important;}
-  .admin-kpi.admin-kpi-due .num{color:#dc2626 !important;font-weight:900 !important;font-size:clamp(22px,6vw,30px) !important;line-height:1.15;overflow-wrap:anywhere;}
-  .admin-kpi.admin-kpi-due .sub{color:#dc2626 !important;font-weight:800 !important;font-size:12px !important;}
+  .admin-kpi.admin-kpi-due .lbl{color:#dc2626 !important;font-weight:800 !important;font-size:12.5px !important;}
+  .admin-kpi.admin-kpi-due .num{color:#dc2626 !important;font-weight:900 !important;font-size:clamp(16px,4.2vw,22px) !important;line-height:1.15;overflow-wrap:anywhere;}
+  .admin-kpi.admin-kpi-due .sub{color:#dc2626 !important;font-weight:700 !important;font-size:10.5px !important;}
   /* ===== পার্টস ম্যানেজমেন্ট টেবিলের সারিতে টাচ করলে সারি রঙ ধরে (লেখা কালো); ছাড়লে আগের অবস্থা ===== */
   .parts-table tbody tr:is(.pt-touch,:active){background:#ffe08a !important;border-color:#e0a100 !important;}
   .parts-table tbody tr:is(.pt-touch,:active) > td{background:#ffe08a !important;color:#000 !important;}
@@ -2346,6 +2346,20 @@ window.APP_VERSION = '2026-10-26-ledger-font-custom.7';
     .dlg-due-table thead th:last-child{background:var(--paper);}
     .dlg-wrap .dlg-due-table td:last-child .btn{display:block;width:100%;margin:0 0 6px;text-align:center;font-size:15px;padding:7px 9px;}
     .dlg-wrap .dlg-due-table td:last-child .btn:last-child{margin-bottom:0;}
+  }
+  /* ===== দেনা-পাওনা সারি: হোভার/টাচে সারির একদম শেষ ঘর (📒 ➕ বাটনের কলাম) পর্যন্ত পুরো লাইন হলুদ ===== */
+  .dlg-wrap .dlg-table tbody tr:is(:hover,:active,.row-touch){background:#fff1c2 !important;}
+  .dlg-wrap .dlg-table tbody tr:is(:hover,:active,.row-touch) > :is(td,th),
+  .dlg-wrap .dlg-table tbody tr:is(:hover,:active,.row-touch) > :is(td,th):last-child{background:#fff1c2 !important;background-color:#fff1c2 !important;}
+  /* Sticky action column cell yellow on row hover; বিস্তারিত/📒/➕ buttons keep original style */
+  .dlg-wrap .dlg-due-table tbody tr:is(:hover,:active,.row-touch) > td:last-child{
+    background:#fff1c2 !important;background-color:#fff1c2 !important;box-shadow:none !important;
+  }
+  .dlg-wrap .dlg-due-table td:last-child{white-space:nowrap;}
+  @media(max-width:900px){
+    .dlg-wrap .dlg-due-table tbody tr:is(:hover,:active,.row-touch) > td:last-child{
+      background:#fff1c2 !important;background-color:#fff1c2 !important;box-shadow:none !important;
+    }
   }
   /* ===== মোবাইল/ডার্ক থিমে লেখা কালো ও স্পষ্ট — অ্যাডমিন প্যানেল (Parts/User/Vehicle/দেনা-পাওনা), Parts Engineer ও ক্যাটালগ ===== */
   .admin-content,.admin-outer .card,.admin-outer .stat,.admin-outer .part-card,.admin-outer .tabs,.catalog-card{
@@ -10866,7 +10880,7 @@ function render(){
           <button class="btn btn-ghost btn-sm" onclick="DLG.reload()">🔄 রিফ্রেশ</button>
         </div>
       </div>
-      <p class="hint" style="margin:6px 0 10px">ব্যালেন্স: <b class="dlg-due">+ পাওনা</b> = ডিলার কোম্পানিকে দেবে · <b class="dlg-adv">− দেনা/অগ্রিম</b> = কোম্পানি ডিলারকে দেবে। পুরোনো লেনদেন Edit/Delete হয় না — ভুল হলে Reversal বা সমন্বয় করুন।</p>
+      <p class="hint" style="margin:6px 0 10px;display:none">ব্যালেন্স: <b class="dlg-due">+ পাওনা</b> = ডিলার কোম্পানিকে দেবে · <b class="dlg-adv">− দেনা/অগ্রিম</b> = কোম্পানি ডিলারকে দেবে। পুরোনো লেনদেন Edit/Delete হয় না — ভুল হলে Reversal বা সমন্বয় করুন।</p>
       ${warn.map(w=>`<div class="dlg-alert">${esc(w)}</div>`).join('')}
       <div class="tabs" style="margin:10px 0 0">${views.map(v=>`<button class="tab ${LG.ui.view===v[0]?'active':''}" onclick="DLG.setView('${v[0]}')">${v[1]}</button>`).join('')}</div>
     </div>
