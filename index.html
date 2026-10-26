@@ -44,7 +44,7 @@ document.currentScript.parentNode.insertBefore(manifestLink, document.currentScr
 // প্রতিটি নতুন deployment/update দেওয়ার আগে এই APP_VERSION ভ্যালুটা পরিবর্তন করুন
 // (যেকোনো ইউনিক স্ট্রিং — তারিখ/সময় বা running number)। এই ভ্যালুর ভিত্তিতেই
 // সব ডিভাইস স্বয়ংক্রিয়ভাবে নতুন version detect করে reload হবে।
-window.APP_VERSION = '2026-10-26-pe-header-ledger-align.1';
+window.APP_VERSION = '2026-10-26-search-nav-mobile-only.1';
 
 (function(){
   // পুরনো/legacy blob-based service worker ও পুরনো Cache Storage সম্পূর্ণ পরিষ্কার করে দেওয়া হয়,
@@ -833,11 +833,11 @@ window.APP_VERSION = '2026-10-26-pe-header-ledger-align.1';
     .admin-home-main{padding:10px 12px 20px !important;max-width:100% !important;}
 
     /* KPI compact 2-col */
-    .admin-kpi{padding:10px 8px;gap:8px;border-radius:14px;flex-direction:column;align-items:flex-start;}
+    .admin-kpi{padding:12px 10px;gap:8px;border-radius:14px;flex-direction:column;align-items:flex-start;min-width:0;}
     .admin-kpi .ic{width:32px;height:32px;font-size:15px;border-radius:10px;}
-    .admin-kpi .num{font-size:16px;}
+    .admin-kpi .num{font-size:clamp(13px, 3.6vw, 17px);letter-spacing:-0.02em;}
     .admin-kpi .lbl{font-size:10.5px;}
-    .admin-kpi .sub{font-size:9.5px;}
+    .admin-kpi .sub{font-size:9.5px;line-height:1.35;}
 
     /* ===== App-icon style module grid (like phone home) ===== */
     .admin-mod-grid{
@@ -984,15 +984,23 @@ window.APP_VERSION = '2026-10-26-pe-header-ledger-align.1';
     box-shadow:0 4px 16px rgba(15,23,42,.04);display:flex;align-items:flex-start;gap:12px;
   }
   .admin-kpi .ic{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;}
-  .admin-kpi .meta{min-width:0;}
+  .admin-kpi .meta{min-width:0;flex:1;max-width:100%;overflow:visible;}
   .admin-kpi .lbl{font-size:12px;color:#64748b;font-weight:600;}
-  .admin-kpi .num{font-size:22px;font-weight:800;color:#0f172a;line-height:1.2;margin-top:2px;}
-  .admin-kpi .sub{font-size:11px;color:#22c55e;font-weight:600;margin-top:3px;}
+  .admin-kpi .num{
+    font-size:clamp(14px, 4.2vw, 20px);font-weight:800;color:#0f172a;line-height:1.25;margin-top:2px;
+    overflow-wrap:anywhere;word-break:break-word;white-space:normal;max-width:100%;
+  }
+  .admin-kpi .sub{font-size:11px;color:#22c55e;font-weight:600;margin-top:3px;overflow-wrap:anywhere;}
   .admin-mod-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;}
   /* mobile mod-grid uses app-icon 3-col layout above */
-  .admin-mod-card,.admin-kpi{
+  .admin-mod-card{
     position:relative;overflow:hidden;-webkit-tap-highlight-color:transparent;
     transition:transform .25s ease, box-shadow .25s ease, border-color .25s ease;
+  }
+  .admin-kpi{
+    position:relative;overflow:visible;-webkit-tap-highlight-color:transparent;
+    transition:transform .25s ease, box-shadow .25s ease, border-color .25s ease;
+    min-width:0;
   }
   .admin-mod-card{
     background:#fff;border:1px solid #eef1f6;border-radius:16px;padding:16px 16px;
@@ -1563,20 +1571,27 @@ window.APP_VERSION = '2026-10-26-pe-header-ledger-align.1';
   .bottom-nav-item.active{color:#1f8a4c;font-weight:700;}
   .bottom-nav-item.active .bn-icon{background:#e3ddc4;}
   /* Admin center Quick Search — elevated dark circle in the middle of bottom nav */
-  .bottom-nav-item.bn-quick-search{position:relative;top:-14px;color:#12233d;font-weight:700;}
-  .bottom-nav-item.bn-quick-search .bn-icon{
-    width:54px;height:54px;border-radius:50%;
-    background:linear-gradient(135deg,#12233d,#1c3358);color:#fff;font-size:22px;
-    box-shadow:0 6px 18px rgba(18,35,61,.42);border:3px solid #fff;
-  }
-  .bottom-nav-item.bn-quick-search.active .bn-icon,
-  .bottom-nav-item.bn-quick-search:active .bn-icon{
-    background:linear-gradient(135deg,#1c3358,#12233d);transform:scale(.96);
-  }
-  .bottom-nav-item.bn-quick-search span:last-child{font-size:11px;margin-top:1px;}
-  /* Mobile: floating FAB redundant — Quick Search lives in bottom nav center */
+  /* Center Quick Search in bottom nav — MOBILE ONLY (PC uses floating #qsFab) */
+  .bottom-nav-item.bn-quick-search{display:none !important;}
   @media(max-width:899px){
+    .bottom-nav-item.bn-quick-search{
+      display:flex !important;position:relative;top:-14px;color:#12233d;font-weight:700;
+    }
+    .bottom-nav-item.bn-quick-search .bn-icon{
+      width:54px;height:54px;border-radius:50%;
+      background:linear-gradient(135deg,#12233d,#1c3358);color:#fff;font-size:22px;
+      box-shadow:0 6px 18px rgba(18,35,61,.42);border:3px solid #fff;
+    }
+    .bottom-nav-item.bn-quick-search.active .bn-icon,
+    .bottom-nav-item.bn-quick-search:active .bn-icon{
+      background:linear-gradient(135deg,#1c3358,#12233d);transform:scale(.96);
+    }
+    .bottom-nav-item.bn-quick-search span:last-child{font-size:11px;margin-top:1px;}
+    /* Mobile: floating FAB redundant — Quick Search is in bottom nav */
     #qsFab{display:none !important;}
+  }
+  @media(min-width:900px){
+    .bottom-nav-item.bn-quick-search{display:none !important;}
   }
   .has-bottom-nav{padding-bottom:76px;}
   /* ---- Home-style Card Grid (Landing / quick menus) ---- */
@@ -7547,6 +7562,48 @@ function peReportTabHTML(){
   `;
 }
 
+
+/* Admin home: ডিলার ডিউ KPI → Due List */
+function openAdminDueList(){
+  try{
+    if(window.DLG && DLG._t && DLG._t.LG && DLG._t.LG.ui){
+      DLG._t.LG.ui.view = 'due';
+      DLG._t.LG.ui.dueOnly = true;
+      DLG._t.LG.ui.dueQ = '';
+    }
+  }catch(e){}
+  adminTab = 'dealerLedger';
+  go('adminDashboard');
+}
+async function refreshAdminDueKpi(){
+  const numEl = document.getElementById('adminDueKpiNum');
+  const subEl = document.getElementById('adminDueKpiSub');
+  if(!numEl) return;
+  try{
+    if(!window.DLG || !DLG._t || typeof DLG._t.loadAll !== 'function'){
+      numEl.textContent = '—';
+      if(subEl) subEl.textContent = 'চাপলে বকেয়া তালিকা';
+      return;
+    }
+    await DLG._t.loadAll();
+    const vouchers = (DLG._t.LG && DLG._t.LG.vouchers) ? DLG._t.LG.vouchers : [];
+    const agg = DLG._t.aggregate(vouchers) || {};
+    let total = 0, count = 0;
+    Object.keys(agg).forEach(id=>{
+      const b = Number(agg[id] && agg[id].balance) || 0;
+      if(b > 0){ total += b; count += 1; }
+    });
+    const taka = (Number(total)||0)/100;
+    // Compact display so sidebar open/narrow cards never clip mid-number
+    numEl.textContent = '৳' + taka.toLocaleString('en-IN', {maximumFractionDigits:0, minimumFractionDigits:0});
+    numEl.title = typeof DLG._t.fmt === 'function' ? DLG._t.fmt(total) : ('৳' + taka.toFixed(2));
+    if(subEl) subEl.textContent = count ? (count + ' জন বকেয়া · চাপলে তালিকা') : 'কোনো বকেয়া নেই';
+  }catch(e){
+    numEl.textContent = '—';
+    if(subEl) subEl.textContent = 'চাপলে বকেয়া তালিকা';
+  }
+}
+
 ROUTES.adminDashboard = function(){
   if(!requireRole(['admin'])) return;
   // যদি adminTab সেট না থাকে তাহলে menu grid দেখাই
@@ -7582,7 +7639,7 @@ ROUTES.adminDashboard = function(){
           <div class="admin-kpi-row">
             <div class="admin-kpi"><div class="ic" style="background:#e0e7ff;">👥</div><div class="meta"><div class="lbl">মোট ব্যবহারকারী</div><div class="num">${(DB.users||[]).filter(u=>u&&!u.deleted).length}</div><div class="sub">সক্রিয় অ্যাকাউন্ট</div></div></div>
             <div class="admin-kpi"><div class="ic" style="background:#dcfce7;">⚙️</div><div class="meta"><div class="lbl">পার্টস</div><div class="num">${(DB.parts||[]).length}</div><div class="sub">ক্যাটালগে তালিকাভুক্ত</div></div></div>
-            <div class="admin-kpi"><div class="ic" style="background:#ffedd5;">📝</div><div class="meta"><div class="lbl">রিকুইজিশন</div><div class="num">${(DB.requisitions||[]).length}</div><div class="sub">মোট অনুরোধ</div></div></div>
+            <div class="admin-kpi" style="cursor:pointer" role="button" tabindex="0" onclick="openAdminDueList()" ontouchstart="this.classList.add('touch-glow')" ontouchend="this.classList.remove('touch-glow')" ontouchcancel="this.classList.remove('touch-glow')"><div class="ic" style="background:#fee2e2;">💰</div><div class="meta"><div class="lbl">ডিলার ডিউ</div><div class="num" id="adminDueKpiNum">…</div><div class="sub" id="adminDueKpiSub" style="color:#dc2626">চাপলে বকেয়া তালিকা</div></div></div>
             <div class="admin-kpi"><div class="ic" style="background:#f3e8ff;">🧑‍🔧</div><div class="meta"><div class="lbl">Parts Engineer</div><div class="num">${(DB.partsEngineers||[]).length}</div><div class="sub">নিবন্ধিত</div></div></div>
           </div>
           <div class="admin-mod-grid">
@@ -7634,6 +7691,7 @@ ${adminBottomNavHTML()}
     const logoutHome = document.getElementById('logoutHome');
     if(logoutHome) logoutHome.onclick = ()=>{ DB.session={role:null,user:null}; go('landing'); };
     if(typeof initAdminSidebarState === 'function') initAdminSidebarState();
+    try{ refreshAdminDueKpi(); }catch(e){}
     return;
   }
   
@@ -10555,32 +10613,107 @@ function dueHTML(){
     <div id="dlgDueResults"></div>
   </div>`;
 }
+function partyPaymentList(dealerId){
+  return visibleVouchers()
+    .filter(v=>String(v.dealerId)===String(dealerId) && (v.type==='DEPOSIT' || v.type==='PAYMENT'))
+    .slice()
+    .sort((a,b)=>{
+      const d=String(b.date||'').localeCompare(String(a.date||''));
+      if(d) return d;
+      return String(b.voucherNo||'').localeCompare(String(a.voucherNo||''));
+    });
+}
+function partyBillList(dealerId){
+  return visibleVouchers()
+    .filter(v=>String(v.dealerId)===String(dealerId) && (v.type==='SALE' || v.type==='OPENING' || v.type==='RETURN' || v.type==='ADJUSTMENT' || v.type==='PAYABLE'))
+    .slice()
+    .sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
+}
+function openDueDetail(id){
+  const info=dealerInfo(id);
+  const g=aggregate(visibleVouchers())[id]||{balance:0,opening:0,receivable:0,payable:0,deposit:0,payment:0,return:0,adjustment:0,count:0,lastDeposit:''};
+  const pays=partyPaymentList(id);
+  const bills=partyBillList(id).slice(0,30);
+  const payRows = pays.length ? pays.map(v=>`<tr>
+      <td>${esc(v.date||'')}</td>
+      <td><code>${esc(v.voucherNo||'')}</code>${v.billNo?`<div class="dlg-sub">বিল: ${esc(v.billNo)}</div>`:''}</td>
+      <td>${esc((TYPES[v.type]&&TYPES[v.type].short)||v.type)}</td>
+      <td>${esc(v.method||'—')}</td>
+      <td class="n"><b>${num(v.amountPaisa)}</b></td>
+      <td>${esc(v.description||'—')}</td>
+    </tr>`).join('') : `<tr><td colspan="6" class="dlg-empty">কোনো পেমেন্ট/জমা রেকর্ড নেই</td></tr>`;
+  const billRows = bills.length ? bills.map(v=>`<tr>
+      <td>${esc(v.date||'')}</td>
+      <td><code>${esc(v.voucherNo||'')}</code>${v.billNo?`<div class="dlg-sub">বিল: ${esc(v.billNo)}</div>`:''}</td>
+      <td>${esc((TYPES[v.type]&&TYPES[v.type].short)||v.type)}</td>
+      <td class="n">${num(v.amountPaisa)}</td>
+      <td>${esc(v.description||'—')}</td>
+    </tr>`).join('') : `<tr><td colspan="5" class="dlg-empty">কোনো বিল/লেনদেন নেই</td></tr>`;
+  modal(`
+    <h3 style="margin:0 0 8px">💰 ডিউ কাস্টমার — বিস্তারিত</h3>
+    <div class="dlg-dealerbox" style="margin-bottom:12px">
+      <b style="font-size:16px">${esc(info.name||'')}</b><br>
+      ${esc(KIND_LABELS[info.kind]||info.kind||'')} · ID ${esc(id)} · 📞 ${esc(info.phone||'—')}<br>
+      ${info.address?esc(info.address)+'<br>':''}
+      বর্তমান বকেয়া: <b class="dlg-due" style="font-size:18px">${fmt(g.balance)}</b>
+    </div>
+    <div class="dlg-kpis" style="margin-bottom:12px">
+      <div class="dlg-kpi"><div>পাওনা (বিল)</div><b>${fmt(g.receivable)}</b></div>
+      <div class="dlg-kpi"><div>মোট জমা</div><b>${fmt(g.deposit)}</b></div>
+      <div class="dlg-kpi"><div>পেমেন্ট সংখ্যা</div><b>${pays.length}টি</b></div>
+      <div class="dlg-kpi"><div>শেষ জমা</div><b>${esc(g.lastDeposit||'—')}</b></div>
+    </div>
+    <h4 style="margin:8px 0 6px">💳 পেমেন্ট / জমার তালিকা (${pays.length})</h4>
+    <div class="dlg-scroll" style="max-height:28vh;margin-bottom:12px"><table class="dlg-table" style="min-width:560px">
+      <thead><tr><th>তারিখ</th><th>Voucher</th><th>ধরন</th><th>মাধ্যম</th><th>পরিমাণ</th><th>বিবরণ</th></tr></thead>
+      <tbody>${payRows}</tbody>
+    </table></div>
+    <h4 style="margin:8px 0 6px">🧾 বিল / অন্যান্য লেনদেন (সর্বশেষ ৩০)</h4>
+    <div class="dlg-scroll" style="max-height:22vh;margin-bottom:12px"><table class="dlg-table" style="min-width:520px">
+      <thead><tr><th>তারিখ</th><th>Voucher</th><th>ধরন</th><th>পরিমাণ</th><th>বিবরণ</th></tr></thead>
+      <tbody>${billRows}</tbody>
+    </table></div>
+    <div class="modal-actions" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+      <button class="btn btn-navy" style="flex:1" onclick="DLG.closeModal();DLG.openLedger('${esc(id)}')">📒 পূর্ণ Ledger</button>
+      ${allowedTypes().length?`<button class="btn btn-primary" style="flex:1" onclick="DLG.closeModal();DLG.openEntry('${esc(id)}')">➕ নতুন এন্ট্রি</button>`:''}
+      <button class="btn btn-ghost" style="flex:1" onclick="DLG.closeModal()">বন্ধ</button>
+    </div>`);
+}
 function renderDueResults(){
   const box=$('dlgDueResults'); if(!box) return;
   const rows=dueRows();
   const all=aggregate(visibleVouchers()); let recv=0,pay=0,dueCnt=0;
   Object.keys(all).forEach(id=>{ const b=all[id].balance; if(b>0){recv+=b;dueCnt++;} else if(b<0) pay+=-b; });
   const admin=isAdmin(); const bad=rows.filter(r=>r.bad);
+  const shownDue = rows.filter(r=>r.g.balance>0).length;
   box.innerHTML=`
     <div class="dlg-kpis">
       <div class="dlg-kpi"><div>মোট পাওনা (পার্টির কাছে)</div><b class="dlg-due">${fmt(recv)}</b></div>
       <div class="dlg-kpi"><div>মোট দেনা/অগ্রিম (পার্টিকে)</div><b class="dlg-adv">${fmt(pay)}</b></div>
       <div class="dlg-kpi"><div>নিট ব্যালেন্স</div><b>${balHTML(recv-pay)}</b></div>
-      <div class="dlg-kpi"><div>বকেয়াদার পার্টি</div><b>${dueCnt} জন</b></div>
+      <div class="dlg-kpi"><div>বকেয়াদার পার্টি</div><b>${dueCnt} জন</b><div class="dlg-sub">তালিকায় দেখাচ্ছে: ${rows.length} জন</div></div>
     </div>
+    <p class="hint" style="margin:6px 0 10px">💡 কোনো পার্টির <b>বিস্তারিত</b> চাপলে ডিউ ডিটেইলস ও পেমেন্ট লিস্ট দেখাবে। তালিকায় এখন <b>${rows.length} জন</b>${LG.ui.dueOnly?` (শুধু বকেয়া: ${shownDue})`:''}।</p>
     ${bad.length && admin ? `<div style="margin:8px 0"><button class="btn btn-navy btn-sm" onclick="DLG.recalcAll()">🛠️ ${bad.length}টি ডিলারের ব্যালেন্স মিলিয়ে নিন (Recalculate)</button></div>`:''}
     <div class="dlg-scroll"><table class="dlg-table">
-      <thead><tr><th>#</th><th>পার্টি</th><th>Opening</th><th>পাওনা</th><th>দেনা</th><th>জমা</th><th>প্রদান</th><th>ফেরত</th><th>সমন্বয়</th><th>বর্তমান ব্যালেন্স</th><th>শেষ জমা</th><th></th></tr></thead>
-      <tbody>${rows.length ? rows.map((r,i)=>`<tr>
+      <thead><tr><th>#</th><th>পার্টি</th><th>Opening</th><th>পাওনা</th><th>দেনা</th><th>জমা</th><th>প্রদান</th><th>ফেরত</th><th>সমন্বয়</th><th>বর্তমান ব্যালেন্স</th><th>শেষ জমা</th><th>পেমেন্ট</th><th></th></tr></thead>
+      <tbody>${rows.length ? rows.map((r,i)=>{
+        const pc=partyPaymentList(r.id).length;
+        return `<tr>
         <td>${i+1}</td>
         <td><b>${esc(r.info.name)}</b><div class="dlg-sub">${[KIND_LABELS[r.info.kind]||'', r.info.phone||'', 'ID '+r.id].filter(Boolean).map(esc).join(' · ')}${r.info.known?'':' · (মুছে ফেলা)'}</div></td>
         <td class="n">${num(r.g.opening)}</td><td class="n">${num(r.g.receivable)}</td><td class="n">${num(r.g.payable)}</td>
         <td class="n">${num(r.g.deposit)}</td><td class="n">${num(r.g.payment)}</td><td class="n">${num(r.g.return)}</td><td class="n">${num(r.g.adjustment)}</td>
         <td class="n"><b>${balHTML(r.g.balance)}</b>${r.bad?`<div class="dlg-sub dlg-due">⚠️ সংরক্ষিত: ${num(r.stored)}</div>`:''}</td>
         <td>${esc(r.g.lastDeposit||'—')}</td>
-        <td style="white-space:nowrap"><button class="btn btn-ghost btn-sm" onclick="DLG.openLedger('${esc(r.id)}')">📒 Ledger</button>
-          ${allowedTypes().length?`<button class="btn btn-ghost btn-sm" onclick="DLG.openEntry('${esc(r.id)}')">➕</button>`:''}</td>
-      </tr>`).join('') : `<tr><td colspan="12" class="dlg-empty">কোনো ডিলার পাওয়া যায়নি</td></tr>`}</tbody>
+        <td class="n">${pc}টি</td>
+        <td style="white-space:nowrap">
+          <button class="btn btn-primary btn-sm" onclick="DLG.openDueDetail('${esc(r.id)}')">💳 বিস্তারিত</button>
+          <button class="btn btn-ghost btn-sm" onclick="DLG.openLedger('${esc(r.id)}')">📒</button>
+          ${allowedTypes().length?`<button class="btn btn-ghost btn-sm" onclick="DLG.openEntry('${esc(r.id)}')">➕</button>`:''}
+        </td>
+      </tr>`;
+      }).join('') : `<tr><td colspan="13" class="dlg-empty">কোনো ডিলার পাওয়া যায়নি</td></tr>`}</tbody>
     </table></div>`;
 }
 
@@ -11327,7 +11460,7 @@ async function peHook(){
 }
 
 window.DLG={
-  tabHTML, wire, reload, setView, setDueQ, setDueOnly, setF, setQ, setAuditQ, clearFilters, openLedger,
+  tabHTML, wire, reload, setView, setDueQ, setDueOnly, setF, setQ, setAuditQ, clearFilters, openLedger, openDueDetail,
   openEntry, entryTypeChanged, entryPreview, submitEntry, openReverse, submitReverse, closeModal,
   printStatement, printDue, exportLedger, exportDue, recalcAll, changePerm, peHook,
   openParty, submitParty, myReload, myFilter, openMessage, msgSetLang, msgSend, msgResolve, entryMsgPreview, setMsgF, setMsgQ,
