@@ -44,7 +44,7 @@ document.currentScript.parentNode.insertBefore(manifestLink, document.currentScr
 // প্রতিটি নতুন deployment/update দেওয়ার আগে এই APP_VERSION ভ্যালুটা পরিবর্তন করুন
 // (যেকোনো ইউনিক স্ট্রিং — তারিখ/সময় বা running number)। এই ভ্যালুর ভিত্তিতেই
 // সব ডিভাইস স্বয়ংক্রিয়ভাবে নতুন version detect করে reload হবে।
-window.APP_VERSION = '2026-10-26-admin-nav-quicksearch-center.1';
+window.APP_VERSION = '2026-10-26-mobile-home-image-style.1';
 
 (function(){
   // পুরনো/legacy blob-based service worker ও পুরনো Cache Storage সম্পূর্ণ পরিষ্কার করে দেওয়া হয়,
@@ -452,9 +452,21 @@ window.APP_VERSION = '2026-10-26-admin-nav-quicksearch-center.1';
   #qsResults .group-label{font-size:12px;color:var(--muted);margin:10px 0 6px;font-weight:600;}
 
   /* dealer search page */
-  .search-hero{background:linear-gradient(135deg,var(--navy),var(--navy-2));border-radius:16px;padding:26px 22px;color:#fff;margin-bottom:18px;}
-  .search-hero h2{margin:0 0 4px;font-size:17px;}
-  .search-hero p{margin:0 0 14px;font-size:12.5px;color:#a9bcd6;}
+  .search-hero{background:linear-gradient(135deg,#0f2744,#163a5c 55%,#1a4a6e);border-radius:18px;padding:20px 18px 18px;color:#fff;margin-bottom:18px;box-shadow:0 10px 28px rgba(15,39,68,.28);}
+  .search-hero h2{margin:0 0 6px;font-size:16.5px;font-weight:800;display:flex;align-items:center;gap:8px;}
+  .search-hero p{margin:0 0 14px;font-size:12.5px;color:#b7c9df;line-height:1.5;}
+  .search-hero .big-search{display:flex;gap:8px;align-items:stretch;}
+  .search-hero .big-search input{
+    flex:1;min-width:0;padding:12px 14px;border:none;border-radius:12px;font-size:14.5px;font-family:inherit;
+    background:#fff;color:#0f172a;box-shadow:inset 0 0 0 1px rgba(255,255,255,.15);
+  }
+  .search-hero .big-search input:focus{outline:none;box-shadow:0 0 0 3px rgba(251,191,36,.35);}
+  .search-hero .big-search .btn-primary,
+  .search-hero .big-search button.btn-primary{
+    background:linear-gradient(180deg,#fbbf24,#f59e0b)!important;color:#1c1917!important;font-weight:800;
+    border:none;border-radius:12px;padding:12px 18px;white-space:nowrap;box-shadow:0 4px 12px rgba(245,158,11,.35);
+  }
+  .search-hero .big-search .btn-primary:hover{filter:brightness(1.05);}
   .big-search{display:flex;gap:8px;}
   .big-search input{flex:1;padding:13px 16px;border-radius:11px;border:none;font-size:16px;font-family:'JetBrains Mono',monospace;}
   .big-search .btn{padding:13px 20px;}
@@ -1304,13 +1316,27 @@ window.APP_VERSION = '2026-10-26-admin-nav-quicksearch-center.1';
   .dealer-tabs{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 18px;background:var(--card);padding:7px;border:1px solid var(--line);border-radius:12px;}
   .dealer-tabs .tab{padding:9px 13px;font-size:13px;}
   .dealer-nav-bar{margin:0 0 18px;}
-  .dealer-nav-folders{display:grid;grid-template-columns:repeat(auto-fit,minmax(78px,1fr));gap:10px;}
-  .dealer-nav-folder{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;padding:14px 6px;border-radius:14px;border:1px solid var(--line);background:var(--card);cursor:pointer;font-family:inherit;transition:.15s;}
-  .dealer-nav-folder .icon{font-size:28px;line-height:1;}
-  .dealer-nav-folder .lbl{font-size:11px;font-weight:700;color:var(--text);text-align:center;line-height:1.3;}
-  .dealer-nav-folder.active{border-color:var(--navy);box-shadow:0 0 0 1.5px var(--navy) inset;}
-  .dealer-nav-folder.open{background:var(--navy);border-color:var(--navy);}
-  .dealer-nav-folder.open .lbl{color:#fff;}
+  .dealer-nav-bar{margin-bottom:16px;}
+  .dealer-nav-folders{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;}
+  .dealer-nav-folder{
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;
+    padding:16px 8px 14px;border-radius:16px;border:1.5px solid #e8eef6;background:#fff;
+    cursor:pointer;font-family:inherit;transition:.15s;
+    box-shadow:0 4px 12px rgba(40,90,160,.06);
+  }
+  [data-theme="dark"] .dealer-nav-folder{background:var(--card);border-color:var(--line);}
+  .dealer-nav-folder .icon{font-size:28px;line-height:1;filter:saturate(1.1);}
+  .dealer-nav-folder .lbl{font-size:11.5px;font-weight:700;color:#334155;text-align:center;line-height:1.3;}
+  [data-theme="dark"] .dealer-nav-folder .lbl{color:var(--text);}
+  .dealer-nav-folder.active{border-color:#3b82f6;box-shadow:0 0 0 2px rgba(59,130,246,.25),0 6px 14px rgba(59,130,246,.12);}
+  .dealer-nav-folder.open{background:linear-gradient(180deg,#eff6ff,#fff);border-color:#3b82f6;}
+  .dealer-nav-folder.open .lbl{color:#1e40af;}
+  [data-theme="dark"] .dealer-nav-folder.open{background:var(--navy-2);border-color:#60a5fa;}
+  [data-theme="dark"] .dealer-nav-folder.open .lbl{color:#fff;}
+  .dealer-nav-folder:active{transform:scale(.97);}
+  @media(min-width:700px){
+    .dealer-nav-folders{grid-template-columns:repeat(4,minmax(0,1fr));}
+  }
   .dealer-nav-panel{margin-top:10px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px;display:flex;flex-direction:column;gap:2px;}
   .dealer-nav-item{display:flex;align-items:center;gap:10px;width:100%;text-align:left;padding:10px;border-radius:9px;border:none;background:none;font-family:inherit;font-size:14px;font-weight:600;color:var(--text);cursor:pointer;}
   .dealer-nav-item:hover{background:var(--paper);}
@@ -1333,13 +1359,42 @@ window.APP_VERSION = '2026-10-26-admin-nav-quicksearch-center.1';
   .b-grid{display:grid;grid-template-columns:auto 1fr;gap:6px 12px;font-size:13.5px;}
   .b-lbl{color:var(--muted);font-weight:600;}
   .b-val{font-weight:600;color:var(--text);}
-  .dealer-stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:10px;margin-bottom:16px;}
-  .dealer-stat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:13px;position:relative;overflow:hidden;}
-  .dealer-stat::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--amber);}
-  .dealer-stat .n{font-size:23px;font-weight:700;color:var(--navy);}
-  .dealer-stat .l{font-size:11.5px;color:var(--muted);}
-  .dealer-stat.clickable{cursor:pointer;transition:.15s;}
-  .dealer-stat.clickable:hover{border-color:var(--navy);}
+  /* ===== Mobile home (Dealer / Mechanic / PE) — image-style KPI cards ===== */
+  .portal-soft-bg{background:linear-gradient(180deg,#e8f1fb 0%,#f0f5fc 45%,#f4f7fb 100%);min-height:100vh;}
+  [data-theme="dark"] .portal-soft-bg{background:linear-gradient(180deg,#0f1720 0%,#152030 100%);}
+  .dealer-stat-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-bottom:16px;}
+  .dealer-stat{
+    background:#fff;border:none;border-radius:18px;padding:14px 14px 16px;
+    position:relative;overflow:hidden;
+    box-shadow:0 6px 18px rgba(40,90,160,.08);
+    transition:transform .15s,box-shadow .15s;
+  }
+  [data-theme="dark"] .dealer-stat{background:var(--card);box-shadow:0 6px 18px rgba(0,0,0,.25);}
+  .dealer-stat::before{display:none;}
+  .dealer-stat .ic{
+    width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;
+    font-size:20px;margin-bottom:10px;flex-shrink:0;
+  }
+  .dealer-stat .l{font-size:12.5px;color:#64748b;font-weight:600;margin-bottom:4px;line-height:1.3;}
+  [data-theme="dark"] .dealer-stat .l{color:var(--muted);}
+  .dealer-stat .n{font-size:24px;font-weight:800;color:#0f172a;line-height:1.15;letter-spacing:-.3px;}
+  [data-theme="dark"] .dealer-stat .n{color:var(--text);}
+  .dealer-stat .sub{font-size:11.5px;font-weight:700;margin-top:4px;}
+  .dealer-stat .sub.ok{color:#16a34a;}
+  .dealer-stat .sub.warn{color:#ea580c;}
+  .dealer-stat .sub.danger{color:#dc2626;}
+  .dealer-stat.full{grid-column:1/-1;display:flex;align-items:center;gap:14px;padding:16px 18px;}
+  .dealer-stat.full .ic{margin-bottom:0;width:44px;height:44px;font-size:22px;}
+  .dealer-stat.full .body{flex:1;min-width:0;}
+  .dealer-stat.full .n{font-size:26px;}
+  .dealer-stat.accent-green{box-shadow:0 6px 18px rgba(34,197,94,.12);border-left:4px solid #22c55e;}
+  .dealer-stat.clickable{cursor:pointer;}
+  .dealer-stat.clickable:hover,.dealer-stat.clickable:active{transform:translateY(-2px);box-shadow:0 10px 22px rgba(40,90,160,.14);}
+  @media(max-width:380px){
+    .dealer-stat .n{font-size:20px;}
+    .dealer-stat.full .n{font-size:22px;}
+    .dealer-stat .l{font-size:11.5px;}
+  }
   .dealer-management-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
   .memo-items-wrap{overflow-x:auto;}
   .memo-items-table{min-width:720px;}
@@ -3417,10 +3472,10 @@ function bottomNavHTML(items, activeKey){
 }
 function dealerBottomNavHTML(){
   return bottomNavHTML([
-    {key:'search',icon:'🏠',label:'হোম',onclick:"dealerManageTab='search';go('dealerPortal')"},
-    {key:'memo',icon:'🧾',label:'মেমো',onclick:"dealerManageTab='memo';go('dealerPortal')"},
-    {key:'stock',icon:'📦',label:'স্টক',onclick:"dealerManageTab='stock';go('dealerPortal')"},
-    {key:'more',icon:'➕',label:'আরও',onclick:"showDealerMoreMenu()"}
+    {key:'search',icon:'🏠',label:'Home',onclick:"dealerManageTab='search';go('dealerPortal')"},
+    {key:'memo',icon:'🧾',label:'Memo',onclick:"dealerManageTab='memo';go('dealerPortal')"},
+    {key:'stock',icon:'📦',label:'Stock',onclick:"dealerManageTab='stock';go('dealerPortal')"},
+    {key:'more',icon:'➕',label:'More',onclick:"showDealerMoreMenu()"}
   ], dealerManageTab);
 }
 function showDealerMoreMenu(){
@@ -4477,10 +4532,22 @@ function mechanicPartSearch(q){
   return [...exact,...rest].slice(0,40);
 }
 function mechanicSearchHTML(){
-  return `<div class="search-hero">
-    <h2>🔍 Parts Search</h2>
-    <p>Part Number অথবা Part Name দিয়ে খুঁজুন। শেষের ৩-৫ সংখ্যাও ব্যবহার করা যাবে।</p>
-    <div class="big-search"><input type="text" id="mechSearch" placeholder="যেমনঃ 97200754 বা Oil Filter"><button class="btn btn-primary" id="mechSearchBtn">সার্চ</button></div>
+  return `<div class="dealer-stat-grid" style="margin-bottom:14px">
+    <div class="dealer-stat"><div class="ic" style="background:#dbeafe">🔍</div><div class="l">Parts Search</div><div class="n" style="font-size:15px;font-weight:700">Company list</div></div>
+    <div class="dealer-stat"><div class="ic" style="background:#dcfce7">🧾</div><div class="l">Tour Bill</div><div class="n" style="font-size:15px;font-weight:700">Submit & track</div></div>
+  </div>
+  <div class="dealer-nav-bar" style="margin-bottom:14px"><div class="dealer-nav-folders" style="grid-template-columns:repeat(3,minmax(0,1fr))">
+    <button type="button" class="dealer-nav-folder ${typeof mechanicTab!=='undefined'&&mechanicTab==='search'?'active':''}" onclick="mechanicTab='search';go('mechanicDashboard')"><span class="icon">🔍</span><span class="lbl">Search</span></button>
+    <button type="button" class="dealer-nav-folder ${typeof mechanicTab!=='undefined'&&mechanicTab==='tourbill'?'active':''}" onclick="mechanicTab='tourbill';go('mechanicDashboard')"><span class="icon">🧾</span><span class="lbl">Tour Bill</span></button>
+    <button type="button" class="dealer-nav-folder ${typeof mechanicTab!=='undefined'&&mechanicTab==='profile'?'active':''}" onclick="mechanicTab='profile';go('mechanicDashboard')"><span class="icon">👤</span><span class="lbl">Account</span></button>
+    <button type="button" class="dealer-nav-folder" onclick="go('vehicleModelDB')"><span class="icon">🚗</span><span class="lbl">Vehicle DB</span></button>
+    <button type="button" class="dealer-nav-folder" onclick="go('partsCatalog')"><span class="icon">📚</span><span class="lbl">Catalogue</span></button>
+    <button type="button" class="dealer-nav-folder" onclick="go('myLedger')"><span class="icon">📒</span><span class="lbl">My Ledger</span></button>
+  </div></div>
+  <div class="search-hero">
+    <h2>🔍 Search by part number / part name</h2>
+    <p>Search the company parts list. You can also use the last 3–5 digits.</p>
+    <div class="big-search"><input type="text" id="mechSearch" placeholder="For example: 97200754"><button class="btn btn-primary" id="mechSearchBtn">Search</button></div>
   </div><div id="mechResults"></div>`;
 }
 function renderMechanicSearch(){
@@ -5006,7 +5073,7 @@ ROUTES.mechanicDashboard = function(){
   const u = currentMechanic();
   const app = document.getElementById('app');
   const content = mechanicTab === 'profile' ? mechanicProfileHTML() : (mechanicTab === 'tourbill' ? mechanicTourBillHTML() : mechanicSearchHTML());
-  app.appendChild(el(`<div>
+  app.appendChild(el(`<div class="portal-soft-bg">
     <div class="topbar">
       <div class="topbar-brand">
         <div class="brand-logo">${DB.settings.logo ? `<img src="${DB.settings.logo}" style="width:100%;height:100%;object-fit:cover;border-radius:9px">` : '🔧'}</div>
@@ -5020,12 +5087,10 @@ ROUTES.mechanicDashboard = function(){
       </div>
     </div>
     <div class="wrap has-bottom-nav">
-      <div class="dealer-tabs">
+      <div class="dealer-tabs" style="display:none">
         <button class="tab ${mechanicTab==='search'?'active':''}" onclick="mechanicTab='search';go('mechanicDashboard')">🔍 Parts Search</button>
         <button class="tab ${mechanicTab==='tourbill'?'active':''}" onclick="mechanicTab='tourbill';go('mechanicDashboard')">🧾 Tour Bill</button>
         <button class="tab ${mechanicTab==='profile'?'active':''}" onclick="mechanicTab='profile';go('mechanicDashboard')">👤 My Profile</button>
-        <button class="tab" onclick="go('vehicleModelDB')">🚗 Vehicle Model DB</button>
-        <button class="tab" onclick="go('partsCatalog')">📚 Catalogue</button>
       </div>
       ${content}
     </div>
@@ -5404,31 +5469,35 @@ function showLowStockList(){
 let dealerNavOpenGroup = null;
 function dealerNavGroups(){
   return [
-    {title:'বিক্রয় ও মেমো', icon:'🧾', items:[
+    {title:'Sales & Memos', icon:'📁', items:[
       ['search','🔍','Parts Search'],
       ['memo','🧾','Create Memo'],
       ['memoDrafts','🟡','Saved/Draft Memos'],
       ['memoHistory','📜','Memo History'],
       ['memoSearch','🔎','Memo Search']
     ]},
-    {title:'ইনভেন্টরি', icon:'📦', items:[
+    {title:'Inventory', icon:'📦', items:[
       ['shopParts','🧩','My Shop Parts'],
       ['stock','📦','My Stock'],
       ['stockHistory','↕️','Stock History']
     ]},
-    {title:'রেফারেন্স', icon:'📖', items:[
+    {title:'Reference', icon:'📖', items:[
       ['vehicleDb','🚗','Vehicle Model DB'],
       ['catalogue','📚','Catalogue'],
       ['battery','🔋','Battery Warranty Check'],
       ['target','🎯','Target vs Achievement']
     ]},
-    {title:'অ্যাকাউন্ট', icon:'👤', items:[
-      ['profile','👤','আমার প্রোফাইল']
+    {title:'Account', icon:'👤', items:[
+      ['profile','👤','My Profile'],
+      ['myLedger','📒','আমার হিসাব']
     ]}
   ];
 }
 function dealerNavItemAction(id){
-  return id==='vehicleDb' ? "go('vehicleModelDB')" : id==='catalogue' ? "go('partsCatalog')" : `dealerManageTab='${id}';dealerNavOpenGroup=null;go('dealerPortal')`;
+  if(id==='vehicleDb') return "go('vehicleModelDB')";
+  if(id==='catalogue') return "go('partsCatalog')";
+  if(id==='myLedger') return "go('myLedger')";
+  return `dealerManageTab='${id}';dealerNavOpenGroup=null;go('dealerPortal')`;
 }
 function dealerNavHTML(){
   const groups=dealerNavGroups();
@@ -5436,7 +5505,7 @@ function dealerNavHTML(){
   const folders=groups.map(g=>{
     const isOpen=dealerNavOpenGroup===g.title, isActive=activeTitle===g.title;
     return `<button type="button" class="dealer-nav-folder ${isOpen?'open':''} ${isActive?'active':''}" onclick="dealerNavOpenGroup=(dealerNavOpenGroup==='${g.title}'?null:'${g.title}');go('dealerPortal')">
-      <span class="icon">📁</span><span class="lbl">${g.icon} ${g.title}</span>
+      <span class="icon">${g.icon||'📁'}</span><span class="lbl">${g.title}</span>
     </button>`;
   }).join('');
   const openGroup=groups.find(g=>g.title===dealerNavOpenGroup);
@@ -5473,20 +5542,20 @@ function dealerTopbar(sub='ডিলার পোর্টাল', hideBrand=fal
 function dealerDashboardCards(){
   const s=dealerSummary();
   return `<div class="dealer-stat-grid">
-    <div class="dealer-stat"><div class="n">${s.shopParts}</div><div class="l">🧩 Total My Shop Parts</div></div>
-    <div class="dealer-stat"><div class="n">${s.stockItems}</div><div class="l">📦 Total Stock Items</div></div>
-    <div class="dealer-stat clickable" onclick="showLowStockList()"><div class="n">${s.low}</div><div class="l">⚠️ Low Stock Items</div></div>
-    <div class="dealer-stat clickable" onclick="showOutOfStockList()"><div class="n">${s.outOfStock}</div><div class="l">🚫 Out of Stock</div></div>
-    <div class="dealer-stat"><div class="n">${s.todayMemo}</div><div class="l">🧾 Today's Memo</div></div>
-    <div class="dealer-stat"><div class="n">৳${money(s.todaySales)}</div><div class="l">💰 Today's Sales</div></div>
-    <div class="dealer-stat"><div class="n">৳${money(s.stockValue)}</div><div class="l">📊 Total Stock Value</div></div>
+    <div class="dealer-stat"><div class="ic" style="background:#dbeafe">📦</div><div class="l">Total My Shop Parts</div><div class="n">${s.shopParts}</div></div>
+    <div class="dealer-stat"><div class="ic" style="background:#dcfce7">📋</div><div class="l">Total Stock Items</div><div class="n">${s.stockItems}</div></div>
+    <div class="dealer-stat clickable" onclick="showLowStockList()"><div class="ic" style="background:#fef3c7">⚠️</div><div class="l">Low Stock Items</div><div class="n">${s.low}</div><div class="sub warn">চাপলে তালিকা</div></div>
+    <div class="dealer-stat clickable" onclick="showOutOfStockList()"><div class="ic" style="background:#fee2e2">❌</div><div class="l">Out of Stock</div><div class="n">${s.outOfStock}</div><div class="sub danger">চাপলে তালিকা</div></div>
+    <div class="dealer-stat"><div class="ic" style="background:#e0e7ff">📅</div><div class="l">Today's Memo</div><div class="n">${s.todayMemo}</div></div>
+    <div class="dealer-stat"><div class="ic" style="background:#fef9c3">৳</div><div class="l">Today's Sales</div><div class="n">৳${money(s.todaySales)}</div></div>
+    <div class="dealer-stat full accent-green"><div class="ic" style="background:#dcfce7">💰</div><div class="body"><div class="l">Total Stock Value</div><div class="n">৳${money(s.stockValue)}</div></div></div>
   </div>`;
 }
 function dealerPortalSearchHTML(){
   return `<div class="search-hero">
-    <h2>পার্ট নম্বর / পার্টের নাম সার্চ করুন</h2>
-    <p>Company Parts এবং আপনার My Shop Parts একই Search Box থেকে খুঁজুন। শেষের ৩-৫ সংখ্যাও ব্যবহার করতে পারবেন।</p>
-    <div class="big-search"><input type="text" id="dealerUnifiedSearch" placeholder="যেমনঃ 97200754 বা Oil Filter"><button class="btn btn-primary" id="dealerUnifiedSearchBtn">সার্চ</button></div>
+    <h2>🔍 Search by part number / part name</h2>
+    <p>Search for Company Parts and your My Shop Parts in the same search box. You can also use the last 3–5 digits.</p>
+    <div class="big-search"><input type="text" id="dealerUnifiedSearch" placeholder="For example: 97200754"><button class="btn btn-primary" id="dealerUnifiedSearchBtn">Search</button></div>
   </div><div id="dealerUnifiedResults">${recentViewedHTML()}</div>`;
 }
 function renderDealerUnifiedSearch(){
@@ -6358,7 +6427,7 @@ function dealerPortalRender(){
   else if(dealerManageTab==='target')content=dealerTargetViewHTML();
   else if(dealerManageTab==='profile')content=dealerProfileHTML();
   else content=dealerPortalSearchHTML();
-  document.getElementById('app').appendChild(el(`<div>${dealerTopbar('ডিলার পোর্টাল', dealerManageTab==='memo')}<div class="wrap has-bottom-nav">${dealerDashboardCards()}${dealerNavHTML()}${content}</div>${dealerBottomNavHTML()}</div><div class="modal-bg" id="modalBg"><div class="modal" id="modalBody"></div></div>`));
+  document.getElementById('app').appendChild(el(`<div class="portal-soft-bg">${dealerTopbar('ডিলার পোর্টাল', dealerManageTab==='memo')}<div class="wrap has-bottom-nav">${dealerDashboardCards()}${dealerNavHTML()}${content}</div>${dealerBottomNavHTML()}</div><div class="modal-bg" id="modalBg"><div class="modal" id="modalBody"></div></div>`));
   document.getElementById('dealerLogout').onclick=()=>{DB.session={role:null,user:null};go('landing');};
   document.getElementById('modalBg').addEventListener('click',ev=>{if(ev.target.id==='modalBg')closeModal();});
   if(dealerManageTab==='memo'){ const ed=window._memoDraftForWire||null; window._memoDraftForWire=null; wireMemoPage(ed); }
@@ -7113,12 +7182,12 @@ function peShell(innerHTML){
   const app = document.getElementById('app');
   const pe = DB.session.user;
   app.appendChild(el(`
-    <div class="admin-outer has-bottom-nav" style="background:linear-gradient(135deg,#1a3a52 0%,#0d5a7a 100%);min-height:100vh;">
-      <div style="max-width:1200px;margin:0 auto;">
-        <div class="admin-header" style="display:flex;justify-content:space-between;align-items:center;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);flex-wrap:wrap;gap:8px;">
+    <div class="portal-soft-bg has-bottom-nav admin-outer">
+      <div style="max-width:1200px;margin:0 auto;padding:0 0 20px;">
+        <div class="admin-header" style="display:flex;justify-content:space-between;align-items:center;background:#12233d;border:none;flex-wrap:wrap;gap:8px;border-radius:0 0 16px 16px;margin-bottom:12px;">
           <div style="color:#fff;">
-            <div style="font-weight:700;font-size:16px;">🧑‍🔧 ${pe.name}</div>
-            <div style="font-size:12px;opacity:0.8;">Region: ${pe.region||'-'}</div>
+            <div style="font-weight:700;font-size:16px;">🧑‍🔧 ${escHtml(pe.name)}</div>
+            <div style="font-size:12px;opacity:0.8;">Region: ${escHtml(pe.region||'-')}</div>
           </div>
           <div style="display:flex;gap:8px;align-items:center;">
             <span style="color:#fff">${adminNoticeBellHTML()}</span>
@@ -7126,18 +7195,11 @@ function peShell(innerHTML){
             <button class="btn btn-ghost btn-sm" id="logout" style="color:#fff;border-color:rgba(255,255,255,0.3);font-size:15px;">🚪 ${t('logout')}</button>
           </div>
         </div>
-        <div style="display:flex;gap:8px;margin:14px 0;flex-wrap:wrap;">
-          <button class="btn ${peTab==='dealers'?'btn-primary':'btn-ghost'} btn-sm" onclick="peTab='dealers';go('peDashboard')" style="${peTab!=='dealers'?'color:#fff;border-color:rgba(255,255,255,0.3);':''}">👥 আমার ডিলার/মেকানিক</button>
-          <button class="btn ${peTab==='search'?'btn-primary':'btn-ghost'} btn-sm" onclick="peTab='search';go('peDashboard')" style="${peTab!=='search'?'color:#fff;border-color:rgba(255,255,255,0.3);':''}">🔍 পার্টস সার্চ</button>
-          <button class="btn ${peTab==='requisitions'?'btn-primary':'btn-ghost'} btn-sm" onclick="peTab='requisitions';go('peDashboard')" style="${peTab!=='requisitions'?'color:#fff;border-color:rgba(255,255,255,0.3);':''}">📝 রিকুইজিশন</button>
-          <button class="btn ${peTab==='report'?'btn-primary':'btn-ghost'} btn-sm" onclick="peTab='report';go('peDashboard')" style="${peTab!=='report'?'color:#fff;border-color:rgba(255,255,255,0.3);':''}">📊 রিপোর্ট</button>
-          <button class="btn btn-ghost btn-sm" onclick="go('vehicleModelDB')" style="color:#fff;border-color:rgba(255,255,255,0.3);">🚗 Vehicle Model DB</button>
-          <button class="btn btn-ghost btn-sm" onclick="go('partsCatalog')" style="color:#fff;border-color:rgba(255,255,255,0.3);">📚 Catalogue</button>
-          <button class="btn ${peTab==='battery'?'btn-primary':'btn-ghost'} btn-sm" onclick="peTab='battery';go('peDashboard')" style="${peTab!=='battery'?'color:#fff;border-color:rgba(255,255,255,0.3);':''}">🔋 Battery Warranty</button>
-          <button class="btn ${peTab==='profile'?'btn-primary':'btn-ghost'} btn-sm" onclick="peTab='profile';go('peDashboard')" style="${peTab!=='profile'?'color:#fff;border-color:rgba(255,255,255,0.3);':''}">👤 আমার প্রোফাইল</button>
-        </div>
-        <div class="admin-content" style="background:rgba(255,255,255,0.05);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.15);color:#fff;">
-          ${innerHTML}
+        <div class="wrap" style="padding-top:0;">
+          <div class="dealer-tabs" style="display:none"></div>
+          <div class="admin-content" style="background:transparent;border:none;color:var(--text);padding:0;box-shadow:none;">
+            ${innerHTML}
+          </div>
         </div>
       </div>
     </div>
@@ -7226,7 +7288,22 @@ function peUsersTabHTML(){
   const mine = myPeUsers();
   const dealerCount = mine.filter(u=>u.role==='dealer').length;
   const mechCount = mine.filter(u=>u.role==='mechanic').length;
+  const activeCount = mine.filter(u=>u.active).length;
   return `
+    <div class="dealer-stat-grid">
+      <div class="dealer-stat"><div class="ic" style="background:#dbeafe">👥</div><div class="l">Total Users</div><div class="n">${mine.length}</div></div>
+      <div class="dealer-stat"><div class="ic" style="background:#dcfce7">🏪</div><div class="l">Dealers</div><div class="n">${dealerCount}</div></div>
+      <div class="dealer-stat"><div class="ic" style="background:#fef3c7">🔧</div><div class="l">Mechanics</div><div class="n">${mechCount}</div></div>
+      <div class="dealer-stat"><div class="ic" style="background:#e0e7ff">✅</div><div class="l">Active</div><div class="n">${activeCount}</div></div>
+    </div>
+    <div class="dealer-nav-bar" style="margin-bottom:14px"><div class="dealer-nav-folders" style="grid-template-columns:repeat(3,minmax(0,1fr))">
+      <button type="button" class="dealer-nav-folder" onclick="peTab='dealers';go('peDashboard')"><span class="icon">👥</span><span class="lbl">My Users</span></button>
+      <button type="button" class="dealer-nav-folder" onclick="peTab='search';go('peDashboard')"><span class="icon">🔍</span><span class="lbl">Search</span></button>
+      <button type="button" class="dealer-nav-folder" onclick="peTab='requisitions';go('peDashboard')"><span class="icon">📝</span><span class="lbl">Requisition</span></button>
+      <button type="button" class="dealer-nav-folder" onclick="peTab='report';go('peDashboard')"><span class="icon">📊</span><span class="lbl">Report</span></button>
+      <button type="button" class="dealer-nav-folder" onclick="go('partsCatalog')"><span class="icon">📚</span><span class="lbl">Catalogue</span></button>
+      <button type="button" class="dealer-nav-folder" onclick="peTab='profile';go('peDashboard')"><span class="icon">👤</span><span class="lbl">Account</span></button>
+    </div></div>
     <div class="card-head" style="margin-bottom:10px">
       <h3 style="margin:0">👥 আমার ডিলার ও মেকানিক (${dealerCount} ডিলার, ${mechCount} মেকানিক)</h3>
       <button class="btn btn-primary btn-sm" id="peAddUser">➕ নতুন ডিলার/মেকানিক</button>
