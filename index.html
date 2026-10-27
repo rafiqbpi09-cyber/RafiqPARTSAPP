@@ -44,7 +44,7 @@ document.currentScript.parentNode.insertBefore(manifestLink, document.currentScr
 // প্রতিটি নতুন deployment/update দেওয়ার আগে এই APP_VERSION ভ্যালুটা পরিবর্তন করুন
 // (যেকোনো ইউনিক স্ট্রিং — তারিখ/সময় বা running number)। এই ভ্যালুর ভিত্তিতেই
 // সব ডিভাইস স্বয়ংক্রিয়ভাবে নতুন version detect করে reload হবে।
-window.APP_VERSION = '2026-10-27-due-touch-orange.21';
+window.APP_VERSION = '2026-10-27-row-text-clear.22';
 
 (function(){
   // পুরনো/legacy blob-based service worker ও পুরনো Cache Storage সম্পূর্ণ পরিষ্কার করে দেওয়া হয়,
@@ -2321,8 +2321,11 @@ window.APP_VERSION = '2026-10-27-due-touch-orange.21';
   .admin-outer .part-card.part-card.touch-glow :is(.pn,.nm,.pr,div,b,span){color:#000 !important;}
   /* ===== (২) দেনা-পাওনা: সারিতে চাপ/হোভার করলে পুরো সারি (শেষের বাটন কলাম পর্যন্ত) একই রঙে ===== */
   .dlg-table tbody tr:is(:hover,:active) > td,
-  .dlg-table tbody tr:is(:hover,:active) > th{background:#fff1c2 !important;}
-  .dlg-table tbody tr:is(:hover,:active) > td :is(b,div,span,code){color:inherit;}
+  .dlg-table tbody tr:is(:hover,:active) > th{background:#fff1c2 !important;color:#111 !important;}
+  .dlg-table tbody tr:is(:hover,:active) > td,
+  .dlg-table tbody tr:is(:hover,:active) > td *{color:#111 !important;}
+  .dlg-table tbody tr:is(:hover,:active) > td .dlg-badge,
+  .dlg-table tbody tr:is(:hover,:active) > td [class*="badge"]{color:#111 !important;}
   /* ===== (৩) দেনা-পাওনা টপ: "মোট পাওনা (পার্টির কাছে)" বড়, বোল্ড, লাল ===== */
   .dlg-wrap .dlg-kpis .dlg-kpi.dlg-kpi-recv{border:2px solid #dc2626;}
   .dlg-wrap .dlg-kpis .dlg-kpi.dlg-kpi-recv > div:first-child{color:#dc2626;font-weight:800;font-size:16.5px;}
@@ -2340,7 +2343,8 @@ window.APP_VERSION = '2026-10-27-due-touch-orange.21';
   .parts-table tbody tr:is(.pt-touch,:active) > td{background:#ffe08a !important;color:#000 !important;}
   .parts-table tbody tr:is(.pt-touch,:active) > td *{color:#000 !important;}
   /* ===== দেনা-পাওনা সারি: টাচ করলে পুরো সারি হলুদ; ফোনে বাটন কলাম ডানে আটকে থাকে (➕ সবসময় দেখা যায়) ===== */
-  .dlg-table tbody tr.row-touch > td{background:#fff1c2 !important;}
+  .dlg-table tbody tr.row-touch > td{background:#fff1c2 !important;color:#111 !important;}
+  .dlg-table tbody tr.row-touch > td *{color:#111 !important;}
   /* Due List: নীল হেডার; মোবাইলে আড়াআড়ি স্ক্রল */
   .dlg-table.dlg-due-table{
     min-width:640px;
@@ -2369,6 +2373,19 @@ window.APP_VERSION = '2026-10-27-due-touch-orange.21';
   .dlg-table.dlg-due-table td.dlg-td-act .btn{display:inline-block;margin:2px 3px;vertical-align:middle;}
   .dlg-table.dlg-due-table thead th:last-child{background:#0369a1 !important;color:#fff !important;}
   .dlg-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+
+  /* হাইলাইট সারিতে লেখা সবসময় গাঢ় — ডার্ক থিমেও পঠনযোগ্য */
+  [data-theme="dark"] .dlg-table tbody tr:is(:hover,:active,.row-touch) > td,
+  [data-theme="dark"] .dlg-table tbody tr:is(:hover,:active,.row-touch) > td *,
+  [data-theme="dark"] .dlg-wrap .dlg-table tbody tr:is(:hover,:active,.row-touch) > td,
+  [data-theme="dark"] .dlg-wrap .dlg-table tbody tr:is(:hover,:active,.row-touch) > td *{
+    color:#111 !important;
+  }
+  [data-theme="dark"] .dlg-table tbody tr:is(:hover,:active,.row-touch) > td code,
+  [data-theme="dark"] .dlg-table tbody tr:is(:hover,:active,.row-touch) > td .dlg-sub{
+    color:#1f2937 !important;
+  }
+
   /* মোবাইল/টাচ: Due List সারিতে চাপলে কমলা; ছাড়লে আগের রং */
   @media (hover:none), (pointer:coarse) {
     .dlg-table.dlg-due-table tbody tr:is(:active,.row-touch) > td{
@@ -2401,7 +2418,8 @@ window.APP_VERSION = '2026-10-27-due-touch-orange.21';
   /* ===== দেনা-পাওনা সারি: হোভার/টাচে সারির একদম শেষ ঘর (📒 ➕ বাটনের কলাম) পর্যন্ত পুরো লাইন হলুদ ===== */
   .dlg-wrap .dlg-table tbody tr:is(:hover,:active,.row-touch){background:#fff1c2 !important;}
   .dlg-wrap .dlg-table tbody tr:is(:hover,:active,.row-touch) > :is(td,th),
-  .dlg-wrap .dlg-table tbody tr:is(:hover,:active,.row-touch) > :is(td,th):last-child{background:#fff1c2 !important;background-color:#fff1c2 !important;}
+  .dlg-wrap .dlg-table tbody tr:is(:hover,:active,.row-touch) > :is(td,th):last-child{background:#fff1c2 !important;background-color:#fff1c2 !important;color:#111 !important;}
+  .dlg-wrap .dlg-table tbody tr:is(:hover,:active,.row-touch) > td *{color:#111 !important;}
   /* Sticky action column cell yellow on row hover; বিস্তারিত/📒/➕ buttons keep original style */
   .dlg-wrap .dlg-due-table tbody tr:is(:hover,:active,.row-touch) > td:last-child{
     background:#fff1c2 !important;background-color:#fff1c2 !important;box-shadow:none !important;
