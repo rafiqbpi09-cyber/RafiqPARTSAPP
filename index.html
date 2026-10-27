@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="bn">
+<html lang="bn" data-theme="dark">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
@@ -44,7 +44,7 @@ document.currentScript.parentNode.insertBefore(manifestLink, document.currentScr
 // প্রতিটি নতুন deployment/update দেওয়ার আগে এই APP_VERSION ভ্যালুটা পরিবর্তন করুন
 // (যেকোনো ইউনিক স্ট্রিং — তারিখ/সময় বা running number)। এই ভ্যালুর ভিত্তিতেই
 // সব ডিভাইস স্বয়ংক্রিয়ভাবে নতুন version detect করে reload হবে।
-window.APP_VERSION = '2026-10-27-row-text-clear.22';
+window.APP_VERSION = '2026-10-27-theme-transition.28';
 
 (function(){
   // পুরনো/legacy blob-based service worker ও পুরনো Cache Storage সম্পূর্ণ পরিষ্কার করে দেওয়া হয়,
@@ -123,6 +123,29 @@ window.APP_VERSION = '2026-10-27-row-text-clear.22';
     --line:#2a3948;
     --text:#e8edf4;
     --muted:#93a2b8;
+  }
+  /* Smooth dark/light theme transition */
+  html{
+    color-scheme: light;
+    background-color: var(--paper);
+  }
+  html[data-theme="dark"]{color-scheme: dark;}
+  ::view-transition-old(root),
+  ::view-transition-new(root){
+    animation-duration: .45s;
+    animation-timing-function: ease;
+  }
+  html.theme-animating,
+  html.theme-animating body,
+  html.theme-animating #app,
+  html.theme-animating body *:not(svg):not(path):not(img):not(video){
+    transition: background-color .45s ease, color .45s ease, border-color .45s ease, box-shadow .45s ease, background .45s ease !important;
+  }
+  body, #app, .card, .part-card, .topbar, .gate, .l3-card, .admin-content, .admin-kpi,
+  .admin-mod-card, .admin-sidebar, .dlg-modal, .field input, .field select,
+  .tabs, .tab, .stat, .dealer-stat, .modal, .wrap, .admin-home-topbar,
+  .dash-bleed-top, .admin-outer, .portal-soft-bg, .search-hero, .dlg-kpi{
+    transition: background-color .45s ease, color .45s ease, border-color .45s ease, box-shadow .45s ease, background .45s ease;
   }
   [data-theme="dark"] .field input,[data-theme="dark"] .field select{background:#0f1720;color:var(--text);}
   [data-theme="dark"] .part-card{background:var(--card);}
@@ -3447,17 +3470,68 @@ function isOnline(lastActive){ return !!lastActive && (Date.now() - lastActive) 
   }
 })();
 
+function isDarkTheme(){
+  return document.documentElement.getAttribute('data-theme') === 'dark';
+}
+function themeBtnLabel(){
+  // শুধু আইকন — ডার্ক চালু থাকলে সান (লাইটে যাবে), লাইট চালু থাকলে চাঁদ
+  return isDarkTheme() ? '☀️' : '🌙';
+}
+function themeBtnHTML(extraStyle){
+  const st = extraStyle || 'color:#fff;border-color:rgba(255,255,255,.3)';
+  return `<button type="button" class="btn btn-ghost btn-sm theme-toggle" onclick="toggleTheme()" title="Theme" aria-label="Theme" style="${st}">${themeBtnLabel()}</button>`;
+}
+function syncThemeButtons(){
+  document.querySelectorAll('.theme-toggle').forEach(b=>{
+    b.textContent = themeBtnLabel();
+  });
+  const fab = document.getElementById('themeFab');
+  if(fab) fab.remove();
+}
 function applyTheme(){
+  // ডিফল্ট: সবার জন্য ডার্ক মোড (Admin/Dealer/Mechanic/Engineer/Customer)
+  // শুধু ইউজার স্পষ্টভাবে লাইট বেছে নিলে light থাকবে
   const saved = localStorage.getItem('mp_theme');
-  if(saved === 'dark') document.documentElement.setAttribute('data-theme','dark');
-  else document.documentElement.removeAttribute('data-theme');
+  if(saved === 'light'){
+    document.documentElement.removeAttribute('data-theme');
+  }else{
+    document.documentElement.setAttribute('data-theme','dark');
+    if(saved !== 'dark') localStorage.setItem('mp_theme','dark');
+  }
+  syncThemeButtons();
+}
+function _applyThemeFlip(){
+  const root = document.documentElement;
+  if(isDarkTheme()){
+    root.removeAttribute('data-theme');
+    localStorage.setItem('mp_theme','light');
+  }else{
+    root.setAttribute('data-theme','dark');
+    localStorage.setItem('mp_theme','dark');
+  }
+  syncThemeButtons();
 }
 function toggleTheme(){
-  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-  if(isDark){ document.documentElement.removeAttribute('data-theme'); localStorage.setItem('mp_theme','light'); }
-  else{ document.documentElement.setAttribute('data-theme','dark'); localStorage.setItem('mp_theme','dark'); }
+  const root = document.documentElement;
+  root.classList.add('theme-animating');
+  const run = ()=> _applyThemeFlip();
+  try{
+    if(document.startViewTransition){
+      document.startViewTransition(run);
+    }else{
+      run();
+    }
+  }catch(e){ run(); }
+  clearTimeout(window.__themeAnimT);
+  window.__themeAnimT = setTimeout(()=> root.classList.remove('theme-animating'), 500);
+}
+function ensureThemeFab(){
+  // ভাসমান FAB বন্ধ — শুধু টপবারের থিম বাটন
+  const fab = document.getElementById('themeFab');
+  if(fab) fab.remove();
 }
 applyTheme();
+document.addEventListener('DOMContentLoaded', ()=>{ applyTheme(); ensureThemeFab(); });
 
 /* ================= TOUCH RIPPLE (Dealer/Mechanic/Parts Engineer only) =================
    যেকোনো বক্সে (বাটন, কার্ড, নেভ টাইল, ট্যাব) টাচ/ক্লিক করলে হালকা গোলাপি "ঢেউ" ছড়িয়ে পড়ে
@@ -3797,7 +3871,9 @@ function requireRole(roles, fallback){
   if(!role || !roles.includes(role)){ go(fallback); return false; }
   return true;
 }
-function go(route){ 
+function go(route){
+  try{ ensureThemeFab(); }catch(e){}
+  setTimeout(function(){ try{ syncThemeButtons(); ensureThemeFab(); }catch(e){} }, 50); 
   if(DEALER_ONLY && (route === 'adminLogin' || route === 'adminDashboard' || route === 'adminForgotPassword' || route === 'adminQuickSearch' || route === 'peLogin' || route === 'peDashboard')){ route = 'landing'; }
   // Role-based access control: sensitive route হলে সঠিক role না থাকলে সরাসরি redirect করা হয়
   const allowedRoles = ROUTE_ROLES[route];
@@ -3848,7 +3924,7 @@ function showDealerMoreMenu(){
       <button class="btn btn-ghost btn-block" onclick="closeModal();go('partsCatalog')">📚 Catalogue</button>
       <button class="btn btn-ghost btn-block" onclick="closeModal();go('dealerRequisition')">📝 রিকুইজিশন</button>
       <button class="btn btn-ghost btn-block" onclick="closeModal();dealerManageTab='profile';go('dealerPortal')">👤 আমার প্রোফাইল</button>
-      <button class="btn btn-ghost btn-block" onclick="closeModal();toggleTheme()">🌙 ডার্ক / লাইট মোড</button>
+      <button class="btn btn-ghost btn-block theme-toggle" onclick="closeModal();toggleTheme()">${typeof themeBtnLabel==='function'?themeBtnLabel():'🌙'}</button>
       <button class="btn btn-ghost btn-block" onclick="closeModal()">বাতিল</button>
     </div>`);
 }
@@ -5440,7 +5516,7 @@ ROUTES.mechanicDashboard = function(){
       </div>
       <div class="topbar-right">
         <span style="color:#fff">${adminNoticeBellHTML()}</span>
-        <button class="btn btn-ghost btn-sm theme-toggle" onclick="toggleTheme()" style="color:#fff;border-color:rgba(255,255,255,.3)">🌙</button>
+        ${themeBtnHTML()}
         <span class="pill">${escHtml(u?u.name:'')}</span>
         <button class="btn btn-ghost btn-sm" style="color:#fff;border-color:rgba(255,255,255,.3)" id="mechLogout">${t('logout')}</button>
       </div>
@@ -5893,6 +5969,7 @@ function dealerTopbar(sub='ডিলার পোর্টাল', hideBrand=fal
     </div>`}
     <div class="topbar-right dealer-top-actions">
       <span style="color:#fff">${adminNoticeBellHTML()}</span>
+      ${themeBtnHTML()}
       <button class="btn btn-ghost btn-sm" style="color:#fff;border-color:rgba(255,255,255,.3)" id="dealerLogout">${t('logout')}</button>
     </div>
     <div class="dealer-name-row"><span class="pill dealer-name-pill">${escHtml(u?u.name:'')}</span></div>
@@ -6845,7 +6922,7 @@ ROUTES.dealerSearch = function(){
         <div class="topbar-right">
           <button class="btn btn-ghost btn-sm" onclick="go('dealerPortal')" style="color:#fff;border-color:rgba(255,255,255,.3)">🧾 Dealer Management</button>
              <button class="btn btn-ghost btn-sm" onclick="go('dealerRequisition')" style="color:#fff;border-color:rgba(255,255,255,.3)">📝 রিকুইজিশন</button>
-          <button class="btn btn-ghost btn-sm theme-toggle" onclick="toggleTheme()" style="color:#fff;border-color:rgba(255,255,255,.3)">🌙</button>
+          ${themeBtnHTML()}
           <span class="pill">${DB.session.user.name}</span>
           <button class="btn btn-ghost btn-sm" style="color:#fff;border-color:rgba(255,255,255,.3)" id="logout">${t('logout')}</button>
         </div>
@@ -7402,6 +7479,7 @@ function adminShell(innerHTML){
           </div>
           <div class="admin-tb-actions">
             <button type="button" class="admin-tb-icon" title="নোটিফিকেশন" onclick="alert('নোটিফিকেশন')"><span>🔔</span></button>
+            <button type="button" class="admin-tb-icon theme-toggle" title="Theme" aria-label="Theme" onclick="toggleTheme()">${isDarkTheme()?'☀️':'🌙'}</button>
             <button type="button" class="admin-tb-icon" title="ফুলস্ক্রিন" onclick="(function(){const d=document.documentElement;if(!document.fullscreenElement){d.requestFullscreen&&d.requestFullscreen()}else{document.exitFullscreen&&document.exitFullscreen()}})()">⛶</button>
             <button type="button" class="admin-tb-user" id="logout" title="লগআউট">
               <span class="av">👤</span><span class="lbl">অ্যাডমিন প্যানেল</span><span class="caret">▾</span>
@@ -7585,6 +7663,7 @@ function peShell(innerHTML){
           </div>
           <div class="topbar-right" style="gap:8px;">
             <span style="color:#fff">${adminNoticeBellHTML()}</span>
+            ${themeBtnHTML()}
             <button class="btn btn-ghost btn-sm" type="button" title="রিফ্রেশ" onclick="(()=>{const t=document.createElement('div');t.innerHTML='🔄 রিফ্রেশ হচ্ছে...';t.style.cssText='position:fixed;top:20px;left:20px;background:#1f8a4c;color:#fff;padding:12px 16px;border-radius:8px;font-weight:600;z-index:9999';document.body.appendChild(t);loadDB().then(()=>{ensureCores();t.remove();go('peDashboard')})})();" style="color:#fff;border-color:rgba(255,255,255,0.3);">🔄</button>
           </div>
         </div>
@@ -7980,6 +8059,7 @@ ROUTES.adminDashboard = function(){
           </div>
           <div class="admin-tb-actions">
             <button type="button" class="admin-tb-icon" title="নোটিফিকেশন" onclick="alert('নোটিফিকেশন')"><span>🔔</span>${(DB.requisitions||[]).length?`<span class="dot">${Math.min(99,(DB.requisitions||[]).length)}</span>`:''}</button>
+            <button type="button" class="admin-tb-icon theme-toggle" title="Theme" aria-label="Theme" onclick="toggleTheme()">${isDarkTheme()?'☀️':'🌙'}</button>
             <button type="button" class="admin-tb-icon" title="ফুলস্ক্রিন" onclick="(function(){const d=document.documentElement;if(!document.fullscreenElement){d.requestFullscreen&&d.requestFullscreen()}else{document.exitFullscreen&&document.exitFullscreen()}})()">⛶</button>
             <button type="button" class="admin-tb-user" id="logoutHome" title="লগআউট">
               <span class="av">👤</span><span class="lbl">অ্যাডমিন প্যানেল</span><span class="caret">▾</span>
@@ -11794,7 +11874,7 @@ ROUTES.myLedger=function(){
   MY.vouchers=[]; MY.from=''; MY.to='';
   document.getElementById('app').appendChild(el(`<div>
     <div class="topbar"><div class="topbar-brand"><div class="brand-logo">📒</div><div><div class="brand-name">${esc(DB.settings.companyName)}</div><div class="brand-sub">আমার দেনা-পাওনা হিসাব</div></div></div>
-      <div class="topbar-right"><button class="btn btn-ghost btn-sm" style="color:#fff;border-color:rgba(255,255,255,.3)" onclick="go('${back}')">⬅️ ফিরে যান</button></div></div>
+      <div class="topbar-right">${themeBtnHTML()}<button class="btn btn-ghost btn-sm" style="color:#fff;border-color:rgba(255,255,255,.3)" onclick="go('${back}')">⬅️ ফিরে যান</button></div></div>
     <div class="wrap"><div class="dlg-wrap" id="dlgMyRoot"></div></div></div>`));
   myReload();
 };
