@@ -44,7 +44,7 @@ document.currentScript.parentNode.insertBefore(manifestLink, document.currentScr
 // প্রতিটি নতুন deployment/update দেওয়ার আগে এই APP_VERSION ভ্যালুটা পরিবর্তন করুন
 // (যেকোনো ইউনিক স্ট্রিং — তারিখ/সময় বা running number)। এই ভ্যালুর ভিত্তিতেই
 // সব ডিভাইস স্বয়ংক্রিয়ভাবে নতুন version detect করে reload হবে।
-window.APP_VERSION = '2026-10-27-due-mobile-scroll.20';
+window.APP_VERSION = '2026-10-27-due-touch-orange.21';
 
 (function(){
   // পুরনো/legacy blob-based service worker ও পুরনো Cache Storage সম্পূর্ণ পরিষ্কার করে দেওয়া হয়,
@@ -2369,9 +2369,34 @@ window.APP_VERSION = '2026-10-27-due-mobile-scroll.20';
   .dlg-table.dlg-due-table td.dlg-td-act .btn{display:inline-block;margin:2px 3px;vertical-align:middle;}
   .dlg-table.dlg-due-table thead th:last-child{background:#0369a1 !important;color:#fff !important;}
   .dlg-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  /* মোবাইল/টাচ: Due List সারিতে চাপলে কমলা; ছাড়লে আগের রং */
+  @media (hover:none), (pointer:coarse) {
+    .dlg-table.dlg-due-table tbody tr:is(:active,.row-touch) > td{
+      background:#fb923c !important;
+      background-color:#fb923c !important;
+      color:#111 !important;
+    }
+    .dlg-table.dlg-due-table tbody tr:is(:active,.row-touch) > td *{
+      color:#111 !important;
+    }
+    .dlg-table.dlg-due-table tbody tr:is(:active,.row-touch) > td:last-child{
+      background:#fb923c !important;
+      background-color:#fb923c !important;
+      box-shadow:none !important;
+    }
+    /* সাদা হয়ে যাওয়া আটকাতে sticky কলামও কমলা */
+    .dlg-due-table tbody tr:is(:active,.row-touch) td:last-child{
+      background:#fb923c !important;
+    }
+  }
   @media(max-width:900px){
     .dlg-due-table th:last-child,.dlg-due-table td:last-child{position:sticky;right:0;z-index:3;background:#fff;box-shadow:-8px 0 10px -8px rgba(0,0,0,.35);}
     .dlg-due-table thead th:last-child{background:#0369a1 !important;color:#fff !important;}
+    .dlg-due-table tbody tr:is(:active,.row-touch) > td,
+    .dlg-due-table tbody tr:is(:active,.row-touch) > td:last-child{
+      background:#fb923c !important;
+      background-color:#fb923c !important;
+    }
   }
   /* ===== দেনা-পাওনা সারি: হোভার/টাচে সারির একদম শেষ ঘর (📒 ➕ বাটনের কলাম) পর্যন্ত পুরো লাইন হলুদ ===== */
   .dlg-wrap .dlg-table tbody tr:is(:hover,:active,.row-touch){background:#fff1c2 !important;}
