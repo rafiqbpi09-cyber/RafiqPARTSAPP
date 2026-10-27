@@ -44,7 +44,7 @@ document.currentScript.parentNode.insertBefore(manifestLink, document.currentScr
 // প্রতিটি নতুন deployment/update দেওয়ার আগে এই APP_VERSION ভ্যালুটা পরিবর্তন করুন
 // (যেকোনো ইউনিক স্ট্রিং — তারিখ/সময় বা running number)। এই ভ্যালুর ভিত্তিতেই
 // সব ডিভাইস স্বয়ংক্রিয়ভাবে নতুন version detect করে reload হবে।
-window.APP_VERSION = '2026-10-27-ledger-tabs-total-advance.33';
+window.APP_VERSION = '2026-10-27-total-advance-summary.34';
 
 (function(){
   // পুরনো/legacy blob-based service worker ও পুরনো Cache Storage সম্পূর্ণ পরিষ্কার করে দেওয়া হয়,
@@ -11242,7 +11242,7 @@ function partyBalanceRows(filter){
 function totalDueHTML(){
   return `<div class="card">
     <h3 style="margin:0 0 8px">💰 মোট বাকী টাকা</h3>
-    <p class="hint" style="margin:0 0 10px">সব পার্টির (ডিলার/মেকানিক/কাস্টমার) কাছে কোম্পানির <b class="dlg-due">পাওনা</b> যোগফল ও তালিকা।</p>
+    <p class="hint" style="margin:0 0 12px">সব পার্টির কাছে কোম্পানির মোট <b class="dlg-due">পাওনা</b> (যোগফল)।</p>
     <div id="dlgTotalDueResults"></div>
   </div>`;
 }
@@ -11251,25 +11251,16 @@ function renderTotalDueResults(){
   const rows=partyBalanceRows('due');
   const total=rows.reduce((s,r)=>s+r.g.balance,0);
   box.innerHTML=`
-    <div class="dlg-kpis" style="margin-bottom:12px">
-      <div class="dlg-kpi"><div>মোট বাকী (পাওনা)</div><b class="dlg-due">${fmt(total)}</b></div>
-      <div class="dlg-kpi"><div>বকেয়া পার্টি</div><b>${rows.length} জন</b></div>
-    </div>
-    <div class="dlg-scroll"><table class="dlg-table dlg-due-table">
-      <thead><tr><th class="dlg-th-num">নম্বর</th><th class="dlg-th-name">পার্টির নাম</th><th class="dlg-th-bal">বাকী টাকা</th><th class="dlg-th-act">বিস্তারিত</th></tr></thead>
-      <tbody>${rows.length?rows.map((r,i)=>`<tr>
-        <td class="dlg-td-num">${i+1}</td>
-        <td class="dlg-party-cell"><b>${esc(r.info.name)}</b><div class="dlg-sub">${esc(KIND_LABELS[r.info.kind]||r.info.kind||'')} · ID ${esc(r.id)}</div></td>
-        <td class="dlg-td-bal"><b class="dlg-due">${fmt(r.g.balance)}</b></td>
-        <td class="dlg-td-act"><button class="btn btn-primary btn-sm" onclick="DLG.openDueDetail('${esc(r.id)}')">💳 বিস্তারিত</button></td>
-      </tr>`).join(''):`<tr><td colspan="4" class="dlg-empty">কোনো বাকী নেই</td></tr>`}</tbody>
-      <tfoot><tr><td colspan="2"><b>মোট</b></td><td class="dlg-td-bal"><b class="dlg-due">${fmt(total)}</b></td><td></td></tr></tfoot>
-    </table></div>`;
+    <div style="text-align:center;padding:28px 16px 22px;border-radius:16px;background:linear-gradient(135deg,#fef2f2,#fff1f2);border:1px solid #fecaca">
+      <div style="font-size:13px;color:#991b1b;font-weight:700;margin-bottom:8px">মোট বাকী টাকা</div>
+      <div class="dlg-due" style="font-size:clamp(28px,8vw,40px);font-weight:800;letter-spacing:-.5px;line-height:1.15">${fmt(total)}</div>
+      <div class="hint" style="margin-top:10px;color:#7f1d1d">${rows.length?rows.length+' জন পার্টির বকেয়া যোগফল':'কোনো বাকী নেই'}</div>
+    </div>`;
 }
 function advanceHTML(){
   return `<div class="card">
-    <h3 style="margin:0 0 8px;color:#15803d">💚 অগ্রিম তালিকা</h3>
-    <p class="hint" style="margin:0 0 10px">যেসব ডিলার/কাস্টমার <b style="color:#15803d">অগ্রিম</b> দিয়েছেন (কোম্পানির দেনা) — সবুজ অক্ষরে দেখানো হচ্ছে।</p>
+    <h3 style="margin:0 0 8px;color:#15803d">💚 অগ্রিম</h3>
+    <p class="hint" style="margin:0 0 12px">যার জমা/পেমেন্ট পাওনার চেয়ে বেশি — সেই <b style="color:#15803d">অগ্রিম</b> যোগফল। চাপলে কার কত অগ্রিম আছে দেখা যাবে। পরে পার্টস বিক্রি এন্ট্রি দিলে অগ্রিম কমে যাবে / ব্যালেন্স আপডেট হবে।</p>
     <div id="dlgAdvanceResults"></div>
   </div>`;
 }
@@ -11278,20 +11269,28 @@ function renderAdvanceResults(){
   const rows=partyBalanceRows('advance');
   const totalAdv=rows.reduce((s,r)=>s+(-r.g.balance),0);
   box.innerHTML=`
-    <div class="dlg-kpis" style="margin-bottom:12px">
-      <div class="dlg-kpi"><div>মোট অগ্রিম</div><b class="dlg-adv">${fmt(totalAdv)}</b></div>
-      <div class="dlg-kpi"><div>অগ্রিম পার্টি</div><b style="color:#15803d">${rows.length} জন</b></div>
-    </div>
-    <div class="dlg-scroll"><table class="dlg-table dlg-due-table">
-      <thead><tr><th class="dlg-th-num">নম্বর</th><th class="dlg-th-name">পার্টির নাম</th><th class="dlg-th-bal">অগ্রিম</th><th class="dlg-th-act">বিস্তারিত</th></tr></thead>
+    <button type="button" onclick="DLG.openAdvanceDetails()" style="width:100%;text-align:center;padding:28px 16px 22px;border-radius:16px;background:linear-gradient(135deg,#ecfdf5,#f0fdf4);border:1.5px solid #86efac;cursor:pointer;font-family:inherit">
+      <div style="font-size:13px;color:#15803d;font-weight:700;margin-bottom:8px">মোট অগ্রিম</div>
+      <div class="dlg-adv" style="font-size:clamp(28px,8vw,40px);font-weight:800;letter-spacing:-.5px;line-height:1.15">${fmt(totalAdv)}</div>
+      <div class="hint" style="margin-top:10px;color:#166534">${rows.length?rows.length+' জনের অগ্রিম · ডিটেইলস দেখতে চাপুন':'কোনো অগ্রিম নেই'}</div>
+    </button>`;
+}
+function openAdvanceDetails(){
+  const rows=partyBalanceRows('advance');
+  const totalAdv=rows.reduce((s,r)=>s+(-r.g.balance),0);
+  modal(`
+    <h3 style="margin:0 0 8px;color:#15803d">💚 অগ্রিম ডিটেইলস</h3>
+    <p class="hint" style="margin:0 0 10px">মোট অগ্রিম: <b class="dlg-adv">${fmt(totalAdv)}</b> · ${rows.length} জন</p>
+    <div class="dlg-scroll"><table class="dlg-table" style="min-width:320px">
+      <thead><tr><th>#</th><th>পার্টি</th><th>অগ্রিম</th><th></th></tr></thead>
       <tbody>${rows.length?rows.map((r,i)=>`<tr>
-        <td class="dlg-td-num">${i+1}</td>
-        <td class="dlg-party-cell"><b style="color:#15803d">${esc(r.info.name)}</b><div class="dlg-sub">${esc(KIND_LABELS[r.info.kind]||r.info.kind||'')} · ID ${esc(r.id)}</div></td>
-        <td class="dlg-td-bal"><b class="dlg-adv">${fmt(-r.g.balance)}</b></td>
-        <td class="dlg-td-act"><button class="btn btn-primary btn-sm" onclick="DLG.openDueDetail('${esc(r.id)}')">💳 বিস্তারিত</button></td>
+        <td>${i+1}</td>
+        <td><b style="color:#15803d">${esc(r.info.name)}</b><div class="dlg-sub">${esc(KIND_LABELS[r.info.kind]||r.info.kind||'')} · ID ${esc(r.id)}</div></td>
+        <td class="n"><b class="dlg-adv">${fmt(-r.g.balance)}</b></td>
+        <td><button class="btn btn-ghost btn-sm" onclick="DLG.closeModal();DLG.openDueDetail('${esc(r.id)}')">বিস্তারিত</button></td>
       </tr>`).join(''):`<tr><td colspan="4" class="dlg-empty">কোনো অগ্রিম নেই</td></tr>`}</tbody>
-      <tfoot><tr><td colspan="2"><b style="color:#15803d">মোট অগ্রিম</b></td><td class="dlg-td-bal"><b class="dlg-adv">${fmt(totalAdv)}</b></td><td></td></tr></tfoot>
-    </table></div>`;
+    </table></div>
+    <button class="btn btn-ghost" style="width:100%;margin-top:12px" onclick="DLG.closeModal()">বন্ধ</button>`);
 }
 
 function partyPaymentList(dealerId){
@@ -12159,7 +12158,7 @@ window.DLG={
   tabHTML, wire, reload, setView, setDueQ, setDueOnly, setF, setQ, setAuditQ, clearFilters, openLedger, openDueDetail,
   openEntry, entryTypeChanged, entryPreview, submitEntry, openReverse, submitReverse, closeModal,
   printStatement, printDue, exportLedger, exportDue, pdfDue, recalcAll, changePerm, peHook,
-  openParty, submitParty, myReload, myFilter, openMessage, msgSetLang, msgSend, msgResolve, entryMsgPreview, setMsgF, setMsgQ,
+  openParty, submitParty, myReload, myFilter, openMessage, msgSetLang, msgSend, msgResolve, entryMsgPreview, setMsgF, setMsgQ, openAdvanceDetails,
   selfHook,
   _t:{sendMessage,resolveMessage,preparePayment,buildMessageData,renderMessage,smsInfo,normalizePhone,createParty,loadMyLedger,TEMPLATES,toPaisa,fmt,num,effectOf,aggregate,buildStatement,saveVoucher,applySummary,blankSummary,mismatches,recalcDealer,loadAll,LG,TYPES,catDelta,setPermission,level}
 };
