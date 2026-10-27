@@ -44,7 +44,7 @@ document.currentScript.parentNode.insertBefore(manifestLink, document.currentScr
 // প্রতিটি নতুন deployment/update দেওয়ার আগে এই APP_VERSION ভ্যালুটা পরিবর্তন করুন
 // (যেকোনো ইউনিক স্ট্রিং — তারিখ/সময় বা running number)। এই ভ্যালুর ভিত্তিতেই
 // সব ডিভাইস স্বয়ংক্রিয়ভাবে নতুন version detect করে reload হবে।
-window.APP_VERSION = '2026-10-27-due-header-mid.19';
+window.APP_VERSION = '2026-10-27-due-mobile-scroll.20';
 
 (function(){
   // পুরনো/legacy blob-based service worker ও পুরনো Cache Storage সম্পূর্ণ পরিষ্কার করে দেওয়া হয়,
@@ -2341,11 +2341,11 @@ window.APP_VERSION = '2026-10-27-due-header-mid.19';
   .parts-table tbody tr:is(.pt-touch,:active) > td *{color:#000 !important;}
   /* ===== দেনা-পাওনা সারি: টাচ করলে পুরো সারি হলুদ; ফোনে বাটন কলাম ডানে আটকে থাকে (➕ সবসময় দেখা যায়) ===== */
   .dlg-table tbody tr.row-touch > td{background:#fff1c2 !important;}
-  /* Due List: নীল হেডার + কলাম অ্যালাইন (সব স্ক্রিনে) */
+  /* Due List: নীল হেডার; মোবাইলে আড়াআড়ি স্ক্রল */
   .dlg-table.dlg-due-table{
-    min-width:0 !important;
+    min-width:640px;
     width:100%;
-    table-layout:fixed;
+    table-layout:auto;
   }
   .dlg-table.dlg-due-table thead th{
     background:#0369a1 !important;
@@ -2355,27 +2355,23 @@ window.APP_VERSION = '2026-10-27-due-header-mid.19';
     text-align:center !important;
     vertical-align:middle !important;
     border-bottom:2px solid #0c4a6e !important;
-    padding:12px 10px !important;
-    white-space:normal !important;
+    padding:12px 12px !important;
+    white-space:nowrap !important;
   }
   .dlg-table.dlg-due-table th.dlg-th-num,
-  .dlg-table.dlg-due-table td.dlg-td-num{width:52px;text-align:center !important;}
-  .dlg-table.dlg-due-table th.dlg-th-name{width:38%;text-align:center !important;padding:12px 10px !important;}
-  .dlg-table.dlg-due-table td.dlg-party-cell{text-align:left !important;padding-left:14px !important;padding-right:8px !important;vertical-align:middle;}
-  .dlg-table.dlg-due-table th.dlg-th-num{font-size:12px !important;white-space:nowrap !important;}
+  .dlg-table.dlg-due-table td.dlg-td-num{width:64px;text-align:center !important;white-space:nowrap;}
+  .dlg-table.dlg-due-table th.dlg-th-name{text-align:center !important;min-width:180px;}
+  .dlg-table.dlg-due-table td.dlg-party-cell{text-align:left !important;padding-left:14px !important;padding-right:10px !important;vertical-align:middle;white-space:nowrap;}
   .dlg-table.dlg-due-table th.dlg-th-bal,
-  .dlg-table.dlg-due-table td.dlg-td-bal{width:28%;text-align:center !important;vertical-align:middle;}
+  .dlg-table.dlg-due-table td.dlg-td-bal{text-align:center !important;vertical-align:middle;white-space:nowrap;min-width:140px;}
   .dlg-table.dlg-due-table th.dlg-th-act,
-  .dlg-table.dlg-due-table td.dlg-td-act{width:200px;text-align:center !important;vertical-align:middle;}
+  .dlg-table.dlg-due-table td.dlg-td-act{text-align:center !important;vertical-align:middle;white-space:nowrap;min-width:130px;}
   .dlg-table.dlg-due-table td.dlg-td-act .btn{display:inline-block;margin:2px 3px;vertical-align:middle;}
   .dlg-table.dlg-due-table thead th:last-child{background:#0369a1 !important;color:#fff !important;}
+  .dlg-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;}
   @media(max-width:900px){
     .dlg-due-table th:last-child,.dlg-due-table td:last-child{position:sticky;right:0;z-index:3;background:#fff;box-shadow:-8px 0 10px -8px rgba(0,0,0,.35);}
     .dlg-due-table thead th:last-child{background:#0369a1 !important;color:#fff !important;}
-    .dlg-wrap .dlg-due-table td:last-child .btn{display:block;width:100%;margin:0 0 6px;text-align:center;font-size:15px;padding:7px 9px;}
-    .dlg-wrap .dlg-due-table td:last-child .btn:last-child{margin-bottom:0;}
-    .dlg-table.dlg-due-table th.dlg-th-act,
-    .dlg-table.dlg-due-table td.dlg-td-act{width:140px;}
   }
   /* ===== দেনা-পাওনা সারি: হোভার/টাচে সারির একদম শেষ ঘর (📒 ➕ বাটনের কলাম) পর্যন্ত পুরো লাইন হলুদ ===== */
   .dlg-wrap .dlg-table tbody tr:is(:hover,:active,.row-touch){background:#fff1c2 !important;}
@@ -11033,13 +11029,6 @@ function renderDueResults(){
   const admin=isAdmin(); const bad=rows.filter(r=>r.bad);
   const shownDue = rows.filter(r=>r.g.balance>0).length;
   box.innerHTML=`
-    <div class="dlg-kpis">
-      <div class="dlg-kpi dlg-kpi-recv"><div>মোট পাওনা (পার্টির কাছে)</div><b class="dlg-due">${fmt(recv)}</b></div>
-      <div class="dlg-kpi"><div>মোট দেনা/অগ্রিম (পার্টিকে)</div><b class="dlg-adv">${fmt(pay)}</b></div>
-      <div class="dlg-kpi"><div>নিট ব্যালেন্স</div><b>${balHTML(recv-pay)}</b></div>
-      <div class="dlg-kpi"><div>বকেয়াদার পার্টি</div><b>${dueCnt} জন</b><div class="dlg-sub">তালিকায় দেখাচ্ছে: ${rows.length} জন</div></div>
-    </div>
-    <p class="hint" style="margin:6px 0 10px">💡 এখানে শুধু বকেয়া/ব্যালেন্স দেখাচ্ছে। Opening, পাওনা, জমা, পেমেন্ট ইত্যাদি দেখতে <b>বিস্তারিত</b> বা Ledger চাপুন। তালিকায় <b>${rows.length} জন</b>${LG.ui.dueOnly?` (শুধু বকেয়া: ${shownDue})`:''}।</p>
     ${bad.length && admin ? `<div style="margin:8px 0"><button class="btn btn-navy btn-sm" onclick="DLG.recalcAll()">🛠️ ${bad.length}টি ডিলারের ব্যালেন্স মিলিয়ে নিন (Recalculate)</button></div>`:''}
     <div class="dlg-scroll"><table class="dlg-table dlg-due-table">
       <thead><tr><th class="dlg-th-num">নম্বর</th><th class="dlg-th-name">পার্টির নাম</th><th class="dlg-th-bal">বকেয়া / ব্যালেন্স</th><th class="dlg-th-act">বিস্তারিত দেখুন</th></tr></thead>
