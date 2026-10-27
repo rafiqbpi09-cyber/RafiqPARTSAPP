@@ -44,7 +44,7 @@ document.currentScript.parentNode.insertBefore(manifestLink, document.currentScr
 // প্রতিটি নতুন deployment/update দেওয়ার আগে এই APP_VERSION ভ্যালুটা পরিবর্তন করুন
 // (যেকোনো ইউনিক স্ট্রিং — তারিখ/সময় বা running number)। এই ভ্যালুর ভিত্তিতেই
 // সব ডিভাইস স্বয়ংক্রিয়ভাবে নতুন version detect করে reload হবে।
-window.APP_VERSION = '2026-10-27-theme-transition.28';
+window.APP_VERSION = '2026-10-27-ledger-mobile-ui.29';
 
 (function(){
   // পুরনো/legacy blob-based service worker ও পুরনো Cache Storage সম্পূর্ণ পরিষ্কার করে দেওয়া হয়,
@@ -2453,6 +2453,91 @@ window.APP_VERSION = '2026-10-27-theme-transition.28';
       background:#fff1c2 !important;background-color:#fff1c2 !important;box-shadow:none !important;
     }
   }
+
+  /* ===== Dealer Ledger — mobile-only UI tweaks ===== */
+  .dlg-view-tabs{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 0;}
+  .dlg-view-tab{
+    appearance:none;border:none;background:none;cursor:pointer;font-family:inherit;
+    padding:9px 14px;border-radius:9px;font-size:13.5px;font-weight:600;color:var(--muted);
+    display:inline-flex;align-items:center;gap:6px;
+  }
+  .dlg-view-tab.active{background:var(--navy);color:#fff;}
+  .dlg-view-tab .dlg-tab-ic{display:inline;font-size:15px;line-height:1;}
+  .dlg-view-tab .dlg-tab-lbl{display:inline;}
+  .dlg-refresh-topbar{display:none;}
+  .dlg-due-bottom-actions{display:none;}
+  @media(max-width:700px){
+    .dlg-wrap .dlg-ledger-title{
+      font-size:15px !important;line-height:1.3;font-weight:800;
+      max-width:calc(100% - 48px);
+    }
+    .dlg-wrap .dlg-ledger-head{
+      position:relative;align-items:flex-start !important;
+    }
+    .dlg-wrap .dlg-ledger-actions{
+      width:100%;order:3;
+    }
+    .dlg-wrap .dlg-refresh-inline{display:none !important;}
+    .dlg-refresh-topbar{
+      display:inline-flex !important;align-items:center;justify-content:center;
+      width:36px;height:36px;min-width:36px;border-radius:10px;padding:0;
+      font-size:16px;line-height:1;margin-left:auto;flex-shrink:0;
+      border:1.5px solid var(--line);background:var(--card);color:var(--text);
+    }
+    .dlg-view-tabs{
+      display:grid !important;
+      grid-template-columns:repeat(3,minmax(0,1fr));
+      gap:12px 8px;
+      margin:14px 0 4px;
+      padding:4px 0 2px;
+      background:transparent;
+      border:none;
+    }
+    .dlg-view-tab{
+      display:flex;flex-direction:column;align-items:center;justify-content:flex-start;
+      gap:6px;padding:8px 4px;border-radius:16px;background:transparent;
+      color:var(--text);font-weight:700;min-height:0;text-align:center;
+      border:none;box-shadow:none;
+    }
+    .dlg-view-tab.active{
+      background:rgba(59,91,219,.10);
+      color:#1a3f9e;
+      box-shadow:none;
+    }
+    .dlg-view-tab .dlg-tab-ic{
+      display:flex !important;align-items:center;justify-content:center;
+      width:52px;height:52px;border-radius:16px;font-size:24px;line-height:1;
+      background:#eef2ff;box-shadow:0 4px 12px rgba(15,23,42,.08);
+    }
+    .dlg-view-tab.active .dlg-tab-ic{
+      background:linear-gradient(135deg,#3b5bdb,#4c6ef5);
+      box-shadow:0 6px 14px rgba(59,91,219,.35);
+    }
+    .dlg-view-tab[data-v="due"] .dlg-tab-ic{background:#e0f2fe;}
+    .dlg-view-tab[data-v="ledger"] .dlg-tab-ic{background:#fef9c3;}
+    .dlg-view-tab[data-v="msg"] .dlg-tab-ic{background:#fce7f3;}
+    .dlg-view-tab[data-v="audit"] .dlg-tab-ic{background:#ede9fe;}
+    .dlg-view-tab[data-v="perm"] .dlg-tab-ic{background:#dcfce7;}
+    .dlg-view-tab.active[data-v="due"] .dlg-tab-ic,
+    .dlg-view-tab.active[data-v="ledger"] .dlg-tab-ic,
+    .dlg-view-tab.active[data-v="msg"] .dlg-tab-ic,
+    .dlg-view-tab.active[data-v="audit"] .dlg-tab-ic,
+    .dlg-view-tab.active[data-v="perm"] .dlg-tab-ic{
+      background:linear-gradient(135deg,#3b5bdb,#4c6ef5);
+    }
+    .dlg-view-tab .dlg-tab-lbl{
+      display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+      font-size:11px;line-height:1.25;font-weight:700;max-width:100%;
+    }
+    .dlg-due-mobile-hide{display:none !important;}
+    .dlg-due-top-actions{display:none !important;}
+    .dlg-due-bottom-actions{
+      display:flex !important;gap:8px;flex-wrap:wrap;justify-content:stretch;
+      margin:16px 0 8px;padding:10px 0 4px;border-top:1px solid var(--line);
+    }
+    .dlg-due-bottom-actions .btn{flex:1 1 30%;min-width:90px;font-size:13px;padding:11px 10px;}
+  }
+
   /* ===== মোবাইল/ডার্ক থিমে লেখা কালো ও স্পষ্ট — অ্যাডমিন প্যানেল (Parts/User/Vehicle/দেনা-পাওনা), Parts Engineer ও ক্যাটালগ ===== */
   .admin-content,.admin-outer .card,.admin-outer .stat,.admin-outer .part-card,.admin-outer .tabs,.catalog-card{
     --text:#000000;--muted:#1f2937;--card:#ffffff;--paper:#f2f4f7;--line:#cbd5e1;
@@ -11012,26 +11097,28 @@ function render(){
     return;
   }
   const admin=isAdmin();
-  const views=[['due','📋 Due List / সারাংশ'],['ledger','📒 Ledger / Statement']];
-  views.push(['msg','✉️ Payment Message History']);
-  if(admin){ views.push(['audit','🕵️ Audit Log']); views.push(['perm','🔑 অনুমতি']); }
+  // [id, icon, label] — mobile shows icon grid; desktop shows icon+label inline
+  const views=[['due','📋','Due List / সারাংশ'],['ledger','📒','Ledger / Statement']];
+  views.push(['msg','✉️','Payment Message History']);
+  if(admin){ views.push(['audit','🕵️','Audit Log']); views.push(['perm','🔑','অনুমতি']); }
   if(!views.some(v=>v[0]===LG.ui.view)) LG.ui.view='due';
   const warn=[];
   if(typeof fbAuth!=='undefined' && !fbAuth.currentUser) warn.push('⚠️ Cloud সাইন-ইন সক্রিয় নেই — নতুন লেনদেন সেভ হবে না। লগআউট করে আবার লগইন করুন।');
   if(admin){ const mm=mismatches(); if(mm.length) warn.push(`⚠️ ${mm.length}টি ডিলারের সংরক্ষিত ব্যালেন্স Voucher-এর হিসাবের সাথে মিলছে না। (Due List-এ "মিলিয়ে নিন" বোতাম আছে।)`); }
   setRoot(`
     <div class="card">
-      <div class="card-head" style="flex-wrap:wrap;gap:8px">
-        <h3 style="margin:0">📒 দেনা-পাওনা হিসাব (Dealer Ledger)</h3>
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <div class="card-head dlg-ledger-head" style="flex-wrap:wrap;gap:8px">
+        <h3 class="dlg-ledger-title" style="margin:0">📒 দেনা-পাওনা হিসাব (Dealer Ledger)</h3>
+        <button type="button" class="dlg-refresh-topbar" onclick="DLG.reload()" title="রিফ্রেশ" aria-label="রিফ্রেশ">🔄</button>
+        <div class="dlg-ledger-actions" style="display:flex;gap:8px;flex-wrap:wrap">
           ${allowedTypes().length ? `<button class="btn btn-primary btn-sm" style="width:auto" onclick="DLG.openEntry()">➕ নতুন লেনদেন</button>`:''}
           ${canCreateParty() ? `<button class="btn btn-ghost btn-sm" onclick="DLG.openParty()">👤 নতুন পার্টি</button>` : ''}
-          <button class="btn btn-ghost btn-sm" onclick="DLG.reload()">🔄 রিফ্রেশ</button>
+          <button class="btn btn-ghost btn-sm dlg-refresh-inline" onclick="DLG.reload()">🔄 রিফ্রেশ</button>
         </div>
       </div>
       <p class="hint" style="margin:6px 0 10px;display:none">ব্যালেন্স: <b class="dlg-due">+ পাওনা</b> = ডিলার কোম্পানিকে দেবে · <b class="dlg-adv">− দেনা/অগ্রিম</b> = কোম্পানি ডিলারকে দেবে। পুরোনো লেনদেন Edit/Delete হয় না — ভুল হলে Reversal বা সমন্বয় করুন।</p>
       ${warn.map(w=>`<div class="dlg-alert">${esc(w)}</div>`).join('')}
-      <div class="tabs" style="margin:10px 0 0">${views.map(v=>`<button class="tab ${LG.ui.view===v[0]?'active':''}" onclick="DLG.setView('${v[0]}')">${v[1]}</button>`).join('')}</div>
+      <div class="dlg-view-tabs">${views.map(v=>`<button type="button" class="dlg-view-tab ${LG.ui.view===v[0]?'active':''}" data-v="${v[0]}" onclick="DLG.setView('${v[0]}')"><span class="dlg-tab-ic">${v[1]}</span><span class="dlg-tab-lbl">${esc(v[2])}</span></button>`).join('')}</div>
     </div>
     <div id="dlgBody"></div>`);
   renderBody();
@@ -11068,14 +11155,20 @@ function dueHTML(){
   return `
   <div class="card">
     <div class="dlg-filters">
-      <input type="text" id="dlgDueQ" placeholder="🔍 নাম / মোবাইল / ID" value="${esc(LG.ui.dueQ)}" oninput="DLG.setDueQ(this.value)">
-      <label class="dlg-chk"><input type="checkbox" id="dlgDueOnly" ${LG.ui.dueOnly?'checked':''} onchange="DLG.setDueOnly(this.checked)"> শুধু বকেয়া (পাওনা > ০)</label>
-      <div style="display:flex;gap:8px;margin-left:auto;flex-wrap:wrap">
+      <input type="text" id="dlgDueQ" class="dlg-due-mobile-hide" placeholder="🔍 নাম / মোবাইল / ID" value="${esc(LG.ui.dueQ)}" oninput="DLG.setDueQ(this.value)">
+      <label class="dlg-chk dlg-due-mobile-hide"><input type="checkbox" id="dlgDueOnly" ${LG.ui.dueOnly?'checked':''} onchange="DLG.setDueOnly(this.checked)"> শুধু বকেয়া (পাওনা > ০)</label>
+      <div class="dlg-due-top-actions" style="display:flex;gap:8px;margin-left:auto;flex-wrap:wrap">
         <button class="btn btn-ghost btn-sm" onclick="DLG.printDue()">🖨️ Print</button>
         <button class="btn btn-ghost btn-sm" onclick="DLG.exportDue()">📄 Excel</button>
+        <button class="btn btn-ghost btn-sm" onclick="DLG.pdfDue()">📑 PDF</button>
       </div>
     </div>
     <div id="dlgDueResults"></div>
+    <div class="dlg-due-bottom-actions">
+      <button class="btn btn-ghost btn-sm" onclick="DLG.printDue()">🖨️ Print</button>
+      <button class="btn btn-ghost btn-sm" onclick="DLG.exportDue()">📄 Excel</button>
+      <button class="btn btn-ghost btn-sm" onclick="DLG.pdfDue()">📑 PDF</button>
+    </div>
   </div>`;
 }
 function partyPaymentList(dealerId){
@@ -11440,6 +11533,35 @@ function exportDue(){
   aoa.push([],['','Total Net',rows.reduce((s,r)=>s+r.g.balance,0)/100]);
   const ws=XLSX.utils.aoa_to_sheet(aoa); const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Due List');
   xlsxSave(wb,`dealer_due_list_${todayISO()}.xlsx`);
+}
+function pdfDue(){
+  if(!window.jspdf){ alert('PDF লাইব্রেরি লোড হয়নি, ইন্টারনেট চেক করুন'); return; }
+  const { jsPDF } = window.jspdf;
+  const rows=dueRows();
+  const doc=new jsPDF({unit:'pt',format:'a4'});
+  const margin=40; let y=48;
+  doc.setFont('helvetica','bold'); doc.setFontSize(14);
+  doc.text(String(companyName()||'Company'), margin, y); y+=20;
+  doc.setFontSize(12); doc.text('Due List — '+todayISO(), margin, y); y+=24;
+  doc.setFont('helvetica','bold'); doc.setFontSize(10);
+  doc.text('#', margin, y);
+  doc.text('Party', margin+30, y);
+  doc.text('Balance', margin+360, y);
+  y+=8; doc.setLineWidth(0.6); doc.line(margin, y, 555, y); y+=14;
+  doc.setFont('helvetica','normal');
+  rows.forEach((r,i)=>{
+    if(y>780){ doc.addPage(); y=48; }
+    const name=String(r.info.name||'').slice(0,48);
+    const bal=balText(r.g.balance);
+    doc.text(String(i+1), margin, y);
+    doc.text(name, margin+30, y);
+    doc.text(String(bal), margin+360, y);
+    y+=16;
+  });
+  y+=8; doc.setFont('helvetica','bold');
+  const net=balText(rows.reduce((s,r)=>s+r.g.balance,0));
+  doc.text('Total Net: '+net, margin, y);
+  doc.save(`dealer_due_list_${todayISO()}.pdf`);
 }
 
 
@@ -11913,7 +12035,7 @@ async function peHook(){
 window.DLG={
   tabHTML, wire, reload, setView, setDueQ, setDueOnly, setF, setQ, setAuditQ, clearFilters, openLedger, openDueDetail,
   openEntry, entryTypeChanged, entryPreview, submitEntry, openReverse, submitReverse, closeModal,
-  printStatement, printDue, exportLedger, exportDue, recalcAll, changePerm, peHook,
+  printStatement, printDue, exportLedger, exportDue, pdfDue, recalcAll, changePerm, peHook,
   openParty, submitParty, myReload, myFilter, openMessage, msgSetLang, msgSend, msgResolve, entryMsgPreview, setMsgF, setMsgQ,
   selfHook,
   _t:{sendMessage,resolveMessage,preparePayment,buildMessageData,renderMessage,smsInfo,normalizePhone,createParty,loadMyLedger,TEMPLATES,toPaisa,fmt,num,effectOf,aggregate,buildStatement,saveVoucher,applySummary,blankSummary,mismatches,recalcDealer,loadAll,LG,TYPES,catDelta,setPermission,level}
