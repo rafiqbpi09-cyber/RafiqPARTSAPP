@@ -44,7 +44,7 @@ document.currentScript.parentNode.insertBefore(manifestLink, document.currentScr
 // প্রতিটি নতুন deployment/update দেওয়ার আগে এই APP_VERSION ভ্যালুটা পরিবর্তন করুন
 // (যেকোনো ইউনিক স্ট্রিং — তারিখ/সময় বা running number)। এই ভ্যালুর ভিত্তিতেই
 // সব ডিভাইস স্বয়ংক্রিয়ভাবে নতুন version detect করে reload হবে।
-window.APP_VERSION = '2026-10-27-total-advance-summary.34';
+window.APP_VERSION = '2026-10-27-suspicious-mod-card.38';
 
 (function(){
   // পুরনো/legacy blob-based service worker ও পুরনো Cache Storage সম্পূর্ণ পরিষ্কার করে দেওয়া হয়,
@@ -2420,6 +2420,14 @@ window.APP_VERSION = '2026-10-27-total-advance-summary.34';
   .admin-kpi.admin-kpi-due .lbl{color:#dc2626 !important;font-weight:800 !important;font-size:12.5px !important;}
   .admin-kpi.admin-kpi-due .num{color:#dc2626 !important;font-weight:900 !important;font-size:clamp(16px,4.2vw,22px) !important;line-height:1.15;overflow-wrap:anywhere;}
   .admin-kpi.admin-kpi-due .sub{color:#dc2626 !important;font-weight:700 !important;font-size:10.5px !important;}
+  /* ===== অ্যাডমিন হোম: "মোট অগ্রিম" বক্স — সবুজ ===== */
+  .admin-kpi.admin-kpi-adv .lbl{color:#15803d !important;font-weight:800 !important;font-size:12.5px !important;}
+  .admin-kpi.admin-kpi-adv .num{color:#15803d !important;font-weight:900 !important;font-size:clamp(16px,4.2vw,22px) !important;line-height:1.15;overflow-wrap:anywhere;}
+  .admin-kpi.admin-kpi-adv .sub{color:#15803d !important;font-weight:700 !important;font-size:10.5px !important;}
+  /* ===== অ্যাডমিন হোম: সন্দেহজনক এন্ট্রি — কমলা ===== */
+  .admin-kpi.admin-kpi-sus .lbl{color:#c2410c !important;font-weight:800 !important;font-size:12.5px !important;}
+  .admin-kpi.admin-kpi-sus .num{color:#c2410c !important;font-weight:900 !important;font-size:clamp(16px,4.2vw,22px) !important;line-height:1.15;overflow-wrap:anywhere;}
+  .admin-kpi.admin-kpi-sus .sub{color:#c2410c !important;font-weight:700 !important;font-size:10.5px !important;}
   /* ===== পার্টস ম্যানেজমেন্ট টেবিলের সারিতে টাচ করলে সারি রঙ ধরে (লেখা কালো); ছাড়লে আগের অবস্থা ===== */
   .parts-table tbody tr:is(.pt-touch,:active){background:#ffe08a !important;border-color:#e0a100 !important;}
   .parts-table tbody tr:is(.pt-touch,:active) > td{background:#ffe08a !important;color:#000 !important;}
@@ -8140,32 +8148,147 @@ function openAdminDueList(){
   adminTab = 'dealerLedger';
   go('adminDashboard');
 }
+function openAdminAdvanceList(){
+  try{
+    if(window.DLG && DLG._t && DLG._t.LG && DLG._t.LG.ui){
+      DLG._t.LG.ui.view = 'advance';
+      DLG._t.LG.ui.dueQ = '';
+    }
+  }catch(e){}
+  adminTab = 'dealerLedger';
+  go('adminDashboard');
+}
+/* সন্দেহজনক এন্ট্রি: বড় অ্যামাউন্ট অথবা রাত ১০টা–সকাল ৬টা (শেষ ৩০ দিন) */
+function suspiciousAmountLimitTaka(){
+  const n = Number(DB && DB.settings && DB.settings.suspiciousAmountTaka);
+  return (Number.isFinite(n) && n > 0) ? n : 50000;
+}
+function isNightEntryIso(iso){
+  if(!iso) return false;
+  const d = new Date(iso);
+  if(isNaN(d.getTime())) return false;
+  const h = d.getHours();
+  return (h >= 22 || h < 6);
+}
+function scanSuspiciousVouchers(vouchers){
+  const limitPaisa = Math.round(suspiciousAmountLimitTaka() * 100);
+  const cutoff = Date.now() - 30*24*60*60*1000;
+  const list = [];
+  (vouchers||[]).forEach(v=>{
+    if(!v || !v.voucherNo) return;
+    const t = v.createdAt ? new Date(v.createdAt).getTime() : 0;
+    if(t && t < cutoff) return;
+    const amt = Math.abs(Number(v.amountPaisa)||0);
+    const reasons = [];
+    if(amt >= limitPaisa) reasons.push('বড় অ্যামাউন্ট (≥৳'+suspiciousAmountLimitTaka().toLocaleString('en-IN')+')');
+    if(isNightEntryIso(v.createdAt)) reasons.push('রাতের এন্ট্রি (১০টা–৬টা)');
+    if(!reasons.length) return;
+    list.push({
+      voucherNo: v.voucherNo,
+      dealerId: v.dealerId,
+      dealerName: v.dealerName || '',
+      type: v.type,
+      amountPaisa: Number(v.amountPaisa)||0,
+      date: v.date || '',
+      createdAt: v.createdAt || '',
+      createdBy: v.createdBy || '',
+      reasons
+    });
+  });
+  list.sort((a,b)=> String(b.createdAt||'').localeCompare(String(a.createdAt||'')));
+  return list;
+}
+function openAdminSuspiciousList(){
+  (async ()=>{
+    try{
+      if(window.DLG && DLG._t && typeof DLG._t.loadAll === 'function') await DLG._t.loadAll();
+      const vouchers = (window.DLG && DLG._t && DLG._t.LG && DLG._t.LG.vouchers) ? DLG._t.LG.vouchers : [];
+      const rows = scanSuspiciousVouchers(vouchers);
+      const limit = suspiciousAmountLimitTaka();
+      const fmtAmt = (p)=>{
+        try{ if(window.DLG && DLG._t && typeof DLG._t.fmt==='function') return DLG._t.fmt(Math.abs(p)); }catch(e){}
+        return '৳'+((Math.abs(p)||0)/100).toLocaleString('en-IN');
+      };
+      const typeLabel = (t)=>{
+        try{ if(window.DLG && DLG._t && DLG._t.TYPES && DLG._t.TYPES[t]) return DLG._t.TYPES[t].short || t; }catch(e){}
+        return t||'—';
+      };
+      openModal(`
+        <h3 style="margin:0 0 6px">⚠️ সন্দেহজনক এন্ট্রি</h3>
+        <p class="hint" style="margin:0 0 12px">শেষ ৩০ দিন · ≥৳${limit.toLocaleString('en-IN')} অথবা রাত ১০টা–সকাল ৬টা।</p>
+        <div style="max-height:55vh;overflow:auto;border:1px solid var(--line);border-radius:10px">
+          <table class="dlg-table" style="min-width:520px;font-size:13px">
+            <thead><tr>
+              <th>তারিখ/সময়</th><th>ভাউচার</th><th>পার্টি</th><th>ধরন</th><th>অ্যামাউন্ট</th><th>কারণ</th><th>এন্ট্রিকারী</th>
+            </tr></thead>
+            <tbody>
+              ${rows.length ? rows.map(r=>{
+                const when = r.createdAt ? new Date(r.createdAt).toLocaleString('en-GB',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) : (r.date||'—');
+                return `<tr>
+                  <td>${escHtml(when)}</td>
+                  <td><code>${escHtml(r.voucherNo)}</code></td>
+                  <td><b>${escHtml(r.dealerName||String(r.dealerId||''))}</b></td>
+                  <td>${escHtml(typeLabel(r.type))}</td>
+                  <td style="font-weight:800;color:#c2410c">${escHtml(fmtAmt(r.amountPaisa))}</td>
+                  <td style="color:#9a3412;font-size:12px">${escHtml(r.reasons.join(' · '))}</td>
+                  <td>${escHtml(r.createdBy||'—')}</td>
+                </tr>`;
+              }).join('') : `<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--muted)">কোনো সন্দেহজনক এন্ট্রি নেই</td></tr>`}
+            </tbody>
+          </table>
+        </div>
+        <button class="btn btn-ghost" style="width:100%;margin-top:12px" onclick="closeModal()">বন্ধ</button>
+      `);
+    }catch(e){
+      alert('লোড করা যায়নি: '+(e && e.message ? e.message : e));
+    }
+  })();
+}
 async function refreshAdminDueKpi(){
   const numEl = document.getElementById('adminDueKpiNum');
   const subEl = document.getElementById('adminDueKpiSub');
-  if(!numEl) return;
+  const advNum = document.getElementById('adminAdvKpiNum');
+  const advSub = document.getElementById('adminAdvKpiSub');
+  const susNum = document.getElementById('adminSusKpiNum');
+  const susSub = document.getElementById('adminSusKpiSub');
+  if(!numEl && !advNum && !susNum) return;
   try{
     if(!window.DLG || !DLG._t || typeof DLG._t.loadAll !== 'function'){
-      numEl.textContent = '—';
-      if(subEl) subEl.textContent = 'চাপলে বকেয়া তালিকা';
+      if(numEl){ numEl.textContent = '—'; if(subEl) subEl.textContent = 'চাপলে বকেয়া তালিকা'; }
+      if(advNum){ advNum.textContent = '—'; if(advSub) advSub.textContent = 'চাপলে অগ্রিম তালিকা'; }
+      if(susNum){ susNum.textContent = '—'; if(susSub) susSub.textContent = 'বড় অ্যামাউন্ট / রাতের এন্ট্রি'; }
       return;
     }
     await DLG._t.loadAll();
     const vouchers = (DLG._t.LG && DLG._t.LG.vouchers) ? DLG._t.LG.vouchers : [];
     const agg = DLG._t.aggregate(vouchers) || {};
-    let total = 0, count = 0;
+    let total = 0, count = 0, advTotal = 0, advCount = 0;
     Object.keys(agg).forEach(id=>{
       const b = Number(agg[id] && agg[id].balance) || 0;
       if(b > 0){ total += b; count += 1; }
+      else if(b < 0){ advTotal += (-b); advCount += 1; }
     });
-    const taka = (Number(total)||0)/100;
-    // Compact display so sidebar open/narrow cards never clip mid-number
-    numEl.textContent = '৳' + taka.toLocaleString('en-IN', {maximumFractionDigits:0, minimumFractionDigits:0});
-    numEl.title = typeof DLG._t.fmt === 'function' ? DLG._t.fmt(total) : ('৳' + taka.toFixed(2));
-    if(subEl) subEl.textContent = count ? (count + ' জন বকেয়া · চাপলে তালিকা') : 'কোনো বকেয়া নেই';
+    if(numEl){
+      const taka = (Number(total)||0)/100;
+      numEl.textContent = '৳' + taka.toLocaleString('en-IN', {maximumFractionDigits:0, minimumFractionDigits:0});
+      numEl.title = typeof DLG._t.fmt === 'function' ? DLG._t.fmt(total) : ('৳' + taka.toFixed(2));
+      if(subEl) subEl.textContent = count ? (count + ' জন বকেয়া · চাপলে তালিকা') : 'কোনো বকেয়া নেই';
+    }
+    if(advNum){
+      const at = (Number(advTotal)||0)/100;
+      advNum.textContent = '৳' + at.toLocaleString('en-IN', {maximumFractionDigits:0, minimumFractionDigits:0});
+      advNum.title = typeof DLG._t.fmt === 'function' ? DLG._t.fmt(advTotal) : ('৳' + at.toFixed(2));
+      if(advSub) advSub.textContent = advCount ? (advCount + ' জন অগ্রিম · চাপলে তালিকা') : 'কোনো অগ্রিম নেই';
+    }
+    if(susNum){
+      const sus = scanSuspiciousVouchers(vouchers);
+      susNum.textContent = String(sus.length);
+      if(susSub) susSub.textContent = sus.length ? (sus.length + 'টি · চাপলে তালিকা') : 'কোনো সন্দেহজনক নেই';
+    }
   }catch(e){
-    numEl.textContent = '—';
-    if(subEl) subEl.textContent = 'চাপলে বকেয়া তালিকা';
+    if(numEl){ numEl.textContent = '—'; if(subEl) subEl.textContent = 'চাপলে বকেয়া তালিকা'; }
+    if(advNum){ advNum.textContent = '—'; if(advSub) advSub.textContent = 'চাপলে অগ্রিম তালিকা'; }
+    if(susNum){ susNum.textContent = '—'; if(susSub) susSub.textContent = 'বড় অ্যামাউন্ট / রাতের এন্ট্রি'; }
   }
 }
 
@@ -8204,8 +8327,8 @@ ROUTES.adminDashboard = function(){
           </div>
           <div class="admin-kpi-row">
             <div class="admin-kpi"><div class="ic" style="background:#e0e7ff;">👥</div><div class="meta"><div class="lbl">মোট ব্যবহারকারী</div><div class="num">${(DB.users||[]).filter(u=>u&&!u.deleted).length}</div><div class="sub">সক্রিয় অ্যাকাউন্ট</div></div></div>
-            <div class="admin-kpi"><div class="ic" style="background:#dcfce7;">⚙️</div><div class="meta"><div class="lbl">পার্টস</div><div class="num">${(DB.parts||[]).length}</div><div class="sub">ক্যাটালগে তালিকাভুক্ত</div></div></div>
             <div class="admin-kpi admin-kpi-due" style="cursor:pointer" role="button" tabindex="0" onclick="openAdminDueList()" ontouchstart="this.classList.add('touch-glow')" ontouchend="this.classList.remove('touch-glow')" ontouchcancel="this.classList.remove('touch-glow')"><div class="ic" style="background:#fee2e2;">💰</div><div class="meta"><div class="lbl">ডিলার ডিউ</div><div class="num" id="adminDueKpiNum">…</div><div class="sub" id="adminDueKpiSub" style="color:#dc2626">চাপলে বকেয়া তালিকা</div></div></div>
+            <div class="admin-kpi admin-kpi-adv" style="cursor:pointer" role="button" tabindex="0" onclick="openAdminAdvanceList()" ontouchstart="this.classList.add('touch-glow')" ontouchend="this.classList.remove('touch-glow')" ontouchcancel="this.classList.remove('touch-glow')"><div class="ic" style="background:#dcfce7;">💚</div><div class="meta"><div class="lbl">মোট অগ্রিম</div><div class="num" id="adminAdvKpiNum">…</div><div class="sub" id="adminAdvKpiSub" style="color:#15803d">চাপলে অগ্রিম তালিকা</div></div></div>
             <div class="admin-kpi"><div class="ic" style="background:#f3e8ff;">🧑‍🔧</div><div class="meta"><div class="lbl">Parts Engineer</div><div class="num">${(DB.partsEngineers||[]).length}</div><div class="sub">নিবন্ধিত</div></div></div>
           </div>
           <div class="admin-mod-grid">
@@ -8248,6 +8371,9 @@ ROUTES.adminDashboard = function(){
             </div>
             <div class="admin-mod-card" onclick="go('partsCatalog');" ontouchstart="this.classList.add('touch-glow')" ontouchend="this.classList.remove('touch-glow')" ontouchcancel="this.classList.remove('touch-glow')">
               <div class="ic" style="background:#e0e7ff;">📚</div><div class="body"><div class="ttl">Catalogue</div><div class="desc">PDF Catalog মডেল অনুযায়ী দেখুন।</div></div><div class="arrow">›</div>
+            </div>
+            <div class="admin-mod-card" onclick="openAdminSuspiciousList()" ontouchstart="this.classList.add('touch-glow')" ontouchend="this.classList.remove('touch-glow')" ontouchcancel="this.classList.remove('touch-glow')">
+              <div class="ic" style="background:#ffedd5;">⚠️</div><div class="body"><div class="ttl">সন্দেহজনক এন্ট্রি <span id="adminSusKpiNum" style="color:#c2410c;font-weight:900">…</span></div><div class="desc" id="adminSusKpiSub">বড় অ্যামাউন্ট / রাতের এন্ট্রি · চাপলে তালিকা</div></div><div class="arrow">›</div>
             </div>
           </div>
         </div>
