@@ -44,7 +44,7 @@ document.currentScript.parentNode.insertBefore(manifestLink, document.currentScr
 // প্রতিটি নতুন deployment/update দেওয়ার আগে এই APP_VERSION ভ্যালুটা পরিবর্তন করুন
 // (যেকোনো ইউনিক স্ট্রিং — তারিখ/সময় বা running number)। এই ভ্যালুর ভিত্তিতেই
 // সব ডিভাইস স্বয়ংক্রিয়ভাবে নতুন version detect করে reload হবে।
-window.APP_VERSION = '2026-10-28-hide-tech-save-error.43';
+window.APP_VERSION = '2026-10-28-fix-bank-method-save.46';
 
 (function(){
   // পুরনো/legacy blob-based service worker ও পুরনো Cache Storage সম্পূর্ণ পরিষ্কার করে দেওয়া হয়,
@@ -10908,7 +10908,60 @@ const TYPES = {
 };
 const ENTRY_TYPES = ['SALE','PAYABLE','DEPOSIT','PAYMENT','RETURN','OPENING','ADJUSTMENT'];
 const ENTRY_LEVEL_TYPES = ['SALE','PAYABLE','DEPOSIT','PAYMENT','RETURN']; // 'entry' permission
-const METHODS = ['Cash','bKash','Nagad','Rocket','Bank Transfer','Cheque','Other'];
+// value = স্থিতিশীল ASCII কোড (Chrome translate option টেক্সট বদলালেও value অপরিবর্তিত থাকে)
+const METHOD_OPTS = [
+  {v:'Cash', label:'Cash'},
+  {v:'bKash', label:'bKash'},
+  {v:'Nagad', label:'Nagad'},
+  {v:'Rocket', label:'Rocket'},
+  {v:'PubaliBank', label:'পূবালী ব্যাংক পি এল সি (Pubali Bank PLC)'},
+  {v:'IslamiBank', label:'ইসলামী ব্যাংক পি এল সি (Islami Bank PLC)'},
+  {v:'Cheque', label:'Cheque'},
+  {v:'Other', label:'Other'}
+];
+const METHODS = METHOD_OPTS.map(x=>x.v);
+const METHOD_LABELS = Object.fromEntries(METHOD_OPTS.map(x=>[x.v, x.label]));
+const BANK_METHODS = ['PubaliBank','IslamiBank'];
+const MFS_METHODS = ['bKash','Nagad','Rocket'];
+// পুরনো সেভড মান / অনুবাদকৃত টেক্সট → কোডে ম্যাপ
+const METHOD_ALIASES = {
+  'Cash':'Cash','cash':'Cash',
+  'bKash':'bKash','Bkash':'bKash','বিকাশ':'bKash',
+  'Nagad':'Nagad','নগদ':'Nagad',
+  'Rocket':'Rocket','রকেট':'Rocket',
+  'PubaliBank':'PubaliBank','Pubali Bank PLC':'PubaliBank','পূবালী ব্যাংক পি এল সি':'PubaliBank','পূবালী ব্যাংক পি এল সি (Pubali Bank PLC)':'PubaliBank',
+  'IslamiBank':'IslamiBank','Islami Bank PLC':'IslamiBank','ইসলামী ব্যাংক পি এল সি':'IslamiBank','ইসলামী ব্যাংক পি এল সি (Islami Bank PLC)':'IslamiBank',
+  'Bank Transfer':'Other','Cheque':'Cheque','Other':'Other'
+};
+function normalizeMethodCode(m){
+  const s=String(m||'').trim();
+  if(!s) return '';
+  if(METHODS.includes(s)) return s;
+  if(METHOD_ALIASES[s]) return METHOD_ALIASES[s];
+  // আংশিক মিল (translate/encoding)
+  const low=s.toLowerCase();
+  if(low.includes('pubali') || s.includes('পূবালী')) return 'PubaliBank';
+  if(low.includes('islami') || s.includes('ইসলামী') || s.includes('ইসলামি')) return 'IslamiBank';
+  if(low.includes('bkash') || s.includes('বিকাশ')) return 'bKash';
+  if(low.includes('nagad') || s.includes('নগদ')) return 'Nagad';
+  if(low.includes('rocket') || s.includes('রকেট')) return 'Rocket';
+  return s;
+}
+function isBankMethod(m){ return BANK_METHODS.includes(normalizeMethodCode(m)); }
+function isMfsMethod(m){ return MFS_METHODS.includes(normalizeMethodCode(m)); }
+function methodLabel(code){
+  const c=normalizeMethodCode(code);
+  return METHOD_LABELS[c] || code || '';
+}
+function formatMethodLabel(v){
+  if(!v) return '';
+  const m=methodLabel(v.method||'');
+  const parts=[m];
+  if(v.bankBranch) parts.push('শাখা: '+v.bankBranch);
+  if(v.trxId) parts.push('TrxID: '+v.trxId);
+  return parts.filter(Boolean).join(' · ');
+}
+
 const SUMMARY_KEYS = ['opening','receivable','payable','deposit','payment','return','adjustment'];
 const SUMMARY_LABELS = {opening:'Opening',receivable:'পাওনা',payable:'দেনা',deposit:'জমা',payment:'প্রদান',return:'ফেরত',adjustment:'সমন্বয়'};
 
@@ -11163,7 +11216,21 @@ function normalizeInput(inp, a){
   const t=TYPES[type];
   if(t.needSide){ if(inp.side!=='RECV' && inp.side!=='PAY') throw E('VALIDATION','দিক নির্বাচন করুন (পাওনা / দেনা)'); out.side=inp.side; }
   else out.side=t.sign>0?'RECV':'PAY';
-  if(t.needMethod){ if(!METHODS.includes(inp.method)) throw E('VALIDATION','Payment Method নির্বাচন করুন'); out.method=inp.method; }
+  if(t.needMethod){
+    const mc=normalizeMethodCode(inp.method);
+    if(!METHODS.includes(mc)) throw E('VALIDATION','Payment Method নির্বাচন করুন');
+    out.method=mc;
+    if(isBankMethod(mc)){
+      const br=String(inp.bankBranch||'').trim();
+      if(!br) throw E('VALIDATION','ব্যাংক শাখার নাম লিখুন');
+      out.bankBranch=br.slice(0,80);
+    }
+    if(isMfsMethod(mc)){
+      const tx=String(inp.trxId||'').trim();
+      if(!tx) throw E('VALIDATION','ট্রানজেকশন আইডি (TrxID) লিখুন');
+      out.trxId=tx.slice(0,40);
+    }
+  }
   else out.method='N/A';
   const desc=String(inp.description||'').trim();
   if((type==='ADJUSTMENT') && desc.length<3) throw E('VALIDATION','সমন্বয়ের কারণ/বিবরণ লিখুন');
@@ -11206,6 +11273,8 @@ async function saveVoucher(inp){
   };
   if(n.billNo) rec.billNo=n.billNo;
   if(n.partyKind) rec.partyKind=n.partyKind;
+  if(n.bankBranch) rec.bankBranch=n.bankBranch;
+  if(n.trxId) rec.trxId=n.trxId;
   if(isRev){ rec.refVoucher=orig.voucherNo; rec.origType=n.origType; rec.origAmountPaisa=n.origAmountPaisa; rec.reason=n.reason; }
 
   let claimed=false, revClaimed=false, summaryApplied=false;
@@ -11698,7 +11767,9 @@ function openEntry(dealerId, prefill){
       <option value="RECV">ডিলারের কাছে পাওনা (+)</option><option value="PAY">ডিলারকে দেনা/অগ্রিম (−)</option></select></div>
     <div class="field"><label>তারিখ</label><input type="date" id="dlgFDate" max="${todayISO()}" value="${esc(prefill.date||todayISO())}"></div>
     <div class="field"><label>পরিমাণ (৳)</label><input type="text" inputmode="decimal" id="dlgFAmount" placeholder="যেমন 25000.50" value="${esc(prefill.amount||'')}" oninput="DLG.entryPreview()"></div>
-    <div class="field" id="dlgFMethodBox"><label>Payment Method</label><select id="dlgFMethod">${METHODS.map(m=>`<option>${m}</option>`).join('')}</select></div>
+    <div class="field" id="dlgFMethodBox"><label>Payment Method</label><select id="dlgFMethod" onchange="DLG.entryMethodChanged()">${METHOD_OPTS.map(m=>`<option value="${m.v}" ${(prefill.method===m.v||normalizeMethodCode(prefill.method)===m.v)?'selected':''}>${esc(m.label)}</option>`).join('')}</select></div>
+    <div class="field" id="dlgFBankBranchBox" style="display:none"><label>শাখার নাম <span style="color:#c23b3b">*</span></label><input type="text" id="dlgFBankBranch" maxlength="80" placeholder="যেমন: বরিশাল শাখা" value="${esc(prefill.bankBranch||'')}"></div>
+    <div class="field" id="dlgFTrxBox" style="display:none"><label>ট্রানজেকশন আইডি (TrxID) <span style="color:#c23b3b">*</span></label><input type="text" id="dlgFTrxId" maxlength="40" placeholder="bKash / Nagad / Rocket TrxID" value="${esc(prefill.trxId||'')}"></div>
     <div class="field"><label>বিবরণ (Description)</label><input type="text" id="dlgFDesc" maxlength="300" placeholder="যেমন: Invoice #123 / নগদ জমা" value="${esc(prefill.description||'')}"></div>
     <div class="field" id="dlgFBillBox" style="display:none"><label>বিল নং (ঐচ্ছিক)</label><input type="text" id="dlgFBill" maxlength="40" placeholder="খালি থাকলে Voucher নম্বর ব্যবহার হবে" value="${esc(prefill.billNo||'')}"></div>
     <div id="dlgFMsgBox" style="display:none;border:1px dashed var(--line);border-radius:10px;padding:10px;margin:6px 0">
@@ -11723,7 +11794,16 @@ function entryTypeChanged(){
   const bb=$('dlgFBillBox'); if(bb) bb.style.display = ['DEPOSIT','SALE','RETURN'].includes(t.value) ? '' : 'none';
   const mb=$('dlgFMsgBox'); if(mb) mb.style.display = ((t.value==='DEPOSIT'||t.value==='SALE') && canMessage()) ? '' : 'none';
   const dd=$('dlgFDesc'); if(dd) dd.placeholder = t.value==='SALE' ? 'পার্টসের নাম/পরিমাণ, যেমন: Brake Pad x2, Oil Filter x1' : 'যেমন: Invoice #123 / নগদ জমা';
+  entryMethodChanged();
   entryPreview();
+}
+function entryMethodChanged(){
+  const methodBox=$('dlgFMethodBox');
+  const methodVisible = methodBox && methodBox.style.display!=='none';
+  const m=normalizeMethodCode(($('dlgFMethod')&&$('dlgFMethod').value)||'');
+  const bankBox=$('dlgFBankBranchBox'), trxBox=$('dlgFTrxBox');
+  if(bankBox) bankBox.style.display = (methodVisible && isBankMethod(m)) ? '' : 'none';
+  if(trxBox) trxBox.style.display = (methodVisible && isMfsMethod(m)) ? '' : 'none';
 }
 function entryPreview(){
   const box=$('dlgFPreview'); if(!box) return;
@@ -11739,7 +11819,9 @@ async function submitEntry(){
   const btn=$('dlgFSave'), err=$('dlgFErr');
   const inp={ opId:LG.opId, dealerId:$('dlgFDealer').value, type:$('dlgFType').value, side:$('dlgFSide').value,
     date:$('dlgFDate').value, amount:$('dlgFAmount').value, method:$('dlgFMethod').value, description:$('dlgFDesc').value,
-    billNo: (['DEPOSIT','SALE','RETURN'].includes($('dlgFType').value) && $('dlgFBill')) ? $('dlgFBill').value : '' };
+    billNo: (['DEPOSIT','SALE','RETURN'].includes($('dlgFType').value) && $('dlgFBill')) ? $('dlgFBill').value : '',
+    bankBranch: $('dlgFBankBranch') ? $('dlgFBankBranch').value : '',
+    trxId: $('dlgFTrxId') ? $('dlgFTrxId').value : '' };
   const wantMsg=((inp.type==='DEPOSIT'||inp.type==='SALE') && canMessage()); const msgLang=$('dlgFLang')?$('dlgFLang').value:'bn';
   err.style.display='none';
   LG.saving=true; btn.disabled=true; btn.textContent='⏳ সেভ হচ্ছে...';
@@ -11908,34 +11990,19 @@ const MSG_CHANNELS = {sms:'SMS', wa:'WhatsApp'};
 const TEMPLATES = {
   pay:{
     bn:
-"প্রিয় {dealerName},\n\nআপনার বিলের বিপরীতে ৳{paid} টাকা সফলভাবে জমা হয়েছে।\n\n" +
-"বিল/ভাউচার: {billNo}\nরসিদ নং: {receiptNo}\nআইডি: {dealerId}\nতারিখ: {date} {time}\n" +
-"জমার পরিমাণ: ৳{paid}\nপেমেন্ট মাধ্যম: {method}\nপূর্বের বকেয়া: ৳{prevDue}\nবর্তমান বকেয়া: ৳{currDue}\n\nধন্যবাদ।\nMetal Parts Limited",
+"*{companyName}*\n{companyPlace}\n\n✅ *টাকা গৃহীত*\n\n*টাকা সংগ্রহ রসিদ*\n\nকাস্টমার: *{dealerName}*\nতারিখ ও সময়: {date} · {time}\nপেমেন্ট মাধ্যম: {method}\n\nজমার পরিমাণ: *৳{paid}*\n\nপূর্বের বকেয়া: ৳{prevDue}\nবর্তমান বকেয়া: ৳{currDue}\n\nবিস্তারিত দেখতে লিংক ব্যবহার করুন:\n{detailLink}\n\nধন্যবাদ।",
     en:
-"Dear {dealerName},\n\nYour payment of ৳{paid} against the bill has been received successfully.\n\n" +
-"Bill/Voucher: {billNo}\nReceipt No: {receiptNo}\nID: {dealerId}\nDate: {date} {time}\n" +
-"Paid Amount: ৳{paid}\nPayment Method: {method}\nPrevious Due: ৳{prevDue}\nCurrent Due: ৳{currDue}\n\nThank you.\nMetal Parts Limited",
+"*{companyName}*\n{companyPlace}\n\n✅ *Payment Received*\n\n*Money Collection Receipt*\n\nCustomer: *{dealerName}*\nDate & Time: {date} · {time}\nPayment Method: {method}\n\nAmount Received: *৳{paid}*\n\nPrevious Due: ৳{prevDue}\nCurrent Due: ৳{currDue}\n\nView details:\n{detailLink}\n\nThank you.",
     both:
-"প্রিয় {dealerName},\n\nআপনার বিলের বিপরীতে ৳{paid} টাকা সফলভাবে জমা হয়েছে।\n\n" +
-"Your payment of ৳{paid} against the bill has been received successfully.\n\n" +
-"বিল/ভাউচার / Bill-Voucher: {billNo}\nরসিদ নং / Receipt No: {receiptNo}\nআইডি / ID: {dealerId}\n" +
-"তারিখ / Date: {date} {time}\nপেমেন্ট মাধ্যম / Payment Method: {method}\n" +
-"পূর্বের বকেয়া / Previous Due: ৳{prevDue}\nবর্তমান বকেয়া / Current Due: ৳{currDue}\n\nধন্যবাদ / Thank you.\nMetal Parts Limited"
+"*{companyName}*\n{companyPlace}\n\n✅ *টাকা গৃহীত / Payment Received*\n\n*টাকা সংগ্রহ রসিদ*\n\nকাস্টমার / Customer: *{dealerName}*\nতারিখ / Date: {date} · {time}\nপেমেন্ট মাধ্যম / Method: {method}\n\nজমা / Received: *৳{paid}*\n\nপূর্বের বকেয়া / Previous Due: ৳{prevDue}\nবর্তমান বকেয়া / Current Due: ৳{currDue}\n\nবিস্তারিত / Details:\n{detailLink}\n\nধন্যবাদ / Thank you."
   },
   sale:{
     bn:
-"প্রিয় {dealerName},\n\nআপনাকে পার্টস সরবরাহ করা হয়েছে।\n\n" +
-"পার্টস/বিবরণ: {items}\nবিল/ভাউচার: {billNo}\nআইডি: {dealerId}\nতারিখ: {date} {time}\n" +
-"বিলের পরিমাণ: ৳{amount}\nপূর্বের বকেয়া: ৳{prevDue}\nবর্তমান বকেয়া: ৳{currDue}\n\nধন্যবাদ।\nMetal Parts Limited",
+"*{companyName}*\n{companyPlace}\n\n✅ *অর্ডার সফল*\n\n*অর্ডার কনফার্মেশন*\n\nকাস্টমার: *{dealerName}*\nতারিখ ও সময়: {date} · {time}\nঅর্ডার বিবরণী: {items}\nবিল / কুরিয়ার: {billNo}\n\nবিলের পরিমাণ: *৳{amount}*\n\nপূর্বের বকেয়া: ৳{prevDue}\nবর্তমান বকেয়া: ৳{currDue}\n\nবিস্তারিত দেখতে লিংক ব্যবহার করুন:\n{detailLink}\n\nধন্যবাদ।",
     en:
-"Dear {dealerName},\n\nYour parts have been delivered.\n\n" +
-"Parts/Details: {items}\nBill/Voucher: {billNo}\nID: {dealerId}\nDate: {date} {time}\n" +
-"Bill Amount: ৳{amount}\nPrevious Due: ৳{prevDue}\nCurrent Due: ৳{currDue}\n\nThank you.\nMetal Parts Limited",
+"*{companyName}*\n{companyPlace}\n\n✅ *Order Successful*\n\n*Order Confirmation*\n\nCustomer: *{dealerName}*\nDate & Time: {date} · {time}\nOrder Details: {items}\nBill / Courier: {billNo}\n\nBill Amount: *৳{amount}*\n\nPrevious Due: ৳{prevDue}\nCurrent Due: ৳{currDue}\n\nView details:\n{detailLink}\n\nThank you.",
     both:
-"প্রিয় {dealerName},\n\nআপনাকে পার্টস সরবরাহ করা হয়েছে।\n\nYour parts have been delivered.\n\n" +
-"পার্টস/বিবরণ / Parts-Details: {items}\nবিল/ভাউচার / Bill-Voucher: {billNo}\nআইডি / ID: {dealerId}\n" +
-"তারিখ / Date: {date} {time}\nবিলের পরিমাণ / Bill Amount: ৳{amount}\n" +
-"পূর্বের বকেয়া / Previous Due: ৳{prevDue}\nবর্তমান বকেয়া / Current Due: ৳{currDue}\n\nধন্যবাদ / Thank you.\nMetal Parts Limited"
+"*{companyName}*\n{companyPlace}\n\n✅ *অর্ডার সফল / Order Successful*\n\n*অর্ডার কনফার্মেশন*\n\nকাস্টমার / Customer: *{dealerName}*\nতারিখ / Date: {date} · {time}\nবিবরণী / Details: {items}\nবিল / Bill: {billNo}\n\nবিলের পরিমাণ / Amount: *৳{amount}*\n\nপূর্বের বকেয়া / Previous Due: ৳{prevDue}\nবর্তমান বকেয়া / Current Due: ৳{currDue}\n\nবিস্তারিত / Details:\n{detailLink}\n\nধন্যবাদ / Thank you."
   }
 };
 function msgKind(v){ return v && v.type==='SALE' ? 'sale' : 'pay'; }
@@ -11972,18 +12039,146 @@ function dueText(balance, lang){
 function timeHM(iso){ const d=iso?new Date(iso):null; return (d&&!isNaN(d)) ? pad2(d.getHours())+':'+pad2(d.getMinutes()) : ''; }
 
 // সব সংখ্যা Voucher + Database-এর প্রকৃত ডেটা থেকে (LG.vouchers = এইমাত্র Firebase থেকে পড়া)
+function buildDetailLink(voucherNo){
+  // ক্লিকেবল পাবলিক লিংক (WhatsApp এ অটো-লিংক হয়)
+  const base='https://sabihasoft.pages.dev/';
+  try{
+    const u=new URL(base);
+    if(voucherNo) u.searchParams.set('dlgReceipt', String(voucherNo));
+    return u.toString();
+  }catch(e){
+    return base + (voucherNo ? ('?dlgReceipt='+encodeURIComponent(String(voucherNo))) : '');
+  }
+}
 function buildMessageData(v, allVouchers){
   const vs=allVouchers||LG.vouchers;
   const dealerBal=vs.filter(x=>String(x.dealerId)===String(v.dealerId)).reduce((s,x)=>s+x.effectPaisa,0);
   let prev;
   if(Number.isFinite(v.balanceAfterPaisa)) prev=v.balanceAfterPaisa-v.effectPaisa;
   else prev=vs.filter(x=>String(x.dealerId)===String(v.dealerId) && cmpVouchers(x,v)<0).reduce((s,x)=>s+x.effectPaisa,0);
+  const companyName=(typeof DB!=='undefined' && DB.settings && DB.settings.companyName) ? DB.settings.companyName : 'Metal Parts Limited';
+  const companyPlace=(typeof DB!=='undefined' && DB.settings && DB.settings.companyPlace) ? DB.settings.companyPlace : 'Barishal · Bangladesh';
   return {
     dealerName:v.dealerName, dealerId:String(v.dealerId), billNo:v.billNo||v.voucherNo,
     receiptNo:'RC-'+String(v.voucherNo).replace(/\D/g,''), date:v.date, time:timeHM(v.createdAt),
-    paid:num(v.amountPaisa), amount:num(v.amountPaisa), items:(v.description && v.description!==TYPES.SALE.short)?v.description:'—', method:v.method||'', prevBal:prev, currBal:dealerBal
+    paid:num(v.amountPaisa), amount:num(v.amountPaisa), items:(v.description && v.description!==TYPES.SALE.short)?v.description:'—',
+    method:formatMethodLabel(v)||(v.method||''), prevBal:prev, currBal:dealerBal,
+    companyName:companyName, companyPlace:companyPlace, detailLink:buildDetailLink(v.voucherNo)
   };
 }
+/* WhatsApp/রসিদ কার্ড ইমেজ (পেমেন্ট=সবুজ, অর্ডার=নীল) — wa.me শুধু টেক্সট পাঠায়, তাই ইমেজ ডাউনলোড+শেয়ার */
+function receiptImageDataUrl(kind, d){
+  const isPay = (kind||'pay')!=='sale';
+  const W=680, H=960;
+  const c=document.createElement('canvas'); c.width=W; c.height=H;
+  const ctx=c.getContext('2d');
+  const head=isPay?'#0f9d58':'#1a56db';
+  const head2=isPay?'#0b7a44':'#1246b0';
+  const soft=isPay?'#e8f8ef':'#e8f0fe';
+  const accent=isPay?'#0f9d58':'#1a56db';
+  // background
+  ctx.fillStyle='#f3f6fb'; ctx.fillRect(0,0,W,H);
+  // header
+  const hg=ctx.createLinearGradient(0,0,0,150);
+  hg.addColorStop(0,head); hg.addColorStop(1,head2);
+  ctx.fillStyle=hg; ctx.fillRect(0,0,W,150);
+  ctx.fillStyle='rgba(255,255,255,.12)';
+  ctx.beginPath(); ctx.arc(40,20,90,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(W-30,120,70,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#fff'; ctx.textAlign='center';
+  ctx.font='bold 34px system-ui,Segoe UI,sans-serif';
+  ctx.fillText(String(d.companyName||'Company').slice(0,34), W/2, 58);
+  ctx.font='16px system-ui,Segoe UI,sans-serif';
+  ctx.fillStyle='rgba(255,255,255,.9)';
+  ctx.fillText(String(d.companyPlace||'').slice(0,40), W/2, 88);
+  // badge
+  const badge=isPay?'টাকা গৃহীত':'অর্ডার সফল';
+  ctx.fillStyle='#fff'; roundRect(ctx, W/2-70, 108, 140, 28, 14); ctx.fill();
+  ctx.fillStyle=accent; ctx.font='bold 14px system-ui,Segoe UI,sans-serif';
+  ctx.fillText(badge, W/2, 127);
+  // card
+  ctx.fillStyle='#fff';
+  roundRect(ctx, 36, 170, W-72, 720, 22); ctx.fill();
+  // title pill
+  ctx.fillStyle=soft;
+  roundRect(ctx, 70, 198, W-140, 48, 14); ctx.fill();
+  ctx.fillStyle=accent; ctx.font='bold 22px system-ui,Segoe UI,sans-serif'; ctx.textAlign='center';
+  ctx.fillText(isPay?'টাকা সংগ্রহ রসিদ':'অর্ডার কনফার্মেশন', W/2, 229);
+  // rows
+  ctx.textAlign='left';
+  const rows=isPay
+    ?[['কাস্টমার', String(d.dealerName||'')],['তারিখ ও সময়', String(d.date||'')+' · '+String(d.time||'')],['পেমেন্ট মাধ্যম', String(d.method||'—')]]
+    :[['কাস্টমার', String(d.dealerName||'')],['তারিখ ও সময়', String(d.date||'')+' · '+String(d.time||'')],['অর্ডার বিবরণী', String(d.items||'—')],['বিল / কুরিয়ার', String(d.billNo||'—')]];
+  let y=280;
+  rows.forEach((r,i)=>{
+    if(i%2===1){ ctx.fillStyle='#f7fafc'; ctx.fillRect(70,y-22,W-140,40); }
+    ctx.fillStyle='#64748b'; ctx.font='15px system-ui,Segoe UI,sans-serif'; ctx.textAlign='left';
+    ctx.fillText(r[0], 86, y);
+    ctx.fillStyle='#0f172a'; ctx.font='bold 15px system-ui,Segoe UI,sans-serif'; ctx.textAlign='right';
+    const t=String(r[1]||'—');
+    ctx.fillText(t.length>32?t.slice(0,30)+'…':t, W-86, y);
+    y+=44;
+  });
+  // amount box
+  y+=10;
+  ctx.fillStyle=soft;
+  roundRect(ctx, 70, y, W-140, 78, 14); ctx.fill();
+  ctx.fillStyle=accent; ctx.fillRect(70,y,8,78);
+  ctx.fillStyle='#334155'; ctx.font='16px system-ui,Segoe UI,sans-serif'; ctx.textAlign='left';
+  ctx.fillText(isPay?'জমার পরিমাণ':'বিলের পরিমাণ', 96, y+32);
+  ctx.fillStyle='#dc2626'; ctx.font='bold 30px system-ui,Segoe UI,sans-serif'; ctx.textAlign='right';
+  ctx.fillText('৳'+(isPay?String(d.paid||'0'):String(d.amount||'0')), W-96, y+48);
+  // due boxes
+  y+=100;
+  const prev=String(dueText(d.prevBal,'bn'));
+  const curr=String(dueText(d.currBal,'bn'));
+  ctx.fillStyle='#fef2f2'; roundRect(ctx, 70, y, (W-140)/2-8, 78, 14); ctx.fill();
+  ctx.fillStyle='#ecfdf5'; roundRect(ctx, 70+(W-140)/2+8, y, (W-140)/2-8, 78, 14); ctx.fill();
+  ctx.textAlign='center';
+  ctx.fillStyle='#b91c1c'; ctx.font='13px system-ui,Segoe UI,sans-serif';
+  ctx.fillText('পূর্বের বকেয়া', 70+(W-140)/4-4, y+28);
+  ctx.font='bold 20px system-ui,Segoe UI,sans-serif';
+  ctx.fillText('৳'+prev, 70+(W-140)/4-4, y+56);
+  ctx.fillStyle='#15803d'; ctx.font='13px system-ui,Segoe UI,sans-serif';
+  ctx.fillText('বর্তমান বকেয়া', 70+(W-140)*3/4+4, y+28);
+  ctx.font='bold 20px system-ui,Segoe UI,sans-serif';
+  ctx.fillText('৳'+curr, 70+(W-140)*3/4+4, y+56);
+  // link + thanks
+  y+=115;
+  ctx.fillStyle='#94a3b8'; ctx.font='13px system-ui,Segoe UI,sans-serif'; ctx.textAlign='center';
+  ctx.fillText('বিস্তারিত রিপোর্ট দেখতে লিংক ব্যবহার করুন', W/2, y);
+  y+=28;
+  ctx.fillStyle=accent; ctx.font='12px system-ui,Segoe UI,sans-serif';
+  const link=String(d.detailLink||'');
+  const linkShort=link.length>62?link.slice(0,60)+'…':link;
+  ctx.fillText(linkShort, W/2, y);
+  y+=40;
+  ctx.fillStyle=accent; ctx.font='bold 22px system-ui,Segoe UI,sans-serif';
+  ctx.fillText('ধন্যবাদ', W/2, y);
+  // footer
+  ctx.fillStyle=head2; ctx.fillRect(0,H-56,W,56);
+  ctx.fillStyle='rgba(255,255,255,.92)'; ctx.font='14px system-ui,Segoe UI,sans-serif';
+  ctx.fillText(String(d.companyName||'')+' · '+(String(d.companyPlace||'').split('·')[0]||'').trim(), W/2, H-22);
+  return c.toDataURL('image/png');
+}
+function roundRect(ctx,x,y,w,h,r){
+  const rr=Math.min(r,w/2,h/2);
+  ctx.beginPath();
+  ctx.moveTo(x+rr,y);
+  ctx.arcTo(x+w,y,x+w,y+h,rr);
+  ctx.arcTo(x+w,y+h,x,y+h,rr);
+  ctx.arcTo(x,y+h,x,y,rr);
+  ctx.arcTo(x,y,x+w,y,rr);
+  ctx.closePath();
+}
+function downloadDataUrl(dataUrl, filename){
+  try{
+    const a=document.createElement('a');
+    a.href=dataUrl; a.download=filename||'receipt.png';
+    document.body.appendChild(a); a.click(); a.remove();
+  }catch(e){}
+}
+
 function renderMessage(lang, d, kind){
   const set=TEMPLATES[kind||'pay']; const tpl=set && set[lang]; if(typeof tpl!=='string') throw E('BAD_LANG','অবৈধ ভাষা');
   const vars=Object.assign({}, d, {prevDue:dueText(d.prevBal,lang), currDue:dueText(d.currBal,lang)});
@@ -12062,7 +12257,9 @@ async function sendMessage(voucherNo, ch, lang, opts){
     try{ await withTimeout(R('messages/'+voucherNo+'/'+ch+'/status').set('Failed')); }catch(e2){}
     throw e;
   }
-  return {ok:true, body, phone, seg, channel:ch, url: ch==='sms'?smsLink(phone,body):waLink(phone,body)};
+  let imageDataUrl='';
+  try{ if(ch==='wa') imageDataUrl=receiptImageDataUrl(kind, data); }catch(e){}
+  return {ok:true, body, phone, seg, channel:ch, url: ch==='sms'?smsLink(phone,body):waLink(phone,body), imageDataUrl, kind, data};
 }
 async function resolveMessage(voucherNo, ch, outcome){
   const a=actor(); if(!a) throw E('NO_ACTOR','লগইন যাচাই করা যায়নি');
@@ -12122,35 +12319,61 @@ function renderMessagePanel(){
   const anyPending=['sms','wa'].some(c=>chStatus(msg,c)==='Pending');
   const lang = anyPending && msg && msg.lang ? msg.lang : ctx.lang; ctx.lang=lang;
   const kind=msgKind(v), data=buildMessageData(v), body=renderMessage(lang,data,kind), seg=smsInfo(body);
+  let cardImg='';
+  try{ cardImg=receiptImageDataUrl(kind, data); }catch(e){ cardImg=''; }
   modal(`
-    <h3 style="margin:0 0 8px">${kind==='sale'?'🛒 পার্টস সরবরাহ বার্তা (WhatsApp/SMS)':'✉️ Payment Confirmation Message'}</h3>
+    <h3 style="margin:0 0 8px">${kind==='sale'?'🛒 অর্ডার কনফার্মেশন (WhatsApp/SMS)':'✉️ টাকা সংগ্রহ রসিদ (WhatsApp/SMS)'}</h3>
     <div class="dlg-dealerbox"><b>${esc(v.dealerName)}</b> · ID ${esc(v.dealerId)} · 📞 ${esc(info.phone||'—')}<br>
       Voucher <code>${esc(v.voucherNo)}</code> · ${esc(v.date)} ${esc(data.time)} · ${kind==='sale'?'বিল':'জমা'} <b>${fmt(v.amountPaisa)}</b>${kind==='pay'?` (${esc(v.method||'')})`:''}<br>
-      পূর্বের বকেয়া: <b>${balHTML(data.prevBal)}</b> → বর্তমান বকেয়া (DB থেকে পুনর্গণিত): <b>${balHTML(data.currBal)}</b></div>
+      পূর্বের বকেয়া: <b>${balHTML(data.prevBal)}</b> → বর্তমান বকেয়া: <b>${balHTML(data.currBal)}</b></div>
     ${phone?'':`<div class="dlg-alert">⚠️ এই পার্টির মোবাইল নম্বর নেই বা সঠিক নয় (${esc(info.phone||'খালি')})। নম্বর যোগ না করা পর্যন্ত Send বোতাম বন্ধ থাকবে।</div>`}
     <div class="field" style="margin-top:10px"><label>Message Language</label>
       <select id="dlgMLang" onchange="DLG.msgSetLang(this.value)" ${anyPending?'disabled':''}>
         ${Object.keys(MSG_LANGS).map(k=>`<option value="${k}" ${k===lang?'selected':''}>${MSG_LANGS[k]}</option>`).join('')}</select></div>
-    <label style="font-size:12.5px;color:var(--muted)">Preview Message${anyPending?' (Pending চেষ্টার ভাষা)':''}</label>
+    <label style="font-size:12.5px;color:var(--muted);display:block;margin-top:8px">রসিদ কার্ড প্রিভিউ (WhatsApp ইমেজ)</label>
+    ${cardImg?`<div style="text-align:center;margin:8px 0 10px"><img src="${cardImg}" alt="receipt" style="max-width:100%;width:320px;border-radius:12px;box-shadow:0 8px 24px rgba(15,23,42,.12);border:1px solid var(--line)"></div>
+    <button type="button" class="btn btn-ghost btn-sm" style="width:100%;margin-bottom:8px" onclick="downloadDataUrl(this.dataset.src,'receipt.png')" data-src="${cardImg}">⬇️ রসিদ ইমেজ ডাউনলোড</button>`:''}
+    <label style="font-size:12.5px;color:var(--muted)">টেক্সট মেসেজ (লিংকসহ)${anyPending?' (Pending)':''}</label>
     <pre class="dlg-msgprev" id="dlgMPrev">${esc(body)}</pre>
-    <div class="dlg-sub" style="margin:4px 0 10px">SMS: ${seg.unicode?'Unicode':'GSM-7'} · ${seg.length} অক্ষর · <b>${seg.segments} segment</b> (প্রতি segment ${seg.perSegment}) · WhatsApp-এ একই টেক্সট</div>
+    <div class="dlg-sub" style="margin:4px 0 10px">SMS: ${seg.unicode?'Unicode':'GSM-7'} · ${seg.length} অক্ষর · <b>${seg.segments} segment</b> · WA: ইমেজ ডাউনলোড + টেক্সট</div>
     ${(kind==='sale'?['wa','sms']:['sms','wa']).map(c=>chanBlock(c,v,phone,msg)).join('')}
     <div id="dlgMErr" class="dlg-alert" style="display:none"></div>
-    <p class="hint" style="margin-top:8px">ℹ️ ব্রাউজার থেকে সরাসরি SMS/WhatsApp পাঠানো যায় না। Send চাপলে আপনার ফোন/ব্রাউজারে অ্যাপ খুলবে; সেখানে পাঠানোর পর এখানে “পাঠানো হয়েছে” নিশ্চিত করুন — সেটাই Sent হিসেবে সংরক্ষিত হবে।</p>
+    <p class="hint" style="margin-top:8px">ℹ️ WhatsApp Send চাপলে রসিদ <b>ইমেজ ডাউনলোড</b> হবে এবং WhatsApp খুলবে (টেক্সট+বিস্তারিত লিংক)। ইমেজটি চ্যাটে অ্যাটাচ করে পাঠান। তারপর এখানে “পাঠানো হয়েছে” নিশ্চিত করুন।</p>
     <button class="btn btn-ghost" style="width:100%;margin-top:8px" onclick="DLG.closeModal()">বন্ধ করুন</button>`);
 }
 function msgSetLang(l){ if(!MSG_LANGS[l]) return; LG.ui.msgLang=l; if(LG.msgCtx) LG.msgCtx.lang=l; renderMessagePanel(); }
 function msgErr(e){ const b=$('dlgMErr'); if(b){ b.style.display='block'; b.textContent='❌ '+friendlyError(e); } }
 async function msgSend(ch, resend){
-  const ctx=LG.msgCtx; if(!ctx || LG.msgBusy) return;
-  if(resend && !confirm('এই পেমেন্টের মেসেজ আগেই পাঠানো হয়েছে। আবার পাঠাতে চান? (Audit Log-এ লেখা হবে)')) return;
-  LG.msgBusy=true;
+  const ctx=LG.msgCtx; if(!ctx) return;
   try{
-    const r=await sendMessage(ctx.voucherNo,ch,ctx.lang,{resend:!!resend});
-    await loadAll().catch(()=>{}); renderMessagePanel(); extOpen(r.url);
+    const r=await sendMessage(ctx.voucherNo, ch, ctx.lang||LG.ui.msgLang||'bn', {resend:!!resend});
+    await loadAll().catch(()=>{}); renderMessagePanel();
+    if(ch==='wa' && r.imageDataUrl){
+      // মোবাইলে Web Share → সরাসরি WhatsApp এ ইমেজ+টেক্সট (লিংক ক্লিকেবল)
+      let shared=false;
+      try{
+        if(navigator.share){
+          const blob=await (await fetch(r.imageDataUrl)).blob();
+          const file=new File([blob], (r.kind==='sale'?'order':'payment')+'_receipt.png', {type:'image/png'});
+          const payload={ files:[file], text:r.body, title:'SaBiHa Soft Receipt' };
+          if(!navigator.canShare || navigator.canShare({files:[file]})){
+            await navigator.share(payload);
+            shared=true;
+          }
+        }
+      }catch(e){ shared=false; }
+      if(!shared){
+        // ফallback: ইমেজ ডাউনলোড + WhatsApp টেক্সট (লিংকসহ) খোলা
+        downloadDataUrl(r.imageDataUrl, (r.kind==='sale'?'order':'payment')+'_'+(ctx.voucherNo||'receipt')+'.png');
+        extOpen(r.url);
+        toast('⬇️ রসিদ ইমেজ সেভ হয়েছে — WhatsApp এ অ্যাটাচ করে পাঠান');
+      }
+    } else {
+      extOpen(r.url);
+    }
   }catch(e){
     await loadAll().catch(()=>{}); renderMessagePanel(); msgErr(e);
-  }finally{ LG.msgBusy=false; }
+  }
 }
 async function msgResolve(ch, outcome){
   const ctx=LG.msgCtx; if(!ctx || LG.msgBusy) return; LG.msgBusy=true;
@@ -12365,7 +12588,7 @@ async function peHook(){
 
 window.DLG={
   tabHTML, wire, reload, setView, setDueQ, setDueOnly, setF, setQ, setAuditQ, clearFilters, openLedger, openDueDetail,
-  openEntry, entryTypeChanged, entryPreview, submitEntry, openReverse, submitReverse, closeModal,
+  openEntry, entryTypeChanged, entryMethodChanged, entryPreview, submitEntry, openReverse, submitReverse, closeModal,
   printStatement, printDue, exportLedger, exportDue, pdfDue, recalcAll, changePerm, peHook,
   openParty, submitParty, myReload, myFilter, openMessage, msgSetLang, msgSend, msgResolve, entryMsgPreview, setMsgF, setMsgQ, openAdvanceDetails,
   selfHook,
