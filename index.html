@@ -44,7 +44,7 @@ document.currentScript.parentNode.insertBefore(manifestLink, document.currentScr
 // প্রতিটি নতুন deployment/update দেওয়ার আগে এই APP_VERSION ভ্যালুটা পরিবর্তন করুন
 // (যেকোনো ইউনিক স্ট্রিং — তারিখ/সময় বা running number)। এই ভ্যালুর ভিত্তিতেই
 // সব ডিভাইস স্বয়ংক্রিয়ভাবে নতুন version detect করে reload হবে।
-window.APP_VERSION = '2026-10-28-kpi-beauty-center.42';
+window.APP_VERSION = '2026-10-28-hide-tech-save-error.43';
 
 (function(){
   // পুরনো/legacy blob-based service worker ও পুরনো Cache Storage সম্পূর্ণ পরিষ্কার করে দেওয়া হয়,
@@ -3100,7 +3100,8 @@ function showSaveFailure(reason, blocked){
       b=document.createElement('div');
       b.id='saveFailBanner';
       b.style.cssText='position:fixed;left:8px;right:8px;top:calc(env(safe-area-inset-top,0px) + 8px);z-index:2147483000;background:#c23b3b;color:#fff;padding:12px 14px;border-radius:10px;font-weight:600;font-size:14px;line-height:1.5;box-shadow:0 6px 24px rgba(0,0,0,.35);display:flex;gap:10px;align-items:flex-start;';
-      b.innerHTML='<div style="flex:1"><div>⚠️ সেভ হয়নি! ইন্টারনেট/পারমিশন চেক করুন — রিফ্রেশ করলে এই পরিবর্তন হারিয়ে যাবে।</div><div id="saveFailReason" style="font-weight:400;font-size:12px;opacity:.9;margin-top:4px;word-break:break-word"></div></div><button type="button" id="saveFailRetry" style="background:#fff;color:#c23b3b;border:0;border-radius:8px;padding:8px 12px;font-weight:700;cursor:pointer;white-space:nowrap">🔄 আবার চেষ্টা</button>';
+      // ইউজার-ফ্রেন্ডলি মেসেজ মাত্র — Firebase/technical error টেক্সট দেখানো হয় না
+      b.innerHTML='<div style="flex:1"><div>⚠️ সেভ হয়নি! ইন্টারনেট/পারমিশন চেক করুন — রিফ্রেশ করলে এই পরিবর্তন হারিয়ে যাবে।</div></div><button type="button" id="saveFailRetry" style="background:#fff;color:#c23b3b;border:0;border-radius:8px;padding:8px 12px;font-weight:700;cursor:pointer;white-space:nowrap">🔄 আবার চেষ্টা</button>';
       document.body.appendChild(b);
       document.getElementById('saveFailRetry').onclick=async function(){
         if(window._saveFailBlocked){ location.reload(); return; }
@@ -3113,8 +3114,8 @@ function showSaveFailure(reason, blocked){
     window._saveFailBlocked = !!blocked;
     const rb=document.getElementById('saveFailRetry');
     if(rb) rb.textContent = blocked ? '🔄 রিলোড' : '🔄 আবার চেষ্টা';
-    const r=document.getElementById('saveFailReason');
-    if(r) r.textContent=String(reason||'').slice(0,200);
+    // technical reason (Firebase AuthError ইত্যাদি) ইউজারকে দেখানো হয় না; console-এ রাখা হয়
+    if(reason){ try{ console.warn('[saveFail]', reason); }catch(e){} }
     b.style.display='flex';
   }catch(e){}
 }
