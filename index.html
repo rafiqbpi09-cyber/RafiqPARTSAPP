@@ -44,7 +44,7 @@ document.currentScript.parentNode.insertBefore(manifestLink, document.currentScr
 // প্রতিটি নতুন deployment/update দেওয়ার আগে এই APP_VERSION ভ্যালুটা পরিবর্তন করুন
 // (যেকোনো ইউনিক স্ট্রিং — তারিখ/সময় বা running number)। এই ভ্যালুর ভিত্তিতেই
 // সব ডিভাইস স্বয়ংক্রিয়ভাবে নতুন version detect করে reload হবে।
-window.APP_VERSION = '2026-10-27-suspicious-mod-card.38';
+window.APP_VERSION = '2026-10-28-suspicious-fullpage.40';
 
 (function(){
   // পুরনো/legacy blob-based service worker ও পুরনো Cache Storage সম্পূর্ণ পরিষ্কার করে দেওয়া হয়,
@@ -7775,11 +7775,34 @@ function ensureAdminNoticeWatcher(){
     console.error('adminNotices listener failed:', err);
   });
 }
-function openModal(html){
-  document.getElementById('modalBody').innerHTML = html;
-  document.getElementById('modalBg').classList.add('show');
+function ensureAppModal(){
+  let bg = document.getElementById('modalBg');
+  let body = document.getElementById('modalBody');
+  if(!bg || !body){
+    // পুরনো/অসম্পূর্ণ মডাল সরিয়ে নতুন বানানো
+    if(bg && bg.parentNode) bg.parentNode.removeChild(bg);
+    bg = document.createElement('div');
+    bg.className = 'modal-bg';
+    bg.id = 'modalBg';
+    bg.innerHTML = '<div class="modal" id="modalBody"></div>';
+    document.body.appendChild(bg);
+    bg.addEventListener('click', (ev)=>{ if(ev.target.id==='modalBg') closeModal(); });
+    body = document.getElementById('modalBody');
+  }
+  return { bg, body };
 }
-function closeModal(){ document.getElementById('modalBg').classList.remove('show'); }
+function openModal(html){
+  const { bg, body } = ensureAppModal();
+  if(!body || !bg){ alert('মডাল খোলা যায়নি'); return; }
+  body.innerHTML = html;
+  bg.classList.add('show');
+}
+function closeModal(){
+  const bg = document.getElementById('modalBg');
+  if(bg) bg.classList.remove('show');
+  const body = document.getElementById('modalBody');
+  if(body) body.innerHTML = '';
+}
 
 /* ================= PARTS ENGINEER PORTAL (নিজের Region-ভিত্তিক, স্বয়ংক্রিয়ভাবে সীমাবদ্ধ) ================= */
 function peShell(innerHTML){
@@ -8199,50 +8222,84 @@ function scanSuspiciousVouchers(vouchers){
   return list;
 }
 function openAdminSuspiciousList(){
-  (async ()=>{
-    try{
-      if(window.DLG && DLG._t && typeof DLG._t.loadAll === 'function') await DLG._t.loadAll();
-      const vouchers = (window.DLG && DLG._t && DLG._t.LG && DLG._t.LG.vouchers) ? DLG._t.LG.vouchers : [];
-      const rows = scanSuspiciousVouchers(vouchers);
-      const limit = suspiciousAmountLimitTaka();
-      const fmtAmt = (p)=>{
-        try{ if(window.DLG && DLG._t && typeof DLG._t.fmt==='function') return DLG._t.fmt(Math.abs(p)); }catch(e){}
-        return '৳'+((Math.abs(p)||0)/100).toLocaleString('en-IN');
-      };
-      const typeLabel = (t)=>{
-        try{ if(window.DLG && DLG._t && DLG._t.TYPES && DLG._t.TYPES[t]) return DLG._t.TYPES[t].short || t; }catch(e){}
-        return t||'—';
-      };
-      openModal(`
-        <h3 style="margin:0 0 6px">⚠️ সন্দেহজনক এন্ট্রি</h3>
-        <p class="hint" style="margin:0 0 12px">শেষ ৩০ দিন · ≥৳${limit.toLocaleString('en-IN')} অথবা রাত ১০টা–সকাল ৬টা।</p>
-        <div style="max-height:55vh;overflow:auto;border:1px solid var(--line);border-radius:10px">
-          <table class="dlg-table" style="min-width:520px;font-size:13px">
-            <thead><tr>
-              <th>তারিখ/সময়</th><th>ভাউচার</th><th>পার্টি</th><th>ধরন</th><th>অ্যামাউন্ট</th><th>কারণ</th><th>এন্ট্রিকারী</th>
-            </tr></thead>
-            <tbody>
-              ${rows.length ? rows.map(r=>{
-                const when = r.createdAt ? new Date(r.createdAt).toLocaleString('en-GB',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) : (r.date||'—');
-                return `<tr>
-                  <td>${escHtml(when)}</td>
-                  <td><code>${escHtml(r.voucherNo)}</code></td>
-                  <td><b>${escHtml(r.dealerName||String(r.dealerId||''))}</b></td>
-                  <td>${escHtml(typeLabel(r.type))}</td>
-                  <td style="font-weight:800;color:#c2410c">${escHtml(fmtAmt(r.amountPaisa))}</td>
-                  <td style="color:#9a3412;font-size:12px">${escHtml(r.reasons.join(' · '))}</td>
-                  <td>${escHtml(r.createdBy||'—')}</td>
-                </tr>`;
-              }).join('') : `<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--muted)">কোনো সন্দেহজনক এন্ট্রি নেই</td></tr>`}
-            </tbody>
-          </table>
-        </div>
-        <button class="btn btn-ghost" style="width:100%;margin-top:12px" onclick="closeModal()">বন্ধ</button>
-      `);
-    }catch(e){
-      alert('লোড করা যায়নি: '+(e && e.message ? e.message : e));
+  adminTab = 'suspiciousEntries';
+  go('adminDashboard');
+}
+function suspiciousEntriesPageHTML(){
+  const limit = suspiciousAmountLimitTaka();
+  return `
+  <div class="card" style="margin:0 0 14px">
+    <div class="card-head" style="align-items:flex-start;gap:10px">
+      <div>
+        <h3 style="margin:0;font-size:18px;font-weight:800">⚠️ সন্দেহজনক এন্ট্রি</h3>
+        <p class="hint" style="margin:6px 0 0;font-size:13.5px;line-height:1.45;color:var(--muted)">
+          শেষ ৩০ দিন · অ্যামাউন্ট ≥ <b>৳${limit.toLocaleString('en-IN')}</b> অথবা এন্ট্রি সময় রাত <b>১০টা–সকাল ৬টা</b>
+        </p>
+      </div>
+      <button type="button" class="btn btn-ghost btn-sm" onclick="adminTab='menu';go('adminDashboard')">⬅️ ফিরে যান</button>
+    </div>
+  </div>
+  <div class="card">
+    <div id="adminSusPageBody" style="min-height:120px">
+      <div class="empty" style="padding:28px;font-size:15px">লোড হচ্ছে…</div>
+    </div>
+  </div>`;
+}
+async function renderSuspiciousEntriesPage(){
+  const box = document.getElementById('adminSusPageBody');
+  if(!box) return;
+  try{
+    if(window.DLG && DLG._t && typeof DLG._t.loadAll === 'function') await DLG._t.loadAll();
+    const vouchers = (window.DLG && DLG._t && DLG._t.LG && DLG._t.LG.vouchers) ? DLG._t.LG.vouchers : [];
+    const rows = scanSuspiciousVouchers(vouchers);
+    const fmtAmt = (p)=>{
+      try{ if(window.DLG && DLG._t && typeof DLG._t.fmt==='function') return DLG._t.fmt(Math.abs(p)); }catch(e){}
+      return '৳'+((Math.abs(p)||0)/100).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2});
+    };
+    const typeLabel = (t)=>{
+      try{ if(window.DLG && DLG._t && DLG._t.TYPES && DLG._t.TYPES[t]) return DLG._t.TYPES[t].short || t; }catch(e){}
+      return t||'—';
+    };
+    if(!rows.length){
+      box.innerHTML = `<div class="empty" style="padding:36px 16px;font-size:15.5px;font-weight:600">কোনো সন্দেহজনক এন্ট্রি নেই</div>`;
+      return;
     }
-  })();
+    box.innerHTML = `
+      <div style="margin-bottom:12px;font-size:14.5px;font-weight:700;color:#c2410c">মোট ${rows.length}টি এন্ট্রি</div>
+      <div class="dlg-scroll" style="border:1px solid var(--line);border-radius:12px;overflow:auto">
+        <table class="dlg-table" style="min-width:720px;width:100%;font-size:14.5px">
+          <thead>
+            <tr>
+              <th style="font-size:13.5px;font-weight:800;padding:12px 10px;white-space:nowrap">তারিখ/সময়</th>
+              <th style="font-size:13.5px;font-weight:800;padding:12px 10px">ভাউচার</th>
+              <th style="font-size:13.5px;font-weight:800;padding:12px 10px">পার্টি</th>
+              <th style="font-size:13.5px;font-weight:800;padding:12px 10px">ধরন</th>
+              <th style="font-size:13.5px;font-weight:800;padding:12px 10px">অ্যামাউন্ট</th>
+              <th style="font-size:13.5px;font-weight:800;padding:12px 10px">কারণ</th>
+              <th style="font-size:13.5px;font-weight:800;padding:12px 10px">এন্ট্রিকারী</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows.map(r=>{
+              const when = r.createdAt
+                ? new Date(r.createdAt).toLocaleString('en-GB',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})
+                : (r.date||'—');
+              return `<tr>
+                <td style="padding:12px 10px;font-size:14px;font-weight:600;color:var(--text);white-space:nowrap">${escHtml(when)}</td>
+                <td style="padding:12px 10px;font-size:14px"><code style="font-size:13.5px;font-weight:700">${escHtml(r.voucherNo)}</code></td>
+                <td style="padding:12px 10px;font-size:14.5px;font-weight:700;color:#0f172a">${escHtml(r.dealerName||String(r.dealerId||''))}</td>
+                <td style="padding:12px 10px;font-size:14px;font-weight:600">${escHtml(typeLabel(r.type))}</td>
+                <td style="padding:12px 10px;font-size:15px;font-weight:800;color:#c2410c;white-space:nowrap">${escHtml(fmtAmt(r.amountPaisa))}</td>
+                <td style="padding:12px 10px;font-size:13.5px;font-weight:600;color:#9a3412;line-height:1.35">${escHtml(r.reasons.join(' · '))}</td>
+                <td style="padding:12px 10px;font-size:14px;font-weight:600">${escHtml(r.createdBy||'—')}</td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>`;
+  }catch(e){
+    box.innerHTML = `<div class="dlg-alert" style="font-size:14.5px">লোড করা যায়নি: ${escHtml(e && e.message ? e.message : String(e))}</div>`;
+  }
 }
 async function refreshAdminDueKpi(){
   const numEl = document.getElementById('adminDueKpiNum');
@@ -8400,6 +8457,7 @@ ${adminBottomNavHTML()}
   else if(adminTab==='settings') { adminShell(settingsTabHTML()); wireSettingsTab(); }
   else if(adminTab==='tourBills') { adminShell(adminTourBillTabHTML()); wireTourBillAdminTab(); }
   else if(adminTab==='dealerLedger') { adminShell(DLG.tabHTML()); DLG.wire(); }
+  else if(adminTab==='suspiciousEntries') { adminShell(suspiciousEntriesPageHTML()); renderSuspiciousEntriesPage(); }
 };
 
 /* ---- Dashboard tab ---- */
