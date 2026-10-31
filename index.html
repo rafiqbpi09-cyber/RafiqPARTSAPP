@@ -44,7 +44,7 @@ document.currentScript.parentNode.insertBefore(manifestLink, document.currentScr
 // প্রতিটি নতুন deployment/update দেওয়ার আগে এই APP_VERSION ভ্যালুটা পরিবর্তন করুন
 // (যেকোনো ইউনিক স্ট্রিং — তারিখ/সময় বা running number)। এই ভ্যালুর ভিত্তিতেই
 // সব ডিভাইস স্বয়ংক্রিয়ভাবে নতুন version detect করে reload হবে।
-window.APP_VERSION = '2026-10-30-prev-advance-green.65';
+window.APP_VERSION = '2026-10-31-bank-name-short-en.69';
 
 (function(){
   // পুরনো/legacy blob-based service worker ও পুরনো Cache Storage সম্পূর্ণ পরিষ্কার করে দেওয়া হয়,
@@ -2395,6 +2395,8 @@ window.APP_VERSION = '2026-10-30-prev-advance-green.65';
   .dlg-print th.col-memo{color:#fff !important;}
   .dlg-print td.col-type,.dlg-print th.col-type{white-space:nowrap;width:1%;}
   .dlg-print td.col-method,.dlg-print th.col-method{white-space:nowrap;width:1%;}
+  .dlg-print td.col-trx,.dlg-print th.col-trx{white-space:nowrap;width:1%;text-align:center;font-size:10.5px;}
+  .dlg-print th.col-trx{color:#fff !important;}
   .dlg-print td.col-amt,.dlg-print th.col-amt{white-space:nowrap;width:1%;}
   .dlg-print td.col-desc{min-width:120px;max-width:280px;}
   .dlg-print tfoot td{font-weight:700;background:linear-gradient(180deg,#dbeafe,#bfdbfe);border-color:#93c5fd;color:#1e3a8a;}
@@ -10975,6 +10977,16 @@ const METHOD_OPTS = [
 ];
 const METHODS = METHOD_OPTS.map(x=>x.v);
 const METHOD_LABELS = Object.fromEntries(METHOD_OPTS.map(x=>[x.v, x.label]));
+// স্টেটমেন্ট/টেবিলে সংক্ষিপ্ত ইংরেজি নাম
+const METHOD_SHORT_EN = {
+  Cash:'Cash', bKash:'bKash', Nagad:'Nagad', Rocket:'Rocket',
+  PubaliBank:'Pubali Bank PLC', IslamiBank:'Islami Bank PLC',
+  Cheque:'Cheque', FundTransfer:'Fund Transfer', Other:'Other'
+};
+function methodShortLabel(code){
+  const c=normalizeMethodCode(code);
+  return METHOD_SHORT_EN[c] || methodLabel(c) || code || '';
+}
 const BANK_METHODS = ['PubaliBank','IslamiBank'];
 const MFS_METHODS = ['bKash','Nagad','Rocket'];
 // পুরনো সেভড মান / অনুবাদকৃত টেক্সট → কোডে ম্যাপ
@@ -11014,6 +11026,15 @@ function formatMethodLabel(v){
   if(v.bankBranch) parts.push('শাখা: '+v.bankBranch);
   if(v.trxId) parts.push('TrxID: '+v.trxId);
   return parts.filter(Boolean).join(' · ');
+}
+// স্টেটমেন্ট বিবরণ কলাম: ব্যাংক শাখা থাকলে শাখা; টাকা জমার সংগ্রহ-নোট দেখাবে না
+function statementDescText(v){
+  if(!v) return '—';
+  const br=String(v.bankBranch||'').trim();
+  if(br) return br;
+  if(v.type==='DEPOSIT') return '—';
+  const d=String(v.description||'').trim();
+  return d || '—';
 }
 
 const SUMMARY_KEYS = ['opening','receivable','payable','deposit','payment','return','adjustment'];
@@ -11279,10 +11300,11 @@ function normalizeInput(inp, a){
       if(!br) throw E('VALIDATION','ব্যাংক শাখার নাম লিখুন');
       out.bankBranch=br.slice(0,80);
     }
-    if(isMfsMethod(mc)){
+    // TrxID: MFS-এ বাধ্যতামূলক; ব্যাংক/অন্যান্যতে ঐচ্ছিক (আলাদা ফিল্ড)
+    {
       const tx=String(inp.trxId||'').trim();
-      if(!tx) throw E('VALIDATION','ট্রানজেকশন আইডি (TrxID) লিখুন');
-      out.trxId=tx.slice(0,40);
+      if(isMfsMethod(mc) && !tx) throw E('VALIDATION','ট্রানজেকশন আইডি (TrxID) লিখুন');
+      if(tx) out.trxId=tx.slice(0,40);
     }
   } else if(type==='PAYABLE'){
     // Fund Transfer: পেমেন্ট মাধ্যম = Fund Transfer, ধরন = ডিলার/কাস্টমার/অন্যান্য
@@ -11759,7 +11781,7 @@ function renderLedgerResults(){
   box.innerHTML=`
     ${single?`<div class="dlg-dealerbox"><b>${esc(info.name)}</b> · ${esc(info.phone)} · ID ${esc(info.id)} &nbsp;|&nbsp; সর্বমোট বর্তমান ব্যালেন্স: <b>${balHTML(st.fullBalance)}</b></div>`:''}
     <div class="dlg-scroll"><table class="dlg-table dlg-ledger">
-      <thead><tr><th>তারিখ</th><th>Voucher</th>${single?'':'<th>ডিলার</th>'}<th>ধরন</th><th>বিবরণ</th><th>Method</th><th>পাওনা বৃদ্ধি (Dr)</th><th>পাওনা হ্রাস (Cr)</th>${single?'<th>ব্যালেন্স</th>':''}<th>Created By</th><th>Timestamp</th><th></th></tr></thead>
+      <thead><tr><th>তারিখ</th><th>Voucher</th>${single?'':'<th>ডিলার</th>'}<th>ধরন</th><th>Method</th><th>বিবরণ</th><th>জমা TrxID</th><th>পাওনা বৃদ্ধি (Dr)</th><th>পাওনা হ্রাস (Cr)</th>${single?'<th>ব্যালেন্স</th>':''}<th>Created By</th><th>Timestamp</th><th></th></tr></thead>
       <tbody>
         ${(single && LG.ui.from) ? `<tr class="dlg-bf"><td>${esc(LG.ui.from)}</td><td colspan="${single?5:6}">পূর্বজের (Brought Forward)</td><td class="n"></td><td class="n"></td><td class="n"><b>${balHTML(st.bf)}</b></td><td colspan="3"></td></tr>`:''}
         ${st.rows.length ? st.rows.map(r=>{
@@ -11768,7 +11790,9 @@ function renderLedgerResults(){
             <td>${esc(v.date)}</td><td><code>${esc(v.voucherNo)}</code></td>
             ${single?'':`<td>${esc(v.dealerName)}<div class="dlg-sub">ID ${esc(v.dealerId)}</div></td>`}
             <td>${typeBadge(v)}${wasRev?'<div class="dlg-sub dlg-due">Reversed</div>':''}</td>
-            <td>${esc(v.description)}</td><td>${esc(v.method||'')}</td>
+            <td>${esc(methodShortLabel(v.method)||'')}</td>
+            <td>${esc(statementDescText(v))}</td>
+            <td><code>${esc((v.trxId&&String(v.trxId).trim())?v.trxId:'—')}</code></td>
             <td class="n">${r.dr?num(r.dr):''}</td><td class="n">${r.cr?num(r.cr):''}</td>
             ${single?`<td class="n"><b>${balHTML(r.run)}</b></td>`:''}
             <td>${esc(v.createdBy||'')}</td><td class="dlg-sub">${esc(tsText(v))}</td>
@@ -11840,7 +11864,7 @@ function openEntry(dealerId, prefill){
       ${Object.keys(FUND_PARTY_KINDS).map(k=>`<option value="${k}" ${prefill.fundPartyKind===k?'selected':''}>${esc(FUND_PARTY_KINDS[k])}</option>`).join('')}
     </select>
     <p class="hint" style="margin:4px 0 0">Fund Transfer-এর জন্য: ডিলার / কাস্টমার / অন্যান্য</p></div>
-    <div class="field"><label>বিবরণ (Description)</label><input type="text" id="dlgFDesc" maxlength="300" placeholder="যেমন: Invoice #123 / নগদ জমা" value="${esc(prefill.description||'')}"></div>
+    <div class="field"><label for="dlgFDesc" id="dlgFDescLabel">বিবরণ (Description)</label><input type="text" id="dlgFDesc" maxlength="300" placeholder="যেমন: Invoice #123 / নগদ জমা" value="${esc(prefill.description||'')}"></div>
     <div class="field" id="dlgFBillBox" style="display:none"><label>বিল নং (ঐচ্ছিক)</label><input type="text" id="dlgFBill" maxlength="40" placeholder="খালি থাকলে Voucher নম্বর ব্যবহার হবে" value="${esc(prefill.billNo||'')}"></div>
     <div class="field" id="dlgFMemoBox" style="display:none"><label>কোম্পানি মেমো নং (ঐচ্ছিক)</label><input type="text" id="dlgFMemo" maxlength="40" placeholder="যেমন: CM-1025 / Memo-001" value="${esc(prefill.memoNo||'')}"></div>
     <div id="dlgFMsgBox" style="display:none;border:1px dashed var(--line);border-radius:10px;padding:10px;margin:6px 0">
@@ -11875,8 +11899,24 @@ function entryMethodChanged(){
   const methodVisible = methodBox && methodBox.style.display!=='none';
   const m=normalizeMethodCode(($('dlgFMethod')&&$('dlgFMethod').value)||'');
   const bankBox=$('dlgFBankBranchBox'), trxBox=$('dlgFTrxBox');
+  // শাখা শুধু ব্যাংকে; TrxID = MFS + ব্যাংক + Cheque/Other (আলাদা ফিল্ড — বিবরণে নয়)
   if(bankBox) bankBox.style.display = (methodVisible && isBankMethod(m)) ? '' : 'none';
-  if(trxBox) trxBox.style.display = (methodVisible && isMfsMethod(m)) ? '' : 'none';
+  const showTrx = methodVisible && (isMfsMethod(m) || isBankMethod(m) || m==='Cheque' || m==='Other' || m==='FundTransfer');
+  if(trxBox) trxBox.style.display = showTrx ? '' : 'none';
+  const t=($('dlgFType')&&$('dlgFType').value)||'';
+  const descLab=$('dlgFDescLabel');
+  if(descLab){
+    if(t==='DEPOSIT') descLab.textContent='টাকা সংগ্রহ বিবরণী';
+    else descLab.textContent='বিবরণ (Description)';
+  }
+  const dd=$('dlgFDesc');
+  if(dd && t==='DEPOSIT') dd.placeholder='যেমন: কাউন্টার জমা / কে দিয়েছে / নোট (TrxID আলাদা ঘরে লিখুন)';
+  const trxLab = trxBox && trxBox.querySelector('label');
+  if(trxLab){
+    if(isBankMethod(m)) trxLab.innerHTML='ট্রানজেকশন আইডি (TrxID) <span style="color:#64748b;font-weight:500">(ঐচ্ছিক)</span>';
+    else if(isMfsMethod(m)) trxLab.innerHTML='ট্রানজেকশন আইডি (TrxID) <span style="color:#c23b3b">*</span>';
+    else trxLab.innerHTML='ট্রানজেকশন আইডি (TrxID) <span style="color:#64748b;font-weight:500">(ঐচ্ছিক)</span>';
+  }
 }
 function entryPreview(){
   const box=$('dlgFPreview'); if(!box) return;
@@ -11992,19 +12032,23 @@ function printStatement(){
   const st=currentStatement(); const single=!!LG.ui.dealerId; const info=single?dealerInfo(LG.ui.dealerId):null;
   const now=new Date();
   const printAt=pad2(now.getDate())+'-'+pad2(now.getMonth()+1)+'-'+now.getFullYear()+' '+pad2(now.getHours())+':'+pad2(now.getMinutes());
-  const colCount = single ? 9 : 10; // date,vch,memo,type,desc,method,dr,cr,[bal|dealer]
-  const rows=st.rows.map(r=>`<tr>
+  const colCount = single ? 10 : 11; // date,vch,memo,type,method,desc,trx,dr,cr,[bal] + optional dealer
+  const rows=st.rows.map(r=>{
+      const trx = (r.v.trxId && String(r.v.trxId).trim()) ? String(r.v.trxId).trim() : '—';
+      return `<tr>
       <td class="col-date">${esc(printDate(r.v.date))}</td>
       <td class="col-vch">${esc(r.v.voucherNo)}</td>
       <td class="col-memo">${esc(r.v.memoNo||'—')}</td>
       ${single?'':`<td>${esc(r.v.dealerName)}</td>`}
       <td class="col-type">${esc(TYPES[r.v.type]?TYPES[r.v.type].short:r.v.type)}</td>
-      <td class="col-desc">${esc(r.v.description)}</td>
-      <td class="col-method">${esc(r.v.method||'')}</td>
+      <td class="col-method">${esc(methodShortLabel(r.v.method)||'')}</td>
+      <td class="col-desc">${esc(statementDescText(r.v))}</td>
+      <td class="col-trx">${esc(trx)}</td>
       <td class="col-amt n-left">${r.dr?num(r.dr):''}</td>
       <td class="col-amt n">${r.cr?num(r.cr):''}</td>
       ${single?`<td class="col-amt n">${esc(num(r.run))}</td>`:''}
-    </tr>`).join('');
+    </tr>`;
+    }).join('');
   const logoSrc=(typeof DB!=='undefined' && DB.settings && DB.settings.logo) ? DB.settings.logo : (typeof METAL_LOGO_IMG!=='undefined'?METAL_LOGO_IMG:'');
   printHTML(`<div class="dlg-print">
     <div class="dlg-print-head">
@@ -12025,8 +12069,9 @@ function printStatement(){
         <th class="col-memo">কোম্পানি মেমো নং</th>
         ${single?'':'<th>ডিলার</th>'}
         <th class="col-type">ধরন</th>
-        <th>বিবরণ</th>
         <th class="col-method">Method</th>
+        <th>বিবরণ</th>
+        <th class="col-trx">জমা ট্রানজেকশন আইডি</th>
         <th class="col-amt col-dr">পাওনা বৃদ্ধি (Dr)</th>
         <th class="col-amt col-cr">পাওনা হ্রাস (Cr)</th>
         ${single?'<th class="col-amt col-bal">ব্যালেন্স</th>':''}
@@ -12036,7 +12081,7 @@ function printStatement(){
         ${rows}
       </tbody>
       <tfoot><tr>
-        <td colspan="${single?7:8}"><b>মোট</b></td>
+        <td colspan="${single?8:9}"><b>মোট</b></td>
         <td class="n-left"><b>${num(st.dr)}</b></td>
         <td class="n"><b>${num(st.cr)}</b></td>
         ${single?`<td class="n"><b>${st.closing==null?'':esc(num(st.closing))}</b></td>`:''}
@@ -12125,9 +12170,9 @@ const MSG_CHANNELS = {sms:'SMS', wa:'WhatsApp'};
 const TEMPLATES = {
   pay:{
     bn:
-"*টাকা গৃহীত*\n*টাকা সংগ্রহ রসিদ*\n\nকাস্টমার: *{dealerName}*\nতারিখ ও সময়: {date} · {time}\nপেমেন্ট মাধ্যম: {method}\nজমার পরিমাণ: *৳{paid}*\n\nপূর্বের বকেয়া: ৳{prevDue}\nবর্তমান বকেয়া: ৳{currDue}\nবিস্তারিত দেখতে লিংক ব্যবহার করুন:\n{detailLink}\nThanks *{companyName}* {companyPlace}",
+"*টাকা গৃহীত*\n*টাকা সংগ্রহ রসিদ*\n\nকাস্টমার: *{dealerName}*\nতারিখ ও সময়: {date} · {time}\nপেমেন্ট মাধ্যম: {method}\nটাকা সংগ্রহ বিবরণী: {items}\nজমার পরিমাণ: *৳{paid}*\n\nপূর্বের বকেয়া: ৳{prevDue}\nবর্তমান বকেয়া: ৳{currDue}\nবিস্তারিত দেখতে লিংক ব্যবহার করুন:\n{detailLink}\nThanks *{companyName}* {companyPlace}",
     en:
-"*Payment Received*\n*Money Collection Receipt*\n\nCustomer: *{dealerName}*\nDate & Time: {date} · {time}\nPayment Method: {method}\nAmount Received: *৳{paid}*\n\nPrevious Due: ৳{prevDue}\nCurrent Due: ৳{currDue}\nView details:\n{detailLink}\nThanks *{companyName}* {companyPlace}",
+"*Payment Received*\n*Money Collection Receipt*\n\nCustomer: *{dealerName}*\nDate & Time: {date} · {time}\nPayment Method: {method}\nCollection Details: {items}\nAmount Received: *৳{paid}*\n\nPrevious Due: ৳{prevDue}\nCurrent Due: ৳{currDue}\nView details:\n{detailLink}\nThanks *{companyName}* {companyPlace}",
     both:
 "*টাকা গৃহীত / Payment Received*\n*টাকা সংগ্রহ রসিদ*\n\nকাস্টমার / Customer: *{dealerName}*\nতারিখ / Date: {date} · {time}\nপেমেন্ট মাধ্যম / Method: {method}\nজমা / Received: *৳{paid}*\n\nপূর্বের বকেয়া / Previous Due: ৳{prevDue}\nবর্তমান বকেয়া / Current Due: ৳{currDue}\nবিস্তারিত / Details:\n{detailLink}\nThanks *{companyName}* {companyPlace}"
   },
@@ -12264,10 +12309,11 @@ function receiptImageDataUrl(kind, d){
   ctx.fillText(kind==='sale'?'অর্ডার কনফার্মেশন':(kind==='pay'?'টাকা সংগ্রহ রসিদ':String(d.typeLabel||'লেনদেন নিশ্চিতকরণ')), W/2, 229);
   // rows
   ctx.textAlign='left';
+  const collNoteLabel=(d.lang==='en')?'Collection Details':'টাকা সংগ্রহ বিবরণী';
   const rows=kind==='sale'
     ?[['কাস্টমার', String(d.dealerName||'')],['তারিখ ও সময়', String(d.date||'')+' · '+String(d.time||'')],['অর্ডার বিবরণী', String(d.items||'—')],['কোম্পানি মেমো নম্বর', String(d.memoNo||'—')],['বিল / কুরিয়ার', String(d.billNo||'—')]]
     : kind==='pay'
-    ?[['কাস্টমার', String(d.dealerName||'')],['তারিখ ও সময়', String(d.date||'')+' · '+String(d.time||'')],['পেমেন্ট মাধ্যম', String(d.method||'—')]]
+    ?[['কাস্টমার', String(d.dealerName||'')],['তারিখ ও সময়', String(d.date||'')+' · '+String(d.time||'')],['পেমেন্ট মাধ্যম', String(d.method||'—')],[collNoteLabel, String(d.items||'—')]]
     :[['কাস্টমার', String(d.dealerName||'')],['তারিখ ও সময়', String(d.date||'')+' · '+String(d.time||'')],['ধরন', String(d.typeLabel||'—')],['বিবরণ', String(d.items||'—')],['পেমেন্ট মাধ্যম', String(d.method||'—')]];
   let y=280;
   rows.forEach((r,i)=>{
