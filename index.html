@@ -44,7 +44,7 @@ document.currentScript.parentNode.insertBefore(manifestLink, document.currentScr
 // প্রতিটি নতুন deployment/update দেওয়ার আগে এই APP_VERSION ভ্যালুটা পরিবর্তন করুন
 // (যেকোনো ইউনিক স্ট্রিং — তারিখ/সময় বা running number)। এই ভ্যালুর ভিত্তিতেই
 // সব ডিভাইস স্বয়ংক্রিয়ভাবে নতুন version detect করে reload হবে।
-window.APP_VERSION = '2026-10-31-bank-name-short-en.69';
+window.APP_VERSION = '2026-11-01-glow-no-jump.75';
 
 (function(){
   // পুরনো/legacy blob-based service worker ও পুরনো Cache Storage সম্পূর্ণ পরিষ্কার করে দেওয়া হয়,
@@ -2351,6 +2351,20 @@ window.APP_VERSION = '2026-10-31-bank-name-short-en.69';
   .dlg-btn-close:hover,.dlg-btn-close:focus{
     color:#fff !important;background:#dc2626 !important;border-color:#dc2626 !important;
   }
+  /* Cancel → লাল, Save → সবুজ (মোডাল/এন্ট্রি) */
+  .dlg-modal .modal-actions .btn-ghost:hover,
+  .dlg-modal .modal-actions .btn-ghost:focus,
+  .modal-actions .btn-ghost:hover,
+  .modal-actions .btn-ghost:focus{
+    color:#fff !important;background:#dc2626 !important;border-color:#dc2626 !important;
+  }
+  .dlg-modal .modal-actions .btn-primary:hover,
+  .dlg-modal .modal-actions .btn-primary:focus,
+  .modal-actions .btn-primary:hover,
+  .modal-actions .btn-primary:focus{
+    color:#fff !important;background:#16a34a !important;border-color:#15803d !important;
+    filter:none;
+  }
   #dlgPrintArea{display:none;}
   .dlg-print{
     font-family:'Hind Siliguri',sans-serif;color:#152238;
@@ -2415,6 +2429,23 @@ window.APP_VERSION = '2026-10-31-bank-name-short-en.69';
   .dlg-ledger td:nth-child(1),.dlg-ledger td:nth-child(2),.dlg-ledger td:last-child,.dlg-table .btn{white-space:nowrap;}
   .dlg-msgprev{white-space:pre-wrap;word-break:break-word;background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:10px;font-family:inherit;font-size:13px;color:var(--text);max-height:240px;overflow:auto;margin:6px 0;}
   .dlg-chan{border:1px solid var(--line);border-radius:10px;padding:10px;margin:8px 0;color:var(--text);}
+  .dlg-sms-plus{
+    width:28px;height:28px;border-radius:8px;border:1px solid var(--line);
+    background:var(--paper);color:var(--text);font-size:18px;font-weight:700;line-height:1;
+    cursor:pointer;display:none;align-items:center;justify-content:center;padding:0;
+  }
+  .dlg-sms-plus:hover{background:#1E4FB8;color:#fff;border-color:#1E4FB8;}
+  /* Desktop: SMS বডি লুকানো, + চাপলে খোলে */
+  @media (min-width:769px){
+    .dlg-sms-plus{display:inline-flex;}
+    .dlg-sms-wrap .dlg-sms-body{display:none;}
+    .dlg-sms-wrap.open .dlg-sms-body{display:block;}
+  }
+  /* মোবাইল: সবসময় খোলা, প্লাস লুকানো */
+  @media (max-width:768px){
+    .dlg-sms-plus{display:none !important;}
+    .dlg-sms-wrap .dlg-sms-body{display:block !important;}
+  }
   .dlg-st-sent{background:#d9f2e3;color:#0f5f33;} .dlg-st-failed{background:#fde8e8;color:#9b1c1c;}
   .dlg-st-pending{background:#fff0d6;color:#8a5200;} .dlg-st-notsent{background:#e5e7eb;color:#374151;}
   .dlg-muted td{opacity:.8;} .dlg-wrap code{font-size:12px;}
@@ -2423,6 +2454,39 @@ window.APP_VERSION = '2026-10-31-bank-name-short-en.69';
   .dlg-scroll{max-width:100%;scrollbar-width:thin;overscroll-behavior-x:contain;}
   .dlg-scroll .dlg-table{min-width:0 !important;}
   .admin-home-main:has(.dlg-wrap){max-width:100% !important;}
+  /* Ledger/Due ইত্যাদি: গ্লো-ঝলকানি আছে, translate/scale নেই — পেজ লাফায় না */
+  .admin-outer .dlg-wrap .card:hover,
+  .admin-outer .dlg-wrap .card:active,
+  .admin-outer .dlg-wrap .card.touch-glow,
+  .admin-content .dlg-wrap .card:hover,
+  .admin-content .dlg-wrap .card:active,
+  .admin-content .dlg-wrap .card.touch-glow,
+  .dlg-wrap .card:hover,
+  .dlg-wrap .card:active{
+    transform:none !important;
+    border-color:rgba(80,210,255,0.95) !important;
+    box-shadow:
+      0 0 0 2px rgba(80,220,255,0.55),
+      0 0 18px 4px rgba(60,200,255,0.55),
+      0 0 36px 8px rgba(46,229,157,0.35),
+      0 10px 24px rgba(0,0,0,0.16) !important;
+    animation:adminBorderPulse 1.4s ease-in-out infinite !important;
+  }
+  .admin-outer .dlg-wrap .card:hover::before,
+  .admin-outer .dlg-wrap .card:active::before,
+  .admin-outer .dlg-wrap .card.touch-glow::before,
+  .dlg-wrap .card:hover::before,
+  .dlg-wrap .card:active::before{
+    opacity:1 !important;
+    animation:adminCardShimmer 1.9s linear infinite !important;
+  }
+  .admin-outer .dlg-wrap .card:hover::after,
+  .admin-outer .dlg-wrap .card:active::after,
+  .admin-outer .dlg-wrap .card.touch-glow::after,
+  .dlg-wrap .card:hover::after,
+  .dlg-wrap .card:active::after{
+    opacity:1 !important;
+  }
   @media(max-width:640px){
     .dlg-table{font-size:12px;}
     .dlg-table th{padding:6px 5px;font-size:11px;}
@@ -11986,14 +12050,47 @@ async function submitReverse(voucherNo){
 
 /* ------------------------------ UI: actions ------------------------------ */
 async function reload(){ setRoot(`<div class="card"><p class="hint">⏳ লোড হচ্ছে...</p></div>`); try{ await loadAll(); }catch(e){} render(); }
-function setView(v){ LG.ui.view=v; render(); }
+function setView(v){
+  LG.ui.view=v;
+  const tabs=document.querySelectorAll('.dlg-view-tab');
+  const body=$('dlgBody');
+  if(tabs.length && body){
+    tabs.forEach(btn=>btn.classList.toggle('active', btn.getAttribute('data-v')===v));
+    // স্ক্রোল প্যারেন্ট খুঁজে অবস্থান ধরে রাখা (window বা অভ্যন্তরীণ কন্টেইনার)
+    let sp=body.parentElement;
+    while(sp && sp!==document.body){
+      const st=window.getComputedStyle(sp);
+      if(/(auto|scroll)/.test(st.overflowY||'') && sp.scrollHeight>sp.clientHeight+4) break;
+      sp=sp.parentElement;
+    }
+    if(!sp || sp===document.body) sp=document.scrollingElement||document.documentElement;
+    const y=sp.scrollTop||window.scrollY||0;
+    renderBody();
+    try{ if(document.activeElement && body.contains(document.activeElement)) document.activeElement.blur(); }catch(e){}
+    const restore=()=>{ try{ sp.scrollTop=y; window.scrollTo(0, window.scrollY||y); }catch(e){} };
+    restore();
+    requestAnimationFrame(()=>{ restore(); requestAnimationFrame(restore); });
+    return;
+  }
+  render();
+}
 function setDueQ(v){ LG.ui.dueQ=v; renderDueResults(); }
 function setDueOnly(v){ LG.ui.dueOnly=!!v; renderDueResults(); }
 function setF(k,v){ LG.ui[k]=v; renderLedgerResults(); }
 function setQ(v){ LG.ui.q=v; renderLedgerResults(); }
 function setAuditQ(v){ LG.ui.auditQ=v; renderAuditResults(); }
 function clearFilters(){ LG.ui.from=''; LG.ui.to=''; LG.ui.type=''; LG.ui.q=''; LG.ui.dealerId=''; renderBody(); }
-function openLedger(id){ LG.ui.view='ledger'; LG.ui.dealerId=String(id); LG.ui.from=''; LG.ui.to=''; LG.ui.type=''; LG.ui.q=''; render(); }
+function openLedger(id){
+  LG.ui.view='ledger'; LG.ui.dealerId=String(id); LG.ui.from=''; LG.ui.to=''; LG.ui.type=''; LG.ui.q='';
+  if($('dlgBody') && document.querySelector('.dlg-view-tab')){
+    document.querySelectorAll('.dlg-view-tab').forEach(btn=>btn.classList.toggle('active', btn.getAttribute('data-v')==='ledger'));
+    const y=window.scrollY||document.documentElement.scrollTop||0;
+    renderBody();
+    requestAnimationFrame(()=>{ window.scrollTo(0, y); });
+    return;
+  }
+  render();
+}
 async function recalcAll(){
   if(!confirm('সংরক্ষিত ব্যালেন্স Voucher থেকে পুনর্গণনা করে ঠিক করা হবে (Voucher অপরিবর্তিত থাকবে)। চালিয়ে যাবেন?')) return;
   try{
@@ -12170,27 +12267,27 @@ const MSG_CHANNELS = {sms:'SMS', wa:'WhatsApp'};
 const TEMPLATES = {
   pay:{
     bn:
-"*টাকা গৃহীত*\n*টাকা সংগ্রহ রসিদ*\n\nকাস্টমার: *{dealerName}*\nতারিখ ও সময়: {date} · {time}\nপেমেন্ট মাধ্যম: {method}\nটাকা সংগ্রহ বিবরণী: {items}\nজমার পরিমাণ: *৳{paid}*\n\nপূর্বের বকেয়া: ৳{prevDue}\nবর্তমান বকেয়া: ৳{currDue}\nবিস্তারিত দেখতে লিংক ব্যবহার করুন:\n{detailLink}\nThanks *{companyName}* {companyPlace}",
+"*টাকা গৃহীত*\n*টাকা সংগ্রহ রসিদ*\n\n{partyLabel}: *{dealerName}*\nতারিখ ও সময়: {date} · {time}\nপেমেন্ট মাধ্যম: {method}\nটাকা সংগ্রহ বিবরণী: {items}\nজমার পরিমাণ: *৳{paid}*\n\nপূর্বের বকেয়া: ৳{prevDue}\nবর্তমান বকেয়া: ৳{currDue}\nবিস্তারিত দেখতে লিংক ব্যবহার করুন:\n{detailLink}\nThanks *{companyName}* {companyPlace}",
     en:
-"*Payment Received*\n*Money Collection Receipt*\n\nCustomer: *{dealerName}*\nDate & Time: {date} · {time}\nPayment Method: {method}\nCollection Details: {items}\nAmount Received: *৳{paid}*\n\nPrevious Due: ৳{prevDue}\nCurrent Due: ৳{currDue}\nView details:\n{detailLink}\nThanks *{companyName}* {companyPlace}",
+"*Payment Received*\n*Money Collection Receipt*\n\n{partyLabelEn}: *{dealerName}*\nDate & Time: {date} · {time}\nPayment Method: {method}\nCollection Details: {items}\nAmount Received: *৳{paid}*\n\nPrevious Due: ৳{prevDue}\nCurrent Due: ৳{currDue}\nView details:\n{detailLink}\nThanks *{companyName}* {companyPlace}",
     both:
-"*টাকা গৃহীত / Payment Received*\n*টাকা সংগ্রহ রসিদ*\n\nকাস্টমার / Customer: *{dealerName}*\nতারিখ / Date: {date} · {time}\nপেমেন্ট মাধ্যম / Method: {method}\nজমা / Received: *৳{paid}*\n\nপূর্বের বকেয়া / Previous Due: ৳{prevDue}\nবর্তমান বকেয়া / Current Due: ৳{currDue}\nবিস্তারিত / Details:\n{detailLink}\nThanks *{companyName}* {companyPlace}"
+"*টাকা গৃহীত / Payment Received*\n*টাকা সংগ্রহ রসিদ*\n\nকাস্টমার / {partyLabelEn}: *{dealerName}*\nতারিখ / Date: {date} · {time}\nপেমেন্ট মাধ্যম / Method: {method}\nজমা / Received: *৳{paid}*\n\nপূর্বের বকেয়া / Previous Due: ৳{prevDue}\nবর্তমান বকেয়া / Current Due: ৳{currDue}\nবিস্তারিত / Details:\n{detailLink}\nThanks *{companyName}* {companyPlace}"
   },
   sale:{
     bn:
-"*অর্ডার সফল*\n*অর্ডার কনফার্মেশন*\n\nকাস্টমার: *{dealerName}*\nতারিখ ও সময়: {date} · {time}\nঅর্ডার বিবরণী: {items}\nকোম্পানি মেমো নম্বর: {memoNo}\nবিল / কুরিয়ার: {billNo}\n\nবিলের পরিমাণ: *৳{amount}*\n\nপূর্বের বকেয়া: ৳{prevDue}\nবর্তমান বকেয়া: ৳{currDue}\n\nবিস্তারিত দেখতে লিংক ব্যবহার করুন:\n{detailLink}\nThanks *{companyName}* {companyPlace}",
+"*অর্ডার সফল*\n*অর্ডার কনফার্মেশন*\n\n{partyLabel}: *{dealerName}*\nতারিখ ও সময়: {date} · {time}\nঅর্ডার বিবরণী: {items}\nকোম্পানি মেমো নম্বর: {memoNo}\nবিল / কুরিয়ার: {billNo}\n\nবিলের পরিমাণ: *৳{amount}*\n\nপূর্বের বকেয়া: ৳{prevDue}\nবর্তমান বকেয়া: ৳{currDue}\n\nবিস্তারিত দেখতে লিংক ব্যবহার করুন:\n{detailLink}\nThanks *{companyName}* {companyPlace}",
     en:
-"*Order Successful*\n*Order Confirmation*\n\nCustomer: *{dealerName}*\nDate & Time: {date} · {time}\nOrder Details: {items}\nBill / Courier: {billNo}\n\nBill Amount: *৳{amount}*\n\nPrevious Due: ৳{prevDue}\nCurrent Due: ৳{currDue}\n\nView details:\n{detailLink}\nThanks *{companyName}* {companyPlace}",
+"*Order Successful*\n*Order Confirmation*\n\n{partyLabelEn}: *{dealerName}*\nDate & Time: {date} · {time}\nOrder Details: {items}\nBill / Courier: {billNo}\n\nBill Amount: *৳{amount}*\n\nPrevious Due: ৳{prevDue}\nCurrent Due: ৳{currDue}\n\nView details:\n{detailLink}\nThanks *{companyName}* {companyPlace}",
     both:
-"*অর্ডার সফল / Order Successful*\n*অর্ডার কনফার্মেশন*\n\nকাস্টমার / Customer: *{dealerName}*\nতারিখ / Date: {date} · {time}\nবিবরণী / Details: {items}\nবিল / Bill: {billNo}\n\nবিলের পরিমাণ / Amount: *৳{amount}*\n\nপূর্বের বকেয়া / Previous Due: ৳{prevDue}\nবর্তমান বকেয়া / Current Due: ৳{currDue}\n\nবিস্তারিত / Details:\n{detailLink}\nThanks *{companyName}* {companyPlace}"
+"*অর্ডার সফল / Order Successful*\n*অর্ডার কনফার্মেশন*\n\nকাস্টমার / {partyLabelEn}: *{dealerName}*\nতারিখ / Date: {date} · {time}\nবিবরণী / Details: {items}\nবিল / Bill: {billNo}\n\nবিলের পরিমাণ / Amount: *৳{amount}*\n\nপূর্বের বকেয়া / Previous Due: ৳{prevDue}\nবর্তমান বকেয়া / Current Due: ৳{currDue}\n\nবিস্তারিত / Details:\n{detailLink}\nThanks *{companyName}* {companyPlace}"
   },
   txn:{
     bn:
-"*{typeLabel}*\n*লেনদেন নিশ্চিতকরণ*\n\nকাস্টমার: *{dealerName}*\nতারিখ ও সময়: {date} · {time}\nবিবরণ: {items}\nপেমেন্ট মাধ্যম: {method}\nপরিমাণ: *৳{amount}*\n\nপূর্বের বকেয়া: ৳{prevDue}\nবর্তমান বকেয়া: ৳{currDue}\nবিস্তারিত দেখতে লিংক ব্যবহার করুন:\n{detailLink}\nThanks *{companyName}* {companyPlace}",
+"*{typeLabel}*\n*লেনদেন নিশ্চিতকরণ*\n\n{partyLabel}: *{dealerName}*\nতারিখ ও সময়: {date} · {time}\nবিবরণ: {items}\nপেমেন্ট মাধ্যম: {method}\nপরিমাণ: *৳{amount}*\n\nপূর্বের বকেয়া: ৳{prevDue}\nবর্তমান বকেয়া: ৳{currDue}\nবিস্তারিত দেখতে লিংক ব্যবহার করুন:\n{detailLink}\nThanks *{companyName}* {companyPlace}",
     en:
-"*{typeLabelEn}*\n*Transaction Confirmation*\n\nCustomer: *{dealerName}*\nDate & Time: {date} · {time}\nDetails: {items}\nPayment Method: {method}\nAmount: *৳{amount}*\n\nPrevious Due: ৳{prevDue}\nCurrent Due: ৳{currDue}\nView details:\n{detailLink}\nThanks *{companyName}* {companyPlace}",
+"*{typeLabelEn}*\n*Transaction Confirmation*\n\n{partyLabelEn}: *{dealerName}*\nDate & Time: {date} · {time}\nDetails: {items}\nPayment Method: {method}\nAmount: *৳{amount}*\n\nPrevious Due: ৳{prevDue}\nCurrent Due: ৳{currDue}\nView details:\n{detailLink}\nThanks *{companyName}* {companyPlace}",
     both:
-"*{typeLabel} / {typeLabelEn}*\n*লেনদেন নিশ্চিতকরণ*\n\nকাস্টমার / Customer: *{dealerName}*\nতারিখ / Date: {date} · {time}\nবিবরণ / Details: {items}\nমাধ্যম / Method: {method}\nপরিমাণ / Amount: *৳{amount}*\n\nপূর্বের বকেয়া / Previous Due: ৳{prevDue}\nবর্তমান বকেয়া / Current Due: ৳{currDue}\nবিস্তারিত / Details:\n{detailLink}\nThanks *{companyName}* {companyPlace}"
+"*{typeLabel} / {typeLabelEn}*\n*লেনদেন নিশ্চিতকরণ*\n\nকাস্টমার / {partyLabelEn}: *{dealerName}*\nতারিখ / Date: {date} · {time}\nবিবরণ / Details: {items}\nমাধ্যম / Method: {method}\nপরিমাণ / Amount: *৳{amount}*\n\nপূর্বের বকেয়া / Previous Due: ৳{prevDue}\nবর্তমান বকেয়া / Current Due: ৳{currDue}\nবিস্তারিত / Details:\n{detailLink}\nThanks *{companyName}* {companyPlace}"
   }
 };
 const MSG_TYPES = ['SALE','DEPOSIT','PAYABLE','PAYMENT','RETURN','OPENING','ADJUSTMENT'];
@@ -12259,6 +12356,9 @@ function buildMessageData(v, allVouchers){
     }
     methodStr=methodLabel(v.method||'FundTransfer')||'Fund Transfer';
   }
+  const pKind = v.partyKind || (dealerInfo(v.dealerId)||{}).kind || 'customer';
+  const partyLabelBn = (typeof KIND_LABELS!=='undefined' && KIND_LABELS[pKind]) ? KIND_LABELS[pKind] : ({dealer:'ডিলার',mechanic:'মেকানিক',customer:'কাস্টমার',other:'অন্যান্য'}[pKind]||'কাস্টমার');
+  const partyLabelEn = ({dealer:'Dealer',mechanic:'Mechanic',customer:'Customer',other:'Other'}[pKind]||'Customer');
   return {
     dealerName:v.dealerName, dealerId:String(v.dealerId), billNo:v.billNo||v.voucherNo,
     memoNo:(v.memoNo&&String(v.memoNo).trim())?String(v.memoNo).trim():'—',
@@ -12266,6 +12366,7 @@ function buildMessageData(v, allVouchers){
     paid:num(v.amountPaisa), amount:num(v.amountPaisa), items:(v.description && v.description!==TYPES.SALE.short)?v.description:'—',
     method:methodStr, prevBal:prev, currBal:dealerBal,
     typeLabel:typeLabel, typeLabelEn:typeLabelEn, typeBn:tInfo.bn||typeLabel,
+    partyKind:pKind, partyLabel:partyLabelBn, partyLabelEn:partyLabelEn,
     companyName:companyName, companyPlace:companyPlace, detailLink:buildDetailLink(v.voucherNo)
   };
 }
@@ -12310,11 +12411,12 @@ function receiptImageDataUrl(kind, d){
   // rows
   ctx.textAlign='left';
   const collNoteLabel=(d.lang==='en')?'Collection Details':'টাকা সংগ্রহ বিবরণী';
+  const partyLbl=(d.lang==='en')?(d.partyLabelEn||d.partyLabel||'Customer'):(d.partyLabel||'কাস্টমার');
   const rows=kind==='sale'
-    ?[['কাস্টমার', String(d.dealerName||'')],['তারিখ ও সময়', String(d.date||'')+' · '+String(d.time||'')],['অর্ডার বিবরণী', String(d.items||'—')],['কোম্পানি মেমো নম্বর', String(d.memoNo||'—')],['বিল / কুরিয়ার', String(d.billNo||'—')]]
+    ?[[partyLbl, String(d.dealerName||'')],['তারিখ ও সময়', String(d.date||'')+' · '+String(d.time||'')],['অর্ডার বিবরণী', String(d.items||'—')],['কোম্পানি মেমো নম্বর', String(d.memoNo||'—')],['বিল / কুরিয়ার', String(d.billNo||'—')]]
     : kind==='pay'
-    ?[['কাস্টমার', String(d.dealerName||'')],['তারিখ ও সময়', String(d.date||'')+' · '+String(d.time||'')],['পেমেন্ট মাধ্যম', String(d.method||'—')],[collNoteLabel, String(d.items||'—')]]
-    :[['কাস্টমার', String(d.dealerName||'')],['তারিখ ও সময়', String(d.date||'')+' · '+String(d.time||'')],['ধরন', String(d.typeLabel||'—')],['বিবরণ', String(d.items||'—')],['পেমেন্ট মাধ্যম', String(d.method||'—')]];
+    ?[[partyLbl, String(d.dealerName||'')],['তারিখ ও সময়', String(d.date||'')+' · '+String(d.time||'')],['পেমেন্ট মাধ্যম', String(d.method||'—')],[collNoteLabel, String(d.items||'—')]]
+    :[[partyLbl, String(d.dealerName||'')],['তারিখ ও সময়', String(d.date||'')+' · '+String(d.time||'')],['ধরন', String(d.typeLabel||'—')],['বিবরণ', String(d.items||'—')],['পেমেন্ট মাধ্যম', String(d.method||'—')]];
   let y=280;
   rows.forEach((r,i)=>{
     const rawVal=String(r[1]||'—');
@@ -12650,7 +12752,33 @@ function chanBlock(ch, v, phone, msg){
   }
   else inner=`<button class="btn btn-primary btn-sm" style="width:auto" onclick="DLG.msgSend('${ch}',false)">${icon} Send ${label}${st==='Failed'?' (আবার চেষ্টা)':''}</button>`;
   const when = rec.atIso ? ` · ${esc(String(rec.atIso).replace('T',' ').slice(0,16))} · ${esc(rec.by||'')}` : '';
+  // SMS: কম্পিউটারে + দিয়ে কলাপ্স; মোবাইলে সবসময় খোলা
+  if(ch==='sms'){
+    const open = !!(LG.ui && LG.ui.smsPanelOpen);
+    return `<div class="dlg-chan dlg-sms-wrap${open?' open':''}" id="dlgSmsWrap">
+      <div class="dlg-sms-head" style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+        <b>${icon} ${label}</b>
+        <span style="display:flex;align-items:center;gap:8px">
+          ${stBadge(st)}<span class="dlg-sub">${when}</span>
+          <button type="button" class="dlg-sms-plus" onclick="DLG.toggleSmsPanel()" title="SMS অপশন" aria-expanded="${open?'true':'false'}">${open?'−':'+'}</button>
+        </span>
+      </div>
+      <div class="dlg-sms-body" style="margin-top:8px">${inner}</div>
+    </div>`;
+  }
   return `<div class="dlg-chan"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px"><b>${icon} ${label}</b><span>${stBadge(st)}<span class="dlg-sub">${when}</span></span></div>${inner}</div>`;
+}
+function toggleSmsPanel(){
+  LG.ui = LG.ui || {};
+  LG.ui.smsPanelOpen = !LG.ui.smsPanelOpen;
+  const w = $('dlgSmsWrap');
+  if(w){
+    w.classList.toggle('open', !!LG.ui.smsPanelOpen);
+    const btn = w.querySelector('.dlg-sms-plus');
+    if(btn){ btn.textContent = LG.ui.smsPanelOpen ? '−' : '+'; btn.setAttribute('aria-expanded', LG.ui.smsPanelOpen?'true':'false'); }
+  } else {
+    renderMessagePanel();
+  }
 }
 function renderMessagePanel(){
   const ctx=LG.msgCtx; if(!ctx) return;
@@ -12761,7 +12889,7 @@ function entryMsgPreview(){
   if(!did){ box.style.display='block'; box.textContent='আগে ডিলার নির্বাচন করুন'; return; }
   if(!Number.isFinite(paisa)||paisa<=0){ box.style.display='block'; box.textContent='আগে সঠিক পরিমাণ লিখুন'; return; }
   const info=dealerInfo(did), cur=(aggregate(visibleVouchers())[did]||{balance:0}).balance, lang=$('dlgFLang').value, now=new Date();
-  const d={dealerName:info.name,dealerId:did,billNo:($('dlgFBill').value.trim()||'(Voucher নম্বর সেভের পর)'),receiptNo:'(সেভের পর)',
+  const d={dealerName:info.name,dealerId:did,partyKind:info.kind||'customer',partyLabel:(typeof KIND_LABELS!=='undefined'&&KIND_LABELS[info.kind])?KIND_LABELS[info.kind]:'কাস্টমার',partyLabelEn:({dealer:'Dealer',mechanic:'Mechanic',customer:'Customer',other:'Other'}[info.kind]||'Customer'),billNo:($('dlgFBill').value.trim()||'(Voucher নম্বর সেভের পর)'),receiptNo:'(সেভের পর)',
     date:$('dlgFDate').value,time:pad2(now.getHours())+':'+pad2(now.getMinutes()),paid:num(paisa),method:$('dlgFMethod').value,prevBal:cur,currBal:cur-paisa};
   const fType=$('dlgFType').value;
   const isSale=fType==='SALE';
@@ -12975,7 +13103,7 @@ window.DLG={
   tabHTML, wire, reload, setView, setDueQ, setDueOnly, setF, setQ, setAuditQ, clearFilters, openLedger, openDueDetail,
   openEntry, entryTypeChanged, entryMethodChanged, entryPreview, submitEntry, openReverse, submitReverse, closeModal,
   printStatement, printDue, exportLedger, exportDue, pdfDue, recalcAll, changePerm, peHook,
-  openParty, submitParty, myReload, myFilter, openMessage, msgSetLang, msgSend, msgResolve, entryMsgPreview, setMsgF, setMsgQ, openAdvanceDetails,
+  openParty, submitParty, myReload, myFilter, openMessage, msgSetLang, msgSend, msgResolve, toggleSmsPanel, entryMsgPreview, setMsgF, setMsgQ, openAdvanceDetails,
   selfHook,
   _t:{sendMessage,resolveMessage,preparePayment,buildMessageData,renderMessage,smsInfo,normalizePhone,createParty,loadMyLedger,TEMPLATES,toPaisa,fmt,num,effectOf,aggregate,buildStatement,saveVoucher,applySummary,blankSummary,mismatches,recalcDealer,loadAll,LG,TYPES,catDelta,setPermission,level}
 };
