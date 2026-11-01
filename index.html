@@ -44,7 +44,7 @@ document.currentScript.parentNode.insertBefore(manifestLink, document.currentScr
 // প্রতিটি নতুন deployment/update দেওয়ার আগে এই APP_VERSION ভ্যালুটা পরিবর্তন করুন
 // (যেকোনো ইউনিক স্ট্রিং — তারিখ/সময় বা running number)। এই ভ্যালুর ভিত্তিতেই
 // সব ডিভাইস স্বয়ংক্রিয়ভাবে নতুন version detect করে reload হবে।
-window.APP_VERSION = '2026-11-01-receipt-download-fix.76';
+window.APP_VERSION = '2026-11-01-download-robust.79';
 
 (function(){
   // পুরনো/legacy blob-based service worker ও পুরনো Cache Storage সম্পূর্ণ পরিষ্কার করে দেওয়া হয়,
@@ -2923,6 +2923,8 @@ const FB_URL = 'https://metal-parts-default-rtdb.firebaseio.com';
    যেগুলো এই HTML ফাইলের বাইরে করতে হবে:
 
    ১) Firebase Realtime Database Rules (Firebase Console → Realtime Database → Rules):
+      নিচের পুরো ব্লকটি Rules এডিটরে ব্যবহার করুন (আগের memos/_meta রেখে tourBills যোগ করা হয়েছে)।
+      শুধু tourBills অংশ নতুন — বাকি আগের মতোই।
       {
         "rules": {
           "memos": {
@@ -2931,10 +2933,30 @@ const FB_URL = 'https://metal-parts-default-rtdb.firebaseio.com';
             "$memoNo": { ".validate": "newData.child('dealerId').exists()" }
           },
           "memoCounters": { ".read": "auth != null", ".write": "auth != null" },
-          "_meta": { ".read": "auth != null", ".write": "auth != null" }
+          "_meta": { ".read": "auth != null", ".write": "auth != null" },
+          "tourBills": {
+            ".read": "auth != null",
+            ".write": "auth != null"
+          },
+          "dealerLedger": {
+            ".read": "auth != null",
+            "vouchers": {
+              ".indexOn": ["dealerId", "date"],
+              "$v": { ".write": "auth != null && !data.exists()" }
+            },
+            "audit": { "$k": { ".write": "auth != null && !data.exists()" } },
+            "counters": { ".write": "auth != null" },
+            "dealers": { ".write": "auth != null" },
+            "opIndex": { ".write": "auth != null" },
+            "reversals": { ".write": "auth != null" },
+            "permissions": { ".write": "auth != null" },
+            "parties": { ".write": "auth != null" },
+            "messages": { ".write": "auth != null" }
+          }
         }
       }
-      এতে করে Login (Firebase Auth uid) ছাড়া কেউ memos/ ডেটা read/write করতে পারবে না।
+      এতে Login (Firebase Auth) ছাড়া কেউ memos/tourBills/dealerLedger ডেটা read/write করতে পারবে না।
+      Mechanic Tour Bill সেভ path: tourBills/{id}
 
    ২) Google Apps Script (CONFIG.API_URL) ব্যাকএন্ডে — যেটা DB.users/DB.parts ইত্যাদি
       সরবরাহ করে — অনুরোধ করা হচ্ছে, requester-এর phone/uid অনুযায়ী response
@@ -5318,12 +5340,11 @@ function wireSelfUserProfile(reRenderRoute){
 }
 /* ================= TOUR BILL (Company Original CS-02 Format) =================
    Digital Tour Bill using the original CS-02 structure.
-   Data is stored in Firestore collection: TourBills.
+   Data is stored in Realtime Database path: tourBills/{id}.
    Mechanic entry rows are dynamic: one blank row starts, and a new blank row
    appears automatically when the last row receives input.
 */
-const TOUR_BILL_COLLECTION = 'TourBills';
-let tourBillDbPromise = null;
+const TOUR_BILL_RTDB_PATH = 'tourBills';
 let tbRows = [tbBlankRow(1)];
 let tbSaveBusy = false;
 let tbDraftId = crypto.randomUUID ? crypto.randomUUID() : ('tb-' + Date.now() + '-' + Math.random().toString(36).slice(2));
@@ -5348,21 +5369,9 @@ function tbNormalizeRows(rows){
   return cleaned.length ? cleaned : [tbBlankRow(1)];
 }
 
-async function getTourBillDb(){
-  if(tourBillDbPromise) return tourBillDbPromise;
-  tourBillDbPromise = import('https://www.gstatic.com/firebasejs/10.13.2/firebase-app.js')
-    .then(async ({initializeApp, getApps, getApp})=>{
-      const {getFirestore} = await import('https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js');
-      const options = firebase.app().options;
-      let secondary;
-      try{
-        secondary = getApp('tourBillFirestore');
-      }catch(e){
-        secondary = initializeApp(options, 'tourBillFirestore');
-      }
-      return getFirestore(secondary);
-    });
-  return tourBillDbPromise;
+// Tour Bill → Firebase Realtime Database (`tourBills/{id}`) — মূল অ্যাপের Auth/RTDB ব্যবহার
+function tourBillsRef(id){
+  return id ? fbDb.ref('tourBills/'+id) : fbDb.ref('tourBills');
 }
 
 function tbCurrentUser(){
@@ -5538,22 +5547,34 @@ async function saveTourBill(){
   const signature = String(document.getElementById('tbSignature')?.value||'').trim();
   tbSaveBusy = true; tbSetSavingState(true);
   try{
-    if(!firebase.auth().currentUser) throw new Error('AUTH_REQUIRED');
-    const db = await getTourBillDb();
-    const {collection,doc,setDoc,serverTimestamp} = await import('https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js');
+    if(!fbAuth.currentUser) throw new Error('AUTH_REQUIRED');
     const now = new Date();
     const total = rows.reduce((sum,r)=>sum+(parseFloat(String(r.total||'').replace(/[^0-9.\-]/g,''))||0),0);
-    await setDoc(doc(collection(db,TOUR_BILL_COLLECTION),tbDraftId),{
-      mechanicId: String(u.id), mechanicName: String(u.name||''), mechanicPhone: String(u.phone||''), territory: String(u.territory||''),
-      rows, signature, total, status:'Pending', createdAt:serverTimestamp(), submittedAtIso:now.toISOString()
-    });
+    const payload = {
+      mechanicId: String(u.id),
+      mechanicName: String(u.name||''),
+      mechanicPhone: String(u.phone||''),
+      territory: String(u.territory||''),
+      rows,
+      signature,
+      total,
+      status: 'Pending',
+      createdAt: now.toISOString(),
+      submittedAtIso: now.toISOString(),
+      updatedAt: now.toISOString()
+    };
+    await tourBillsRef(tbDraftId).set(payload);
     const ok=document.getElementById('tbSaveOk'); if(ok){ok.style.display='inline';setTimeout(()=>ok.style.display='none',3000);}
     tbRows=[tbBlankRow(1)];
     tbDraftId = crypto.randomUUID ? crypto.randomUUID() : ('tb-' + Date.now() + '-' + Math.random().toString(36).slice(2));
     mechanicTab='tourbill'; go('mechanicDashboard');
+    try{ toast('✅ Tour Bill সেভ হয়েছে'); }catch(e){}
   }catch(err){
-    if(err && err.message==='AUTH_REQUIRED') alert('আপনার লগইন সেশন শেষ হয়েছে। আবার লগইন করুন।');
-    else alert('Tour Bill Save করা যায়নি। Firebase/ইন্টারনেট সংযোগ পরীক্ষা করুন।');
+    const code = (err && (err.code||err.message)) ? String(err.code||err.message) : '';
+    if(code==='AUTH_REQUIRED' || /AUTH_REQUIRED/i.test(code)) alert('আপনার লগইন সেশন শেষ হয়েছে। আবার লগইন করুন।');
+    else if(/permission_denied|PERMISSION_DENIED/i.test(code+' '+String(err&&err.message||'')))
+      alert('Tour Bill Save অনুমতি নেই। Firebase Realtime Database Rules-এ `tourBills` path-এ authenticated write চালু করুন।');
+    else alert('Tour Bill Save করা যায়নি। '+(err && err.message ? err.message : 'Firebase/ইন্টারনেট সংযোগ পরীক্ষা করুন।'));
   }finally{tbSaveBusy=false;tbSetSavingState(false);}
 }
 
@@ -5619,16 +5640,15 @@ function tbAdminRender(){
 }
 
 async function loadTourBillsAdmin(){
-  const box=document.getElementById('tbAdminList'); if(box)box.innerHTML='<div class="empty">লোড হচ্ছে...</div>';
+  const box=document.getElementById('tbAdminList');
+  if(box)box.innerHTML='<div class="empty">লোড হচ্ছে...</div>';
   try{
-    if(!firebase.auth().currentUser) throw new Error('AUTH_REQUIRED');
-    const db=await getTourBillDb();
-    const {collection,getDocs}=await import('https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js');
-    const snap=await getDocs(collection(db,TOUR_BILL_COLLECTION));
-    tbAdminBills=snap.docs.map(d=>({id:d.id,...d.data()}));
+    const snap=await tourBillsRef().once('value');
+    const val=snap.val()||{};
+    tbAdminBills=Object.keys(val).map(id=>({id, ...(val[id]||{})}));
     tbAdminRender();
   }catch(err){
-    if(box)box.innerHTML='<div class="empty" style="color:#c23b3b">Tour Bill load করা যায়নি। Firebase Auth/Firestore Rules পরীক্ষা করুন।</div>';
+    if(box)box.innerHTML='<div class="empty" style="color:#c23b3b">Tour Bill load করা যায়নি। Firebase Rules/ইন্টারনেট পরীক্ষা করুন।</div>';
   }
 }
 
@@ -5648,9 +5668,7 @@ function tbPrintAdminBill(id){const b=tbAdminBills.find(x=>x.id===id);if(b)tbPri
 async function changeTourBillStatus(id,status){
   const b=tbAdminBills.find(x=>x.id===id); if(!b)return;
   try{
-    const db=await getTourBillDb();
-    const {doc,updateDoc,serverTimestamp}=await import('https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore.js');
-    await updateDoc(doc(db,TOUR_BILL_COLLECTION,id),{status,updatedAt:serverTimestamp()});
+    await tourBillsRef(id).update({status, updatedAt:new Date().toISOString()});
     b.status=status;
     tbAdminRender();
   }catch(err){ alert('Status update করা যায়নি।'); loadTourBillsAdmin(); }
@@ -10990,8 +11008,8 @@ function handleBatteryExcelUpload(e){
    • ব্যালেন্স চিহ্ন: ধনাত্মক (+) = ডিলারের কাছে কোম্পানির পাওনা,
                        ঋণাত্মক (−) = ডিলারকে কোম্পানির দেনা / অগ্রিম জমা।
 
-   প্রস্তাবিত Firebase Realtime Database Rules (বিদ্যমান rules-এর সাথে যোগ করুন,
-   বিদ্যমান অংশ মুছবেন না):
+   প্রস্তাবিত Firebase Realtime Database Rules — সম্পূর্ণ নমুনা ফাইলের উপরে
+   (নিরাপত্তা নোট / memos + tourBills + dealerLedger) দেখুন। শুধু dealerLedger অংশ:
      "dealerLedger": {
        ".read": "auth != null",
        "vouchers": { ".indexOn": ["dealerId","date"],
@@ -11001,8 +11019,12 @@ function handleBatteryExcelUpload(e){
        "dealers":  { ".write": "auth != null" },
        "opIndex":  { ".write": "auth != null" },
        "reversals":{ ".write": "auth != null" },
-       "permissions": { ".write": "auth != null" }
+       "permissions": { ".write": "auth != null" },
+       "parties": { ".write": "auth != null" },
+       "messages": { ".write": "auth != null" }
      }
+   Tour Bill-এর জন্য আলাদা path (আগের rules-এর সাথে যোগ):
+     "tourBills": { ".read": "auth != null", ".write": "auth != null" }
    (vouchers ও audit-এর `!data.exists()` নিয়ম থাকলে সার্ভার-স্তরেও পুরোনো হিসাব
     Overwrite/Delete করা অসম্ভব হয়।)
    ===================================================================== */
@@ -12594,37 +12616,95 @@ function roundRect(ctx,x,y,w,h,r){
   ctx.arcTo(x,y,x+w,y,rr);
   ctx.closePath();
 }
-function downloadDataUrl(dataUrl, filename){
+function dataUrlToBlob(dataUrl){
+  const parts=String(dataUrl||'').split(',');
+  const mime=(parts[0].match(/data:([^;]+)/)||[])[1]||'image/png';
+  const bin=atob(parts[1]||'');
+  const arr=new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++) arr[i]=bin.charCodeAt(i);
+  return new Blob([arr],{type:mime});
+}
+async function downloadDataUrl(dataUrl, filename){
   try{
-    if(!dataUrl) return;
+    if(!dataUrl){ toast('⚠️ ডাউনলোড করার মতো ফাইল নেই'); return false; }
     const name=filename||'receipt.png';
-    // data: URL → Blob (মোবাইল/ডেস্কটপ দুই জায়গাতেই নির্ভরযোগ্য)
-    let href=dataUrl, revoke=null;
+    let blob=null, href='', revoke=null;
     if(String(dataUrl).startsWith('data:')){
-      const parts=String(dataUrl).split(',');
-      const mime=(parts[0].match(/data:([^;]+)/)||[])[1]||'image/png';
-      const bin=atob(parts[1]||'');
-      const arr=new Uint8Array(bin.length);
-      for(let i=0;i<bin.length;i++) arr[i]=bin.charCodeAt(i);
-      const blob=new Blob([arr],{type:mime});
+      blob=dataUrlToBlob(dataUrl);
       href=URL.createObjectURL(blob);
       revoke=href;
+    }else if(String(dataUrl).startsWith('blob:')){
+      href=dataUrl;
+    }else{
+      href=dataUrl;
     }
+    // ১) মোবাইল Share (যদি সাপোর্ট করে)
+    try{
+      if(blob && navigator.share && navigator.canShare){
+        const file=new File([blob], name, {type:blob.type||'image/png'});
+        if(navigator.canShare({files:[file]})){
+          await navigator.share({files:[file], title:name});
+          if(revoke) setTimeout(()=>URL.revokeObjectURL(revoke), 2000);
+          return true;
+        }
+      }
+    }catch(shareErr){ /* user cancel or unsupported — fall through */ }
+
+    // ২) <a download> ক্লিক
     const a=document.createElement('a');
-    a.href=href; a.download=name; a.rel='noopener';
+    a.href=href;
+    a.download=name;
+    a.rel='noopener';
+    a.target='_blank';
     a.style.display='none';
     document.body.appendChild(a);
     a.click();
-    setTimeout(()=>{ try{ a.remove(); if(revoke) URL.revokeObjectURL(revoke); }catch(e){} }, 1500);
-  }catch(e){ try{ console.error('downloadDataUrl', e); }catch(_){} }
+    setTimeout(()=>{ try{ a.remove(); if(revoke) URL.revokeObjectURL(revoke); }catch(e){} }, 2500);
+
+    // ৩) iOS/সাপোর্ট না থাকলে নতুন ট্যাবে খুলে ম্যানুয়াল সেভ
+    const ua=navigator.userAgent||'';
+    const isIOS=/iPad|iPhone|iPod/.test(ua) || (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1);
+    if(isIOS){
+      try{ window.open(href, '_blank'); }catch(e){}
+      toast('📱 ছবি নতুন ট্যাবে খুলেছে — লম্বা প্রেস করে Save Image করুন');
+    }
+    return true;
+  }catch(e){
+    try{ console.error('downloadDataUrl', e); }catch(_){}
+    toast('❌ ডাউনলোড ব্যর্থ: '+(e&&e.message?e.message:'unknown'));
+    return false;
+  }
 }
-function downloadReceiptImage(){
-  const src=(LG.msgCtx && LG.msgCtx.cardImg) || '';
-  if(!src){ toast('⚠️ রসিদ ইমেজ পাওয়া যায়নি'); return; }
-  const vn=(LG.msgCtx && LG.msgCtx.voucherNo) || 'receipt';
-  const kind=(LG.msgCtx && LG.msgCtx.kind) || 'receipt';
-  downloadDataUrl(src, (kind==='sale'?'order':'payment')+'_'+vn+'.png');
-  toast('⬇️ রসিদ ইমেজ ডাউনলোড শুরু হয়েছে');
+async function downloadReceiptImage(){
+  try{
+    let src=(LG.msgCtx && LG.msgCtx.cardImg) || '';
+    // প্রিভিউ img থেকে fallback
+    if(!src){
+      const img=$('dlgReceiptPreview');
+      if(img && img.src) src=img.src;
+    }
+    // এখনো না থাকলে নতুন করে তৈরি
+    if(!src && LG.msgCtx && LG.msgCtx.voucherNo){
+      try{
+        const v=LG.vouchers.find(x=>x.voucherNo===LG.msgCtx.voucherNo);
+        if(v){
+          const kind=msgKind(v);
+          const data=buildMessageData(v);
+          data.lang=LG.msgCtx.lang||'bn';
+          src=receiptImageDataUrl(kind, data);
+          if(LG.msgCtx){ LG.msgCtx.cardImg=src; LG.msgCtx.kind=kind; }
+        }
+      }catch(genErr){ console.error(genErr); }
+    }
+    if(!src){ toast('⚠️ রসিদ ইমেজ পাওয়া যায়নি — আগে প্রিভিউ লোড হতে দিন'); return; }
+    const vn=(LG.msgCtx && LG.msgCtx.voucherNo) || 'receipt';
+    const kind=(LG.msgCtx && LG.msgCtx.kind) || 'receipt';
+    const ok=await downloadDataUrl(src, (kind==='sale'?'order':'payment')+'_'+String(vn).replace(/[^\w\-]+/g,'_')+'.png');
+    if(ok) toast('⬇️ রসিদ ইমেজ ডাউনলোড/শেয়ার প্রস্তুত');
+  }catch(e){
+    toast('❌ ডাউনলোড ব্যর্থ');
+    try{ console.error(e); }catch(_){}
+  }
 }
 
 function renderMessage(lang, d, kind){
