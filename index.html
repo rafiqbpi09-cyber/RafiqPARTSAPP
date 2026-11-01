@@ -44,7 +44,7 @@ document.currentScript.parentNode.insertBefore(manifestLink, document.currentScr
 // প্রতিটি নতুন deployment/update দেওয়ার আগে এই APP_VERSION ভ্যালুটা পরিবর্তন করুন
 // (যেকোনো ইউনিক স্ট্রিং — তারিখ/সময় বা running number)। এই ভ্যালুর ভিত্তিতেই
 // সব ডিভাইস স্বয়ংক্রিয়ভাবে নতুন version detect করে reload হবে।
-window.APP_VERSION = '2026-11-01-download-robust.79';
+window.APP_VERSION = '2026-11-01-view-fix.88';
 
 (function(){
   // পুরনো/legacy blob-based service worker ও পুরনো Cache Storage সম্পূর্ণ পরিষ্কার করে দেওয়া হয়,
@@ -178,20 +178,44 @@ window.APP_VERSION = '2026-11-01-download-robust.79';
   .tb-col-11{width:5.52%;}.tb-col-12{width:5.00%;}.tb-col-13{width:6.11%;}.tb-col-14{width:4.56%;}
   .tb-table th,.tb-table td{border:1px solid #111;background:#fff;color:#111;text-align:center;vertical-align:middle;box-sizing:border-box;}
   .tb-table th{font-family:'Noto Serif Bengali','Noto Sans Bengali','Hind Siliguri',sans-serif;font-size:13px;font-weight:700;line-height:1.25;padding:4px 2px;height:42px;}
-  .tb-table td{height:27px;padding:0;}
-  .tb-table td input,.tb-table td textarea{display:block;width:100%;height:27px;box-sizing:border-box;border:0;outline:0;background:transparent;color:#111;font-family:'Noto Sans Bengali','Hind Siliguri',Arial,sans-serif;font-size:12px;text-align:center;padding:2px 3px;border-radius:0;resize:none;}
-  .tb-table td textarea{text-align:left;overflow:hidden;line-height:1.15;}
-  .tb-table td input:focus,.tb-table td textarea:focus{background:#fffdf5;box-shadow:inset 0 0 0 1px #999;}
+  .tb-table td{min-height:32px;height:auto;padding:0;vertical-align:middle;position:relative;}
+  .tb-table td input,.tb-table td textarea{
+    display:block;width:100%;min-height:32px;height:32px;box-sizing:border-box;
+    border:0;outline:0;background:#fff;color:#111;
+    font-family:'Noto Sans Bengali','Hind Siliguri',Arial,sans-serif;font-size:12px;
+    text-align:center;padding:4px 3px;border-radius:0;resize:none;
+    position:relative;z-index:5;pointer-events:auto !important;
+    -webkit-user-select:text;user-select:text;
+  }
+  .tb-table td textarea{
+    text-align:left;overflow:hidden;line-height:1.3;height:auto;min-height:32px;
+    white-space:pre-wrap;word-break:break-word;vertical-align:top;
+  }
+  .tb-table td:first-child{vertical-align:top;}
+  .tb-table td input[data-field="total"]{font-weight:700;background:#f8fafc;}
+  .tb-table td input:focus,.tb-table td textarea:focus{background:#fffdf5;box-shadow:inset 0 0 0 1px #999;z-index:6;}
+  /* স্ক্রল/ক্লিপ যেন অন্য কলাম কাটে না */
+  .tb-paper{overflow:visible !important;}
+  .tb-wrap{overflow-x:auto !important;overflow-y:visible !important;-webkit-overflow-scrolling:touch;max-width:100%;position:relative;z-index:1;}
+  #tourBillPrintArea.card{overflow:visible !important;}
+  #tourBillPrintArea.card::before,#tourBillPrintArea.card::after{display:none !important;}
   .tb-table tr.tb-row-filled td{background:#fff;}
   .tb-table tr.tb-row-filled td:first-child{box-shadow:none;}
   .tb-table tfoot{display:none;}
-  .tb-save-area{display:flex;align-items:center;gap:10px;margin-top:12px;flex-wrap:wrap;}
-  .tb-save-area .btn{min-height:42px;padding:8px 22px;}
-  .tb-savebar{font-size:13px;color:var(--ok);display:none;}
+  .tb-save-area{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:12px;flex-wrap:wrap;}
+  .tb-save-area .btn{min-height:42px;padding:8px 18px;flex:1 1 140px;}
+  .tb-save-area .tb-btn-draft{background:#fff;color:#1e4fb8;border:2px solid #1e4fb8;}
+  .tb-save-area .tb-btn-draft:hover{background:#eef4ff;}
+  .tb-save-area .tb-btn-submit{background:#ea580c;color:#fff;border:2px solid #ea580c;}
+  .tb-save-area .tb-btn-submit:hover{background:#c2410c;border-color:#c2410c;}
+  .tb-save-area .tb-save-left,.tb-save-area .tb-save-right{display:flex;gap:8px;flex:1 1 160px;align-items:center;}
+  .tb-save-area .tb-save-right{justify-content:flex-end;}
+  .tb-savebar{font-size:13px;color:var(--ok);display:none;width:100%;text-align:center;}
+  .tb-draft-hint{font-size:12px;color:#64748b;width:100%;margin:0;}
   .tb-sig{margin-top:22px;font-family:'Noto Serif Bengali','Noto Sans Bengali','Hind Siliguri',sans-serif;font-size:14px;}
   .tb-sig input{border:0;border-bottom:1px solid #111;background:transparent;text-align:center;font-size:13px;padding:2px 4px;width:220px;font-family:inherit;outline:0;}
   .tb-admin-paper{background:#fff;color:#111;}
-  @media(max-width:600px){.tb-paper{overflow:hidden}.tb-head-title{min-width:980px}.tb-table{min-width:980px}.tb-save-area{padding-left:2px}.tb-sig{padding-left:2px}}
+  @media(max-width:600px){.tb-paper{overflow:visible}.tb-wrap{overflow-x:auto}.tb-head-title{min-width:980px}.tb-table{min-width:980px}.tb-save-area{padding-left:2px}.tb-sig{padding-left:2px}}
   body.printing-tourbill *{visibility:hidden !important;}
   body.printing-tourbill #tourBillPrintArea,body.printing-tourbill #tourBillPrintArea *{visibility:visible !important;}
   body.printing-tourbill #tourBillPrintArea{position:absolute;left:0;top:0;width:100%;padding:10px;}
@@ -199,7 +223,10 @@ window.APP_VERSION = '2026-11-01-download-robust.79';
     body.printing-tourbill .tb-save-area{display:none !important;}
     body.printing-tourbill .tb-table tr.tb-row-filled td{background:#fff !important;box-shadow:none !important;}
     body.printing-tourbill .tb-table{min-width:0;width:100%;table-layout:fixed;}
-    body.printing-tourbill .tb-table th,body.printing-tourbill .tb-table td{font-size:9px;padding:2px;}
+    body.printing-tourbill .tb-table th,body.printing-tourbill .tb-table td{font-size:9px;padding:2px;height:auto !important;vertical-align:top;}
+    body.printing-tourbill .tb-table td input,
+    body.printing-tourbill .tb-table td textarea{height:auto !important;min-height:18px;overflow:visible !important;white-space:pre-wrap !important;word-break:break-word;}
+    body.printing-tourbill .tb-cell-text{white-space:pre-wrap;word-break:break-word;overflow:visible;}
     /* Same 14-column ratio as the screen widths (2/1.5/1.7/1.7/0.9/1/1/0.9/0.9/1.2/1.2/1.2/1.2/1.2in),
        expressed as % of page width so every column still fits on one printed page. */
     body.printing-tourbill .tb-col-1{width:11.3636%;}
@@ -1760,15 +1787,34 @@ window.APP_VERSION = '2026-11-01-download-robust.79';
   .tb-action-cell{width:28px;min-width:28px;}
   .tb-remove-row{width:24px;height:24px;border:1px solid #e2a2a2;border-radius:50%;background:#fff;color:#c23b3b;font-size:18px;line-height:20px;cursor:pointer;padding:0;}
   .tb-remove-row:hover{background:#fff0f0;}
+  .tb-admin-card{max-width:100%;width:100%;}
+  .tb-admin-card > .card-head{
+    background:linear-gradient(135deg,#f9a8d4 0%,#f472b6 45%,#ec4899 100%);
+    color:#831843;border-radius:12px 12px 0 0;padding:14px 16px;margin:-2px -2px 14px -2px;
+  }
+  .tb-admin-card > .card-head h3{color:#831843;margin:0;font-weight:800;}
+  .tb-admin-card > .card-head .hint{color:#9d174d;opacity:.95;}
+  .tb-admin-card > .card-head .btn{background:rgba(255,255,255,.9);border-color:rgba(131,24,67,.25);color:#831843;}
   .tb-admin-tools{display:grid;grid-template-columns:1fr 180px;gap:10px;margin-bottom:14px;}
   .tb-admin-tools input,.tb-admin-tools select{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:9px;box-sizing:border-box;background:#fff;color:var(--text);font:inherit;}
-  .tb-admin-table-wrap{overflow:auto;}
-  .tb-admin-table{width:100%;border-collapse:collapse;min-width:900px;font-size:13px;}
-  .tb-admin-table th,.tb-admin-table td{padding:10px 8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:middle;}
-  .tb-admin-table th{background:#f4f6f8;white-space:nowrap;}
+  .tb-admin-table-wrap{overflow:auto;width:100%;}
+  .tb-admin-table{width:100%;border-collapse:collapse;min-width:860px;font-size:13px;table-layout:fixed;}
+  .tb-admin-table th,.tb-admin-table td{padding:10px 8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top;word-break:break-word;}
+  .tb-admin-table th{
+    background:#f9a8d4;color:#831843;white-space:nowrap;font-weight:800;
+    border-bottom:2px solid #ec4899;
+  }
+  .tb-admin-table.tb-admin-list td:nth-child(4){font-weight:700;white-space:nowrap;}
+  .tb-admin-table.tb-admin-list th:nth-child(5),
+  .tb-admin-table.tb-admin-list td:nth-child(5){text-align:center;}
+  .tb-admin-table.tb-admin-list td:nth-child(5) .row-actions{display:flex;gap:6px;align-items:center;justify-content:center;}
+  .tb-admin-fullview .tb-wrap{max-height:none;overflow:auto;}
+  .tb-admin-fullview .tb-admin-paper{width:100%;}
   .tb-status{display:inline-block;padding:4px 9px;border-radius:999px;font-size:11px;font-weight:700;}
   .tb-status-pending{background:#fff4d6;color:#8a5a00}.tb-status-approved{background:#e4f6eb;color:#176b3b}.tb-status-rejected{background:#fde7e7;color:#a22}.tb-status-paid{background:#e4efff;color:#1857a4}
   .tb-status-select{padding:5px 7px;border:1px solid var(--line);border-radius:7px;font:inherit;background:#fff;}
+  /* Tour Bill রিপোর্ট পেজ চওড়া */
+  .admin-home-main:has(.tb-admin-card){max-width:100% !important;padding-left:12px;padding-right:12px;}
   .tb-admin-view{max-width:1200px;}
   .tb-admin-view .tb-wrap{max-height:60vh;overflow:auto;}
   @media(max-width:768px){.tb-admin-tools{grid-template-columns:1fr}.tb-admin-table{min-width:0}.tb-admin-table thead{display:none}.tb-admin-table,.tb-admin-table tbody,.tb-admin-table tr,.tb-admin-table td{display:block;width:100%;box-sizing:border-box}.tb-admin-table tr{margin-bottom:12px;border:1px solid var(--line);border-radius:10px;padding:8px}.tb-admin-table td{border:0;border-bottom:1px solid #eef1f4;padding:8px 4px;display:flex;justify-content:space-between;gap:10px}.tb-admin-table td:last-child{border-bottom:0}.tb-admin-table td::before{content:attr(data-label);font-weight:700;color:var(--muted);}.tb-table{min-width:1180px}.tb-toolbar{position:sticky;top:0;z-index:3;background:var(--card);padding:5px 0}.tb-mechanic-meta{font-size:11px;}}
@@ -5348,6 +5394,29 @@ const TOUR_BILL_RTDB_PATH = 'tourBills';
 let tbRows = [tbBlankRow(1)];
 let tbSaveBusy = false;
 let tbDraftId = crypto.randomUUID ? crypto.randomUUID() : ('tb-' + Date.now() + '-' + Math.random().toString(36).slice(2));
+let tbDraftLoadedHint = '';
+
+function tbDraftStorageKey(uid){
+  return 'tourBillDraft_v1_' + String(uid||'guest');
+}
+function tbLoadLocalDraft(uid){
+  try{
+    const raw = localStorage.getItem(tbDraftStorageKey(uid));
+    if(!raw) return null;
+    const data = JSON.parse(raw);
+    if(!data || !Array.isArray(data.rows)) return null;
+    return data;
+  }catch(e){ return null; }
+}
+function tbSaveLocalDraft(uid, payload){
+  try{
+    localStorage.setItem(tbDraftStorageKey(uid), JSON.stringify(payload));
+    return true;
+  }catch(e){ return false; }
+}
+function tbClearLocalDraft(uid){
+  try{ localStorage.removeItem(tbDraftStorageKey(uid)); }catch(e){}
+}
 
 function tbBlankRow(index){
   return {rowNo:index, col1:'', col2:'', from:'', to:'', medium:'', kmStart:'', kmEnd:'', kmTotal:'', taka:'', foodMorning:'', foodNoon:'', foodNight:'', stay:'', total:''};
@@ -5355,6 +5424,39 @@ function tbBlankRow(index){
 
 const TB_FIELD_KEYS = ['col1','col2','from','to','medium','kmStart','kmEnd','kmTotal','taka','foodMorning','foodNoon','foodNight','stay','total'];
 
+function tbParseAmt(v){
+  const n=parseFloat(String(v||'').replace(/[^0-9.\-]/g,''));
+  return Number.isFinite(n)?n:0;
+}
+function tbCalcRowTotal(r){
+  // টাকা + সকাল + দুপুর + রাত + রাত্রিযাপন
+  return tbParseAmt(r.taka)+tbParseAmt(r.foodMorning)+tbParseAmt(r.foodNoon)+tbParseAmt(r.foodNight)+tbParseAmt(r.stay);
+}
+function tbAutosizeTextarea(el){
+  if(!el || el.tagName!=='TEXTAREA') return;
+  el.style.height='auto';
+  el.style.height=Math.max(27, el.scrollHeight)+'px';
+}
+function tbRecalcRow(tr){
+  if(!tr) return;
+  const get=f=>{
+    const el=tr.querySelector('[data-field="'+f+'"]');
+    return el?el.value:'';
+  };
+  const total=tbCalcRowTotal({
+    taka:get('taka'), foodMorning:get('foodMorning'), foodNoon:get('foodNoon'),
+    foodNight:get('foodNight'), stay:get('stay')
+  });
+  const totEl=tr.querySelector('[data-field="total"]');
+  if(totEl){
+    // ইউজার ম্যানুয়ালি না লিখলেই অটো
+    if(totEl.dataset.manual!=='1'){
+      totEl.value = total ? String(Math.round(total*100)/100) : '';
+    }
+  }
+  const ta=tr.querySelector('textarea[data-field="col1"]');
+  if(ta) tbAutosizeTextarea(ta);
+}
 function tbRowIsFilled(r){
   return TB_FIELD_KEYS.some(k => String(r && r[k] || '').trim() !== '');
 }
@@ -5386,6 +5488,11 @@ function tbCollectRows(){
   return Array.from(body.querySelectorAll('tr[data-row-index]')).map((tr,i)=>{
     const row = tbBlankRow(i+1);
     tr.querySelectorAll('[data-field]').forEach(input=>{ row[input.dataset.field] = String(input.value || '').trim(); });
+    // মোট খালি থাকলে অটো যোগফল
+    if(!String(row.total||'').trim()){
+      const t=tbCalcRowTotal(row);
+      row.total = t ? String(Math.round(t*100)/100) : '';
+    }
     return row;
   }).filter(tbRowIsFilled);
 }
@@ -5431,22 +5538,49 @@ function tbRemoveRow(button){
 }
 
 function tbRowHTML(r, readOnly=false){
-  const dis = readOnly ? ' readonly' : '';
-  return `<tr data-row-index="${Number(r.rowNo)||1}">
-    <td><textarea data-field="col1" rows="1"${dis}>${escHtml(r.col1||'')}</textarea></td>
-    <td><input type="text" data-field="col2" value="${escHtml(r.col2||'')}"${dis}></td>
-    <td><input type="text" data-field="from" value="${escHtml(r.from||'')}"${dis}></td>
-    <td><input type="text" data-field="to" value="${escHtml(r.to||'')}"${dis}></td>
-    <td><input type="text" data-field="medium" value="${escHtml(r.medium||'')}"${dis}></td>
-    <td><input type="text" data-field="kmStart" value="${escHtml(r.kmStart||'')}"${dis}></td>
-    <td><input type="text" data-field="kmEnd" value="${escHtml(r.kmEnd||'')}"${dis}></td>
-    <td><input type="text" data-field="kmTotal" value="${escHtml(r.kmTotal||'')}"${dis}></td>
-    <td><input type="text" data-field="taka" value="${escHtml(r.taka||'')}"${dis}></td>
-    <td><input type="text" data-field="foodMorning" value="${escHtml(r.foodMorning||'')}"${dis}></td>
-    <td><input type="text" data-field="foodNoon" value="${escHtml(r.foodNoon||'')}"${dis}></td>
-    <td><input type="text" data-field="foodNight" value="${escHtml(r.foodNight||'')}"${dis}></td>
-    <td><input type="text" data-field="stay" value="${escHtml(r.stay||'')}"${dis}></td>
-    <td><input type="text" data-field="total" value="${escHtml(r.total||'')}"${dis}></td>
+  let totVal = '';
+  if(r && r.total!==undefined && String(r.total).trim()!=='') totVal=String(r.total);
+  else {
+    const t=tbCalcRowTotal(r||{});
+    totVal = t ? String(Math.round(t*100)/100) : '';
+  }
+  const raw = (k)=>String((r && r[k]) || '');
+  const v = (k)=>escHtml(raw(k));
+  // প্রিন্ট/ভিউ: input নয় — টেক্সট সেল (লম্বা লেখা পুরো দেখায়)
+  if(readOnly){
+    const cell = (k, cls='') => `<td class="${cls}"><div class="tb-cell-text${k==='col1'?' tb-cell-long':''}">${v(k)||'&nbsp;'}</div></td>`;
+    return `<tr data-row-index="${r.rowNo}" class="tb-row-filled">
+      ${cell('col1','tb-td-long')}
+      ${cell('col2')}
+      ${cell('from')}
+      ${cell('to')}
+      ${cell('medium')}
+      ${cell('kmStart')}
+      ${cell('kmEnd')}
+      ${cell('kmTotal')}
+      ${cell('taka')}
+      ${cell('foodMorning')}
+      ${cell('foodNoon')}
+      ${cell('foodNight')}
+      ${cell('stay')}
+      <td><div class="tb-cell-text"><b>${escHtml(totVal)||'&nbsp;'}</b></div></td>
+    </tr>`;
+  }
+  return `<tr data-row-index="${r.rowNo}" class="${tbRowIsFilled(r)?'tb-row-filled':''}">
+    <td><textarea data-field="col1" class="tb-col1" rows="1">${v('col1')}</textarea></td>
+    <td><input type="text" data-field="col2" value="${v('col2')}"></td>
+    <td><input type="text" data-field="from" value="${v('from')}"></td>
+    <td><input type="text" data-field="to" value="${v('to')}"></td>
+    <td><input type="text" data-field="medium" value="${v('medium')}"></td>
+    <td><input type="text" data-field="kmStart" value="${v('kmStart')}"></td>
+    <td><input type="text" data-field="kmEnd" value="${v('kmEnd')}"></td>
+    <td><input type="text" data-field="kmTotal" value="${v('kmTotal')}"></td>
+    <td><input type="text" data-field="taka" inputmode="decimal" value="${v('taka')}"></td>
+    <td><input type="text" data-field="foodMorning" inputmode="decimal" value="${v('foodMorning')}"></td>
+    <td><input type="text" data-field="foodNoon" inputmode="decimal" value="${v('foodNoon')}"></td>
+    <td><input type="text" data-field="foodNight" inputmode="decimal" value="${v('foodNight')}"></td>
+    <td><input type="text" data-field="stay" inputmode="decimal" value="${v('stay')}"></td>
+    <td><input type="text" data-field="total" inputmode="decimal" value="${escHtml(totVal)}" title="অটো: টাকা+খাবার+রাত্রিযাপন"></td>
   </tr>`;
 }
 
@@ -5486,17 +5620,35 @@ function tbTableHTML(rows, readOnly=false){
 function mechanicTourBillHTML(){
   const u = tbCurrentUser();
   if(!u) return '';
-  if(!tbRows || !tbRows.length) tbRows = [tbBlankRow(1)];
+  // লোকাল ড্রাফট লোড (আগের দিনের কাজ চালিয়ে যেতে)
+  let draftSig = '';
+  tbDraftLoadedHint = '';
+  const draft = tbLoadLocalDraft(u.id);
+  if(draft && Array.isArray(draft.rows) && draft.rows.some(tbRowIsFilled)){
+    tbRows = tbNormalizeRows(draft.rows);
+    if(draft.draftId) tbDraftId = String(draft.draftId);
+    draftSig = String(draft.signature||'');
+    const when = draft.savedAt ? new Date(draft.savedAt).toLocaleString('bn-BD') : '';
+    tbDraftLoadedHint = when ? ('ড্রাফট লোড হয়েছে · '+when) : 'ড্রাফট লোড হয়েছে';
+  } else if(!tbRows || !tbRows.length){
+    tbRows = [tbBlankRow(1)];
+  }
   return `<div class="card" id="tourBillPrintArea">
     <div class="tb-paper">
       <div class="tb-head-title"><span class="tb-code">CS-02</span><h3>মেটাল ফার্মটেক লিমিটেড</h3><div>দৈনিক বিলের বিবরণ</div></div>
       ${tbTableHTML(tbRows,false)}
       <div class="tb-save-area">
-        <button class="btn btn-primary" id="tbSaveBtn">💾 Save</button>
-        <button class="btn btn-ghost" id="tbPrintBtn">🖨️ Print / PDF</button>
+        <div class="tb-save-left">
+          <button type="button" class="btn tb-btn-draft" id="tbDraftBtn">💾 সেভ ড্রাফট</button>
+          <button type="button" class="btn btn-ghost" id="tbPrintBtn">🖨️ Print / PDF</button>
+        </div>
+        <div class="tb-save-right">
+          <button type="button" class="btn tb-btn-submit" id="tbSaveBtn">📤 এডমিনে জমা</button>
+        </div>
         <span class="tb-savebar" id="tbSaveOk">সফলভাবে অ্যাডমিনে জমা হয়েছে</span>
+        <p class="tb-draft-hint" id="tbDraftHint">${escHtml(tbDraftLoadedHint||'ড্রাফট সেভ করলে পরের দিন এখান থেকে আবার শুরু করতে পারবেন।')}</p>
       </div>
-      <div class="tb-sig">বিল প্রস্তুতকারীর স্বাক্ষর <input type="text" id="tbSignature" value="" aria-label="বিল প্রস্তুতকারীর স্বাক্ষর"></div>
+      <div class="tb-sig">বিল প্রস্তুতকারীর স্বাক্ষর <input type="text" id="tbSignature" value="${escHtml(draftSig)}" aria-label="বিল প্রস্তুতকারীর স্বাক্ষর"></div>
     </div>
   </div>`;
 }
@@ -5513,11 +5665,19 @@ function tbUpdateTotalSum(){
   sumCell.textContent = sum.toLocaleString('en-US',{maximumFractionDigits:2});
 }
 
-function tbSetSavingState(saving){
-  const btn = document.getElementById('tbSaveBtn');
-  if(!btn) return;
-  btn.disabled = saving;
-  btn.textContent = saving ? 'সেভ হচ্ছে...' : '💾 সেভ করুন';
+function tbSetSavingState(saving, mode){
+  const draftBtn=document.getElementById('tbDraftBtn');
+  const submitBtn=document.getElementById('tbSaveBtn');
+  if(draftBtn){
+    draftBtn.disabled=!!saving;
+    if(mode==='draft') draftBtn.textContent = saving ? 'ড্রাফট সেভ হচ্ছে...' : '💾 সেভ ড্রাফট';
+    else if(!saving) draftBtn.textContent = '💾 সেভ ড্রাফট';
+  }
+  if(submitBtn){
+    submitBtn.disabled=!!saving;
+    if(mode==='submit') submitBtn.textContent = saving ? 'জমা হচ্ছে...' : '📤 এডমিনে জমা';
+    else if(!saving) submitBtn.textContent = '📤 এডমিনে জমা';
+  }
 }
 
 function tbPrintHtml(bill, title='Tour Bill'){
@@ -5526,7 +5686,7 @@ function tbPrintHtml(bill, title='Tour Bill'){
   const sig = bill.signature||'';
   const tableHtml = tbTableHTML(rows,true);
   const html = `<!doctype html><html lang="bn"><head><meta charset="utf-8"><title>${escHtml(title)}</title><style>
-    @page{size:A4 landscape;margin:7mm}*{box-sizing:border-box}body{font-family:'Noto Serif Bengali','Noto Sans Bengali','Hind Siliguri',Arial,sans-serif;color:#111;margin:0;background:#fff}.tb-head-title{position:relative;text-align:center;margin:0 0 7px;min-height:49px}.tb-head-title h3{margin:0;color:#173d7a;font-size:21px;line-height:1.35}.tb-head-title>div{font-size:15px;line-height:1.25}.tb-code{position:absolute;right:1%;top:0;border:1.5px solid #111;border-radius:50%;width:94px;height:40px;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#6d329a;background:#fff}.tb-wrap{overflow:visible}.tb-table{border-collapse:collapse;width:100%;table-layout:fixed}.tb-table th,.tb-table td{border:1px solid #111;background:#fff;color:#111;text-align:center;vertical-align:middle}.tb-table th{font-size:11.5px;font-weight:700;line-height:1.2;padding:3px 1px}.tb-table td{height:27px;padding:0}.tb-table td input,.tb-table td textarea{display:block;width:100%;height:27px;box-sizing:border-box;border:0;background:transparent;color:#111;font:inherit;font-size:10px;text-align:center;padding:2px;outline:0;resize:none}.tb-table td textarea{text-align:left}.tb-col-1{width:15.45%}.tb-col-2{width:8.31%}.tb-col-3{width:9.79%}.tb-col-4{width:9.42%}.tb-col-5{width:5.52%}.tb-col-6{width:7.72%}.tb-col-7{width:7.72%}.tb-col-8{width:4.93%}.tb-col-9{width:5.08%}.tb-col-10{width:4.86%}.tb-col-11{width:5.52%}.tb-col-12{width:5%}.tb-col-13{width:6.11%}.tb-col-14{width:4.56%}.tb-sig{margin-top:28px;font-size:13px}.tb-actions{margin-bottom:7px}.tb-actions button{padding:7px 12px}.tb-table .tb-remove-row,.tb-table tfoot{display:none}@media print{.tb-actions{display:none!important}}
+    @page{size:A4 landscape;margin:7mm}*{box-sizing:border-box}body{font-family:'Noto Serif Bengali','Noto Sans Bengali','Hind Siliguri',Arial,sans-serif;color:#111;margin:0;background:#fff}.tb-head-title{position:relative;text-align:center;margin:0 0 7px;min-height:49px}.tb-head-title h3{margin:0;color:#173d7a;font-size:21px;line-height:1.35}.tb-head-title>div{font-size:15px;line-height:1.25}.tb-code{position:absolute;right:1%;top:0;border:1.5px solid #111;border-radius:50%;width:94px;height:40px;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#6d329a;background:#fff}.tb-wrap{overflow:visible}.tb-table{border-collapse:collapse;width:100%;table-layout:fixed}.tb-table th,.tb-table td{border:1px solid #111;background:#fff;color:#111;text-align:center;vertical-align:middle}.tb-table th{font-size:11.5px;font-weight:700;line-height:1.2;padding:3px 1px}.tb-table td{height:auto;min-height:22px;padding:3px 2px;vertical-align:top}.tb-cell-text{display:block;width:100%;white-space:pre-wrap;word-break:break-word;overflow-wrap:anywhere;font-size:10px;line-height:1.25;text-align:center}.tb-cell-long,.tb-td-long .tb-cell-text{text-align:left}.tb-table td input,.tb-table td textarea{display:block;width:100%;height:auto;min-height:22px;box-sizing:border-box;border:0;background:transparent;color:#111;font:inherit;font-size:10px;text-align:center;padding:2px;outline:0;resize:none;overflow:visible;white-space:pre-wrap}.tb-table td textarea{text-align:left}.tb-col-1{width:15.45%}.tb-col-2{width:8.31%}.tb-col-3{width:9.79%}.tb-col-4{width:9.42%}.tb-col-5{width:5.52%}.tb-col-6{width:7.72%}.tb-col-7{width:7.72%}.tb-col-8{width:4.93%}.tb-col-9{width:5.08%}.tb-col-10{width:4.86%}.tb-col-11{width:5.52%}.tb-col-12{width:5%}.tb-col-13{width:6.11%}.tb-col-14{width:4.56%}.tb-sig{margin-top:28px;font-size:13px}.tb-actions{margin-bottom:7px}.tb-actions button{padding:7px 12px}.tb-table .tb-remove-row,.tb-table tfoot{display:none}@media print{.tb-actions{display:none!important}}
   </style></head><body>
   <div class="tb-actions"><button onclick="window.print()">Print / Save PDF</button></div>
   <div class="tb-head-title"><span class="tb-code">CS-02</span><h3>মেটাল ফার্মটেক লিমিটেড</h3><div>দৈনিক বিলের বিবরণ</div></div>
@@ -5538,18 +5698,51 @@ function tbPrintHtml(bill, title='Tour Bill'){
   w.document.open();w.document.write(html);w.document.close();
 }
 
+function saveTourBillDraft(){
+  if(tbSaveBusy) return;
+  const u = tbCurrentUser();
+  if(!u) return;
+  const rows = tbCollectRows();
+  if(!rows.length){ alert('ড্রাফট সেভ করতে কমপক্ষে একটি সারিতে তথ্য লিখুন।'); return; }
+  const signature = String(document.getElementById('tbSignature')?.value||'').trim();
+  const nowIso = new Date().toISOString();
+  const total = rows.reduce((sum,r)=>sum+tbParseAmt(r.total),0);
+  const payload = {
+    draftId: tbDraftId,
+    mechanicId: String(u.id),
+    rows,
+    signature,
+    total,
+    savedAt: nowIso
+  };
+  tbSaveBusy = true; tbSetSavingState(true, 'draft');
+  try{
+    // মেমোরি + লোকাল স্টোরেজ — পরের দিনও পাওয়া যাবে
+    tbRows = tbNormalizeRows(rows);
+    const ok = tbSaveLocalDraft(u.id, payload);
+    const hint=document.getElementById('tbDraftHint');
+    if(hint) hint.textContent = ok
+      ? ('✅ ড্রাফট সেভ হয়েছে · '+new Date(nowIso).toLocaleString('bn-BD')+' — পরে এখান থেকে আবার চালিয়ে যেতে পারবেন')
+      : '⚠️ ড্রাফট সেভ ব্যর্থ (ডিভাইস স্টোরেজ পূর্ণ হতে পারে)';
+    try{ toast(ok?'✅ ড্রাফট সেভ হয়েছে':'⚠️ ড্রাফট সেভ হয়নি'); }catch(e){}
+  }finally{
+    tbSaveBusy=false; tbSetSavingState(false, 'draft');
+  }
+}
+
 async function saveTourBill(){
   if(tbSaveBusy) return;
   const u = tbCurrentUser();
   if(!u) return;
   const rows = tbCollectRows();
   if(!rows.length){ alert('কমপক্ষে একটি row-তে Tour Bill-এর তথ্য লিখুন।'); return; }
+  if(!confirm('এডমিনে জমা দেবেন? জমার পর এই বিল আর এডিট করা যাবে না।')) return;
   const signature = String(document.getElementById('tbSignature')?.value||'').trim();
-  tbSaveBusy = true; tbSetSavingState(true);
+  tbSaveBusy = true; tbSetSavingState(true, 'submit');
   try{
     if(!fbAuth.currentUser) throw new Error('AUTH_REQUIRED');
     const now = new Date();
-    const total = rows.reduce((sum,r)=>sum+(parseFloat(String(r.total||'').replace(/[^0-9.\-]/g,''))||0),0);
+    const total = rows.reduce((sum,r)=>sum+tbParseAmt(r.total),0);
     const payload = {
       mechanicId: String(u.id),
       mechanicName: String(u.name||''),
@@ -5564,32 +5757,53 @@ async function saveTourBill(){
       updatedAt: now.toISOString()
     };
     await tourBillsRef(tbDraftId).set(payload);
+    // জমা হলে লোকাল ড্রাফট মুছে ফাঁকা ফর্ম
+    tbClearLocalDraft(u.id);
     const ok=document.getElementById('tbSaveOk'); if(ok){ok.style.display='inline';setTimeout(()=>ok.style.display='none',3000);}
     tbRows=[tbBlankRow(1)];
     tbDraftId = crypto.randomUUID ? crypto.randomUUID() : ('tb-' + Date.now() + '-' + Math.random().toString(36).slice(2));
     mechanicTab='tourbill'; go('mechanicDashboard');
-    try{ toast('✅ Tour Bill সেভ হয়েছে'); }catch(e){}
+    try{ toast('✅ এডমিনে জমা হয়েছে'); }catch(e){}
   }catch(err){
     const code = (err && (err.code||err.message)) ? String(err.code||err.message) : '';
     if(code==='AUTH_REQUIRED' || /AUTH_REQUIRED/i.test(code)) alert('আপনার লগইন সেশন শেষ হয়েছে। আবার লগইন করুন।');
     else if(/permission_denied|PERMISSION_DENIED/i.test(code+' '+String(err&&err.message||'')))
       alert('Tour Bill Save অনুমতি নেই। Firebase Realtime Database Rules-এ `tourBills` path-এ authenticated write চালু করুন।');
-    else alert('Tour Bill Save করা যায়নি। '+(err && err.message ? err.message : 'Firebase/ইন্টারনেট সংযোগ পরীক্ষা করুন।'));
-  }finally{tbSaveBusy=false;tbSetSavingState(false);}
+    else alert('এডমিনে জমা যায়নি। '+(err && err.message ? err.message : 'Firebase/ইন্টারনেট সংযোগ পরীক্ষা করুন।'));
+  }finally{tbSaveBusy=false;tbSetSavingState(false, 'submit');}
 }
 
 function bindTourBillEvents(){
   const body=document.getElementById('tbBody');
   if(body){
     body.addEventListener('input',(e)=>{
-      const tr=e.target?.closest('tr[data-row-index]');
-      if(tr){
-        const filled=Array.from(tr.querySelectorAll('[data-field]')).some(x=>String(x.value||'').trim()!=='');
-        tr.classList.toggle('tb-row-filled',filled);
-        if(tr===body.lastElementChild && filled) tbAddBlankRowIfNeeded();
+      const t=e.target;
+      const tr=t?.closest('tr[data-row-index]');
+      if(!tr) return;
+      const field=t.getAttribute('data-field');
+      // মোট টাকা ম্যানুয়াল হলে অটো বন্ধ
+      if(field==='total'){
+        t.dataset.manual = String(t.value||'').trim() ? '1' : '0';
       }
+      // টাকা/খাবার/রাত্রিযাপন বদলালে মোট অটো
+      if(['taka','foodMorning','foodNoon','foodNight','stay'].includes(field)){
+        const totEl=tr.querySelector('[data-field="total"]');
+        if(totEl) totEl.dataset.manual='0';
+        tbRecalcRow(tr);
+      }
+      if(field==='col1') tbAutosizeTextarea(t);
+      const filled=Array.from(tr.querySelectorAll('[data-field]')).some(x=>String(x.value||'').trim()!=='');
+      tr.classList.toggle('tb-row-filled',filled);
+      if(tr===body.lastElementChild && filled) tbAddBlankRowIfNeeded();
+    });
+    // প্রাথমিক অটোসাইজ + মোট
+    body.querySelectorAll('tr[data-row-index]').forEach(tr=>{
+      tbRecalcRow(tr);
+      const ta=tr.querySelector('textarea[data-field="col1"]');
+      if(ta) tbAutosizeTextarea(ta);
     });
   }
+  const draftBtn=document.getElementById('tbDraftBtn'); if(draftBtn) draftBtn.onclick=saveTourBillDraft;
   const saveBtn=document.getElementById('tbSaveBtn'); if(saveBtn) saveBtn.onclick=saveTourBill;
   const printBtn=document.getElementById('tbPrintBtn');
   if(printBtn) printBtn.onclick=()=>{const u=tbCurrentUser();tbPrintHtml({mechanicName:u?.name,mechanicPhone:u?.phone,territory:u?.territory,rows:tbCollectRows(),signature:document.getElementById('tbSignature')?.value||''},'Daily Tour Bill');};
@@ -5633,10 +5847,26 @@ function tbAdminRender(){
   const box=document.getElementById('tbAdminList'); if(!box)return;
   const list=tbAdminFiltered();
   if(!list.length){box.innerHTML='<div class="empty">কোনো Tour Bill পাওয়া যায়নি।</div>';return;}
-  box.innerHTML=`<div class="tb-admin-table-wrap"><table class="tb-admin-table"><thead><tr><th>Date</th><th>Mechanic</th><th>Mobile</th><th>Program / Customer</th><th>Total</th><th>Status</th><th>Action</th></tr></thead><tbody>${list.map(b=>{
-    const first=(b.rows||[]).find(tbRowIsFilled); const status=String(b.status||'Pending');
-    return `<tr><td data-label="Date">${escHtml(tbFormatDate(b.createdAt||b.submittedAtIso))}</td><td data-label="Mechanic"><b>${escHtml(b.mechanicName||'-')}</b><div class="hint">${escHtml(b.territory||'')}</div></td><td data-label="Mobile">${escHtml(b.mechanicPhone||'-')}</td><td data-label="Program / Customer">${escHtml(first?.col1||'-')}</td><td data-label="Total">৳${escHtml(b.total||0)}</td><td data-label="Status"><span class="tb-status tb-status-${status.toLowerCase()}">${escHtml(status)}</span></td><td data-label="Action"><div class="row-actions"><button class="btn btn-primary btn-sm" onclick="viewTourBill('${escHtml(b.id)}')">VIEW</button><select class="tb-status-select" onchange="changeTourBillStatus('${escHtml(b.id)}',this.value)"><option ${status==='Pending'?'selected':''}>Pending</option><option ${status==='Approved'?'selected':''}>Approved</option><option ${status==='Rejected'?'selected':''}>Rejected</option><option ${status==='Paid'?'selected':''}>Paid</option></select></div></td></tr>`;
-  }).join('')}</tbody></table></div>`;
+  box.innerHTML=`<div class="tb-admin-table-wrap"><table class="tb-admin-table tb-admin-list">
+    <colgroup>
+      <col style="width:20%"><col style="width:22%"><col style="width:18%"><col style="width:18%"><col style="width:22%">
+    </colgroup>
+    <thead><tr>
+      <th>Date</th>
+      <th>Mechanic Name</th>
+      <th>Mobile Number</th>
+      <th>Total Bill</th>
+      <th>Action</th>
+    </tr></thead>
+    <tbody>${list.map(b=>{
+      return `<tr>
+        <td data-label="Date">${escHtml(tbFormatDate(b.createdAt||b.submittedAtIso))}</td>
+        <td data-label="Mechanic Name"><b>${escHtml(b.mechanicName||'-')}</b></td>
+        <td data-label="Mobile Number">${escHtml(b.mechanicPhone||'-')}</td>
+        <td data-label="Total Bill">৳${escHtml(Number(b.total||0).toLocaleString('en-US',{maximumFractionDigits:2}))}</td>
+        <td data-label="Action"><div class="row-actions"><button type="button" class="btn btn-primary btn-sm" data-bill-id="${escHtml(b.id)}" onclick="window.viewTourBill&&window.viewTourBill(this.getAttribute('data-bill-id'))">VIEW</button></div></td>
+      </tr>`;
+    }).join('')}</tbody></table></div>`;
 }
 
 async function loadTourBillsAdmin(){
@@ -5653,13 +5883,51 @@ async function loadTourBillsAdmin(){
 }
 
 function viewTourBill(id){
-  const b=tbAdminBills.find(x=>x.id===id); if(!b)return;
-  openModal(`<div class="tb-admin-view"><div class="card-head"><div><h3>Tour Bill</h3><div class="hint">Bill ID: ${escHtml(b.id)}</div></div><div class="row-actions"><button class="btn btn-primary btn-sm" onclick="tbPrintAdminBill('${escHtml(b.id)}')">🖨️ Print / PDF</button><button class="btn btn-ghost btn-sm" onclick="closeModal()">Close</button></div></div>${tbAdminBillPreviewHTML(b)}</div>`);
-  setTimeout(()=>{
-    const el=document.querySelector('.tb-admin-view #tbAdminViewTotal'); if(!el)return;
-    el.textContent=Number(b.total||0).toLocaleString('en-US',{maximumFractionDigits:2});
-  },0);
+  try{
+    const billId=String(id||'');
+    const b=tbAdminBills.find(x=>String(x.id)===billId);
+    if(!b){
+      alert('Tour Bill পাওয়া যায়নি। Refresh করে আবার চেষ্টা করুন।');
+      return;
+    }
+    const when=escHtml(tbFormatDate(b.createdAt||b.submittedAtIso));
+    const name=escHtml(b.mechanicName||'-');
+    const phone=escHtml(b.mechanicPhone||'-');
+    const total=Number(b.total||0).toLocaleString('en-US',{maximumFractionDigits:2});
+    // আগের পেজ পরিষ্কার করে ফুল পেজ
+    const app=document.getElementById('app');
+    if(app) app.innerHTML='';
+    adminTab='tourBills';
+    adminShell(`<div class="card tb-admin-card tb-admin-fullview">
+      <div class="card-head" style="flex-wrap:wrap;gap:10px">
+        <div>
+          <h3 style="margin:0">🧾 Tour Bill</h3>
+          <div class="hint">${name} · ${phone} · ${when} · Total ৳${escHtml(total)}</div>
+          <div class="hint">Bill ID: ${escHtml(b.id)}</div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-left:auto">
+          <button type="button" class="btn btn-ghost btn-sm" id="tbViewBack">⬅️ Back</button>
+          <button type="button" class="btn btn-primary btn-sm" id="tbViewPrint">🖨️ Print / PDF</button>
+        </div>
+      </div>
+      ${tbAdminBillPreviewHTML(b)}
+    </div>`);
+    // admin-home-main চওড়া
+    const main=document.querySelector('.admin-home-main');
+    if(main){ main.style.maxWidth='100%'; main.style.width='100%'; }
+    const back=document.getElementById('tbViewBack');
+    if(back) back.onclick=()=>{ adminTab='tourBills'; go('adminDashboard'); };
+    const pr=document.getElementById('tbViewPrint');
+    if(pr) pr.onclick=()=>tbPrintAdminBill(billId);
+    try{ window.scrollTo(0,0); }catch(e){}
+  }catch(err){
+    console.error('viewTourBill', err);
+    alert('VIEW খোলা যায়নি: '+(err&&err.message?err.message:err));
+  }
 }
+window.viewTourBill = viewTourBill;
+window.tbPrintAdminBill = tbPrintAdminBill;
+window.changeTourBillStatus = changeTourBillStatus;
 function tbAdminBillPreviewHTML(b){
   const rows=tbNormalizeRows(b.rows||[]).filter(tbRowIsFilled);
   return `<div class="tb-admin-paper">${tbTableHTML(rows,true)}<div class="tb-sig">বিল প্রস্তুতকারীর স্বাক্ষর ${escHtml(b.signature||'')}</div></div>`;
