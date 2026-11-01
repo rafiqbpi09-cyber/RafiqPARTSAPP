@@ -44,7 +44,7 @@ document.currentScript.parentNode.insertBefore(manifestLink, document.currentScr
 // প্রতিটি নতুন deployment/update দেওয়ার আগে এই APP_VERSION ভ্যালুটা পরিবর্তন করুন
 // (যেকোনো ইউনিক স্ট্রিং — তারিখ/সময় বা running number)। এই ভ্যালুর ভিত্তিতেই
 // সব ডিভাইস স্বয়ংক্রিয়ভাবে নতুন version detect করে reload হবে।
-window.APP_VERSION = '2026-11-01-glow-no-jump.75';
+window.APP_VERSION = '2026-11-01-receipt-download-fix.76';
 
 (function(){
   // পুরনো/legacy blob-based service worker ও পুরনো Cache Storage সম্পূর্ণ পরিষ্কার করে দেওয়া হয়,
@@ -12596,10 +12596,35 @@ function roundRect(ctx,x,y,w,h,r){
 }
 function downloadDataUrl(dataUrl, filename){
   try{
+    if(!dataUrl) return;
+    const name=filename||'receipt.png';
+    // data: URL → Blob (মোবাইল/ডেস্কটপ দুই জায়গাতেই নির্ভরযোগ্য)
+    let href=dataUrl, revoke=null;
+    if(String(dataUrl).startsWith('data:')){
+      const parts=String(dataUrl).split(',');
+      const mime=(parts[0].match(/data:([^;]+)/)||[])[1]||'image/png';
+      const bin=atob(parts[1]||'');
+      const arr=new Uint8Array(bin.length);
+      for(let i=0;i<bin.length;i++) arr[i]=bin.charCodeAt(i);
+      const blob=new Blob([arr],{type:mime});
+      href=URL.createObjectURL(blob);
+      revoke=href;
+    }
     const a=document.createElement('a');
-    a.href=dataUrl; a.download=filename||'receipt.png';
-    document.body.appendChild(a); a.click(); a.remove();
-  }catch(e){}
+    a.href=href; a.download=name; a.rel='noopener';
+    a.style.display='none';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(()=>{ try{ a.remove(); if(revoke) URL.revokeObjectURL(revoke); }catch(e){} }, 1500);
+  }catch(e){ try{ console.error('downloadDataUrl', e); }catch(_){} }
+}
+function downloadReceiptImage(){
+  const src=(LG.msgCtx && LG.msgCtx.cardImg) || '';
+  if(!src){ toast('⚠️ রসিদ ইমেজ পাওয়া যায়নি'); return; }
+  const vn=(LG.msgCtx && LG.msgCtx.voucherNo) || 'receipt';
+  const kind=(LG.msgCtx && LG.msgCtx.kind) || 'receipt';
+  downloadDataUrl(src, (kind==='sale'?'order':'payment')+'_'+vn+'.png');
+  toast('⬇️ রসিদ ইমেজ ডাউনলোড শুরু হয়েছে');
 }
 
 function renderMessage(lang, d, kind){
@@ -12789,6 +12814,7 @@ function renderMessagePanel(){
   const kind=msgKind(v), data=buildMessageData(v), body=renderMessage(lang,data,kind), seg=smsInfo(body);
   let cardImg='';
   try{ cardImg=receiptImageDataUrl(kind, data); }catch(e){ cardImg=''; }
+  if(LG.msgCtx){ LG.msgCtx.cardImg=cardImg; LG.msgCtx.kind=kind; }
   modal(`
     <h3 style="margin:0 0 8px">${kind==='sale'?'🛒 অর্ডার কনফার্মেশন (WhatsApp/SMS)':(kind==='pay'?'✉️ টাকা সংগ্রহ রসিদ (WhatsApp/SMS)':'✉️ লেনদেন মেসেজ (WhatsApp/SMS)')}</h3>
     <div class="dlg-dealerbox"><b>${esc(v.dealerName)}</b> · ID ${esc(v.dealerId)} · 📞 ${esc(info.phone||'—')}<br>
@@ -12799,8 +12825,8 @@ function renderMessagePanel(){
       <select id="dlgMLang" onchange="DLG.msgSetLang(this.value)" ${anyPending?'disabled':''}>
         ${Object.keys(MSG_LANGS).map(k=>`<option value="${k}" ${k===lang?'selected':''}>${MSG_LANGS[k]}</option>`).join('')}</select></div>
     <label style="font-size:12.5px;color:var(--muted);display:block;margin-top:8px">রসিদ কার্ড প্রিভিউ (WhatsApp ইমেজ)</label>
-    ${cardImg?`<div style="text-align:center;margin:8px 0 10px"><img src="${cardImg}" alt="receipt" style="max-width:100%;width:320px;border-radius:12px;box-shadow:0 8px 24px rgba(15,23,42,.12);border:1px solid var(--line)"></div>
-    <button type="button" class="btn btn-ghost btn-sm" style="width:100%;margin-bottom:8px" onclick="downloadDataUrl(this.dataset.src,'receipt.png')" data-src="${cardImg}">⬇️ রসিদ ইমেজ ডাউনলোড</button>`:''}
+    ${cardImg?`<div style="text-align:center;margin:8px 0 10px"><img id="dlgReceiptPreview" alt="receipt" style="max-width:100%;width:320px;border-radius:12px;box-shadow:0 8px 24px rgba(15,23,42,.12);border:1px solid var(--line)"></div>
+    <button type="button" class="btn btn-ghost btn-sm" style="width:100%;margin-bottom:8px" onclick="DLG.downloadReceiptImage()">⬇️ রসিদ ইমেজ ডাউনলোড</button>`:''}
     <label style="font-size:12.5px;color:var(--muted)">টেক্সট মেসেজ (লিংকসহ)${anyPending?' (Pending)':''}</label>
     <pre class="dlg-msgprev" id="dlgMPrev">${esc(body)}</pre>
     <div class="dlg-sub" style="margin:4px 0 10px">SMS: ${seg.unicode?'Unicode':'GSM-7'} · ${seg.length} অক্ষর · <b>${seg.segments} segment</b> · WA: ইমেজ ও টেক্সট আলাদা বাটন</div>
@@ -12808,6 +12834,11 @@ function renderMessagePanel(){
     <div id="dlgMErr" class="dlg-alert" style="display:none"></div>
     <p class="hint" style="margin-top:8px">ℹ️ WhatsApp-এ <b>ইমেজ শেয়ার</b> ও <b>টেক্সট মেসেজ</b> আলাদা বাটন। যেটা দরকার শুধু সেটা চাপুন — দুটো একসাথে যাবে না। পাঠানোর পর এখানে “পাঠানো হয়েছে” নিশ্চিত করুন।</p>
     <button class="btn btn-ghost dlg-btn-close" style="width:100%;margin-top:8px" onclick="DLG.closeModal()">বন্ধ করুন</button>`);
+  // বড় data-URL HTML attribute-এ না দিয়ে পরে set — ডাউনলোড/প্রিভিউ নির্ভরযোগ্য
+  try{
+    const img=$('dlgReceiptPreview');
+    if(img && cardImg) img.src=cardImg;
+  }catch(e){}
 }
 function msgSetLang(l){ if(!MSG_LANGS[l]) return; LG.ui.msgLang=l; if(LG.msgCtx) LG.msgCtx.lang=l; renderMessagePanel(); }
 function msgErr(e){ const b=$('dlgMErr'); if(b){ b.style.display='block'; b.textContent='❌ '+friendlyError(e); } }
@@ -13103,7 +13134,7 @@ window.DLG={
   tabHTML, wire, reload, setView, setDueQ, setDueOnly, setF, setQ, setAuditQ, clearFilters, openLedger, openDueDetail,
   openEntry, entryTypeChanged, entryMethodChanged, entryPreview, submitEntry, openReverse, submitReverse, closeModal,
   printStatement, printDue, exportLedger, exportDue, pdfDue, recalcAll, changePerm, peHook,
-  openParty, submitParty, myReload, myFilter, openMessage, msgSetLang, msgSend, msgResolve, toggleSmsPanel, entryMsgPreview, setMsgF, setMsgQ, openAdvanceDetails,
+  openParty, submitParty, myReload, myFilter, openMessage, msgSetLang, msgSend, msgResolve, toggleSmsPanel, downloadReceiptImage, entryMsgPreview, setMsgF, setMsgQ, openAdvanceDetails,
   selfHook,
   _t:{sendMessage,resolveMessage,preparePayment,buildMessageData,renderMessage,smsInfo,normalizePhone,createParty,loadMyLedger,TEMPLATES,toPaisa,fmt,num,effectOf,aggregate,buildStatement,saveVoucher,applySummary,blankSummary,mismatches,recalcDealer,loadAll,LG,TYPES,catDelta,setPermission,level}
 };
