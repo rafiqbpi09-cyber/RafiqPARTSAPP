@@ -44,7 +44,7 @@ document.currentScript.parentNode.insertBefore(manifestLink, document.currentScr
 // প্রতিটি নতুন deployment/update দেওয়ার আগে এই APP_VERSION ভ্যালুটা পরিবর্তন করুন
 // (যেকোনো ইউনিক স্ট্রিং — তারিখ/সময় বা running number)। এই ভ্যালুর ভিত্তিতেই
 // সব ডিভাইস স্বয়ংক্রিয়ভাবে নতুন version detect করে reload হবে।
-window.APP_VERSION = '2026-11-03-bill-delivery-label.100';
+window.APP_VERSION = '2026-11-03-entry-date-format.101';
 
 (function(){
   // পুরনো/legacy blob-based service worker ও পুরনো Cache Storage সম্পূর্ণ পরিষ্কার করে দেওয়া হয়,
@@ -12212,7 +12212,13 @@ function openEntry(dealerId, prefill){
       ${types.map(k=>`<option value="${k}" ${prefill.type===k?'selected':''}>${esc(TYPES[k].bn)}</option>`).join('')}</select></div>
     <div class="field" id="dlgFSideBox" style="display:none"><label>দিক</label><select id="dlgFSide" onchange="DLG.entryPreview()">
       <option value="RECV">ডিলারের কাছে পাওনা (+)</option><option value="PAY">ডিলারকে দেনা/অগ্রিম (−)</option></select></div>
-    <div class="field"><label>তারিখ</label><input type="date" id="dlgFDate" max="${todayISO()}" value="${esc(prefill.date||todayISO())}"></div>
+    <div class="field"><label>তারিখ</label>
+      <div class="dlg-date-wrap" style="position:relative">
+        <input type="text" id="dlgFDateView" readonly tabindex="-1" value="${esc(formatAppDateOnly(prefill.date||todayISO()))}" style="width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--text);font:inherit;box-sizing:border-box;cursor:pointer">
+        <input type="date" id="dlgFDate" max="${todayISO()}" value="${esc(prefill.date||todayISO())}" onchange="DLG.syncEntryDateView()" style="position:absolute;left:0;top:0;width:100%;height:100%;opacity:0.02;cursor:pointer;border:0;padding:0;margin:0">
+      </div>
+      <p class="hint" style="margin:4px 0 0">যেমন: 03 Nov 2026 — ক্যালেন্ডার থেকে বাছুন</p>
+    </div>
     <div class="field"><label>পরিমাণ (৳)</label><input type="text" inputmode="decimal" id="dlgFAmount" placeholder="যেমন 25000.50" value="${esc(prefill.amount||'')}" oninput="DLG.entryPreview()"></div>
     <div class="field" id="dlgFMethodBox"><label>Payment Method</label><select id="dlgFMethod" onchange="DLG.entryMethodChanged()">${METHOD_OPTS.map(m=>`<option value="${m.v}" ${(prefill.method===m.v||normalizeMethodCode(prefill.method)===m.v)?'selected':''}>${esc(m.label)}</option>`).join('')}</select></div>
     <div class="field" id="dlgFBankBranchBox" style="display:none"><label>শাখার নাম <span style="color:#c23b3b">*</span></label><input type="text" id="dlgFBankBranch" maxlength="80" placeholder="যেমন: বরিশাল শাখা" value="${esc(prefill.bankBranch||'')}"></div>
@@ -12241,6 +12247,7 @@ function openEntry(dealerId, prefill){
   entryTypeChanged();
 }
 function entryTypeChanged(){
+  try{ syncEntryDateView(); }catch(e){}
   const t=$('dlgFType'); if(!t) return; const def=TYPES[t.value]||{};
   $('dlgFSideBox').style.display = def.needSide ? '' : 'none';
   $('dlgFMethodBox').style.display = def.needMethod ? '' : 'none';
@@ -12679,6 +12686,18 @@ function formatAppDateTime(dateISO, createdAt){
   return pad2(day)+' '+months[month]+' '+year+', '+pad2(h12)+':'+pad2(mins)+' '+ampm;
 }
 function formatReceiptDateTime(dateISO, createdAt){ return formatAppDateTime(dateISO, createdAt); }
+// শুধু তারিখ: 03 Nov 2026
+function formatAppDateOnly(dateISO){
+  const months=['Jan','Feb','Mar','Apr','May','June','July','Aug','Sep','Oct','Nov','Dec'];
+  const m=String(dateISO||'').match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if(!m) return String(dateISO||'');
+  return m[3]+' '+months[+m[2]-1]+' '+m[1];
+}
+function syncEntryDateView(){
+  const d=$('dlgFDate'), v=$('dlgFDateView');
+  if(d && v) v.value = formatAppDateOnly(d.value||todayISO());
+}
+
 // বিল/কুরিয়ার টেক্সটে লম্বা মাসের নাম সংক্ষেপ (May/June/July অপরিবর্তিত)
 function shortenMonthNamesInText(s){
   let t=String(s==null?'':s);
@@ -13576,7 +13595,7 @@ async function peHook(){
 
 window.DLG={
   tabHTML, wire, reload, setView, setDueQ, setDueOnly, setF, setQ, setAuditQ, clearFilters, openLedger, openDueDetail,
-  openEntry, entryTypeChanged, entryMethodChanged, entryPreview, submitEntry, openReverse, submitReverse, closeModal,
+  openEntry, entryTypeChanged, entryMethodChanged, syncEntryDateView, entryPreview, submitEntry, openReverse, submitReverse, closeModal,
   printStatement, printDue, exportLedger, exportDue, pdfDue, recalcAll, changePerm, peHook,
   openParty, submitParty, myReload, myFilter, openMessage, msgSetLang, msgSend, msgResolve, toggleSmsPanel, downloadReceiptImage, entryMsgPreview, setMsgF, setMsgQ, openAdvanceDetails,
   selfHook,
