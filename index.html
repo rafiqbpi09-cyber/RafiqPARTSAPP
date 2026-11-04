@@ -44,7 +44,7 @@ document.currentScript.parentNode.insertBefore(manifestLink, document.currentScr
 // প্রতিটি নতুন deployment/update দেওয়ার আগে এই APP_VERSION ভ্যালুটা পরিবর্তন করুন
 // (যেকোনো ইউনিক স্ট্রিং — তারিখ/সময় বা running number)। এই ভ্যালুর ভিত্তিতেই
 // সব ডিভাইস স্বয়ংক্রিয়ভাবে নতুন version detect করে reload হবে।
-window.APP_VERSION = '2026-11-03-entry-date-format.101';
+window.APP_VERSION = '2026-11-03-security-hardening.103';
 
 (function(){
   // পুরনো/legacy blob-based service worker ও পুরনো Cache Storage সম্পূর্ণ পরিষ্কার করে দেওয়া হয়,
@@ -3033,6 +3033,83 @@ function fbPw(pw){
   return pw.length >= 6 ? pw : (pw + 'Xk9#pQ7z').slice(0, 6);
 }
 
+// ==== অ্যাডমিন পাসওয়ার্ড হ্যাশিং (backward-compatible) ====
+// পুরনো plain-text পাসওয়ার্ড আগের মতোই কাজ করে (strict ===)। শুধু নতুন করে সেট/পরিবর্তন করা পাসওয়ার্ড
+// 'pbk1$iters$salt$hash' ফরম্যাটে সেভ হয়, যাতে Firebase-এ আসল পাসওয়ার্ড দেখা না যায়।
+const _sha256 = (function(){
+  const K=[0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2];
+  return function(msg){
+    const l=msg.length, hi=Math.floor(l/0x20000000), lo=(l<<3)>>>0;
+    const padLen=((l+9+63)>>6)<<6;
+    const buf=new Uint8Array(padLen); buf.set(msg); buf[l]=0x80;
+    const dv=new DataView(buf.buffer); dv.setUint32(padLen-8,hi); dv.setUint32(padLen-4,lo);
+    let h0=0x6a09e667,h1=0xbb67ae85,h2=0x3c6ef372,h3=0xa54ff53a,h4=0x510e527f,h5=0x9b05688c,h6=0x1f83d9ab,h7=0x5be0cd19;
+    const w=new Uint32Array(64);
+    for(let o=0;o<padLen;o+=64){
+      for(let i=0;i<16;i++) w[i]=dv.getUint32(o+i*4);
+      for(let i=16;i<64;i++){
+        const a=w[i-15], b=w[i-2];
+        const s0=((a>>>7)|(a<<25))^((a>>>18)|(a<<14))^(a>>>3);
+        const s1=((b>>>17)|(b<<15))^((b>>>19)|(b<<13))^(b>>>10);
+        w[i]=(w[i-16]+s0+w[i-7]+s1)>>>0;
+      }
+      let a=h0,b=h1,c=h2,d=h3,e=h4,f=h5,g=h6,h=h7;
+      for(let i=0;i<64;i++){
+        const S1=((e>>>6)|(e<<26))^((e>>>11)|(e<<21))^((e>>>25)|(e<<7));
+        const ch=(e&f)^(~e&g);
+        const t1=(h+S1+ch+K[i]+w[i])>>>0;
+        const S0=((a>>>2)|(a<<30))^((a>>>13)|(a<<19))^((a>>>22)|(a<<10));
+        const mj=(a&b)^(a&c)^(b&c);
+        const t2=(S0+mj)>>>0;
+        h=g;g=f;f=e;e=(d+t1)>>>0;d=c;c=b;b=a;a=(t1+t2)>>>0;
+      }
+      h0=(h0+a)>>>0;h1=(h1+b)>>>0;h2=(h2+c)>>>0;h3=(h3+d)>>>0;h4=(h4+e)>>>0;h5=(h5+f)>>>0;h6=(h6+g)>>>0;h7=(h7+h)>>>0;
+    }
+    const out=new Uint8Array(32), odv=new DataView(out.buffer);
+    [h0,h1,h2,h3,h4,h5,h6,h7].forEach((v,i)=>odv.setUint32(i*4,v));
+    return out;
+  };
+})();
+function _pwBytes(str){
+  const u=unescape(encodeURIComponent(String(str==null?'':str)));
+  const a=new Uint8Array(u.length);
+  for(let i=0;i<u.length;i++) a[i]=u.charCodeAt(i);
+  return a;
+}
+function _pwHex(bytes){ let o=''; for(let i=0;i<bytes.length;i++) o+=(bytes[i]<16?'0':'')+bytes[i].toString(16); return o; }
+function _pwFromHex(hex){
+  const out=new Uint8Array(hex.length>>1);
+  for(let i=0;i<out.length;i++) out[i]=parseInt(hex.substr(i*2,2),16);
+  return out;
+}
+function _pwConcat(){
+  let n=0; for(let i=0;i<arguments.length;i++) n+=arguments[i].length;
+  const out=new Uint8Array(n); let p=0;
+  for(let i=0;i<arguments.length;i++){ out.set(arguments[i],p); p+=arguments[i].length; }
+  return out;
+}
+function _pwDerive(plain, salt, iters){
+  const pb=_pwBytes(plain);
+  let h=_sha256(_pwConcat(salt,pb));
+  for(let i=1;i<iters;i++) h=_sha256(_pwConcat(h,salt,pb));
+  return h;
+}
+function pwIsHashed(v){ return typeof v==='string' && v.indexOf('pbk1$')===0; }
+function pwMake(plain){
+  const salt=new Uint8Array(16);
+  try{ crypto.getRandomValues(salt); }catch(e){ for(let i=0;i<16;i++) salt[i]=Math.floor(Math.random()*256); }
+  const iters=3000;
+  return 'pbk1$'+iters+'$'+_pwHex(salt)+'$'+_pwHex(_pwDerive(plain,salt,iters));
+}
+function pwCheck(input, stored){
+  if(!pwIsHashed(stored)) return input === stored; // পুরনো plain-text — আগের আচরণ হুবহু একই
+  const p=stored.split('$');
+  if(p.length!==4) return false;
+  const iters=parseInt(p[1],10);
+  if(!(iters>0 && iters<=100000)) return false;
+  return _pwHex(_pwDerive(input,_pwFromHex(p[2]),iters))===p[3];
+}
+
 // admin/dealer/partsEngineer লগইনের সময় কল হয় — legacy পাসওয়ার্ড যাচাই ইতিমধ্যে হয়ে গেছে ধরে নিয়ে,
 // এই ফাংশন Firebase Auth-এ সাইন-ইন করে (প্রথমবার হলে অ্যাকাউন্ট বানিয়ে, পাসওয়ার্ড বদলালে নতুন অ্যাকাউন্টে rotate করে)।
 
@@ -4685,7 +4762,7 @@ async function slSubmitLogin(role){
   if(role === 'engineer' || role === 'dealer') await refreshSharedLoginData(role);
 
   if(role === 'admin'){
-    if(pw !== DB.settings.adminPassword){ showErr('পাসওয়ার্ড সঠিক নয়'); return; }
+    if(!pwCheck(pw, DB.settings.adminPassword)){ showErr('পাসওয়ার্ড সঠিক নয়'); return; }
     btn.disabled = true; btn.textContent = 'প্রবেশ করা হচ্ছে...';
     try{ await fbEnsureAuth(DB.settings, pw, 'admin'); lastAuthError = null; }
     catch(err){ lastAuthError = (err && (err.code || err.message)) ? `${err.code||''} ${err.message||err}`.trim() : String(err); console.warn('Firebase admin auth skipped (offline/network issue), continuing with local login:', err); }
@@ -4778,7 +4855,7 @@ ROUTES.adminLogin = function(){
   document.getElementById('submit').onclick = async ()=>{
     const pw = document.getElementById('pw').value;
     const e = document.getElementById('err');
-    if(pw === DB.settings.adminPassword){
+    if(pwCheck(pw, DB.settings.adminPassword)){
       const btn = document.getElementById('submit'); btn.disabled = true; btn.textContent = 'প্রবেশ করা হচ্ছে...';
       try{
         await fbEnsureAuth(DB.settings, pw, 'admin');
@@ -4880,7 +4957,7 @@ ROUTES.adminForgotPassword = function(){
       const err = document.getElementById('err');
       if(!np || np.length < 4){ err.style.display='block'; err.textContent='কমপক্ষে ৪ ডিজিট/অক্ষরের পাসওয়ার্ড দিন'; return; }
       if(np !== np2){ err.style.display='block'; err.textContent='দুটো পাসওয়ার্ড মিলছে না'; return; }
-      DB.settings.adminPassword = np;
+      DB.settings.adminPassword = pwMake(np);
       DB.settings.resetOTP = null;
       DB.settings.resetOTPExpiry = null;
       saveDB();
@@ -6224,7 +6301,7 @@ ROUTES.peRegister = function(){
     if(!isValidPhone11(phone)){ e.style.display='block'; e.textContent='মোবাইল নম্বর অবশ্যই ঠিক ১১ সংখ্যার হতে হবে'; return; }
     if(pw !== pw2){ e.style.display='block'; e.textContent='পাসওয়ার্ড দুটো মিলছে না'; return; }
     if(!PARTS_ENGINEER_REGIONS.includes(region)){ e.style.display='block'; e.textContent='অনুগ্রহ করে তালিকা থেকে একটি বৈধ Region নির্বাচন করুন।'; return; }
-    if(accessCode !== DB.settings.peAccessCode){ e.style.display='block'; e.textContent='Access Code সঠিক নয়। এটি শুধুমাত্র অ্যাডমিনের কাছ থেকে পাওয়া যাবে — ডিলার/মেকানিক এখানে রেজিস্ট্রেশন করতে পারবেন না।'; return; }
+    if(accessCode !== DB.settings.peAccessCode || DB.settings.peAccessCode === 'SET-YOUR-CODE-HERE'){ e.style.display='block'; e.textContent='Access Code সঠিক নয়। এটি শুধুমাত্র অ্যাডমিনের কাছ থেকে পাওয়া যাবে — ডিলার/মেকানিক এখানে রেজিস্ট্রেশন করতে পারবেন না।'; return; }
     if(hasExistingUserPhone(phone)){ e.style.display='block'; e.textContent='এই মোবাইল নম্বরটি ইতিমধ্যে ডিলার/মেকানিক হিসেবে রেজিস্ট্রেশন করা আছে। একই ব্যক্তি দুটি ভিন্ন role-এ থাকতে পারবেন না — অ্যাডমিনের সাথে যোগাযোগ করুন।'; return; }
     if(DB.partsEngineers.some(p=>String(p.engineerId||'').trim().toLowerCase()===engineerId.toLowerCase())){
       e.style.display='block'; e.textContent='This Engineer ID is already registered. Please Login. (এই Engineer ID দিয়ে আগেই রেজিস্ট্রেশন করা আছে — লগইন করুন)';
@@ -10622,9 +10699,29 @@ async function saveVehicleCompatToFirebase(replaceMode=false){
     base+=`?auth=${encodeURIComponent(token)}`;
   }
   // Firebase Realtime Database object keyed by stable index; chunks prevent oversized single writes.
+  // ★ নিরাপত্তা: আগে পুরো node মুছে (PUT null) তারপর আপলোড করলে মাঝপথে নেট গেলে সব ডেটা হারাত।
+  // এখন (১) আগে পুরনো ডেটার ব্যাকআপ ফাইল নামানো হয় — ব্যাকআপ না হলে কিছুই বদলায় না,
+  // (২) নতুন ডেটা আগে লেখা হয়, (৩) সফল হওয়ার পরেই বাড়তি পুরনো রেকর্ড মোছা হয়। ফলাফল আগের মতোই (শুধু নতুন ডেটা)।
   if(replaceMode){
-    const del=await fetch(base,{method:'PUT',headers:{'Content-Type':'application/json'},body:'null'});
-    if(!del.ok) throw new Error(`Vehicle DB clear failed: ${del.status}`);
+    let oldRaw=null;
+    try{
+      const r0=await fetch(base);
+      if(!r0.ok) throw new Error('HTTP '+r0.status);
+      oldRaw=await r0.json();
+    }catch(be){
+      throw new Error('পুরনো Vehicle ডেটার ব্যাকআপ নেওয়া যায়নি, তাই "মুছে নতুন করে বসান" বাতিল করা হয়েছে — কোনো ডেটা বদলায়নি। ('+(be&&be.message?be.message:be)+')');
+    }
+    if(oldRaw && typeof oldRaw==='object' && Object.keys(oldRaw).length){
+      try{
+        const stamp=new Date().toISOString().slice(0,16).replace(/[:T]/g,'-');
+        const a=document.createElement('a');
+        a.href=URL.createObjectURL(new Blob([JSON.stringify(oldRaw)],{type:'application/json'}));
+        a.download=`vehicleCompat-backup-${stamp}.json`;
+        document.body.appendChild(a); a.click(); a.remove();
+      }catch(de){
+        throw new Error('ব্যাকআপ ফাইল তৈরি করা যায়নি, তাই "মুছে নতুন করে বসান" বাতিল করা হয়েছে — কোনো ডেটা বদলায়নি। ('+(de&&de.message?de.message:de)+')');
+      }
+    }
   }
   for(let i=0;i<all.length;i+=CHUNK){
     const obj={};
@@ -10635,6 +10732,19 @@ async function saveVehicleCompatToFirebase(replaceMode=false){
     if(!res.ok){ const t=await res.text().catch(()=>String(res.status)); throw new Error(`Vehicle DB chunk ${i}-${end-1} failed: ${res.status} ${t}`); }
     const st=document.getElementById('vehicleUploadStatus');
     if(st) st.textContent=`⏳ Firebase upload: ${end} / ${all.length}`;
+  }
+  if(replaceMode){
+    // নতুন ডেটা সম্পূর্ণ লেখা হয়ে গেছে — এবার নতুন তালিকার বাইরের পুরনো (বাড়তি) key গুলো মোছা হচ্ছে
+    const sr=await fetch(base+(base.includes('?')?'&':'?')+'shallow=true');
+    if(!sr.ok) throw new Error(`Vehicle DB পুরনো রেকর্ড পরিষ্কার করা যায়নি (নতুন ডেটা সেভ হয়েছে, আবার "মুছে নতুন করে বসান" চালান): ${sr.status}`);
+    const keysObj=await sr.json();
+    const stale=(keysObj && typeof keysObj==='object')
+      ? Object.keys(keysObj).filter(k=>!(/^\d+$/.test(k) && Number(k)<all.length)) : [];
+    for(let i=0;i<stale.length;i+=CHUNK){
+      const o={}; stale.slice(i,i+CHUNK).forEach(k=>{ o[k]=null; });
+      const r=await fetch(base+(base.includes('?')?'&':'?')+'trim='+i,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(o)});
+      if(!r.ok) throw new Error(`Vehicle DB পুরনো রেকর্ড পরিষ্কার করা যায়নি: ${r.status}`);
+    }
   }
   try{ localStorage.setItem('vehicleCompatCache_v2',JSON.stringify(all)); }catch(e){ console.warn('Vehicle cache skipped',e); }
 }
@@ -10715,6 +10825,7 @@ function settingsTabHTML(){
     <div class="card">
       <h3>🛡️ Parts Engineer রেজিস্ট্রেশন Access Code</h3>
       <p class="hint">নতুন Parts Engineer রেজিস্ট্রেশনের সময় এই কোডটি দিতে হবে। এটি শুধুমাত্র প্রকৃত ইঞ্জিনিয়ারদের সাথে শেয়ার করুন (WhatsApp/কল-এ) — ডিলার/মেকানিক এই কোড ছাড়া Parts Engineer হিসেবে রেজিস্ট্রেশন করতে পারবেন না।</p>
+      ${DB.settings.peAccessCode==='SET-YOUR-CODE-HERE' ? '<div class="err" style="display:block;margin-bottom:10px;">⚠️ এখনো ডিফল্ট কোড (SET-YOUR-CODE-HERE) আছে — নতুন কোড সেট না করা পর্যন্ত Parts Engineer রেজিস্ট্রেশন বন্ধ থাকবে।</div>' : ''}
       <div class="field"><label>বর্তমান Access Code</label><input type="text" id="peCodeCur" value="${DB.settings.peAccessCode||''}" readonly style="background:#f2f4f7;"></div>
       <div class="field"><label>নতুন Access Code</label><input type="text" id="peCodeNew" placeholder="নতুন কোড লিখুন"></div>
       <div class="ok-msg" id="peCodeOk">Access Code পরিবর্তন হয়েছে</div>
@@ -10723,6 +10834,7 @@ function settingsTabHTML(){
     <div class="card">
       <h3>🔍 কুইক সার্চ সিকিউরিটি কোড</h3>
       <p class="hint">Admin Login পেজের "কুইক সার্চ" বাটনে এই কোডটি দিলে পাসওয়ার্ড ছাড়াই শুধু পার্টস প্রাইস সার্চ করা যাবে (অন্য কোনো অ্যাডমিন ফিচার পাওয়া যাবে না)। এই কোডটি শুধু বিশ্বস্ত মানুষের সাথে শেয়ার করুন।</p>
+      ${String(DB.settings.quickSearchCode||'')==='0000' ? '<div class="err" style="display:block;margin-bottom:10px;">⚠️ এখনো ডিফল্ট কোড (0000) আছে — যে কেউ অনুমান করে কুইক সার্চ খুলতে পারে। নিচ থেকে নতুন কোড দিন।</div>' : ''}
       <div class="field"><label>বর্তমান সিকিউরিটি কোড</label><input type="text" id="qsCodeCur" value="${DB.settings.quickSearchCode||''}" readonly style="background:#f2f4f7;"></div>
       <div class="field"><label>নতুন সিকিউরিটি কোড</label><input type="text" id="qsCodeNew" placeholder="নতুন কোড লিখুন"></div>
       <div class="ok-msg" id="qsCodeOk">সিকিউরিটি কোড পরিবর্তন হয়েছে</div>
@@ -10736,7 +10848,15 @@ function settingsTabHTML(){
       <div id="phoneDiagResult" style="margin-top:12px;"></div>
     </div>
     <div class="card">
+      <h3>📦 পুরো ডেটার ব্যাকআপ</h3>
+      <p class="hint">Firebase-এর সব ডেটা একটা JSON ফাইলে নামিয়ে রাখুন — সপ্তাহে একবার এবং কোনো বড় আপলোড/বদলের আগে। ফাইলে সব ইউজারের তথ্য থাকে, তাই নিরাপদ জায়গায় রাখুন। ডেটা নষ্ট হলে Firebase Console → Data → সংশ্লিষ্ট নোডে (যেমন appdata) Import JSON করে ফেরত আনা যায়।</p>
+      <div class="ok-msg" id="fbBkOk"></div>
+      <div class="err" id="fbBkErr"></div>
+      <button class="btn btn-navy" id="fullBackupBtn">📦 ব্যাকআপ ডাউনলোড করুন</button>
+    </div>
+    <div class="card">
       <h3>🔑 অ্যাডমিন পাসওয়ার্ড পরিবর্তন</h3>
+      ${DB.settings.adminPassword==='admin123' ? '<div class="err" style="display:block;margin-bottom:10px;">⚠️ এখনো ডিফল্ট পাসওয়ার্ড (admin123) চালু আছে — এখনই নিচ থেকে বদলে নিন।</div>' : (!pwIsHashed(DB.settings.adminPassword) ? '<p class="hint">💡 পাসওয়ার্ডটি এখনো সাধারণ টেক্সট আকারে সংরক্ষিত। নিচে একবার নতুন পাসওয়ার্ড দিলে (চাইলে একই পাসওয়ার্ডই আবার দিন) সেটা সুরক্ষিত (hashed) আকারে সেভ হবে।</p>' : '')}
       <div class="field"><label>বর্তমান পাসওয়ার্ড</label><input type="password" id="curPw"></div>
       <div class="field"><label>নতুন পাসওয়ার্ড</label><input type="password" id="newPw"></div>
       <div class="ok-msg" id="pwOk">পাসওয়ার্ড পরিবর্তন হয়েছে</div>
@@ -10935,13 +11055,45 @@ function wireSettingsTab(){
     const nw = document.getElementById('newPw').value;
     const ok = document.getElementById('pwOk'), err = document.getElementById('pwErr');
     ok.style.display='none'; err.style.display='none';
-    if(cur !== DB.settings.adminPassword){ err.style.display='block'; return; }
+    if(!pwCheck(cur, DB.settings.adminPassword)){ err.style.display='block'; return; }
     if(!nw){ return; }
-    DB.settings.adminPassword = nw;
-    syncPush('setSetting', {key:'adminPassword', value:nw});
+    const _nwStored = pwMake(nw);
+    DB.settings.adminPassword = _nwStored;
+    syncPush('setSetting', {key:'adminPassword', value:_nwStored});
     saveDB();
     ok.style.display='block';
     document.getElementById('curPw').value=''; document.getElementById('newPw').value='';
+  };
+  document.getElementById('fullBackupBtn').onclick = async ()=>{
+    const btn=document.getElementById('fullBackupBtn'), okEl=document.getElementById('fbBkOk'), errEl=document.getElementById('fbBkErr');
+    okEl.style.display='none'; errEl.style.display='none';
+    btn.disabled=true; btn.textContent='⏳ ডেটা নামানো হচ্ছে...';
+    try{
+      let tokenQ='';
+      try{ const t=await fbAuth.currentUser.getIdToken(); if(t) tokenQ='?auth='+t; }catch(e){}
+      const paths=['appdata','vehicleCompat','memos','phoneRegistry','memoCounters','adminNotices','eicherCatalogues','_meta'];
+      const out={}, got=[], miss=[];
+      for(const p of paths){
+        try{
+          const r=await fetch(`${FB_URL}/${p}.json${tokenQ}`);
+          if(!r.ok) throw new Error('HTTP '+r.status);
+          const d=await r.json();
+          if(d!==null && d!==undefined){ out[p]=d; got.push(p); }
+        }catch(e){ miss.push(p); }
+      }
+      if(!out.appdata) throw new Error('মূল ডেটা (appdata) নামানো যায়নি — নেট/লগইন দেখে আবার চেষ্টা করুন');
+      const d=new Date(), pad=n=>String(n).padStart(2,'0');
+      const name=`SaBihaSoft-full-backup-${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}.json`;
+      const a=document.createElement('a');
+      a.href=URL.createObjectURL(new Blob([JSON.stringify(out)],{type:'application/json'}));
+      a.download=name; document.body.appendChild(a); a.click(); a.remove();
+      okEl.textContent='✅ ব্যাকআপ নামানো হয়েছে ('+name+') — অন্তর্ভুক্ত: '+got.join(', ')+(miss.length?' | নামানো যায়নি: '+miss.join(', '):'');
+      okEl.style.display='block';
+    }catch(e){
+      errEl.textContent='❌ '+(e&&e.message?e.message:e); errEl.style.display='block';
+    }finally{
+      btn.disabled=false; btn.textContent='📦 ব্যাকআপ ডাউনলোড করুন';
+    }
   };
   document.getElementById('saveRecEmail').onclick = ()=>{
     const val = document.getElementById('recoveryEmail').value.trim();
