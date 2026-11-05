@@ -44,7 +44,7 @@ document.currentScript.parentNode.insertBefore(manifestLink, document.currentScr
 // প্রতিটি নতুন deployment/update দেওয়ার আগে এই APP_VERSION ভ্যালুটা পরিবর্তন করুন
 // (যেকোনো ইউনিক স্ট্রিং — তারিখ/সময় বা running number)। এই ভ্যালুর ভিত্তিতেই
 // সব ডিভাইস স্বয়ংক্রিয়ভাবে নতুন version detect করে reload হবে।
-window.APP_VERSION = '2026-11-03-security-hardening.103';
+window.APP_VERSION = '2026-11-05-self-password-change.109';
 
 (function(){
   // পুরনো/legacy blob-based service worker ও পুরনো Cache Storage সম্পূর্ণ পরিষ্কার করে দেওয়া হয়,
@@ -3109,6 +3109,13 @@ function pwCheck(input, stored){
   if(!(iters>0 && iters<=100000)) return false;
   return _pwHex(_pwDerive(input,_pwFromHex(p[2]),iters))===p[3];
 }
+// অ্যাডমিন/PE মডালের পাসওয়ার্ড ঘর → সেভ করার মান।
+// খালি রাখলে (এবং আগের পাসওয়ার্ড hash করা থাকলে) আগেরটাই থাকে; কিছু লিখলে hash হয়ে সেভ হয়।
+function pwFromForm(typed, rec){
+  typed = String(typed||'');
+  if(!typed) return (rec && pwIsHashed(rec.password)) ? rec.password : '';
+  return pwIsHashed(typed) ? typed : pwMake(typed);
+}
 
 // admin/dealer/partsEngineer লগইনের সময় কল হয় — legacy পাসওয়ার্ড যাচাই ইতিমধ্যে হয়ে গেছে ধরে নিয়ে,
 // এই ফাংশন Firebase Auth-এ সাইন-ইন করে (প্রথমবার হলে অ্যাকাউন্ট বানিয়ে, পাসওয়ার্ড বদলালে নতুন অ্যাকাউন্টে rotate করে)।
@@ -3121,7 +3128,7 @@ async function verifyFirebaseCredential(record, pw, prefix){
   if(!record || !record.authEmail) return false;
   try{
     await fbAuth.signInWithEmailAndPassword(record.authEmail, fbPw(pw));
-    record.password = pw;
+    record.password = pwMake(pw);
     const dirtyKeys = record.role === 'partsEngineer' || prefix === 'pe'
       ? ['partsEngineers']
       : ['users'];
@@ -4222,7 +4229,7 @@ let splashShown = false;
 /* ================= FORGOT PASSWORD: CONFIG ================= */
 // অ্যাডমিন OTP ইমেইলে পাঠাতে EmailJS ব্যবহার হচ্ছে (ফ্রি, সার্ভার লাগে না)।
 // emailjs.com এ ফ্রি অ্যাকাউন্ট খুলে নিচের ৩টা মান বসান:
-const EMAILJS_CONFIG = { publicKey: 'YOUR_PUBLIC_KEY', serviceId: 'YOUR_SERVICE_ID', templateId: 'YOUR_TEMPLATE_ID' };
+const EMAILJS_CONFIG = { publicKey: 'S73zhVeon4efbo3tB', serviceId: 'service_jpozaia', templateId: 'template_zo9ge38' };
 const EMAILJS_READY = EMAILJS_CONFIG.publicKey !== 'YOUR_PUBLIC_KEY';
 if(EMAILJS_READY && window.emailjs){ emailjs.init(EMAILJS_CONFIG.publicKey); }
 
@@ -4236,7 +4243,13 @@ function generateOTP(){ return String(Math.floor(100000 + Math.random()*900000))
 
 async function sendAdminOTPEmail(email, otp){
   if(!EMAILJS_READY || !window.emailjs){ throw new Error('EmailJS কনফিগার করা হয়নি'); }
-  await emailjs.send(EMAILJS_CONFIG.serviceId, EMAILJS_CONFIG.templateId, { to_email: email, otp_code: otp });
+  // ডিফল্ট EmailJS 'Contact Us' টেমপ্লেটেও যেন OTP দেখা যায়, তাই {{message}}/{{name}}/{{title}}-ও পাঠানো হচ্ছে
+  // (নিজের টেমপ্লেটে {{otp_code}} বসালে সেটাও আগের মতো কাজ করবে)
+  const otpText = 'আপনার অ্যাডমিন পাসওয়ার্ড রিকভারি OTP: ' + otp + ' (১০ মিনিট বৈধ। কাউকে জানাবেন না)';
+  await emailjs.send(EMAILJS_CONFIG.serviceId, EMAILJS_CONFIG.templateId, {
+    to_email: email, otp_code: otp,
+    message: otpText, name: 'SaBiHa Soft', from_name: 'SaBiHa Soft', title: 'Admin password recovery OTP', subject: 'Admin password recovery OTP: ' + otp, email: email
+  }, { publicKey: EMAILJS_CONFIG.publicKey });
 }
 
 async function sendDealerSMSOTP(phone, otp){
@@ -4631,7 +4644,7 @@ async function simpleLoginSubmit(){
     if(u){
       if(u.pending){ showErr('Your account is awaiting approval. Please contact the administrator.'); return; }
       if(!u.active){ showErr('Your account is inactive. Please contact the administrator.'); return; }
-      let ok = u.password === pw;
+      let ok = pwCheck(pw, u.password);
       if(!ok) ok = await verifyFirebaseCredential(u,pw,'dealer');
       if(!ok){ showErr('Mobile Number or Password is incorrect'); return; }
       try{ await fbEnsureAuth(u,pw,'dealer'); lastAuthError=null; }
@@ -4654,7 +4667,7 @@ async function simpleLoginSubmit(){
     const pe = DB.partsEngineers.find(x=>x && !isDeletedAccount(x) && normalizePhoneNumber(x.phone)===normalizePhoneNumber(identifier));
     if(pe){
       if(!pe.active){ showErr('Your account is inactive. Please contact the administrator.'); return; }
-      let ok = pe.password === pw;
+      let ok = pwCheck(pw, pe.password);
       if(!ok) ok = await verifyFirebaseCredential(pe,pw,'pe');
       if(!ok){ showErr('Mobile Number or Password is incorrect'); return; }
       try{ await fbEnsureAuth(pe,pw,'pe'); lastAuthError=null; }
@@ -4783,7 +4796,7 @@ async function slSubmitLogin(role){
     if(!pe){ showErr('মোবাইল নম্বর/Engineer ID অথবা পাসওয়ার্ড ভুল'); return; }
     if(!pe.active){ showErr('আপনার অ্যাকাউন্টটি নিষ্ক্রিয় করা হয়েছে, অ্যাডমিনের সাথে যোগাযোগ করুন।'); return; }
 
-    let credentialOK = pe.password === pw;
+    let credentialOK = pwCheck(pw, pe.password);
     if(!credentialOK){
       credentialOK = await verifyFirebaseCredential(pe, pw, 'pe');
     }
@@ -4805,7 +4818,7 @@ async function slSubmitLogin(role){
   if(u.pending){ showErr('আপনার অ্যাকাউন্ট এখনও অনুমোদন হয়নি, অ্যাডমিনের সাথে যোগাযোগ করুন'); return; }
   if(!u.active){ showErr('আপনার অ্যাকাউন্টটি নিষ্ক্রিয় করা হয়েছে, অ্যাডমিনের সাথে যোগাযোগ করুন'); return; }
 
-  let credentialOK = u.password === pw;
+  let credentialOK = pwCheck(pw, u.password);
   if(!credentialOK){
     credentialOK = await verifyFirebaseCredential(u, pw, 'dealer');
   }
@@ -4915,7 +4928,7 @@ ROUTES.adminForgotPassword = function(){
         }catch(e){
           btn.disabled = false; btn.textContent = 'OTP পাঠান';
           const err = document.getElementById('err'); err.style.display='block';
-          err.textContent = EMAILJS_READY ? 'OTP পাঠাতে সমস্যা হয়েছে, আবার চেষ্টা করুন' : 'ইমেইল সার্ভিস এখনো কনফিগার করা হয়নি (EmailJS)';
+          err.textContent = EMAILJS_READY ? ('OTP পাঠাতে সমস্যা হয়েছে, আবার চেষ্টা করুন' + ((e && (e.text||e.message)) ? ' ('+(e.status?e.status+' ':'')+String(e.text||e.message).slice(0,140)+')' : '')) : 'ইমেইল সার্ভিস এখনো কনফিগার করা হয়নি (EmailJS)';
         }
       };
       return;
@@ -5241,7 +5254,7 @@ ROUTES.dealerRegister = function(){
     if(btn.disabled) return;
     btn.disabled = true; btn.textContent = 'রেজিস্ট্রেশন হচ্ছে...';
 
-    const newUser = {id: nextUserId++, name, phone, password: pw, active:false, pending:true, role};
+    const newUser = {id: nextUserId++, name, phone, password: pwMake(pw), active:false, pending:true, role};
     if(role === 'dealer'){ newUser.district = district; newUser.upazila = upazila; newUser.address = address; }
     if(role === 'mechanic'){ newUser.territory = territory; }
 
@@ -5339,7 +5352,7 @@ ROUTES.dealerLogin = function(){
     if(u.pending){ e.style.display='block'; e.textContent='আপনার অ্যাকাউন্ট এখনও অনুমোদন হয়নি, অ্যাডমিনের সাথে যোগাযোগ করুন'; return; }
     if(!u.active){ e.style.display='block'; e.textContent='আপনার অ্যাকাউন্টটি নিষ্ক্রিয় করা হয়েছে, অ্যাডমিনের সাথে যোগাযোগ করুন'; return; }
 
-    let credentialOK = u.password === pw;
+    let credentialOK = pwCheck(pw, u.password);
     if(!credentialOK){
       credentialOK = await verifyFirebaseCredential(u, pw, 'dealer');
     }
@@ -5435,26 +5448,68 @@ function mechanicProfileHTML(){
     <div class="field"><label>মোবাইল নম্বর</label><input type="text" value="${escHtml(u.phone)}" readonly style="background:#f2f4f7;"></div>
     <div class="field"><label>টেরিটরি</label><input type="text" value="${escHtml(u.territory||'-')}" readonly style="background:#f2f4f7;"></div>
     <div class="field"><label>Role</label><input type="text" value="Mechanic" readonly style="background:#f2f4f7;"></div>
-    <div class="field"><label>নতুন পাসওয়ার্ড <span class="hint">(পরিবর্তন না করলে খালি রাখুন)</span></label><input type="password" id="selfProfPw" placeholder="••••••••"></div>
     <div class="err" id="selfProfErr" style="display:none"></div>
     <button class="btn btn-primary" id="selfProfSave">সেভ করুন</button>
+    <div style="border-top:1px solid rgba(128,128,128,.3);margin:16px 0 4px;padding-top:14px">
+      <div style="font-weight:700;margin-bottom:10px">🔑 পাসওয়ার্ড পরিবর্তন</div>
+      <div class="field"><label>বর্তমান পাসওয়ার্ড</label><input type="password" id="selfPwCur" autocomplete="current-password"></div>
+      <div class="field"><label>নতুন পাসওয়ার্ড</label><input type="password" id="selfPwNew" autocomplete="new-password"></div>
+      <div class="field"><label>নতুন পাসওয়ার্ড (আবার)</label><input type="password" id="selfPwNew2" autocomplete="new-password"></div>
+      <div class="ok-msg" id="selfPwOk"></div>
+      <div class="err" id="selfPwErr" style="display:none"></div>
+      <button class="btn btn-navy" id="selfPwChangeBtn" type="button">🔑 পাসওয়ার্ড পরিবর্তন করুন</button>
+    </div>
   </div>`;
 }
 // Shared self-service profile save handler for Dealer/Mechanic (DB.users) —
 // only their OWN name/password may change; no other field or record is touched.
+// ডিলার/মেকানিক/Parts Engineer নিজে নিজের পাসওয়ার্ড বদলাতে পারে — বর্তমান পাসওয়ার্ড যাচাই করে (আগে যাচাই ছাড়াই বদলানো যেত)
+function wireSelfPasswordChange(kind){
+  const b=document.getElementById('selfPwChangeBtn');
+  if(!b) return;
+  b.onclick=async ()=>{
+    const g=id=>document.getElementById(id);
+    const cur=g('selfPwCur').value, np=g('selfPwNew').value, np2=g('selfPwNew2').value;
+    const err=g('selfPwErr'), okEl=g('selfPwOk');
+    err.style.display='none'; okEl.style.display='none';
+    const fail=m=>{ err.textContent=m; err.style.display='block'; };
+    const list = kind==='pe' ? DB.partsEngineers : DB.users;
+    const record = list.find(x=>x && DB.session && DB.session.user && x.id===DB.session.user.id);
+    if(!record) return fail('অ্যাকাউন্ট খুঁজে পাওয়া যায়নি — আবার লগইন করুন');
+    if(!cur || !np || !np2) return fail('সব ঘর পূরণ করুন');
+    if(!pwCheck(cur, record.password)) return fail('বর্তমান পাসওয়ার্ড সঠিক নয়');
+    if(np.length < 4) return fail('নতুন পাসওয়ার্ড কমপক্ষে ৪ অক্ষরের দিন');
+    if(np !== np2) return fail('নতুন পাসওয়ার্ড দুটো মিলছে না');
+    if(np === cur) return fail('নতুন পাসওয়ার্ড আগেরটার থেকে আলাদা হতে হবে');
+    b.disabled=true;
+    const oldPw=record.password;
+    try{
+      record.password=pwMake(np);
+      DB.session.user=record;
+      const saved=await saveDB(kind==='pe' ? ['partsEngineers'] : ['users']);
+      if(saved===false){ record.password=oldPw; DB.session.user=record; fail('সেভ হয়নি — ইন্টারনেট দেখে আবার চেষ্টা করুন'); return; }
+      // Firebase Auth-এর পাসওয়ার্ডও মিলিয়ে রাখার চেষ্টা (না পারলে পরের লগইনে সিস্টেম নিজেই ঠিক করে নেয়)
+      try{ if(fbAuth.currentUser) await fbAuth.currentUser.updatePassword(fbPw(np)); }catch(e){}
+      ['selfPwCur','selfPwNew','selfPwNew2'].forEach(id=>{ g(id).value=''; });
+      okEl.textContent='✅ পাসওয়ার্ড পরিবর্তন হয়েছে। পরের বার নতুন পাসওয়ার্ড দিয়ে লগইন করুন।'; okEl.style.display='block';
+    }catch(e){
+      record.password=oldPw; DB.session.user=record;
+      fail('পাসওয়ার্ড পরিবর্তন করা যায়নি: '+(e&&e.message?e.message:e));
+    }finally{ b.disabled=false; }
+  };
+}
 function wireSelfUserProfile(reRenderRoute){
+  wireSelfPasswordChange('user');
   const btn = document.getElementById('selfProfSave');
   if(!btn) return;
   btn.onclick = async ()=>{
     const record = DB.users.find(x=>x.id===DB.session.user.id);
     if(!record) return;
     const name = document.getElementById('selfProfName').value.trim();
-    const pw = document.getElementById('selfProfPw').value;
     const errBox = document.getElementById('selfProfErr');
     errBox.style.display = 'none';
     if(!name){ errBox.style.display='block'; errBox.textContent='নাম খালি রাখা যাবে না'; return; }
     record.name = name;
-    if(pw) record.password = pw;
     DB.session.user = record;
     await saveDB();
     showSavedToast('✅ প্রোফাইল আপডেট হয়েছে');
@@ -5910,7 +5965,14 @@ function tbTimestampMs(v){
 function tbFormatDate(v){
   const ms=tbTimestampMs(v);
   if(!ms) return String(v||'-');
-  return formatAppDateTime(null, new Date(ms).toISOString());
+  // ★ আগে এখানে formatAppDateTime() ডাকা হতো — কিন্তু ওটা শুধু dealer-ledger মডিউলের ভেতরে আছে (এই স্ক্রিপ্ট থেকে দেখা যায় না),
+  // তাই ReferenceError হয়ে পুরো Tour Bill রিপোর্ট লোড ব্যর্থ হতো। এখন নিজস্ব ফরম্যাট (একই আউটপুট: 02 Nov 2026, 08:09 PM)।
+  const d=new Date(ms);
+  if(isNaN(d.getTime())) return String(v||'-');
+  const months=['Jan','Feb','Mar','Apr','May','June','July','Aug','Sep','Oct','Nov','Dec'];
+  const p2=n=>String(n).padStart(2,'0');
+  const h=d.getHours(); let h12=h%12; if(h12===0) h12=12;
+  return p2(d.getDate())+' '+months[d.getMonth()]+' '+d.getFullYear()+', '+p2(h12)+':'+p2(d.getMinutes())+' '+(h>=12?'PM':'AM');
 }
 function tbAdminFiltered(){
   const q=tbAdminQuery.trim().toLowerCase();
@@ -5951,13 +6013,40 @@ function tbAdminRender(){
 async function loadTourBillsAdmin(){
   const box=document.getElementById('tbAdminList');
   if(box)box.innerHTML='<div class="empty">লোড হচ্ছে...</div>';
+  const showErr=(msg)=>{ const b=document.getElementById('tbAdminList'); if(b) b.innerHTML='<div class="empty" style="color:#c23b3b">'+msg+'</div>'; };
   try{
-    const snap=await tourBillsRef().once('value');
+    // Firebase Auth page refresh-এর পর কয়েক মুহূর্ত পরে currentUser সেট করে — Auth ready না হওয়া পর্যন্ত অপেক্ষা
+    // (আগে সরাসরি পড়তে গিয়ে 'permission denied' হতো, কারণ তখনো সাইন-ইন টোকেন তৈরি হয়নি)
+    if(!fbAuth.currentUser){
+      await new Promise(resolve=>{
+        let done=false;
+        const finish=()=>{ if(done) return; done=true; clearTimeout(timer); resolve(); };
+        const timer=setTimeout(finish,6000);
+        try{ fbAuth.onAuthStateChanged(finish); }catch(e){ finish(); }
+      });
+    }
+    if(!fbAuth.currentUser){
+      showErr('Cloud সাইন-ইন সক্রিয় নেই — একবার লগআউট করে অ্যাডমিন হিসেবে আবার লগইন করুন, তারপর Refresh চাপুন।');
+      return;
+    }
+    let snap;
+    try{
+      snap=await tourBillsRef().once('value');
+    }catch(e1){
+      // টোকেন পুরনো/অপ্রস্তুত থাকলে একবার রিফ্রেশ করে আবার চেষ্টা
+      if(/permission/i.test(String((e1&&(e1.code||e1.message))||''))){
+        try{ await fbAuth.currentUser.getIdToken(true); }catch(_e){}
+        await new Promise(r=>setTimeout(r,600));
+        snap=await tourBillsRef().once('value');
+      }else{ throw e1; }
+    }
     const val=snap.val()||{};
     tbAdminBills=Object.keys(val).map(id=>({id, ...(val[id]||{})}));
     tbAdminRender();
   }catch(err){
-    if(box)box.innerHTML='<div class="empty" style="color:#c23b3b">Tour Bill load করা যায়নি। Firebase Rules/ইন্টারনেট পরীক্ষা করুন।</div>';
+    const code=String((err&&(err.code||err.message))||'');
+    if(/permission/i.test(code)) showErr('Tour Bill পড়ার অনুমতি পাওয়া যায়নি — লগআউট করে আবার লগইন করুন। এরপরও হলে Firebase Rules-এ tourBills-এর read (auth != null) আছে কিনা দেখুন। ('+code+')');
+    else showErr('Tour Bill load করা যায়নি — ইন্টারনেট সংযোগ পরীক্ষা করে Refresh চাপুন। ('+code+')');
   }
 }
 
@@ -6234,7 +6323,7 @@ ROUTES.peLogin = function(){
     if(!pe){ e.style.display='block'; e.textContent='মোবাইল নম্বর/Engineer ID অথবা পাসওয়ার্ড ভুল'; return; }
     if(!pe.active){ e.style.display='block'; e.textContent='আপনার অ্যাকাউন্টটি নিষ্ক্রিয় করা হয়েছে, অ্যাডমিনের সাথে যোগাযোগ করুন। (Your account has been deactivated by Admin.)'; return; }
 
-    let credentialOK = pe.password === pw;
+    let credentialOK = pwCheck(pw, pe.password);
     if(!credentialOK){
       credentialOK = await verifyFirebaseCredential(pe, pw, 'pe');
     }
@@ -6309,7 +6398,7 @@ ROUTES.peRegister = function(){
     }
     if(hasExistingPartsEngineerPhone(phone)){ e.style.display='block'; e.textContent='এই মোবাইল নম্বর দিয়ে আগেই একটি Parts Engineer অ্যাকাউন্ট আছে।'; return; }
     const now = new Date();
-    const newPe = {id: nextPeId++, name, phone, password: pw, region, active:true, engineerId, source:'self', registeredAt: now.toISOString(), registeredAtDisplay: now.toLocaleString('bn-BD')};
+    const newPe = {id: nextPeId++, name, phone, password: pwMake(pw), region, active:true, engineerId, source:'self', registeredAt: now.toISOString(), registeredAtDisplay: now.toLocaleString('bn-BD')};
     const btn = document.getElementById('submit');
     if(btn.disabled) return;
     btn.disabled = true; btn.textContent = 'রেজিস্ট্রেশন হচ্ছে...';
@@ -6441,7 +6530,7 @@ ROUTES.dealerForgotPassword = function(){
       const err = document.getElementById('err');
       if(!np || np.length < 4){ err.style.display='block'; err.textContent='কমপক্ষে ৪ ডিজিট/অক্ষরের পাসওয়ার্ড দিন'; return; }
       if(np !== np2){ err.style.display='block'; err.textContent='দুটো পাসওয়ার্ড মিলছে না'; return; }
-      targetUser.password = np;
+      targetUser.password = pwMake(np);
       saveDB();
       alert('পাসওয়ার্ড সফলভাবে পরিবর্তন হয়েছে ✅ নতুন পাসওয়ার্ড দিয়ে লগইন করুন');
       go('dealerLogin');
@@ -6600,9 +6689,17 @@ function dealerProfileHTML(){
     <div class="field"><label>নাম</label><input type="text" id="selfProfName" value="${escHtml(u.name)}"></div>
     <div class="field"><label>মোবাইল নম্বর</label><input type="text" value="${escHtml(u.phone)}" readonly style="background:#f2f4f7;"></div>
     <div class="field"><label>Role</label><input type="text" value="Dealer" readonly style="background:#f2f4f7;"></div>
-    <div class="field"><label>নতুন পাসওয়ার্ড <span class="hint">(পরিবর্তন না করলে খালি রাখুন)</span></label><input type="password" id="selfProfPw" placeholder="••••••••"></div>
     <div class="err" id="selfProfErr" style="display:none"></div>
     <button class="btn btn-primary" id="selfProfSave">সেভ করুন</button>
+    <div style="border-top:1px solid rgba(128,128,128,.3);margin:16px 0 4px;padding-top:14px">
+      <div style="font-weight:700;margin-bottom:10px">🔑 পাসওয়ার্ড পরিবর্তন</div>
+      <div class="field"><label>বর্তমান পাসওয়ার্ড</label><input type="password" id="selfPwCur" autocomplete="current-password"></div>
+      <div class="field"><label>নতুন পাসওয়ার্ড</label><input type="password" id="selfPwNew" autocomplete="new-password"></div>
+      <div class="field"><label>নতুন পাসওয়ার্ড (আবার)</label><input type="password" id="selfPwNew2" autocomplete="new-password"></div>
+      <div class="ok-msg" id="selfPwOk"></div>
+      <div class="err" id="selfPwErr" style="display:none"></div>
+      <button class="btn btn-navy" id="selfPwChangeBtn" type="button">🔑 পাসওয়ার্ড পরিবর্তন করুন</button>
+    </div>
   </div>`;
 }
 function dealerTopbar(sub='ডিলার পোর্টাল', hideBrand=false){
@@ -8371,14 +8468,23 @@ function peProfileHTML(){
     <div class="field"><label>Engineer ID</label><input type="text" id="selfProfEngId" value="${escHtml(pe.engineerId||'')}"></div>
     <div class="field"><label>মোবাইল নম্বর</label><input type="text" value="${escHtml(pe.phone)}" readonly style="background:rgba(255,255,255,0.1);"></div>
     <div class="field"><label>রিজিয়ন</label><input type="text" value="${escHtml(pe.region||'-')}" readonly style="background:rgba(255,255,255,0.1);"></div>
-    <div class="field"><label>নতুন পাসওয়ার্ড <span class="hint">(পরিবর্তন না করলে খালি রাখুন)</span></label><input type="password" id="selfProfPw" placeholder="••••••••"></div>
     <div class="err" id="selfProfErr" style="display:none"></div>
     <button class="btn btn-primary" id="selfProfSave">সেভ করুন</button>
+    <div style="border-top:1px solid rgba(128,128,128,.3);margin:16px 0 4px;padding-top:14px">
+      <div style="font-weight:700;margin-bottom:10px">🔑 পাসওয়ার্ড পরিবর্তন</div>
+      <div class="field"><label>বর্তমান পাসওয়ার্ড</label><input type="password" id="selfPwCur" autocomplete="current-password"></div>
+      <div class="field"><label>নতুন পাসওয়ার্ড</label><input type="password" id="selfPwNew" autocomplete="new-password"></div>
+      <div class="field"><label>নতুন পাসওয়ার্ড (আবার)</label><input type="password" id="selfPwNew2" autocomplete="new-password"></div>
+      <div class="ok-msg" id="selfPwOk"></div>
+      <div class="err" id="selfPwErr" style="display:none"></div>
+      <button class="btn btn-navy" id="selfPwChangeBtn" type="button">🔑 পাসওয়ার্ড পরিবর্তন করুন</button>
+    </div>
   </div>`;
 }
 // Self-service profile save for Parts Engineer (DB.partsEngineers) — only
 // their OWN name/Engineer ID/password may change; no other record is touched.
 function wirePeProfileTab(){
+  wireSelfPasswordChange('pe');
   const btn = document.getElementById('selfProfSave');
   if(!btn) return;
   btn.onclick = async ()=>{
@@ -8386,13 +8492,11 @@ function wirePeProfileTab(){
     if(!record) return;
     const name = document.getElementById('selfProfName').value.trim();
     const engineerId = document.getElementById('selfProfEngId').value.trim();
-    const pw = document.getElementById('selfProfPw').value;
     const errBox = document.getElementById('selfProfErr');
     errBox.style.display = 'none';
     if(!name){ errBox.style.display='block'; errBox.textContent='নাম খালি রাখা যাবে না'; return; }
     record.name = name;
     record.engineerId = engineerId;
-    if(pw) record.password = pw;
     DB.session.user = record;
     await saveDB();
     showSavedToast('✅ প্রোফাইল আপডেট হয়েছে');
@@ -8475,7 +8579,7 @@ function openPeUserModal(user){
     <h3>${isEdit?'তথ্য পরিবর্তন':'নতুন ডিলার/মেকানিক যোগ'}</h3>
     <div class="field"><label>নাম</label><input type="text" id="mPUName" value="${user?user.name:''}"></div>
     <div class="field"><label>মোবাইল নম্বর</label><input type="text" id="mPUPhone" value="${user?user.phone:''}"></div>
-    <div class="field"><label>পাসওয়ার্ড</label><input type="text" id="mPUPw" value="${user?user.password:''}"></div>
+    <div class="field"><label>পাসওয়ার্ড</label><input type="text" id="mPUPw" value="${user && !pwIsHashed(user.password) ? user.password : ''}" placeholder="${user && pwIsHashed(user.password) ? 'অপরিবর্তিত রাখতে ফাঁকা রাখুন' : ''}"></div>
     <div class="field"><label>ধরন</label>
       <select id="mPURole">
         <option value="dealer" ${user&&user.role==='dealer'?'selected':''}>ডিলার</option>
@@ -8518,7 +8622,7 @@ function openPeUserModal(user){
   document.getElementById('savePeUser').onclick = ()=>{
     const name = document.getElementById('mPUName').value.trim();
     const phone = document.getElementById('mPUPhone').value.trim();
-    const password = document.getElementById('mPUPw').value.trim();
+    const password = pwFromForm(document.getElementById('mPUPw').value.trim(), isEdit ? user : null);
     const role = document.getElementById('mPURole').value;
     const district = document.getElementById('mPUDistrict').value;
     const upazila = document.getElementById('mPUUpazila').value;
@@ -9523,7 +9627,7 @@ function resolveResetRequest(id){
   if(!u){ alert('এই ইউজার আর নেই'); return; }
   const np = prompt(`${u.name} (${u.phone})-এর জন্য নতুন পাসওয়ার্ড দিন:`);
   if(!np) return;
-  u.password = np;
+  u.password = pwMake(np);
   req.status = 'done';
   saveDB();
   alert(`নতুন পাসওয়ার্ড সেট হয়েছে: ${np}\nদয়া করে ${u.name}-কে কল/WhatsApp করে জানিয়ে দিন।`);
@@ -9836,7 +9940,7 @@ function openUserModal(user){
     <h3>${isEdit?'ইউজারের তথ্য পরিবর্তন':'নতুন ডিলার/মেকানিক যোগ'}</h3>
     <div class="field"><label>নাম</label><input type="text" id="mUName" value="${user?user.name:''}"></div>
     <div class="field"><label>মোবাইল নম্বর</label><input type="text" id="mUPhone" value="${user?user.phone:''}"></div>
-    <div class="field"><label>পাসওয়ার্ড</label><input type="text" id="mUPw" value="${user?user.password:''}"></div>
+    <div class="field"><label>পাসওয়ার্ড</label><input type="text" id="mUPw" value="${user && !pwIsHashed(user.password) ? user.password : ''}" placeholder="${user && pwIsHashed(user.password) ? 'অপরিবর্তিত রাখতে ফাঁকা রাখুন' : ''}"></div>
     <div class="field"><label>ধরন</label>
       <select id="mURole">
         <option value="dealer" ${user&&user.role==='dealer'?'selected':''}>ডিলার</option>
@@ -9884,7 +9988,7 @@ function openUserModal(user){
   document.getElementById('saveUser').onclick = async ()=>{
     const name = document.getElementById('mUName').value.trim();
     const phone = normalizePhoneNumber(document.getElementById('mUPhone').value.trim());
-    const password = document.getElementById('mUPw').value.trim();
+    const password = pwFromForm(document.getElementById('mUPw').value.trim(), isEdit ? user : null);
     const role = document.getElementById('mURole').value;
     const district = document.getElementById('mUDistrict').value;
     const upazila = document.getElementById('mUUpazila').value;
@@ -10049,7 +10153,7 @@ function openPeModal(pe){
     <h3>${isEdit?'Parts Engineer-এর তথ্য পরিবর্তন':'নতুন Parts Engineer যোগ'}</h3>
     <div class="field"><label>নাম</label><input type="text" id="mPeName" value="${pe?pe.name:''}"></div>
     <div class="field"><label>মোবাইল নম্বর</label><input type="text" id="mPePhone" value="${pe?pe.phone:''}"></div>
-    <div class="field"><label>পাসওয়ার্ড</label><input type="text" id="mPePw" value="${pe?pe.password:''}"></div>
+    <div class="field"><label>পাসওয়ার্ড</label><input type="text" id="mPePw" value="${pe && !pwIsHashed(pe.password) ? pe.password : ''}" placeholder="${pe && pwIsHashed(pe.password) ? 'অপরিবর্তিত রাখতে ফাঁকা রাখুন' : ''}"></div>
     <div class="field">
       <label>রিজিয়ন</label>
       <select id="mPeRegion" required>
@@ -10065,7 +10169,7 @@ function openPeModal(pe){
   document.getElementById('savePe').onclick = async ()=>{
     const name = document.getElementById('mPeName').value.trim();
     const phone = normalizePhoneNumber(document.getElementById('mPePhone').value.trim());
-    const password = document.getElementById('mPePw').value.trim();
+    const password = pwFromForm(document.getElementById('mPePw').value.trim(), isEdit ? pe : null);
     const region = document.getElementById('mPeRegion').value;
     if(!name || !phone || !password || !region) { alert('সব ঘর পূরণ করুন — নাম, মোবাইল, পাসওয়ার্ড, রিজিয়ন নির্বাচন করুন।'); return; }
     if(!isValidPhone11(phone)) { alert('মোবাইল নম্বর অবশ্যই ঠিক ১১ সংখ্যার হতে হবে'); return; }
@@ -10129,7 +10233,7 @@ function resetPePassword(id){
   if(!p) return;
   const np = prompt(`${p.name} (${p.phone})-এর জন্য নতুন পাসওয়ার্ড দিন:`);
   if(!np) return;
-  p.password = np;
+  p.password = pwMake(np);
   logHistory(`Parts Engineer পাসওয়ার্ড রিসেট: ${p.name}`);
   saveDB();
   alert(`নতুন পাসওয়ার্ড সেট হয়েছে: ${np}\nদয়া করে ${p.name}-কে কল/WhatsApp করে জানিয়ে দিন।`);
@@ -10848,6 +10952,13 @@ function settingsTabHTML(){
       <div id="phoneDiagResult" style="margin-top:12px;"></div>
     </div>
     <div class="card">
+      <h3>🔐 ইউজার পাসওয়ার্ড সুরক্ষিত করুন</h3>
+      <p class="hint">ডিলার, মেকানিক ও Parts Engineer-দের পাসওয়ার্ড এখন সাধারণ টেক্সট আকারে Firebase-এ আছে। এক চাপে সব hash (সুরক্ষিত) করা যায়। এরপর আর কেউ (অ্যাডমিনও) কারও পাসওয়ার্ড দেখতে পারবে না — শুধু রিসেট করা যাবে। লগইন আগের মতোই চলবে। <b>আগে নিচের "পুরো ডেটার ব্যাকআপ" নিয়ে নিন।</b> ${(()=>{ const n=[...(DB.users||[]),...(DB.partsEngineers||[])].filter(r=>r&&typeof r.password==='string'&&r.password&&!pwIsHashed(r.password)).length; return n ? '<br><b style="color:#c23b3b">এখনো '+n+' জনের পাসওয়ার্ড সাধারণ টেক্সটে আছে।</b>' : '<br><b style="color:#1a7f37">✅ সব পাসওয়ার্ড সুরক্ষিত।</b>'; })()}</p>
+      <div class="ok-msg" id="hashPwOk"></div>
+      <div class="err" id="hashPwErr"></div>
+      <button class="btn btn-navy" id="hashAllPwBtn">🔐 সব পাসওয়ার্ড সুরক্ষিত করুন</button>
+    </div>
+    <div class="card">
       <h3>📦 পুরো ডেটার ব্যাকআপ</h3>
       <p class="hint">Firebase-এর সব ডেটা একটা JSON ফাইলে নামিয়ে রাখুন — সপ্তাহে একবার এবং কোনো বড় আপলোড/বদলের আগে। ফাইলে সব ইউজারের তথ্য থাকে, তাই নিরাপদ জায়গায় রাখুন। ডেটা নষ্ট হলে Firebase Console → Data → সংশ্লিষ্ট নোডে (যেমন appdata) Import JSON করে ফেরত আনা যায়।</p>
       <div class="ok-msg" id="fbBkOk"></div>
@@ -11063,6 +11174,29 @@ function wireSettingsTab(){
     saveDB();
     ok.style.display='block';
     document.getElementById('curPw').value=''; document.getElementById('newPw').value='';
+  };
+  document.getElementById('hashAllPwBtn').onclick = async ()=>{
+    const btn=document.getElementById('hashAllPwBtn'), okEl=document.getElementById('hashPwOk'), errEl=document.getElementById('hashPwErr');
+    okEl.style.display='none'; errEl.style.display='none';
+    const targets=[...(DB.users||[]),...(DB.partsEngineers||[])].filter(r=>r&&typeof r.password==='string'&&r.password&&!pwIsHashed(r.password));
+    if(!targets.length){ okEl.textContent='✅ সব পাসওয়ার্ড আগে থেকেই সুরক্ষিত আছে।'; okEl.style.display='block'; return; }
+    if(!confirm(targets.length+' জনের পাসওয়ার্ড hash করা হবে। এরপর অ্যাডমিন আর কারও পাসওয়ার্ড দেখতে পারবে না (শুধু রিসেট করা যাবে)।\n\n"পুরো ডেটার ব্যাকআপ" নিয়েছেন তো? এগিয়ে যাবেন?')) return;
+    btn.disabled=true;
+    try{
+      let n=0;
+      for(const r of targets){
+        r.password=pwMake(r.password); n++;
+        btn.textContent='⏳ '+n+'/'+targets.length+' ...';
+        if(n%3===0) await new Promise(res=>setTimeout(res,0));
+      }
+      const saved=await saveDB(['users','partsEngineers']);
+      if(saved===false) throw new Error('Firebase-এ সেভ হয়নি — নেট দেখে আবার চেষ্টা করুন');
+      okEl.textContent='✅ '+n+' জনের পাসওয়ার্ড সুরক্ষিত করা হয়েছে।'; okEl.style.display='block';
+    }catch(e){
+      errEl.textContent='❌ '+(e&&e.message?e.message:e); errEl.style.display='block';
+    }finally{
+      btn.disabled=false; btn.textContent='🔐 সব পাসওয়ার্ড সুরক্ষিত করুন';
+    }
   };
   document.getElementById('fullBackupBtn').onclick = async ()=>{
     const btn=document.getElementById('fullBackupBtn'), okEl=document.getElementById('fbBkOk'), errEl=document.getElementById('fbBkErr');
