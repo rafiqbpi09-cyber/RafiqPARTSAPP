@@ -44,7 +44,7 @@ document.currentScript.parentNode.insertBefore(manifestLink, document.currentScr
 // প্রতিটি নতুন deployment/update দেওয়ার আগে এই APP_VERSION ভ্যালুটা পরিবর্তন করুন
 // (যেকোনো ইউনিক স্ট্রিং — তারিখ/সময় বা running number)। এই ভ্যালুর ভিত্তিতেই
 // সব ডিভাইস স্বয়ংক্রিয়ভাবে নতুন version detect করে reload হবে।
-window.APP_VERSION = '2026-11-05-self-password-change.109';
+window.APP_VERSION = '2026-11-06-aging-report.112';
 
 (function(){
   // পুরনো/legacy blob-based service worker ও পুরনো Cache Storage সম্পূর্ণ পরিষ্কার করে দেওয়া হয়,
@@ -3117,6 +3117,57 @@ function pwFromForm(typed, rec){
   return pwIsHashed(typed) ? typed : pwMake(typed);
 }
 
+// ==== পুরো ডেটার ব্যাকআপ / রিস্টোর (অ্যাডমিন) ====
+const FULL_BACKUP_PATHS = ['appdata','vehicleCompat','memos','phoneRegistry','memoCounters','adminNotices','eicherCatalogues','tourBills','dealerLedger','_meta'];
+async function fullBackupFetchAll(){
+  let tokenQ='';
+  try{ const t=await fbAuth.currentUser.getIdToken(); if(t) tokenQ='?auth='+t; }catch(e){}
+  const out={}, got=[], miss=[];
+  for(const p of FULL_BACKUP_PATHS){
+    try{
+      const r=await fetch(`${FB_URL}/${p}.json${tokenQ}`);
+      if(!r.ok) throw new Error('HTTP '+r.status);
+      const d=await r.json();
+      if(d!==null && d!==undefined){ out[p]=d; got.push(p); }
+    }catch(e){ miss.push(p); }
+  }
+  return {out, got, miss, tokenQ};
+}
+function fullBackupDownload(out, prefix){
+  const d=new Date(), pad=n=>String(n).padStart(2,'0');
+  const name=`${prefix||''}SaBihaSoft-full-backup-${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}.json`;
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([JSON.stringify(out)],{type:'application/json'}));
+  a.download=name; document.body.appendChild(a); a.click(); a.remove();
+  try{ localStorage.setItem('sabiLastFullBackupAt', String(Date.now())); }catch(e){}
+  return name;
+}
+function lastBackupInfo(){
+  let t=0; try{ t=parseInt(localStorage.getItem('sabiLastFullBackupAt')||'0',10)||0; }catch(e){}
+  if(!t) return {t:0, days:null, text:'এই ডিভাইসে এখনো কোনো ব্যাকআপ নেওয়া হয়নি'};
+  const days=Math.floor((Date.now()-t)/86400000);
+  const d=new Date(t), pad=n=>String(n).padStart(2,'0');
+  return {t, days, text:'শেষ ব্যাকআপ: '+pad(d.getDate())+'/'+pad(d.getMonth()+1)+'/'+d.getFullYear()+' ('+(days===0?'আজ':days+' দিন আগে')+')'};
+}
+// অ্যাডমিন ড্যাশবোর্ড খুললে ৭ দিনের বেশি ব্যাকআপ না থাকলে একবার (প্রতি সেশনে) মনে করিয়ে দেয়
+function maybeBackupReminder(){
+  try{
+    if(currentRoute!=='adminDashboard' || !DB.session || DB.session.role!=='admin') return;
+    if(sessionStorage.getItem('sabiBackupRemindShown')==='1') return;
+    const info=lastBackupInfo();
+    if(info.t && info.days<7) return;
+    sessionStorage.setItem('sabiBackupRemindShown','1');
+    const oldBar=document.getElementById('backupReminderBar'); if(oldBar) oldBar.remove();
+    const bar=document.createElement('div');
+    bar.id='backupReminderBar';
+    bar.style.cssText='position:fixed;left:12px;right:12px;bottom:12px;z-index:99999;background:#fff3cd;color:#664d03;border:1px solid #ffda6a;border-radius:12px;padding:12px 14px;box-shadow:0 6px 24px rgba(0,0,0,.2);display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:14px;';
+    bar.innerHTML='<span style="flex:1;min-width:200px">⚠️ '+(info.t?info.days+' দিন':'অনেক দিন')+' ধরে ডেটার ব্যাকআপ নেওয়া হয়নি।</span><button type="button" id="backupReminderGo" style="background:#1f3a5f;color:#fff;border:0;border-radius:8px;padding:8px 12px;cursor:pointer">এখনই নিন</button><button type="button" id="backupReminderClose" style="background:transparent;border:0;font-size:18px;cursor:pointer" aria-label="close">✕</button>';
+    document.body.appendChild(bar);
+    document.getElementById('backupReminderClose').onclick=()=>bar.remove();
+    document.getElementById('backupReminderGo').onclick=()=>{ bar.remove(); adminTab='settings'; render(); };
+  }catch(e){}
+}
+
 // admin/dealer/partsEngineer লগইনের সময় কল হয় — legacy পাসওয়ার্ড যাচাই ইতিমধ্যে হয়ে গেছে ধরে নিয়ে,
 // এই ফাংশন Firebase Auth-এ সাইন-ইন করে (প্রথমবার হলে অ্যাকাউন্ট বানিয়ে, পাসওয়ার্ড বদলালে নতুন অ্যাকাউন্টে rotate করে)।
 
@@ -4222,7 +4273,7 @@ function withMS(name){
   return /^m\/?s\.?\s/i.test(n) ? n : ('M/S '+n);
 }
 
-function render(){ document.getElementById('app').innerHTML = ''; ROUTES[currentRoute](); syncQuickSearchFABVisibility(); }
+function render(){ document.getElementById('app').innerHTML = ''; ROUTES[currentRoute](); syncQuickSearchFABVisibility(); try{ maybeBackupReminder(); }catch(e){} }
 let currentRoute = 'landing';
 let splashShown = false;
 
@@ -10960,10 +11011,18 @@ function settingsTabHTML(){
     </div>
     <div class="card">
       <h3>📦 পুরো ডেটার ব্যাকআপ</h3>
-      <p class="hint">Firebase-এর সব ডেটা একটা JSON ফাইলে নামিয়ে রাখুন — সপ্তাহে একবার এবং কোনো বড় আপলোড/বদলের আগে। ফাইলে সব ইউজারের তথ্য থাকে, তাই নিরাপদ জায়গায় রাখুন। ডেটা নষ্ট হলে Firebase Console → Data → সংশ্লিষ্ট নোডে (যেমন appdata) Import JSON করে ফেরত আনা যায়।</p>
+      <p class="hint">Firebase-এর সব ডেটা (পার্টস, ইউজার, মেমো, লেজার, Tour Bill ইত্যাদি) একটা JSON ফাইলে নামিয়ে রাখুন — সপ্তাহে একবার এবং কোনো বড় আপলোড/বদলের আগে। ফাইলে সব ইউজারের তথ্য থাকে, তাই নিরাপদ জায়গায় রাখুন।<br><b>${lastBackupInfo().text}</b></p>
       <div class="ok-msg" id="fbBkOk"></div>
       <div class="err" id="fbBkErr"></div>
       <button class="btn btn-navy" id="fullBackupBtn">📦 ব্যাকআপ ডাউনলোড করুন</button>
+    </div>
+    <div class="card">
+      <h3>♻️ ব্যাকআপ থেকে রিস্টোর</h3>
+      <p class="hint">আগে নামানো ব্যাকআপ ফাইল (.json) বাছাই করে ডেটা ফেরত আনুন। রিস্টোরের আগে অ্যাপ নিজে বর্তমান ডেটার একটা ব্যাকআপ নামিয়ে নেয় (না নামলে কিছুই বদলায় না)। পার্টস, ইউজার, সেটিংস, মেমো, Tour Bill ইত্যাদি ফেরত আসে। <b>ভেহিকল DB, ডিলার লেজার ও Eicher ক্যাটালগ</b> এখান থেকে ফেরত আসে না — ওগুলোর জন্য Firebase Console → Data → সংশ্লিষ্ট নোডে Import JSON ব্যবহার করুন। রিস্টোরের পর পাসওয়ার্ডও ব্যাকআপের সময়ের অবস্থায় ফিরে যায়।</p>
+      <input type="file" id="restoreFileInput" accept=".json,application/json" style="margin:6px 0 10px;max-width:100%">
+      <div class="ok-msg" id="rsOk"></div>
+      <div class="err" id="rsErr"></div>
+      <button class="btn btn-navy" id="restoreBackupBtn">♻️ রিস্টোর করুন</button>
     </div>
     <div class="card">
       <h3>🔑 অ্যাডমিন পাসওয়ার্ড পরিবর্তন</h3>
@@ -11203,30 +11262,58 @@ function wireSettingsTab(){
     okEl.style.display='none'; errEl.style.display='none';
     btn.disabled=true; btn.textContent='⏳ ডেটা নামানো হচ্ছে...';
     try{
-      let tokenQ='';
-      try{ const t=await fbAuth.currentUser.getIdToken(); if(t) tokenQ='?auth='+t; }catch(e){}
-      const paths=['appdata','vehicleCompat','memos','phoneRegistry','memoCounters','adminNotices','eicherCatalogues','_meta'];
-      const out={}, got=[], miss=[];
-      for(const p of paths){
-        try{
-          const r=await fetch(`${FB_URL}/${p}.json${tokenQ}`);
-          if(!r.ok) throw new Error('HTTP '+r.status);
-          const d=await r.json();
-          if(d!==null && d!==undefined){ out[p]=d; got.push(p); }
-        }catch(e){ miss.push(p); }
-      }
-      if(!out.appdata) throw new Error('মূল ডেটা (appdata) নামানো যায়নি — নেট/লগইন দেখে আবার চেষ্টা করুন');
-      const d=new Date(), pad=n=>String(n).padStart(2,'0');
-      const name=`SaBihaSoft-full-backup-${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}.json`;
-      const a=document.createElement('a');
-      a.href=URL.createObjectURL(new Blob([JSON.stringify(out)],{type:'application/json'}));
-      a.download=name; document.body.appendChild(a); a.click(); a.remove();
-      okEl.textContent='✅ ব্যাকআপ নামানো হয়েছে ('+name+') — অন্তর্ভুক্ত: '+got.join(', ')+(miss.length?' | নামানো যায়নি: '+miss.join(', '):'');
+      const r=await fullBackupFetchAll();
+      if(!r.out.appdata) throw new Error('মূল ডেটা (appdata) নামানো যায়নি — নেট/লগইন দেখে আবার চেষ্টা করুন');
+      const name=fullBackupDownload(r.out);
+      okEl.textContent='✅ ব্যাকআপ নামানো হয়েছে ('+name+') — অন্তর্ভুক্ত: '+r.got.join(', ')+(r.miss.length?' | নামানো যায়নি: '+r.miss.join(', '):'');
       okEl.style.display='block';
     }catch(e){
       errEl.textContent='❌ '+(e&&e.message?e.message:e); errEl.style.display='block';
     }finally{
       btn.disabled=false; btn.textContent='📦 ব্যাকআপ ডাউনলোড করুন';
+    }
+  };
+  document.getElementById('restoreBackupBtn').onclick = async ()=>{
+    const btn=document.getElementById('restoreBackupBtn'), okEl=document.getElementById('rsOk'), errEl=document.getElementById('rsErr');
+    okEl.style.display='none'; errEl.style.display='none';
+    const fail=m=>{ errEl.textContent='❌ '+m; errEl.style.display='block'; };
+    const fi=document.getElementById('restoreFileInput'); const f=fi&&fi.files&&fi.files[0];
+    if(!f) return fail('আগে ব্যাকআপ ফাইল (.json) বাছাই করুন');
+    let data;
+    try{ data=JSON.parse(await f.text()); }catch(e){ return fail('ফাইলটা পড়া যায়নি — সঠিক ব্যাকআপ JSON ফাইল দিন'); }
+    if(!data || typeof data!=='object' || !data.appdata || typeof data.appdata!=='object' || Array.isArray(data.appdata)) return fail('এটা এই অ্যাপের পুরো-ব্যাকআপ ফাইল নয় (appdata নেই)');
+    const RESTORE_NODES=['memos','phoneRegistry','memoCounters','adminNotices','tourBills','_meta'];
+    const adKeys=Object.keys(data.appdata).filter(k=>data.appdata[k]!==null && data.appdata[k]!==undefined && /^[A-Za-z0-9_\-]+$/.test(k));
+    if(!adKeys.length) return fail('ব্যাকআপ ফাইলে appdata খালি');
+    const nodes=RESTORE_NODES.filter(n=>data[n]!==undefined && data[n]!==null);
+    const skipped=['vehicleCompat','eicherCatalogues','dealerLedger'].filter(n=>data[n]);
+    const cnt=v=>Array.isArray(v)?v.length:(v&&typeof v==='object'?Object.keys(v).length:1);
+    const summary=adKeys.map(k=>k+': '+cnt(data.appdata[k])).join(', ');
+    if(!confirm('ব্যাকআপ ফাইল থেকে এই ডেটা ফেরত বসানো হবে:\n\nappdata → '+summary+(nodes.length?'\nআরও: '+nodes.join(', '):'')+(skipped.length?'\n\n(এগুলো এখান থেকে ফেরত আসবে না: '+skipped.join(', ')+')':'')+'\n\nবর্তমান ডেটা বদলে যাবে। এগিয়ে যাবেন?')) return;
+    const typed=prompt('নিশ্চিত করতে বড় হাতের অক্ষরে RESTORE লিখুন');
+    if(String(typed||'').trim()!=='RESTORE') return fail('বাতিল করা হয়েছে — কিছু বদলায়নি');
+    btn.disabled=true; btn.textContent='⏳ রিস্টোর চলছে...';
+    try{
+      // ১) বর্তমান ডেটার ব্যাকআপ আগে নামানো (না হলে রিস্টোর শুরুই হবে না)
+      const cur=await fullBackupFetchAll();
+      if(!cur.out.appdata) throw new Error('বর্তমান ডেটার ব্যাকআপ নেওয়া যায়নি — রিস্টোর বাতিল, কিছু বদলায়নি');
+      if(!cur.tokenQ) throw new Error('Cloud সাইন-ইন সক্রিয় নেই — লগআউট করে অ্যাডমিন হিসেবে আবার লগইন করুন। কিছু বদলায়নি');
+      fullBackupDownload(cur.out,'BEFORE-RESTORE-');
+      // ২) কী-ভিত্তিক লেখা (শুধু ব্যাকআপে থাকা অংশ বদলায়)
+      let done=0; const total=adKeys.length+nodes.length;
+      const put=async (path,val)=>{
+        const r=await fetch(`${FB_URL}/${path}.json${cur.tokenQ}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(val)});
+        if(!r.ok) throw new Error(path+' লেখা যায়নি (HTTP '+r.status+') — '+done+'/'+total+' অংশ ফেরত এসেছে; আগের ডেটার ব্যাকআপ ফাইল আপনার ডাউনলোডে আছে');
+        done++; btn.textContent='⏳ '+done+'/'+total+' ...';
+      };
+      for(const k of adKeys) await put('appdata/'+k, data.appdata[k]);
+      for(const n of nodes) await put(n, data[n]);
+      okEl.textContent='✅ রিস্টোর সম্পন্ন ('+done+' অংশ)। পেজ নতুন করে লোড হচ্ছে...'; okEl.style.display='block';
+      setTimeout(()=>{ try{ location.reload(); }catch(e){} },2500);
+    }catch(e){
+      fail(e&&e.message?e.message:String(e));
+    }finally{
+      btn.disabled=false; btn.textContent='♻️ রিস্টোর করুন';
     }
   };
   document.getElementById('saveRecEmail').onclick = ()=>{
@@ -12221,6 +12308,7 @@ function dueHTML(){
         <button class="btn btn-ghost btn-sm" onclick="DLG.printDue()">🖨️ Print</button>
         <button class="btn btn-ghost btn-sm" onclick="DLG.exportDue()">📄 Excel</button>
         <button class="btn btn-ghost btn-sm" onclick="DLG.pdfDue()">📑 PDF</button>
+        <button class="btn btn-ghost btn-sm" onclick="DLG.openAging()">📅 Aging</button>
       </div>
     </div>
     <div id="dlgDueResults"></div>
@@ -12228,6 +12316,7 @@ function dueHTML(){
       <button class="btn btn-ghost btn-sm" onclick="DLG.printDue()">🖨️ Print</button>
       <button class="btn btn-ghost btn-sm" onclick="DLG.exportDue()">📄 Excel</button>
       <button class="btn btn-ghost btn-sm" onclick="DLG.pdfDue()">📑 PDF</button>
+        <button class="btn btn-ghost btn-sm" onclick="DLG.openAging()">📅 Aging</button>
     </div>
   </div>`;
 }
@@ -12838,6 +12927,115 @@ function exportLedger(){
   aoa.push([]); aoa.push(['','','','','','','Total',st.dr/100,st.cr/100].concat(single&&st.closing!=null?[st.closing/100]:[]));
   const ws=XLSX.utils.aoa_to_sheet(aoa); const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Ledger');
   xlsxSave(wb,`dealer_ledger_${single?('dealer'+info.id+'_'):'all_'}${todayISO()}.xlsx`);
+}
+/* ---------- বকেয়ার বয়স (Aging) রিপোর্ট ----------
+   প্রতিটি পার্টির পাওনা সবচেয়ে পুরনো বিল থেকে শুরু করে জমা/ফেরত মিলিয়ে (FIFO) বাকি অংশের বয়স হিসাব করা হয়।
+   Reversal হওয়া এন্ট্রি ও তার Reversal জোড়া বাদ — ফলে মোট বকেয়া সবসময় লেজারের ব্যালেন্সের সাথে মেলে। */
+function agingDays(dateISO, asOfISO){
+  const a=Date.parse(String(dateISO||'')+'T00:00:00Z'), b=Date.parse(String(asOfISO||'')+'T00:00:00Z');
+  if(isNaN(a)||isNaN(b)) return 0;
+  return Math.max(0, Math.floor((b-a)/86400000));
+}
+function agingCompute(vs, asOfISO){
+  const rev=reversedSet(vs);
+  const live=(vs||[]).filter(v=>v && v.type!=='REVERSAL' && !rev.has(v.voucherNo) && (!asOfISO || String(v.date||'')<=asOfISO)).slice().sort(cmpVouchers);
+  const per={};
+  live.forEach(v=>{
+    const e=Number(v.effectPaisa)||0; if(!e) return;
+    const id=String(v.dealerId); const p=per[id]||(per[id]={q:[],adv:0});
+    if(e>0){
+      let d=e; const use=Math.min(p.adv,d); p.adv-=use; d-=use;
+      if(d>0) p.q.push({date:v.date,amt:d});
+    }else{
+      let c=-e;
+      while(c>0 && p.q.length){ const f=p.q[0]; const t=Math.min(f.amt,c); f.amt-=t; c-=t; if(f.amt===0) p.q.shift(); }
+      if(c>0) p.adv+=c;
+    }
+  });
+  const rows=[], tot={b0:0,b1:0,b2:0,b3:0,total:0};
+  Object.keys(per).forEach(id=>{
+    const p=per[id], r={id,b0:0,b1:0,b2:0,b3:0,total:0,advance:p.adv};
+    p.q.forEach(it=>{
+      const d=agingDays(it.date,asOfISO), k=d<=30?'b0':d<=60?'b1':d<=90?'b2':'b3';
+      r[k]+=it.amt; r.total+=it.amt;
+    });
+    if(r.total>0){ rows.push(r); ['b0','b1','b2','b3','total'].forEach(k=>{ tot[k]+=r[k]; }); }
+  });
+  rows.sort((x,y)=>y.total-x.total);
+  return {rows,tot};
+}
+function agingDateArg(asOf){ return (asOf && /^\d{4}-\d{2}-\d{2}$/.test(String(asOf))) ? String(asOf) : todayISO(); }
+function openAging(asOf){
+  const d=agingDateArg(asOf);
+  const {rows,tot}=agingCompute(visibleVouchers(), d);
+  const body=rows.length ? rows.map(r=>{
+    const info=dealerInfo(r.id);
+    return `<tr>
+      <td>${esc(info.name||r.id)}<div class="dlg-sub">${esc(info.phone||'')}</div></td>
+      <td class="n">${num(r.b0)}</td><td class="n">${num(r.b1)}</td><td class="n">${num(r.b2)}</td><td class="n">${num(r.b3)}</td>
+      <td class="n"><b>${num(r.total)}</b></td>
+    </tr>`;
+  }).join('') : `<tr><td colspan="6" class="dlg-empty">এই তারিখে কোনো বকেয়া নেই</td></tr>`;
+  modal(`
+    <h3 style="margin:0 0 8px">📅 বকেয়ার বয়স (Aging) রিপোর্ট</h3>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
+      <label>হিসাবের তারিখ <input type="date" id="dlgAgingDate" value="${esc(d)}" onchange="DLG.openAging(this.value)"></label>
+      <span class="dlg-sub">${rows.length} জন পার্টির বকেয়া আছে</span>
+    </div>
+    <div style="overflow-x:auto">
+      <table class="dlg-table">
+        <thead><tr><th>পার্টি</th><th class="n">০–৩০ দিন</th><th class="n">৩১–৬০ দিন</th><th class="n">৬১–৯০ দিন</th><th class="n">৯০+ দিন</th><th class="n">মোট বকেয়া</th></tr></thead>
+        <tbody>${body}</tbody>
+        <tfoot><tr><td><b>সর্বমোট</b></td><td class="n"><b>${num(tot.b0)}</b></td><td class="n"><b>${num(tot.b1)}</b></td><td class="n"><b>${num(tot.b2)}</b></td><td class="n"><b>${num(tot.b3)}</b></td><td class="n"><b>${num(tot.total)}</b></td></tr></tfoot>
+      </table>
+    </div>
+    <p class="dlg-sub" style="margin-top:8px">সবচেয়ে পুরনো বিল থেকে জমা/ফেরত মিলিয়ে (FIFO) বাকি বকেয়ার বয়স দেখানো হয়েছে। বাতিল (Reversal) হওয়া এন্ট্রি বাদ।</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+      <button class="btn btn-ghost btn-sm" onclick="DLG.exportAging(document.getElementById('dlgAgingDate').value)">📄 Excel</button>
+      <button class="btn btn-ghost btn-sm" onclick="DLG.pdfAging(document.getElementById('dlgAgingDate').value)">📑 PDF</button>
+      <button class="btn btn-ghost btn-sm" onclick="DLG.closeModal()">বন্ধ করুন</button>
+    </div>`);
+}
+function exportAging(asOf){
+  const d=agingDateArg(asOf);
+  const {rows,tot}=agingCompute(visibleVouchers(), d);
+  const aoa=[[companyName()],['Aging Report (Due by age) — as of '+d],[],['#','Party','Phone','0-30 days','31-60 days','61-90 days','90+ days','Total Due']];
+  rows.forEach((r,i)=>{ const info=dealerInfo(r.id); aoa.push([i+1,info.name||r.id,info.phone||'',r.b0/100,r.b1/100,r.b2/100,r.b3/100,r.total/100]); });
+  aoa.push([],['','Total','',tot.b0/100,tot.b1/100,tot.b2/100,tot.b3/100,tot.total/100]);
+  const ws=XLSX.utils.aoa_to_sheet(aoa); const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Aging');
+  xlsxSave(wb,`dealer_aging_${d}.xlsx`);
+}
+function pdfAging(asOf){
+  if(!window.jspdf){ alert('PDF লাইব্রেরি লোড হয়নি, ইন্টারনেট চেক করুন'); return; }
+  const d=agingDateArg(asOf);
+  const {rows,tot}=agingCompute(visibleVouchers(), d);
+  const { jsPDF } = window.jspdf;
+  const doc=new jsPDF({unit:'pt',format:'a4'});
+  const margin=40; let y=48;
+  const ascii=(t,id)=>{ const a=String(t||'').replace(/[^\x20-\x7E]/g,'').trim(); return (a||('Party '+id)).slice(0,30); };
+  const head=()=>{
+    doc.setFont('helvetica','bold'); doc.setFontSize(9);
+    doc.text('Party', margin, y); doc.text('0-30', margin+190, y); doc.text('31-60', margin+250, y);
+    doc.text('61-90', margin+315, y); doc.text('90+', margin+380, y); doc.text('Total', margin+440, y);
+    y+=6; doc.setLineWidth(0.6); doc.line(margin, y, 555, y); y+=13; doc.setFont('helvetica','normal');
+  };
+  doc.setFont('helvetica','bold'); doc.setFontSize(14);
+  doc.text(String(ascii(companyName(),'')||'Company'), margin, y); y+=20;
+  doc.setFontSize(12); doc.text('Aging Report (Due by age) - as of '+d, margin, y); y+=24;
+  head();
+  rows.forEach(r=>{
+    if(y>780){ doc.addPage(); y=48; head(); }
+    const info=dealerInfo(r.id);
+    doc.text(ascii(info.name,r.id), margin, y);
+    doc.text(num(r.b0), margin+190, y); doc.text(num(r.b1), margin+250, y);
+    doc.text(num(r.b2), margin+315, y); doc.text(num(r.b3), margin+380, y);
+    doc.setFont('helvetica','bold'); doc.text(num(r.total), margin+440, y); doc.setFont('helvetica','normal');
+    y+=15;
+  });
+  y+=8; doc.setFont('helvetica','bold');
+  doc.text('TOTAL', margin, y); doc.text(num(tot.b0), margin+190, y); doc.text(num(tot.b1), margin+250, y);
+  doc.text(num(tot.b2), margin+315, y); doc.text(num(tot.b3), margin+380, y); doc.text(num(tot.total), margin+440, y);
+  doc.save(`dealer_aging_${d}.pdf`);
 }
 function exportDue(){
   const rows=dueRows();
@@ -13882,10 +14080,10 @@ async function peHook(){
 window.DLG={
   tabHTML, wire, reload, setView, setDueQ, setDueOnly, setF, setQ, setAuditQ, clearFilters, openLedger, openDueDetail,
   openEntry, entryTypeChanged, entryMethodChanged, syncEntryDateView, entryPreview, submitEntry, openReverse, submitReverse, closeModal,
-  printStatement, printDue, exportLedger, exportDue, pdfDue, recalcAll, changePerm, peHook,
+  printStatement, printDue, exportLedger, exportDue, pdfDue, openAging, exportAging, pdfAging, recalcAll, changePerm, peHook,
   openParty, submitParty, myReload, myFilter, openMessage, msgSetLang, msgSend, msgResolve, toggleSmsPanel, downloadReceiptImage, entryMsgPreview, setMsgF, setMsgQ, openAdvanceDetails,
   selfHook,
-  _t:{sendMessage,resolveMessage,preparePayment,buildMessageData,renderMessage,smsInfo,normalizePhone,createParty,loadMyLedger,TEMPLATES,toPaisa,fmt,num,effectOf,aggregate,buildStatement,saveVoucher,applySummary,blankSummary,mismatches,recalcDealer,loadAll,LG,TYPES,catDelta,setPermission,level}
+  _t:{agingCompute,sendMessage,resolveMessage,preparePayment,buildMessageData,renderMessage,smsInfo,normalizePhone,createParty,loadMyLedger,TEMPLATES,toPaisa,fmt,num,effectOf,aggregate,buildStatement,saveVoucher,applySummary,blankSummary,mismatches,recalcDealer,loadAll,LG,TYPES,catDelta,setPermission,level}
 };
 })();
 
