@@ -44,7 +44,7 @@ document.currentScript.parentNode.insertBefore(manifestLink, document.currentScr
 // প্রতিটি নতুন deployment/update দেওয়ার আগে এই APP_VERSION ভ্যালুটা পরিবর্তন করুন
 // (যেকোনো ইউনিক স্ট্রিং — তারিখ/সময় বা running number)। এই ভ্যালুর ভিত্তিতেই
 // সব ডিভাইস স্বয়ংক্রিয়ভাবে নতুন version detect করে reload হবে।
-window.APP_VERSION = '2026-11-06-aging-report.112';
+window.APP_VERSION = '2026-11-12-mech-ledger-dedupe.147';
 
 (function(){
   // পুরনো/legacy blob-based service worker ও পুরনো Cache Storage সম্পূর্ণ পরিষ্কার করে দেওয়া হয়,
@@ -1489,6 +1489,160 @@ window.APP_VERSION = '2026-11-06-aging-report.112';
   [data-theme="dark"] .dealer-nav-folder.open{background:var(--navy-2);border-color:#60a5fa;}
   [data-theme="dark"] .dealer-nav-folder.open .lbl{color:#fff;}
   .dealer-nav-folder:active{transform:scale(.97);}
+  /* Exclusive Dealer — mobile app-icon home grid */
+  .xd-app-shell{max-width:480px;margin:0 auto;}
+  .xd-app-grid{
+    display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:14px 10px;padding:8px 4px 16px;margin:0 auto;
+  }
+  .xd-app-icon{
+    appearance:none;border:0;background:transparent;cursor:pointer;
+    display:flex;flex-direction:column;align-items:center;gap:8px;
+    padding:4px;font-family:inherit;-webkit-tap-highlight-color:transparent;
+  }
+  .xd-app-icon .xd-ic{
+    width:64px;height:64px;border-radius:18px;
+    display:flex;align-items:center;justify-content:center;
+    font-size:28px;line-height:1;
+    box-shadow:0 4px 14px rgba(15,23,42,.12);
+    border:1px solid rgba(255,255,255,.35);
+    transition:transform .12s ease, box-shadow .12s ease;
+  }
+  .xd-app-icon:active .xd-ic{transform:scale(.94);}
+  .xd-app-icon.active .xd-ic{box-shadow:0 0 0 3px rgba(37,99,235,.35),0 6px 16px rgba(37,99,235,.2);}
+  .xd-app-icon .xd-lab{
+    font-size:11.5px;font-weight:700;color:var(--text);text-align:center;line-height:1.2;
+    max-width:92px;
+  }
+  .xd-line-chips{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin:0 0 14px;padding:0 4px;}
+  .xd-line-chips button{
+    border-radius:999px;padding:8px 14px;font-size:12.5px;font-weight:700;
+    border:1px solid var(--line);background:var(--card);color:var(--text);cursor:pointer;
+  }
+  .xd-line-chips button.active{background:#2563eb;color:#fff;border-color:#2563eb;}
+  .xd-amt-box{border-radius:12px;padding:8px;transition:box-shadow .2s ease;}
+  .xd-amt-box label{font-weight:800;font-size:12px;display:block;margin-bottom:4px}
+  .xd-amt-box input{
+    width:100%;box-sizing:border-box;border-radius:10px;border:2px solid transparent;
+    padding:10px 12px;font-weight:800;font-size:16px;outline:none;
+  }
+  .xd-amt-total{background:rgba(0,140,140,.08);}
+  .xd-amt-total label{color:#008C8C;}
+  .xd-amt-total input{
+    color:#008C8C;border-color:#008C8C;
+    box-shadow:0 0 0 3px rgba(0,140,140,.18),0 0 18px rgba(0,140,140,.35);
+    background:#f0fffe;
+  }
+  .xd-amt-paid{background:rgba(22,163,74,.08);}
+  .xd-amt-paid label{color:#16A34A;}
+  .xd-amt-paid input{
+    color:#16A34A;border-color:#16A34A;
+    box-shadow:0 0 0 3px rgba(22,163,74,.18),0 0 18px rgba(22,163,74,.35);
+    background:#f0fdf4;
+  }
+  .xd-amt-due{background:rgba(220,38,38,.08);position:relative;}
+  .xd-amt-due label{color:#DC2626;}
+  .xd-amt-due input{
+    color:#DC2626;border-color:#DC2626;font-weight:800;
+    box-shadow:0 0 0 3px rgba(220,38,38,.18),0 0 18px rgba(220,38,38,.35);
+    background:#fef2f2;padding-right:36px;
+  }
+  .xd-amt-due .xd-due-tick{
+    display:none;position:absolute;right:18px;bottom:14px;
+    width:22px;height:22px;border-radius:50%;
+    background:#16A34A;color:#fff;font-size:14px;font-weight:900;
+    align-items:center;justify-content:center;line-height:22px;text-align:center;
+    box-shadow:0 0 10px rgba(22,163,74,.55);
+  }
+  .xd-amt-due.is-cleared{background:rgba(22,163,74,.08);}
+  .xd-amt-due.is-cleared label{color:#16A34A;}
+  .xd-amt-due.is-cleared input{
+    color:#16A34A;border-color:#16A34A;
+    box-shadow:0 0 0 3px rgba(22,163,74,.18),0 0 18px rgba(22,163,74,.35);
+    background:#f0fdf4;
+  }
+  .xd-amt-due.is-cleared .xd-due-tick{display:flex;}
+  
+  .xd-kpi-glow{
+    background:var(--card,#fff);
+    border:1.5px solid color-mix(in srgb, var(--xd-c) 55%, #fff);
+    border-radius:14px;
+    padding:12px 14px;
+    box-shadow:0 0 0 3px color-mix(in srgb, var(--xd-c) 16%, transparent),
+               0 0 18px color-mix(in srgb, var(--xd-c) 28%, transparent),
+               0 4px 14px rgba(15,23,42,.06);
+    transition:transform .15s ease, box-shadow .2s ease;
+  }
+  .xd-kpi-glow:hover{
+    transform:translateY(-1px);
+    box-shadow:0 0 0 4px color-mix(in srgb, var(--xd-c) 22%, transparent),
+               0 0 24px color-mix(in srgb, var(--xd-c) 40%, transparent),
+               0 8px 18px rgba(15,23,42,.08);
+  }
+  .xd-kpi-lab{font-size:11.5px;font-weight:700;color:var(--muted,#64748b);margin-bottom:4px}
+  .xd-kpi-val{display:block;font-size:18px;font-weight:900;color:var(--xd-c);letter-spacing:.01em}
+  .xd-kpi-click{cursor:pointer}
+  .xd-kpi-click:active{transform:scale(.98)}
+  .xd-kind-badge{display:inline-block;padding:3px 8px;border-radius:999px;font-size:11px;font-weight:800;line-height:1.2}
+  .xd-kind-cus{background:#dbeafe;color:#1d4ed8}
+  .xd-kind-sup{background:#f3e8ff;color:#7e22ce}
+  .xd-kind-emp{background:#ffedd5;color:#c2410c}
+  .xd-exp-card{background:linear-gradient(180deg,#fff7ed,#fff);border:1px solid #fed7aa;border-radius:14px;padding:12px;margin:8px 0}
+  .xd-exp-card .field{margin-bottom:10px}
+
+
+  .xd-no-print{}
+  @media print{
+    .xd-no-print, .topbar, .btn, button.btn {display:none !important;}
+  }
+  @media print{
+    .xd-app-shell,.xd-line-chips,.topbar,.btn{display:none !important;}
+    .xd-app-shell.xd-ledger-back{display:none !important;}
+  }
+  /* fallback when color-mix unsupported */
+  @supports not (background: color-mix(in srgb, red 50%, white)){
+    .xd-kpi-glow{border-color:#cbd5e1;box-shadow:0 0 0 3px rgba(37,99,235,.12),0 0 16px rgba(37,99,235,.18)}
+  }
+.xd-due-summary{
+    min-width:160px;max-width:100%;
+    background:linear-gradient(135deg,#fff7ed,#ffedd5);
+    border:1.5px solid #fb923c;border-radius:14px;
+    padding:10px 14px;text-align:right;
+    box-shadow:0 4px 16px rgba(234,88,12,.15);
+  }
+  .xd-due-summary .xd-ds-label{font-size:11px;font-weight:700;color:#9a3412;margin:0}
+  .xd-due-summary .xd-ds-amt{font-size:20px;font-weight:900;line-height:1.2}
+  .xd-due-summary .xd-ds-sub{font-size:11px;color:#7c2d12;margin-top:2px}
+  .xd-due-summary.is-zero{
+    background:linear-gradient(135deg,#f0fdf4,#dcfce7);
+    border-color:#4ade80;
+    box-shadow:0 4px 16px rgba(22,163,74,.15);
+  }
+  .xd-due-summary.is-zero .xd-ds-label{color:#166534}
+  .xd-due-summary.is-zero .xd-ds-amt{color:#16A34A}
+  .xd-due-summary.is-zero .xd-ds-sub{color:#15803d}
+  .xd-ds-after{
+    margin-top:6px;font-size:14px;font-weight:800;line-height:1.35;color:#64748b;
+  }
+  .xd-ds-after b{font-size:16px;font-weight:900}
+  .xd-amt-due-col{color:#DC2626 !important;font-weight:900}
+  .xd-amt-adv-col{color:#7C3AED !important;font-weight:900}
+  .xd-amt-zero-col{color:#16A34A !important;font-weight:900}
+  .xd-due-summary .xd-ds-amt{font-size:20px;font-weight:900;line-height:1.2}
+
+  @media (max-width:640px){
+    .xd-amt-row{grid-template-columns:1fr !important;}
+  }
+
+  .xd-panel-card{
+    background:var(--card);border:1px solid var(--line);border-radius:16px;
+    padding:14px;margin-bottom:14px;box-shadow:0 6px 20px rgba(15,23,42,.05);
+  }
+  @media (min-width:768px){
+    .xd-app-grid{grid-template-columns:repeat(6,minmax(0,1fr));max-width:720px;}
+    .xd-app-shell{max-width:900px;}
+  }
+
   @media(min-width:700px){
     .dealer-nav-folders{grid-template-columns:repeat(4,minmax(0,1fr));}
   }
@@ -2301,6 +2455,8 @@ window.APP_VERSION = '2026-11-06-aging-report.112';
   font-size:18px;margin-bottom:12px;
 }
 .sabi-role-buttons {display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+.sabi-role-buttons-2 {grid-template-columns:repeat(2,1fr);}
+.sabi-role-btn.other {border-color:#5b8def;color:#1d4ed8;}
 .sabi-role-btn {
   min-height:64px;border:1.5px solid #5fa8ff;border-radius:11px;
   background:#fff;color:#155eb5;cursor:pointer;
@@ -3211,7 +3367,30 @@ async function refreshSharedLoginData(role){
   }
 }
 
+// ==== সার্ভার-সাইড লগইন (Cloud Function) ====
+// খালি ('') থাকলে পুরনো পদ্ধতিই চলে (Firebase Auth ইমেইল-পাসওয়ার্ড) — লাইভে কোনো পরিবর্তন নেই।
+// স্টেজিংয়ে ফাংশনের URL বসানো থাকে: সার্ভার পাসওয়ার্ড যাচাই করে রোল-ক্লেইমসহ custom token দেয়, Rules সেই ক্লেইম দেখে।
+const SERVER_LOGIN_URL = '';
+async function serverEnsureAuth(record, pw, prefix){
+  const payload = { data: { role: prefix, password: String(pw == null ? '' : pw), id: (record && record.id != null) ? record.id : null, phone: (record && record.phone != null) ? record.phone : null } };
+  let res;
+  try{
+    res = await fetch(SERVER_LOGIN_URL, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+  }catch(netErr){
+    const e = new Error('Server login: network error'); e.code = 'server-login/network'; throw e;
+  }
+  let j = null;
+  try{ j = await res.json(); }catch(parseErr){}
+  if(!res.ok || !j || !j.result || !j.result.token){
+    const reason = j && j.error && j.error.details && j.error.details.reason;
+    const e = new Error((j && j.error && j.error.message) || ('HTTP ' + res.status));
+    e.code = 'server-login/' + (reason || (j && j.error && j.error.status) || res.status);
+    throw e;
+  }
+  await fbAuth.signInWithCustomToken(j.result.token);
+}
 async function fbEnsureAuth(record, pw, prefix, options={}){
+  if(SERVER_LOGIN_URL && !options.registration){ await serverEnsureAuth(record, pw, prefix); return; }
   const digits = normalizePhoneNumber(record.phone) || 'admin';
   const password = fbPw(pw);
 
@@ -4350,8 +4529,9 @@ const ROUTE_ROLES = {
   dealerRequisition: ['dealer'],
   dealerVehicleSearch: ['dealer'],
   mechanicDashboard: ['mechanic'],
-  vehicleModelDB: ['admin','dealer','mechanic','partsEngineer'],
-  partsCatalog: ['admin','dealer','mechanic','partsEngineer']
+  exclusiveDealerPortal: ['exclusiveDealer'],
+  vehicleModelDB: ['admin','dealer','mechanic','partsEngineer','exclusiveDealer'],
+  partsCatalog: ['admin','dealer','mechanic','partsEngineer','exclusiveDealer']
 };
 function requireRole(roles, fallback){
   fallback = fallback || 'landing';
@@ -4366,7 +4546,7 @@ function go(route){
   // Role-based access control: sensitive route হলে সঠিক role না থাকলে সরাসরি redirect করা হয়
   const allowedRoles = ROUTE_ROLES[route];
   if(allowedRoles && !(DB.session && allowedRoles.includes(DB.session.role))){
-    route = (DB.session && DB.session.role === 'mechanic') ? 'mechanicDashboard' : 'landing';
+    route = (DB.session && DB.session.role === 'mechanic') ? 'mechanicDashboard' : ((DB.session && DB.session.role === 'exclusiveDealer') ? 'exclusiveDealerPortal' : 'landing');
   }
   currentRoute = route; 
   const entryRoutes = ['landing', 'adminLogin', 'dealerLogin', 'dealerRegister'];
@@ -4606,15 +4786,12 @@ ROUTES.landing = function(){
 
           <div class="sabi-create-box">
             <div class="sabi-create-title">Create New Account</div>
-            <div class="sabi-role-buttons">
-              <button type="button" class="sabi-role-btn" id="sabiDealerRegister">
-                <span class="big">♙</span><span>Dlr<br><small>(Dealer)</small></span>
-              </button>
-              <button type="button" class="sabi-role-btn mechanic" id="sabiMechanicRegister">
-                <span class="big">🔧</span><span>Mec<br><small>(Mechanic)</small></span>
-              </button>
+            <div class="sabi-role-buttons sabi-role-buttons-2">
               <button type="button" class="sabi-role-btn engineer" id="sabiEngineerRegister">
-                <span class="big">♙</span><span>Engr<br><small>(Engineer)</small></span>
+                <span class="big">🔧</span><span>Engr<br><small>(Engineer)</small></span>
+              </button>
+              <button type="button" class="sabi-role-btn other" id="sabiOtherRegister">
+                <span class="big">👥</span><span>Other<br><small>(Account)</small></span>
               </button>
             </div>
             <div class="sabi-role-note">Or contact your administrator for account setup</div>
@@ -4668,9 +4845,8 @@ ROUTES.landing = function(){
       }
     }, 0);
   };
-  document.getElementById('sabiDealerRegister').onclick = ()=>openRegister('dealer');
-  document.getElementById('sabiMechanicRegister').onclick = ()=>openRegister('mechanic');
   document.getElementById('sabiEngineerRegister').onclick = ()=>go('peRegister');
+  document.getElementById('sabiOtherRegister').onclick = ()=>openRegister('dealer'); // Other Account → registration (Dealer / Mechanic / Exclusive Dealer)
   document.getElementById('sabiAdminLogin').onclick = ()=>go('adminLogin');
 
   document.getElementById('simpleLoginMobile').focus();
@@ -4705,6 +4881,10 @@ async function simpleLoginSubmit(){
         DB.session={role:'mechanic',user:u};
         recordLogin(u.name,u.role,u.phone);
         go('mechanicDashboard');
+      }else if(u.role==='exclusiveDealer'){
+        DB.session={role:'exclusiveDealer',user:u};
+        recordLogin(u.name,u.role,u.phone);
+        go('exclusiveDealerPortal');
       }else{
         DB.session={role:'dealer',user:u};
         recordLogin(u.name,u.role,u.phone);
@@ -4882,6 +5062,10 @@ async function slSubmitLogin(role){
     DB.session = {role:'mechanic', user:u};
     recordLogin(u.name, u.role, u.phone);
     go('mechanicDashboard');
+  } else if(u.role === 'exclusiveDealer'){
+    DB.session = {role:'exclusiveDealer', user:u};
+    recordLogin(u.name, u.role, u.phone);
+    go('exclusiveDealerPortal');
   } else {
     DB.session = {role:'dealer', user:u};
     recordLogin(u.name, u.role, u.phone);
@@ -5224,7 +5408,7 @@ ROUTES.dealerRegister = function(){
           ${langSwitchHTML()}
           <div class="cog">📱</div>
           <h1>নতুন রেজিস্ট্রেশন</h1>
-          <p>ডিলার / মেকানিক অ্যাকাউন্ট তৈরি করুন</p>
+          <p>Other Account — ডিলার / মেকানিক / Exclusive Dealer</p>
         </div>
         <div class="gate-body">
           <div class="err" id="err"></div>
@@ -5232,8 +5416,9 @@ ROUTES.dealerRegister = function(){
           <div class="field"><label>${t('mobileNumber')}</label><input type="text" id="phone" placeholder="01XXXXXXXXX" maxlength="11" inputmode="numeric"></div>
           <div class="field"><label>ধরন নির্বাচন করুন</label>
             <select id="role">
-              <option value="dealer">ডিলার</option>
-              <option value="mechanic">মেকানিক</option>
+              <option value="dealer">* ডিলার</option>
+              <option value="mechanic">* মেকানিক</option>
+              <option value="exclusiveDealer">* এক্সক্লুসিভ ডিলার (Exclusive Dealer)</option>
             </select>
           </div>
           <div id="dealerAddressFields">
@@ -5272,7 +5457,7 @@ ROUTES.dealerRegister = function(){
   const mechField = document.getElementById('mechanicTerritoryField');
   const toggleRoleFields = () => {
     if(roleSel.value === 'mechanic'){ dealerFields.style.display='none'; mechField.style.display='block'; }
-    else { dealerFields.style.display='block'; mechField.style.display='none'; }
+    else { dealerFields.style.display='block'; mechField.style.display='none'; } // dealer + exclusiveDealer
   };
   roleSel.onchange = toggleRoleFields;
   toggleRoleFields();
@@ -5289,7 +5474,7 @@ ROUTES.dealerRegister = function(){
     const e = document.getElementById('err');
     if(!name || !phone || !pw || !pw2){ e.style.display='block'; e.textContent='সব ঘর পূরণ করুন'; return; }
     if(!isValidPhone11(phone)){ e.style.display='block'; e.textContent='মোবাইল নম্বর অবশ্যই ঠিক ১১ সংখ্যার হতে হবে'; return; }
-    if(role === 'dealer'){
+    if(role === 'dealer' || role === 'exclusiveDealer'){
       if(!district){ e.style.display='block'; e.textContent='দয়া করে জেলা নির্বাচন করুন'; return; }
       if(!upazila){ e.style.display='block'; e.textContent='দয়া করে উপজেলা নির্বাচন করুন'; return; }
     } else if(role === 'mechanic'){
@@ -5305,8 +5490,8 @@ ROUTES.dealerRegister = function(){
     if(btn.disabled) return;
     btn.disabled = true; btn.textContent = 'রেজিস্ট্রেশন হচ্ছে...';
 
-    const newUser = {id: nextUserId++, name, phone, password: pwMake(pw), active:false, pending:true, role};
-    if(role === 'dealer'){ newUser.district = district; newUser.upazila = upazila; newUser.address = address; }
+    const newUser = {id: nextUserId++, name, phone, password: pwMake(pw), active:(role==='exclusiveDealer'), pending:(role!=='exclusiveDealer'), role};
+    if(role === 'dealer' || role === 'exclusiveDealer'){ newUser.district = district; newUser.upazila = upazila; newUser.address = address; }
     if(role === 'mechanic'){ newUser.territory = territory; }
 
     let phoneClaimed = false;
@@ -5421,6 +5606,10 @@ ROUTES.dealerLogin = function(){
       DB.session = {role:'mechanic', user:u};
       recordLogin(u.name, u.role, u.phone);
       go('mechanicDashboard');
+    } else if(u.role === 'exclusiveDealer'){
+      DB.session = {role:'exclusiveDealer', user:u};
+      recordLogin(u.name, u.role, u.phone);
+      go('exclusiveDealerPortal');
     } else {
       DB.session = {role:'dealer', user:u};
       recordLogin(u.name, u.role, u.phone);
@@ -5457,16 +5646,13 @@ function mechanicPartSearch(q){
 }
 function mechanicSearchHTML(){
   return `<div class="dealer-stat-grid" style="margin-bottom:14px">
-    <div class="dealer-stat"><div class="ic" style="background:#dbeafe">🔍</div><div class="l">Parts Search</div><div class="n" style="font-size:15px;font-weight:700">Company list</div></div>
-    <div class="dealer-stat"><div class="ic" style="background:#dcfce7">🧾</div><div class="l">Tour Bill</div><div class="n" style="font-size:15px;font-weight:700">Submit & track</div></div>
+    <div class="dealer-stat" role="button" tabindex="0" style="cursor:pointer" onclick="mechanicTab='search';go('mechanicDashboard')"><div class="ic" style="background:#dbeafe">🔍</div><div class="l">Parts Search</div><div class="n" style="font-size:15px;font-weight:700">Company list</div></div>
+    <div class="dealer-stat" role="button" tabindex="0" style="cursor:pointer" onclick="mechanicTab='tourbill';go('mechanicDashboard')"><div class="ic" style="background:#dcfce7">🧾</div><div class="l">Tour Bill</div><div class="n" style="font-size:15px;font-weight:700">Submit & track</div></div>
   </div>
   <div class="dealer-nav-bar" style="margin-bottom:14px"><div class="dealer-nav-folders" style="grid-template-columns:repeat(3,minmax(0,1fr))">
-    <button type="button" class="dealer-nav-folder ${typeof mechanicTab!=='undefined'&&mechanicTab==='search'?'active':''}" onclick="mechanicTab='search';go('mechanicDashboard')"><span class="icon">🔍</span><span class="lbl">Search</span></button>
-    <button type="button" class="dealer-nav-folder ${typeof mechanicTab!=='undefined'&&mechanicTab==='tourbill'?'active':''}" onclick="mechanicTab='tourbill';go('mechanicDashboard')"><span class="icon">🧾</span><span class="lbl">Tour Bill</span></button>
-    <button type="button" class="dealer-nav-folder ${typeof mechanicTab!=='undefined'&&mechanicTab==='profile'?'active':''}" onclick="mechanicTab='profile';go('mechanicDashboard')"><span class="icon">👤</span><span class="lbl">Account</span></button>
+    <button type="button" class="dealer-nav-folder ${typeof mechanicTab!=='undefined'&&mechanicTab==='profile'?'active':''}" onclick="mechanicTab='profile';go('mechanicDashboard')"><span class="icon">👤</span><span class="lbl">My Profile</span></button>
     <button type="button" class="dealer-nav-folder" onclick="go('vehicleModelDB')"><span class="icon">🚗</span><span class="lbl">Vehicle DB</span></button>
     <button type="button" class="dealer-nav-folder" onclick="go('partsCatalog')"><span class="icon">📚</span><span class="lbl">Catalogue</span></button>
-    <button type="button" class="dealer-nav-folder" onclick="go('myLedger')"><span class="icon">📒</span><span class="lbl">My Ledger</span></button>
   </div></div>
   <div class="search-hero">
     <h2>🔍 Search by part number / part name</h2>
@@ -6272,7 +6458,7 @@ function openVehicleModelDbFolder(model){
 ROUTES.vehicleModelDB=function(){
   if(!requireRole(['admin','dealer','mechanic','partsEngineer']))return;
   const role=DB.session.role;
-  const back=role==='admin'?'adminDashboard':role==='partsEngineer'?'peDashboard':role==='mechanic'?'mechanicDashboard':'dealerPortal';
+  const back=role==='admin'?'adminDashboard':role==='partsEngineer'?'peDashboard':role==='mechanic'?'mechanicDashboard':role==='exclusiveDealer'?'exclusiveDealerPortal':'dealerPortal';
   const app=document.getElementById('app');
   app.appendChild(el(`<div><div class="topbar"><div class="topbar-brand"><div class="brand-logo">🚗</div><div><div class="brand-name">${escHtml(DB.settings.companyName)}</div><div class="brand-sub">Vehicle Model DB</div></div></div><div class="topbar-right"><button class="btn btn-ghost btn-sm" onclick="go('${back}')" style="color:#fff;border-color:rgba(255,255,255,.3)">⬅️ Back</button></div></div><div class="wrap has-bottom-nav">${vehicleDbTabHTML()}</div></div>`));
   wireVehicleDbTab();
@@ -6440,7 +6626,7 @@ ROUTES.peRegister = function(){
     if(!name || !engineerId || !phone || !region || !pw || !pw2 || !accessCode){ e.style.display='block'; e.textContent='সব ঘর পূরণ করুন'; return; }
     if(!isValidPhone11(phone)){ e.style.display='block'; e.textContent='মোবাইল নম্বর অবশ্যই ঠিক ১১ সংখ্যার হতে হবে'; return; }
     if(pw !== pw2){ e.style.display='block'; e.textContent='পাসওয়ার্ড দুটো মিলছে না'; return; }
-    if(!PARTS_ENGINEER_REGIONS.includes(region)){ e.style.display='block'; e.textContent='অনুগ্রহ করে তালিকা থেকে একটি বৈধ Region নির্বাচন করুন।'; return; }
+    if(!region){ e.style.display='block'; e.textContent='অনুগ্রহ করে তালিকা থেকে একটি বৈধ Region নির্বাচন করুন।'; return; }
     if(accessCode !== DB.settings.peAccessCode || DB.settings.peAccessCode === 'SET-YOUR-CODE-HERE'){ e.style.display='block'; e.textContent='Access Code সঠিক নয়। এটি শুধুমাত্র অ্যাডমিনের কাছ থেকে পাওয়া যাবে — ডিলার/মেকানিক এখানে রেজিস্ট্রেশন করতে পারবেন না।'; return; }
     if(hasExistingUserPhone(phone)){ e.style.display='block'; e.textContent='এই মোবাইল নম্বরটি ইতিমধ্যে ডিলার/মেকানিক হিসেবে রেজিস্ট্রেশন করা আছে। একই ব্যক্তি দুটি ভিন্ন role-এ থাকতে পারবেন না — অ্যাডমিনের সাথে যোগাযোগ করুন।'; return; }
     if(DB.partsEngineers.some(p=>String(p.engineerId||'').trim().toLowerCase()===engineerId.toLowerCase())){
@@ -6707,9 +6893,8 @@ function dealerNavGroups(){
       ['battery','🔋','Battery Warranty Check'],
       ['target','🎯','Target vs Achievement']
     ]},
-    {title:'Account', icon:'👤', items:[
-      ['profile','👤','My Profile'],
-      ['myLedger','📒','আমার হিসাব']
+    {title:'My Profile', icon:'👤', items:[
+      ['profile','👤','My Profile']
     ]}
   ];
 }
@@ -8635,6 +8820,7 @@ function openPeUserModal(user){
       <select id="mPURole">
         <option value="dealer" ${user&&user.role==='dealer'?'selected':''}>ডিলার</option>
         <option value="mechanic" ${user&&user.role==='mechanic'?'selected':''}>মেকানিক</option>
+        <option value="exclusiveDealer" ${user&&user.role==='exclusiveDealer'?'selected':''}>Exclusive Dealer</option>
       </select>
     </div>
     <div id="mPUDealerFields">
@@ -9996,6 +10182,7 @@ function openUserModal(user){
       <select id="mURole">
         <option value="dealer" ${user&&user.role==='dealer'?'selected':''}>ডিলার</option>
         <option value="mechanic" ${user&&user.role==='mechanic'?'selected':''}>মেকানিক</option>
+        <option value="exclusiveDealer" ${user&&user.role==='exclusiveDealer'?'selected':''}>Exclusive Dealer</option>
       </select>
     </div>
     <div id="mUDealerFields">
@@ -10196,7 +10383,7 @@ async function resetPeDeleteHistory(){
   go('adminDashboard');
 }
 
-const PARTS_ENGINEER_REGIONS = ['Dhaka', 'Gazipur', 'Kishoreganj', 'Munshiganj', 'Tangail', 'Chattogram', 'Cumilla', 'Brahmanbaria', 'Noakhali', 'Rajshahi', 'Natore', 'Naogaon', 'Jashore', 'Chuadanga', 'Barishal', 'Bhola', 'Sylhet', 'Rangpur', 'Dinajpur', 'Thakurgaon', 'Nilphamari', 'Lalmonirhat', 'Gaibandha', 'Mymensingh', 'Jamalpur'];
+const PARTS_ENGINEER_REGIONS = ['Dhaka 1', 'Dhaka 2', 'Gazipur 1', 'Gazipur 2', 'Kishoreganj 1', 'Kishoreganj 2', 'Munshiganj 1', 'Munshiganj 2', 'Tangail 1', 'Tangail 2', 'Chattogram 1', 'Chattogram 2', 'Cumilla 1', 'Cumilla 2', 'Brahmanbaria 1', 'Brahmanbaria 2', 'Noakhali 1', 'Noakhali 2', 'Rajshahi 1', 'Rajshahi 2', 'Natore 1', 'Natore 2', 'Naogaon 1', 'Naogaon 2', 'Jashore 1', 'Jashore 2', 'Chuadanga 1', 'Chuadanga 2', 'Barishal 1', 'Barishal 2', 'Bhola 1', 'Bhola 2', 'Sylhet 1', 'Sylhet 2', 'Rangpur 1', 'Rangpur 2', 'Dinajpur 1', 'Dinajpur 2', 'Thakurgaon 1', 'Thakurgaon 2', 'Nilphamari 1', 'Nilphamari 2', 'Lalmonirhat 1', 'Lalmonirhat 2', 'Gaibandha 1', 'Gaibandha 2', 'Mymensingh 1', 'Mymensingh 2', 'Jamalpur 1', 'Jamalpur 2'];
 
 function openPeModal(pe){
   const isEdit = !!pe;
@@ -10224,7 +10411,7 @@ function openPeModal(pe){
     const region = document.getElementById('mPeRegion').value;
     if(!name || !phone || !password || !region) { alert('সব ঘর পূরণ করুন — নাম, মোবাইল, পাসওয়ার্ড, রিজিয়ন নির্বাচন করুন।'); return; }
     if(!isValidPhone11(phone)) { alert('মোবাইল নম্বর অবশ্যই ঠিক ১১ সংখ্যার হতে হবে'); return; }
-    if(!PARTS_ENGINEER_REGIONS.includes(region)) { alert('অনুগ্রহ করে তালিকা থেকে একটি বৈধ Region নির্বাচন করুন।'); return; }
+    if(!region) { alert('অনুগ্রহ করে তালিকা থেকে একটি বৈধ Region নির্বাচন করুন।'); return; }
     const phoneChanged = !isEdit || (pe && pe.phone !== phone);
     if(phoneChanged){
       if(hasExistingPartsEngineerPhone(phone, isEdit ? pe.id : null)){ alert('এই মোবাইল নম্বর দিয়ে আগেই একটি Parts Engineer অ্যাকাউন্ট আছে'); return; }
@@ -14051,7 +14238,7 @@ function selfHook(){
   const folders=document.querySelector('.dealer-nav-folders');       // ডিলার পোর্টালের নেভিগেশন
   const tabs=document.querySelector('.dealer-tabs');                  // মেকানিক ড্যাশবোর্ডের ট্যাব
   const b=document.createElement('button'); b.id='dlgSelfTab'; b.type='button'; b.setAttribute('onclick',"go('myLedger')");
-  if(folders){ b.className='dealer-nav-folder'; b.innerHTML='<span class="icon">📒</span><span class="lbl">📒 আমার হিসাব</span>'; folders.insertBefore(b,folders.firstChild); }
+  if(folders){ b.className='dealer-nav-folder'; b.innerHTML='<span class="icon">📒</span><span class="lbl">My account</span>'; folders.insertBefore(b,folders.firstChild); }
   else if(tabs){ b.className='tab'; b.textContent='📒 আমার হিসাব'; tabs.insertBefore(b,tabs.firstChild); }
 }
 
@@ -14076,6 +14263,1319 @@ async function peHook(){
     }
   }catch(e){ /* অনুমতি যাচাই ব্যর্থ হলে বোতাম দেখানো হবে না */ }
 }
+
+
+
+/* ============================================================= */
+/* ========== EXCLUSIVE DEALER — Full দেনা-পাওনা Accounting ===== */
+/* Parts Business + Construction Business + Combined Summary      */
+/* বিদ্যমান dealerLedger / RafiqPARTSAPP ডেটা অপরিবর্তিত         */
+/* ============================================================= */
+const XD_CATS = [
+  {v:'parts_tractor', line:'parts', bn:'Tractor & Vehicle Parts'},
+  {v:'rod', line:'construction', bn:'Rod / Steel'},
+  {v:'cement', line:'construction', bn:'Cement'},
+  {v:'sand', line:'construction', bn:'Sand (বালু)'},
+  {v:'stone', line:'construction', bn:'Stone Chips (খোয়া)'},
+  {v:'brick', line:'construction', bn:'Brick (ইট)'},
+  {v:'other_const', line:'construction', bn:'Other Construction Materials'},
+  {v:'other_biz', line:'parts', bn:'Other Business'}
+];
+const XD_TYPES = [
+  {v:'cash_sale', bn:'Cash Sale – নগদ বিক্রয়', effect:'sale_cash'},
+  {v:'credit_sale', bn:'Credit Sale – বাকিতে বিক্রয়', effect:'sale_credit'},
+  {v:'due_collect', bn:'Due Collection – বকেয়া আদায়', effect:'collect'},
+  {v:'cash_purchase', bn:'Cash Purchase – নগদে ক্রয়', effect:'purchase_cash'},
+  {v:'credit_purchase', bn:'Credit Purchase – বাকিতে ক্রয়', effect:'purchase_credit'},
+  {v:'supplier_pay', bn:'Supplier Payment – সরবরাহকারীকে প্রদান', effect:'supplier_pay'},
+  {v:'cust_advance', bn:'Customer Advance – ক্রেতার অগ্রিম', effect:'advance'},
+  {v:'sales_return', bn:'Sales Return – বিক্রিত মাল ফেরত', effect:'sales_return'},
+  {v:'purchase_return', bn:'Purchase Return – ক্রয় ফেরত', effect:'purchase_return'},
+  {v:'expense', bn:'Expense – ব্যবসায়িক খরচ', effect:'expense'},
+  {v:'discount', bn:'Discount – ছাড়', effect:'discount'},
+  {v:'adjustment', bn:'Adjustment – হিসাব সংশোধন', effect:'adjust'}
+];
+const XD_UNITS = ['Pcs','Kg','Ton','Bag','CFT','Truck','Feet','Liter','Set','Other'];
+const XD_PAY = ['Cash','bKash','Nagad','Bank','Other'];
+const XD_EXPENSE_CATS = [
+  {v:'shop_rent', bn:'Shop Rent – দোকান ভাড়া'},
+  {v:'electricity', bn:'Electricity Bill – বিদ্যুৎ বিল'},
+  {v:'water', bn:'Water Bill – পানির বিল'},
+  {v:'salary', bn:'Employee Salary – কর্মচারীর বেতন'},
+  {v:'bonus', bn:'Employee Bonus – বোনাস'},
+  {v:'transport', bn:'Transport Cost – যাতায়াত ও পরিবহন'},
+  {v:'food', bn:'Food Expense – খাবার ও নাস্তা'},
+  {v:'internet', bn:'Internet Bill – ইন্টারনেট বিল'},
+  {v:'mobile', bn:'Mobile Bill – মোবাইল বিল'},
+  {v:'repair', bn:'Repair & Maintenance – মেরামত'},
+  {v:'packaging', bn:'Packaging Cost – প্যাকেট ও কার্টন'},
+  {v:'stationery', bn:'Stationery – কলম, খাতা ও কাগজ'},
+  {v:'cleaning', bn:'Cleaning Cost – পরিষ্কার-পরিচ্ছন্নতা'},
+  {v:'marketing', bn:'Marketing – বিজ্ঞাপন ও প্রচার'},
+  {v:'bank_charge', bn:'Bank Charge – ব্যাংক চার্জ'},
+  {v:'license', bn:'License Fee – লাইসেন্স ও নবায়ন'},
+  {v:'delivery', bn:'Delivery Cost – পণ্য ডেলিভারি'},
+  {v:'loading', bn:'Loading & Unloading – মাল ওঠানো-নামানো'},
+  {v:'tea', bn:'Tea & Refreshment – চা ও নাস্তা'},
+  {v:'office', bn:'Office Supplies – অফিস সামগ্রী'},
+  {v:'security', bn:'Security Expense – নিরাপত্তা খরচ'},
+  {v:'tax', bn:'Tax & VAT – ট্যাক্স ও ভ্যাট'},
+  {v:'other', bn:'Other Expenses – অন্যান্য খরচ'}
+];
+const XD_EXPENSE_PAY = ['Cash','Bank','Mobile Banking'];
+
+const XD_BANKS = ['Pubali Bank PLC','Islami Bank PLC','Sonali Bank PLC','Janata Bank PLC','Agrani Bank PLC','Dutch-Bangla Bank','BRAC Bank','City Bank','Prime Bank','Other Bank'];
+const XD = {tab:'dashboard', line:'combined', partyId:null, q:'', from:'', to:'', filterCat:'', filterType:'', showTxnReport:false};
+window.XD = XD;
+
+function xdOwnerId(){ return DB.session&&DB.session.user ? String(DB.session.user.id) : null; }
+function xdOwnerName(){ return (DB.session&&DB.session.user&&DB.session.user.name)||''; }
+function xdStoreKey(){ return 'xdAcct_'+xdOwnerId(); }
+function xdBlank(){ return {parties:[], txns:[], audit:[], seq:1}; }
+function xdLoad(){
+  try{
+    const d=JSON.parse(localStorage.getItem(xdStoreKey())||'null');
+    if(d && Array.isArray(d.txns)) return Object.assign(xdBlank(), d);
+  }catch(e){}
+  return xdBlank();
+}
+function xdSave(data){
+  try{ localStorage.setItem(xdStoreKey(), JSON.stringify(data)); }catch(e){}
+  try{
+    if(typeof fbDb!=='undefined' && fbDb && xdOwnerId()){
+      fbDb.ref('exclusiveLedger/'+xdOwnerId()).set(data).catch(()=>{});
+    }
+  }catch(e){}
+}
+async function xdCloudPull(){
+  try{
+    if(typeof fbDb==='undefined'||!fbDb||!xdOwnerId()) return;
+    const snap=await fbDb.ref('exclusiveLedger/'+xdOwnerId()).once('value');
+    const v=snap.val();
+    if(v && Array.isArray(v.txns)){
+      const local=xdLoad();
+      // merge by preferring longer audit / higher seq
+      if((v.seq||0)>=(local.seq||0) || (v.txns||[]).length>=(local.txns||[]).length){
+        xdSave(Object.assign(xdBlank(), v));
+      }
+    }
+  }catch(e){}
+}
+function xdMoney(n){ const x=Number(n||0); return '৳'+x.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function xdCatInfo(v){ return XD_CATS.find(c=>c.v===v)||{v:v,line:'parts',bn:v}; }
+function xdTypeInfo(v){ return XD_TYPES.find(t=>t.v===v)||{v:v,bn:v,effect:'adjust'}; }
+function xdNowParts(){
+  const n=new Date();
+  return {
+    date: n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0')+'-'+String(n.getDate()).padStart(2,'0'),
+    time: String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0')
+  };
+}
+function xdNewTxnId(data){
+  const seq=Number(data.seq||1);
+  data.seq=seq+1;
+  const d=new Date();
+  return 'XD-'+d.getFullYear()+String(d.getMonth()+1).padStart(2,'0')+String(d.getDate()).padStart(2,'0')+'-'+String(seq).padStart(5,'0');
+}
+function xdPartyBal(data, partyId, lineFilter){
+  // + = customer owes us / we are owed; for supplier + = we owe supplier
+  let bal=0;
+  (data.txns||[]).forEach(t=>{
+    if(t.reversed) return;
+    if(String(t.partyId)!==String(partyId)) return;
+    if(lineFilter && lineFilter!=='combined' && t.businessLine!==lineFilter) return;
+    bal += Number(t.balanceDelta||0);
+  });
+  return bal;
+}
+function xdCalcDelta(type, total, paid, partyKind){
+  const tot=Number(total||0), pay=Number(paid||0);
+  const due=Math.max(0, tot-pay);
+  switch(type){
+    case 'cash_sale': return due; // unpaid portion becomes due
+    case 'credit_sale': return tot - pay;
+    case 'due_collect': return -pay;
+    case 'cust_advance': return -pay;
+    case 'sales_return': return -(tot);
+    case 'cash_purchase': return partyKind==='supplier' ? -due : 0; // if unpaid to supplier, payable increases... actually cash purchase paid fully = 0; if partial, +due payable
+    case 'credit_purchase': return (tot-pay); // supplier payable increases
+    case 'supplier_pay': return -pay;
+    case 'purchase_return': return -(tot-pay);
+    case 'discount': return -tot; // reduce receivable
+    case 'adjustment': return tot; // signed amount in total field
+    case 'expense': return 0;
+    default: return 0;
+  }
+}
+function xdIsSale(type){ return type==='cash_sale'||type==='credit_sale'; }
+function xdIsPurchase(type){ return type==='cash_purchase'||type==='credit_purchase'; }
+function xdFilterTxns(data){
+  let list=(data.txns||[]).filter(t=>!t.reversed);
+  if(XD.line==='parts'||XD.line==='construction') list=list.filter(t=>t.businessLine===XD.line);
+  if(XD.from) list=list.filter(t=>String(t.date||'')>=XD.from);
+  if(XD.to) list=list.filter(t=>String(t.date||'')<=XD.to);
+  if(XD.filterCat) list=list.filter(t=>t.category===XD.filterCat);
+  if(XD.filterType) list=list.filter(t=>t.type===XD.filterType);
+  if(XD.q){
+    const q=XD.q.trim().toLowerCase();
+    list=list.filter(t=>[t.id,t.partyName,t.item,t.remarks,t.category].some(x=>String(x||'').toLowerCase().includes(q)));
+  }
+  return list.slice().sort((a,b)=>String(b.createdAt||'').localeCompare(String(a.createdAt||'')));
+}
+function xdSummary(data, line){
+  const tx=(data.txns||[]).filter(t=>!t.reversed && (line==='combined'||t.businessLine===line));
+  const sum=k=>tx.reduce((s,t)=>s+Number(t[k]||0),0);
+  let sales=0,cashSales=0,creditSales=0,collection=0,purchase=0,expenses=0,custDue=0,supPay=0,advance=0;
+  tx.forEach(t=>{
+    if(t.type==='cash_sale'){ cashSales+=Number(t.totalAmount||0); sales+=Number(t.totalAmount||0); }
+    if(t.type==='credit_sale'){ creditSales+=Number(t.totalAmount||0); sales+=Number(t.totalAmount||0); }
+    if(t.type==='due_collect'||t.type==='cust_advance'){ collection+=Number(t.paidAmount||0); }
+    if(t.type==='cash_sale') collection+=Number(t.paidAmount||0);
+    if(t.type==='credit_sale') collection+=Number(t.paidAmount||0);
+    if(xdIsPurchase(t.type)) purchase+=Number(t.totalAmount||0);
+    if(t.type==='expense') expenses+=Number(t.totalAmount||0);
+  });
+  (data.parties||[]).forEach(p=>{
+    const b=xdPartyBal(data,p.id,line);
+    if(p.kind==='customer'){
+      if(b>0) custDue+=b; else advance+=(-b);
+    } else if(p.kind==='supplier'){
+      if(b>0) supPay+=b;
+    }
+  });
+  const net=sales+collection - purchase - expenses; // simplified business net flow indicator
+  return {sales,cashSales,creditSales,collection,purchase,expenses,custDue,supPay,advance,net};
+}
+function xdAudit(data, action, details){
+  data.audit=data.audit||[];
+  data.audit.unshift({at:new Date().toISOString(), by:xdOwnerName(), action, details:details||''});
+  if(data.audit.length>500) data.audit.length=500;
+}
+
+function xdOpenKpiDetail(kind){
+  // Expense report live cards
+  if(kind==='expToday') return xdOpenExpenseDetail('today');
+  if(kind==='expWeek') return xdOpenExpenseDetail('week');
+  if(kind==='expMonth') return xdOpenExpenseDetail('month');
+  if(kind==='expYear') return xdOpenExpenseDetail('year');
+  if(kind==='expTotal') return xdOpenExpenseDetail('total');
+
+  const data=xdLoad();
+  const line = (XD.line==='parts'||XD.line==='construction') ? XD.line : 'combined';
+  let title='', rows=[], total=0, color='#334155';
+
+  if(kind==='custDue'){
+    title='Customer Due — যাদের কাছে পাওনা';
+    color='#c2410c';
+    (data.parties||[]).filter(p=>p.kind==='customer').forEach(p=>{
+      const b=xdPartyBal(data,p.id,line);
+      if(b>0.0001){ rows.push({name:p.name, phone:p.phone||'', amount:b, id:p.id}); total+=b; }
+    });
+    rows.sort((a,b)=>b.amount-a.amount);
+  } else if(kind==='supPay'){
+    title='Supplier Payable — যাদেরকে দিতে হবে';
+    color='#a21caf';
+    (data.parties||[]).filter(p=>p.kind==='supplier').forEach(p=>{
+      const b=xdPartyBal(data,p.id,line);
+      if(b>0.0001){ rows.push({name:p.name, phone:p.phone||'', amount:b, id:p.id}); total+=b; }
+    });
+    rows.sort((a,b)=>b.amount-a.amount);
+  } else if(kind==='advance'){
+    title='Customer Advance — যাদের অগ্রিম আছে';
+    color='#0f766e';
+    (data.parties||[]).filter(p=>p.kind==='customer').forEach(p=>{
+      const b=xdPartyBal(data,p.id,line);
+      if(b<-0.0001){ rows.push({name:p.name, phone:p.phone||'', amount:-b, id:p.id}); total+=(-b); }
+    });
+    rows.sort((a,b)=>b.amount-a.amount);
+  } else { return; }
+
+  const lineLabel = line==='parts'?'Parts':(line==='construction'?'Construction':'Combined');
+  const body = rows.length ? `<div class="dlg-scroll"><table class="dlg-table" style="min-width:100%"><thead><tr>
+      <th>#</th><th>Name</th><th>Phone</th><th style="text-align:right">Amount</th><th></th>
+    </tr></thead><tbody>
+    ${rows.map((r,i)=>`<tr>
+      <td>${i+1}</td>
+      <td><b>${escHtml(r.name)}</b></td>
+      <td>${escHtml(r.phone||'—')}</td>
+      <td class="n" style="color:${color};font-weight:900">${xdMoney(r.amount)}</td>
+      <td><button type="button" class="btn btn-ghost btn-sm" onclick="closeModal();XD.tab='ledger';XD.partyId='${escHtml(r.id)}';xdPaint()">Ledger</button></td>
+    </tr>`).join('')}
+    </tbody>
+    <tfoot><tr><td colspan="3"><b>Total (${rows.length})</b></td><td class="n" style="color:${color};font-weight:900">${xdMoney(total)}</td><td></td></tr></tfoot>
+    </table></div>` : `<div class="empty" style="padding:18px">এই খাতে কোনো রেকর্ড নেই</div>`;
+
+  openModal(`<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;flex-wrap:wrap">
+      <div>
+        <h3 style="margin:0 0 4px">${escHtml(title)}</h3>
+        <div class="hint" style="margin:0">Scope: ${lineLabel}</div>
+      </div>
+      <div style="font-size:18px;font-weight:900;color:${color}">${xdMoney(total)}</div>
+    </div>
+    <div style="margin-top:12px">${body}</div>
+    <div class="modal-actions" style="margin-top:14px">
+      <button class="btn btn-ghost" onclick="closeModal()">বন্ধ</button>
+      <button class="btn btn-primary" onclick="closeModal();XD.tab='parties';xdPaint()">Parties</button>
+    </div>`);
+}
+
+function xdKpiCard(label, val, color, clickKey){
+  const c=color||'#334155';
+  const click = clickKey ? ` role="button" tabindex="0" onclick="xdOpenKpiDetail('${clickKey}')" style="--xd-c:${c};min-width:150px;cursor:pointer"` : ` style="--xd-c:${c};min-width:150px"`;
+  return `<div class="xd-kpi-glow${clickKey?' xd-kpi-click':''}"${click}>
+    <div class="xd-kpi-lab">${label}${clickKey?' <span style="font-size:10px;opacity:.75">›</span>':''}</div>
+    <b class="xd-kpi-val">${xdMoney(val)}</b>
+  </div>`;
+}
+function xdTabsHTML(){
+  // Ledger পেজে উপরের ট্যাব/চিপ কিছুই থাকবে না — শুধু ব্যাক
+  if(XD.tab==='ledger'){
+    return '';
+  }
+  const tabs=[
+    ['dashboard','📊','Dashboard','linear-gradient(145deg,#60a5fa,#2563eb)'],
+    ['entry','➕','New Entry','linear-gradient(145deg,#4ade80,#16a34a)'],
+    ['customers','👤','Customer Mgmt','linear-gradient(145deg,#f472b6,#db2777)'],
+    ['parties','👥','Parties','linear-gradient(145deg,#a78bfa,#7c3aed)'],
+    ['ledger','📒','Ledger','linear-gradient(145deg,#fbbf24,#d97706)'],
+    ['reports','📈','Reports','linear-gradient(145deg,#22d3ee,#0891b2)'],
+    ['audit','🕵️','Audit','linear-gradient(145deg,#fb7185,#e11d48)']
+  ];
+  return `<div class="xd-app-shell">
+    <div class="xd-app-grid">
+      ${tabs.map(([id,ic,lab,bg])=>`<button type="button" class="xd-app-icon ${XD.tab===id?'active':''}" onclick="xdGoTab('${id}')">
+        <span class="xd-ic" style="background:${bg}">${ic}</span>
+        <span class="xd-lab">${lab}</span>
+      </button>`).join('')}
+    </div>
+    <div class="xd-line-chips">
+      ${[['combined','Combined'],['parts','Parts'],['construction','Construction']].map(([v,l])=>
+        `<button type="button" class="${XD.line===v?'active':''}" onclick="xdSetLine('${v}')">${l}</button>`).join('')}
+    </div>
+  </div>`;
+}
+
+function xdBackBar(title){
+  return `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 12px">
+    <button type="button" class="btn btn-ghost btn-sm" onclick="xdGoTab('dashboard')">⬅️ Back</button>
+    ${title?`<h3 style="margin:0">${title}</h3>`:''}
+  </div>`;
+}
+
+function xdGoTab(id){ XD.tab=id; xdPaint(); }
+function xdSetLine(v){ XD.line=v; xdPaint(); }
+function xdPaint(){
+  const wrap=document.getElementById('xdMainWrap');
+  if(!wrap){ go('exclusiveDealerPortal'); return; }
+  wrap.innerHTML=exclusiveDealerBodyHTML();
+  try{ if(XD.tab==='entry'){ xdToggleCatDetail(); xdToggleTypeFields(); xdRefreshDueSummary(); } }catch(e){}
+  try{ window.scrollTo({top:0,behavior:'smooth'}); }catch(e){ window.scrollTo(0,0); }
+}
+function xdDashboardHTML(data){
+  const s=xdSummary(data, XD.line);
+  return `<div class="card"><h3 style="margin:0 0 10px">Dashboard Summary · ${XD.line==='parts'?'Parts Business':XD.line==='construction'?'Construction Business':'Combined Accounts'}</h3>
+    <div class="dlg-kpis xd-kpi-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px">
+      ${xdKpiCard('Total Sales',s.sales,'#1d4ed8')}
+      ${xdKpiCard('Cash Sales',s.cashSales,'#0369a1')}
+      ${xdKpiCard('Credit Sales',s.creditSales,'#b45309')}
+      ${xdKpiCard('Total Collection',s.collection,'#15803d')}
+      ${xdKpiCard('Total Purchase',s.purchase,'#7c3aed')}
+      ${xdKpiCard('Total Expenses',s.expenses,'#dc2626')}
+      ${xdKpiCard('Customer Due',s.custDue,'#c2410c','custDue')}
+      ${xdKpiCard('Supplier Payable',s.supPay,'#a21caf','supPay')}
+      ${xdKpiCard('Customer Advance',s.advance,'#0f766e','advance')}
+      ${xdKpiCard('Net Business Balance',s.net,'#0f172a')}
+    </div>
+    <p class="hint" style="margin-top:12px">Parts ও Construction হিসাব আলাদা; Combined-এ দুই ব্যবসার সারাংশ।</p>
+  </div>
+  <div class="card" style="margin-top:12px">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
+      <h3 style="margin:0">Recent Transactions</h3>
+      <button class="btn btn-primary btn-sm" onclick="xdGoTab('entry')">➕ New Transaction</button>
+    </div>
+    ${xdTxnTableHTML(xdFilterTxns(data).slice(0,12))}
+  </div>`;
+}
+function xdTxnTableHTML(list){
+  if(!list.length) return '<div class="empty" style="padding:16px">কোনো লেনদেন নেই</div>';
+  return `<div class="dlg-scroll"><table class="dlg-table" style="min-width:980px"><thead><tr>
+    <th>Txn ID</th><th>Date</th><th>Category</th><th>Type</th><th>Party</th><th>Item</th><th>Total</th><th>Paid</th><th>Due</th><th></th>
+  </tr></thead><tbody>
+  ${list.map(t=>`<tr>
+    <td><code>${escHtml(t.id)}</code></td>
+    <td>${escHtml(t.date||'')} ${escHtml(t.time||'')}</td>
+    <td>${escHtml(xdCatInfo(t.category).bn)}</td>
+    <td>${escHtml(xdTypeInfo(t.type).bn.split('–')[0].trim())}</td>
+    <td>${escHtml(t.partyName||'—')}</td>
+    <td>${escHtml(t.item||'—')}</td>
+    <td class="n">${xdMoney(t.totalAmount)}</td>
+    <td class="n">${xdMoney(t.paidAmount)}</td>
+    <td class="n">${xdMoney(t.dueAmount)}</td>
+    <td><button class="btn btn-ghost btn-sm" onclick="xdReverseTxn('${escHtml(t.id)}')" title="Reverse">↩️</button></td>
+  </tr>`).join('')}
+  </tbody></table></div>`;
+}
+function xdEntryFormHTML(data){
+  const parties=data.parties||[];
+  const now=xdNowParts();
+  return `<div class="card" style="position:relative">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <button type="button" class="btn btn-ghost btn-sm xd-no-print" onclick="xdGoTab('dashboard')">⬅️ Back</button>
+        <h3 style="margin:0">Smart Transaction Entry</h3>
+      </div>
+      <div id="xdDueSummary" class="xd-due-summary" style="display:none"></div>
+    </div>
+    <div id="xdBizCatBox">
+      <div class="field"><label>Business Category *</label>
+        <select id="xdCat" onchange="xdToggleCatDetail();xdRefreshDueSummary()">${XD_CATS.map(c=>`<option value="${c.v}">${escHtml(c.bn)} (${c.line})</option>`).join('')}</select>
+      </div>
+      <div class="field" id="xdCatDetailBox" style="display:none">
+        <label>বিস্তারিত বর্ণনা *</label>
+        <input id="xdCatDetail" placeholder="Other ক্যাটাগরির বিস্তারিত লিখুন (যেমন: টাইলস / স্যানিটারি / অন্যান্য ব্যবসা)">
+      </div>
+    </div>
+    <div class="field"><label>Transaction Type *</label>
+      <select id="xdType" onchange="xdToggleTypeFields()">${XD_TYPES.map(t=>`<option value="${t.v}">${escHtml(t.bn)}</option>`).join('')}</select>
+    </div>
+    <div id="xdPartyBox">
+      <div class="field"><label id="xdPartyLabel">Party (Customer / Supplier)</label>
+        <select id="xdParty" onchange="xdRefreshDueSummary()"><option value="">— Select / Optional for Expense —</option>
+          ${parties.map(p=>`<option value="${escHtml(p.id)}">${escHtml(p.name)} (${p.kind})</option>`).join('')}
+        </select>
+        <button type="button" class="btn btn-ghost btn-sm" style="margin-top:6px" onclick="xdOpenParty()">➕ New Party</button>
+      </div>
+    </div>
+
+    <!-- Sales / purchase product fields -->
+    <div id="xdSaleFields">
+      <div class="field"><label>Product / Item</label><input id="xdItem" placeholder="যেমন: রড 10mm / Engine Oil / Cement"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+        <div class="field"><label>Quantity</label><input id="xdQty" inputmode="decimal" placeholder="0" oninput="xdRecalcEntry()"></div>
+        <div class="field"><label>Unit</label><select id="xdUnit">${XD_UNITS.map(u=>`<option>${u}</option>`).join('')}</select></div>
+        <div class="field"><label>Unit Price</label><input id="xdPrice" inputmode="decimal" placeholder="0" oninput="xdRecalcEntry()"></div>
+      </div>
+      <div class="xd-amt-row" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin:10px 0 6px">
+        <div class="field xd-amt-box xd-amt-total"><label>মোট হিসাব (Total) *</label><input id="xdTotal" inputmode="decimal" placeholder="0.00" oninput="xdRecalcEntry()"></div>
+        <div class="field xd-amt-box xd-amt-paid"><label>Paid Amount</label><input id="xdPaid" inputmode="decimal" placeholder="0.00" oninput="xdRecalcEntry()"></div>
+        <div class="field xd-amt-box xd-amt-due" id="xdDueBox"><label>Due Amount</label><input id="xdDue" inputmode="decimal" placeholder="0.00" readonly><span class="xd-due-tick" aria-hidden="true">✓</span></div>
+      </div>
+      <div class="field"><label>Payment Method</label>
+        <select id="xdPay" onchange="xdTogglePayFields()">${XD_PAY.map(p=>`<option>${p}</option>`).join('')}</select>
+      </div>
+    </div>
+
+    <!-- Due collection / money-in fields -->
+    <div id="xdCollectFields" style="display:none">
+      <div class="field xd-amt-box xd-amt-paid" style="margin-bottom:10px">
+        <label>জমার পরিমাণ *</label>
+        <input id="xdCollectAmt" inputmode="decimal" placeholder="যেমন 5000.00" oninput="xdRefreshDueSummary()">
+      </div>
+      <div class="field"><label>জমার মাধ্যম *</label>
+        <select id="xdCollectPay" onchange="xdTogglePayFields()">${XD_PAY.map(p=>`<option>${p}</option>`).join('')}</select>
+      </div>
+      <div id="xdBankFields" style="display:none">
+        <div class="field"><label>ব্যাংকের নাম *</label>
+          <select id="xdBankName">${XD_BANKS.map(b=>`<option>${escHtml(b)}</option>`).join('')}</select>
+        </div>
+        <div class="field"><label>শাখার নাম *</label>
+          <input id="xdBankBranch" placeholder="যেমন: বরিশাল শাখা">
+        </div>
+        <div class="field"><label>ট্রানজেকশন আইডি (ঐচ্ছিক)</label>
+          <input id="xdBankTrx" placeholder="TrxID / Slip No">
+        </div>
+      </div>
+      <div id="xdMfsFields" style="display:none">
+        <div class="field"><label>ট্রানজেকশন আইডি</label>
+          <input id="xdMfsTrx" placeholder="bKash / Nagad TrxID">
+        </div>
+      </div>
+    </div>
+
+
+    <!-- Expense only fields -->
+    <div id="xdExpenseFields" style="display:none">
+      <div class="xd-exp-card">
+        <div class="field"><label>Expense Category *</label>
+          <select id="xdExpCat">${XD_EXPENSE_CATS.map(c=>`<option value="${c.v}">${escHtml(c.bn)}</option>`).join('')}</select>
+        </div>
+        <div class="field xd-amt-box xd-amt-due" style="margin-bottom:10px">
+          <label>Amount (৳) *</label>
+          <input id="xdExpAmt" inputmode="decimal" placeholder="যেমন 1500.00">
+        </div>
+        <div class="field"><label>Payment Method *</label>
+          <select id="xdExpPay">${XD_EXPENSE_PAY.map(p=>`<option>${p}</option>`).join('')}</select>
+        </div>
+        <div class="field"><label>Paid To / Receiver Name</label>
+          <input id="xdExpReceiver" placeholder="যাকে দেওয়া হয়েছে">
+        </div>
+        <div class="field"><label>Reference Number</label>
+          <input id="xdExpRef" placeholder="রসিদ / রেফারেন্স নং">
+        </div>
+        <div class="field"><label>Description / Note</label>
+          <input id="xdExpNote" placeholder="সংক্ষিপ্ত বিবরণ">
+        </div>
+        <div class="field"><label>Attachment / Receipt Image</label>
+          <input type="file" id="xdExpFile" accept="image/*" onchange="xdReadExpFile(this)">
+          <input type="hidden" id="xdExpAttach">
+          <div id="xdExpAttachPrev" class="hint" style="margin-top:6px"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="field"><label>তারিখ *</label><input type="date" id="xdDate" value="${now.date}"></div>
+    <div id="xdRemarksBox" class="field"><label>Description / Remarks</label><input id="xdRemarks" placeholder="নোট"></div>
+    <div id="xdEntryErr" class="dlg-alert" style="display:none"></div>
+    <div class="modal-actions" style="margin-top:12px">
+      <button class="btn btn-ghost" onclick="xdGoTab('dashboard')">বাতিল</button>
+      <button class="btn btn-primary" onclick="xdSubmitEntry()">💾 Save Transaction</button>
+    </div>
+  </div>`;
+}
+function xdIsCollectType(type){
+  return type==='due_collect' || type==='supplier_pay' || type==='cust_advance';
+}
+function xdReadExpFile(input){
+  const f=input&&input.files&&input.files[0];
+  const prev=document.getElementById('xdExpAttachPrev');
+  const hid=document.getElementById('xdExpAttach');
+  if(!f){ if(hid) hid.value=''; if(prev) prev.textContent=''; return; }
+  if(f.size>1.5*1024*1024){ alert('ছবি 1.5MB এর নিচে দিন'); input.value=''; return; }
+  const r=new FileReader();
+  r.onload=()=>{ if(hid) hid.value=String(r.result||''); if(prev) prev.innerHTML='✅ সংযুক্ত: '+escHtml(f.name); };
+  r.readAsDataURL(f);
+}
+function xdToggleTypeFields(){
+  const type=(document.getElementById('xdType')||{}).value||'';
+  const sale=document.getElementById('xdSaleFields');
+  const col=document.getElementById('xdCollectFields');
+  const exp=document.getElementById('xdExpenseFields');
+  const partyBox=document.getElementById('xdPartyBox');
+  const catBox=document.getElementById('xdBizCatBox');
+  const lab=document.getElementById('xdPartyLabel');
+  const isCol=xdIsCollectType(type);
+  const isExp=type==='expense';
+  if(sale) sale.style.display = (isCol||isExp) ? 'none' : '';
+  if(col) col.style.display = isCol ? '' : 'none';
+  if(exp) exp.style.display = isExp ? '' : 'none';
+  if(partyBox) partyBox.style.display = isExp ? 'none' : '';
+  if(catBox) catBox.style.display = isExp ? 'none' : '';
+  const rem=document.getElementById('xdRemarksBox'); if(rem) rem.style.display = isExp ? 'none' : '';
+  if(lab){
+    if(type==='due_collect' || type==='cust_advance') lab.textContent='কাস্টমার নির্বাচন *';
+    else if(type==='supplier_pay') lab.textContent='সাপ্লায়ার নির্বাচন *';
+    else lab.textContent='Party (Customer / Supplier)';
+  }
+  xdTogglePayFields();
+  xdRefreshDueSummary();
+}
+function xdTogglePayFields(){
+  const type=(document.getElementById('xdType')||{}).value||'';
+  const isCol=xdIsCollectType(type);
+  const method = isCol
+    ? ((document.getElementById('xdCollectPay')||{}).value||'')
+    : ((document.getElementById('xdPay')||{}).value||'');
+  const bank=document.getElementById('xdBankFields');
+  const mfs=document.getElementById('xdMfsFields');
+  // Bank fields live inside collect block; also show under sale if pay=Bank via cloning visibility on shared ids only in collect
+  if(bank) bank.style.display = (method==='Bank') ? '' : 'none';
+  if(mfs) mfs.style.display = (method==='bKash'||method==='Nagad') ? '' : 'none';
+}
+
+function xdRefreshDueSummary(){
+  const box=document.getElementById('xdDueSummary');
+  if(!box) return;
+  const type=(document.getElementById('xdType')||{}).value||'';
+  if(type!=='due_collect' && type!=='cust_advance'){
+    box.style.display='none';
+    box.innerHTML='';
+    return;
+  }
+  const data=xdLoad();
+  const partyId=(document.getElementById('xdParty')||{}).value||'';
+  const collect=Number((document.getElementById('xdCollectAmt')||{}).value||0);
+
+  let label='', dueAmt=0, subHtml='', amtHtml='';
+
+  if(partyId){
+    const party=(data.parties||[]).find(p=>String(p.id)===String(partyId));
+    dueAmt = xdPartyBal(data, partyId, 'combined');
+    label = (party?party.name:'Party') + ' · Combined Outstanding';
+
+    if(dueAmt>0){
+      amtHtml = `<span class="xd-ds-amt xd-amt-due-col">${xdMoney(dueAmt)}</span>`;
+    } else if(dueAmt<0){
+      amtHtml = `<span class="xd-ds-amt xd-amt-adv-col">Advance ${xdMoney(-dueAmt)}</span>`;
+    } else {
+      amtHtml = `<span class="xd-ds-amt xd-amt-zero-col">${xdMoney(0)}</span>`;
+    }
+
+    if(collect>0){
+      const after = dueAmt - collect;
+      if(after>0){
+        subHtml = `<div class="xd-ds-after">After deposit ${xdMoney(collect)}: Due <b class="xd-amt-due-col">${xdMoney(after)}</b></div>`;
+      } else if(after<0){
+        subHtml = `<div class="xd-ds-after">After deposit ${xdMoney(collect)}: <span class="xd-amt-adv-col"><b>Advance ${xdMoney(-after)}</b></span></div>`;
+      } else {
+        subHtml = `<div class="xd-ds-after">After deposit ${xdMoney(collect)}: <span class="xd-amt-zero-col"><b>${xdMoney(0)} Clear ✓</b></span></div>`;
+      }
+    } else {
+      subHtml = `<div class="xd-ds-sub">Parts + Construction · Combined</div>`;
+    }
+  } else {
+    let totalDue=0, totalAdv=0, count=0;
+    (data.parties||[]).filter(p=>p.kind==='customer').forEach(p=>{
+      const b=xdPartyBal(data, p.id, 'combined');
+      if(b>0){ totalDue+=b; count++; }
+      else if(b<0) totalAdv+=(-b);
+    });
+    dueAmt = totalDue;
+    label = 'All Customers · Combined Outstanding';
+    amtHtml = `<span class="xd-ds-amt xd-amt-due-col">${xdMoney(Math.max(0, dueAmt))}</span>`;
+    subHtml = `<div class="xd-ds-sub">${count?count+' parties · ':''}${totalAdv>0?('<span class="xd-amt-adv-col">Advance '+xdMoney(totalAdv)+'</span>'):'Select a customer'}</div>`;
+  }
+
+  box.style.display='';
+  box.classList.remove('is-zero','is-advance');
+  // বক্স রঙ নিরপেক্ষ; শুধু টাকার রঙ আলাদা
+  box.innerHTML = `<div class="xd-ds-label">${escHtml(label)}</div>${amtHtml}${subHtml}`;
+}
+
+function xdToggleCatDetail(){
+  const cat=document.getElementById('xdCat');
+  const box=document.getElementById('xdCatDetailBox');
+  if(!cat||!box) return;
+  const need = (cat.value==='other_const' || cat.value==='other_biz');
+  box.style.display = need ? '' : 'none';
+  if(!need){ const d=document.getElementById('xdCatDetail'); if(d) d.value=''; }
+}
+function xdRecalcEntry(){
+  const qty=Number(document.getElementById('xdQty')?.value||0);
+  const price=Number(document.getElementById('xdPrice')?.value||0);
+  const totalEl=document.getElementById('xdTotal');
+  const paidEl=document.getElementById('xdPaid');
+  const dueEl=document.getElementById('xdDue');
+  const dueBox=document.getElementById('xdDueBox') || (dueEl && dueEl.closest('.xd-amt-due'));
+  if(totalEl && qty>0 && price>0) totalEl.value=(qty*price).toFixed(2);
+  const tot=Number(totalEl?.value||0);
+  const paid=Number(paidEl?.value||0);
+  const due=Math.max(0, tot-paid);
+  if(dueEl) dueEl.value=due.toFixed(2);
+  // Total == Paid → Due সবুজ + টিক
+  if(dueBox){
+    const cleared = (tot>0 && due<=0.0001) || (tot===0 && paid===0 && false);
+    const fullyPaid = tot>0 && paid+1e-9 >= tot;
+    dueBox.classList.toggle('is-cleared', fullyPaid);
+  }
+}
+function xdSubmitEntry(){
+  const err=document.getElementById('xdEntryErr');
+  const type=document.getElementById('xdType').value;
+  // —— Expense path ——
+  if(type==='expense'){
+    const expCat=(document.getElementById('xdExpCat')||{}).value||'';
+    const amount=Number((document.getElementById('xdExpAmt')||{}).value||0);
+    const payMethod=((document.getElementById('xdExpPay')||{}).value)||'Cash';
+    const receiver=((document.getElementById('xdExpReceiver')||{}).value||'').trim();
+    const ref=((document.getElementById('xdExpRef')||{}).value||'').trim();
+    const note=((document.getElementById('xdExpNote')||{}).value||'').trim();
+    const attach=((document.getElementById('xdExpAttach')||{}).value||'').trim();
+    const date=((document.getElementById('xdDate')||{}).value)||xdNowParts().date;
+    if(!(amount>0)){ err.style.display='block'; err.textContent='Amount দিন'; return; }
+    if(!expCat){ err.style.display='block'; err.textContent='Expense Category বাছুন'; return; }
+    const data=xdLoad();
+    const now=xdNowParts();
+    const id=xdNewTxnId(data);
+    const catInfo=XD_EXPENSE_CATS.find(c=>c.v===expCat)||{bn:expCat};
+    const txn={
+      id, createdAt:new Date().toISOString(), date, time:now.time,
+      businessLine:'combined', category:'expense', type:'expense',
+      expenseCategory:expCat, expenseCategoryLabel:catInfo.bn,
+      partyId:'', partyName:receiver||'—', partyKind:'',
+      item:catInfo.bn, qty:0, unit:'', unitPrice:0,
+      totalAmount:amount, paidAmount:amount, dueAmount:0,
+      payMethod, bankName:'', bankBranch:'', trxId:ref,
+      remarks:note, attachment:attach||'',
+      prevBal:0, currBal:0, balanceDelta:0, reversed:false, reverseOf:null,
+      by:xdOwnerName()
+    };
+    data.txns=data.txns||[]; data.txns.push(txn);
+    xdAudit(data,'EXPENSE_CREATE', id+' · '+catInfo.bn+' · '+xdMoney(amount));
+    xdSave(data);
+    XD.tab='dashboard'; xdPaint();
+    try{ showSavedToast('✅ Expense saved · '+id); }catch(e){ alert('Saved '+id); }
+    return;
+  }
+  const cat=document.getElementById('xdCat').value;
+  const partyId=document.getElementById('xdParty').value;
+  const isCol=xdIsCollectType(type);
+  let total=Number((document.getElementById('xdTotal')||{}).value||0);
+  let paid=Number((document.getElementById('xdPaid')||{}).value||0);
+  let payMethod=((document.getElementById('xdPay')||{}).value)||'Cash';
+  let bankName='', bankBranch='', trxId='';
+  if(isCol){
+    paid=Number((document.getElementById('xdCollectAmt')||{}).value||0);
+    total=paid;
+    payMethod=((document.getElementById('xdCollectPay')||{}).value)||'Cash';
+    if(payMethod==='Bank'){
+      bankName=((document.getElementById('xdBankName')||{}).value||'').trim();
+      bankBranch=((document.getElementById('xdBankBranch')||{}).value||'').trim();
+      trxId=((document.getElementById('xdBankTrx')||{}).value||'').trim();
+      if(!bankName || !bankBranch){ err.style.display='block'; err.textContent='ব্যাংক ও শাখার নাম দিন'; return; }
+    }
+    if(payMethod==='bKash'||payMethod==='Nagad'){
+      trxId=((document.getElementById('xdMfsTrx')||{}).value||'').trim();
+    }
+  }
+  const catDetail=(document.getElementById('xdCatDetail')&&document.getElementById('xdCatDetail').value||'').trim();
+  if((cat==='other_const'||cat==='other_biz') && catDetail.length<2){
+    err.style.display='block'; err.textContent='Other ক্যাটাগরির জন্য বিস্তারিত বর্ণনা লিখুন'; return;
+  }
+  if(!isCol && !(total>0) && type!=='adjustment'){
+    err.style.display='block'; err.textContent='Total Amount / মোট হিসাব দিন'; return;
+  }
+  if(isCol && !(paid>0)){
+    err.style.display='block'; err.textContent='জমার পরিমাণ দিন'; return;
+  }
+  if(type!=='expense' && !partyId){
+    err.style.display='block'; err.textContent='Party নির্বাচন করুন (Expense ছাড়া)'; return;
+  }
+  const data=xdLoad();
+  const party=(data.parties||[]).find(p=>String(p.id)===String(partyId));
+  const line=xdCatInfo(cat).line;
+  const prev = party ? xdPartyBal(data, party.id, line) : 0;
+  const delta = xdCalcDelta(type, total, paid, party?party.kind:'customer');
+  const due=isCol ? 0 : Math.max(0, total-paid);
+  const now=xdNowParts();
+  const id=xdNewTxnId(data);
+  // duplicate guard: same party+type+total+date within 60s
+  const recent=(data.txns||[]).some(t=>!t.reversed && t.partyId===partyId && t.type===type && Number(t.totalAmount)===total && t.date===(document.getElementById('xdDate').value||now.date) && (Date.now()-Date.parse(t.createdAt||0)<60000));
+  if(recent){ err.style.display='block'; err.textContent='Duplicate transaction ধরা পড়েছে — কিছুক্ষণ পর চেষ্টা করুন'; return; }
+  const txn={
+    id, createdAt:new Date().toISOString(),
+    date:document.getElementById('xdDate').value||now.date,
+    time:now.time,
+    businessLine:line,
+    category:cat,
+    type,
+    partyId:party?party.id:'',
+    partyName:party?party.name:(type==='expense'?'—':''),
+    partyKind:party?party.kind:'',
+    item: isCol ? ('জমা · '+payMethod+(bankName?(' · '+bankName):'')+(bankBranch?(' · '+bankBranch):'')+(trxId?(' · '+trxId):'')) : document.getElementById('xdItem').value.trim(),
+    categoryDetail:catDetail,
+    qty:Number(document.getElementById('xdQty').value||0),
+    unit:document.getElementById('xdUnit').value,
+    unitPrice:Number(document.getElementById('xdPrice').value||0),
+    totalAmount:total,
+    paidAmount:paid,
+    dueAmount:due,
+    payMethod:payMethod, bankName:bankName, bankBranch:bankBranch, trxId:trxId,
+    remarks:document.getElementById('xdRemarks').value.trim(),
+    prevBal:prev,
+    currBal:prev+delta,
+    balanceDelta:delta,
+    reversed:false,
+    reverseOf:null,
+    by:xdOwnerName()
+  };
+  data.txns=data.txns||[];
+  data.txns.push(txn);
+  xdAudit(data,'TXN_CREATE', id+' · '+type+' · '+xdMoney(total));
+  xdSave(data);
+  XD.tab='dashboard'; xdPaint();
+  try{ showSavedToast('✅ Transaction saved · '+id); }catch(e){ alert('Saved '+id); }
+}
+function xdOpenParty(){
+  openModal(`<h3 style="margin:0 0 10px">➕ New Party</h3>
+    <div class="field"><label>Name *</label><input id="xdPName" placeholder="Customer / Supplier name"></div>
+    <div class="field"><label>Type *</label><select id="xdPKind"><option value="customer">Customer (ক্রেতা)</option><option value="supplier">Supplier (সরবরাহকারী)</option></select></div>
+    <div class="field"><label>Mobile</label><input id="xdPPhone" placeholder="01XXXXXXXXX"></div>
+    <div class="field"><label>Note</label><input id="xdPNote" placeholder="ঠিকানা / নোট"></div>
+    <div class="modal-actions"><button class="btn btn-ghost" onclick="closeModal()">বাতিল</button>
+    <button class="btn btn-primary" onclick="xdSaveParty()">সেভ</button></div>`);
+}
+function xdSaveParty(){
+  const name=(document.getElementById('xdPName').value||'').trim();
+  if(name.length<2){ alert('নাম লিখুন'); return; }
+  const data=xdLoad();
+  data.parties=data.parties||[];
+  const id='XP'+Date.now();
+  data.parties.push({id,name,kind:document.getElementById('xdPKind').value,phone:(document.getElementById('xdPPhone').value||'').trim(),note:(document.getElementById('xdPNote').value||'').trim()});
+  xdAudit(data,'PARTY_CREATE', name);
+  xdSave(data);
+  closeModal();
+  try{ showSavedToast('✅ পার্টি সেভ হয়েছে — '+name); }catch(e){ alert('✅ পার্টি সেভ হয়েছে — '+name); }
+  if(XD.tab!=='entry') XD.tab='parties';
+  xdPaint();
+}
+
+function xdCustomersHTML(data){
+  const list=(data.parties||[]).slice();
+  const q=(XD.q||'').trim().toLowerCase();
+  const filtered = !q ? list : list.filter(p=>
+    String(p.name||'').toLowerCase().includes(q) ||
+    String(p.phone||'').includes(q) ||
+    String(p.note||'').toLowerCase().includes(q) ||
+    String(p.kind||'').toLowerCase().includes(q)
+  );
+  // sort: customer, supplier, employee, then name
+  const order={customer:0,supplier:1,employee:2};
+  filtered.sort((a,b)=>(order[a.kind]??9)-(order[b.kind]??9) || String(a.name||'').localeCompare(String(b.name||''),'bn'));
+
+  const kindBadge = (k)=>{
+    if(k==='supplier') return '<span class="xd-kind-badge xd-kind-sup">Supplier</span>';
+    if(k==='employee') return '<span class="xd-kind-badge xd-kind-emp">Employee</span>';
+    return '<span class="xd-kind-badge xd-kind-cus">Customer</span>';
+  };
+
+  return `<div class="card">
+    <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <button type="button" class="btn btn-ghost btn-sm" onclick="xdGoTab('dashboard')">⬅️ Back</button>
+        <h3 style="margin:0">কাস্টমার ম্যানেজমেন্ট</h3>
+      </div>
+      <button class="btn btn-primary btn-sm" onclick="xdOpenCustomerForm()">➕ অ্যাড করুন</button>
+    </div>
+    <p class="hint" style="margin:8px 0 0">কাস্টমার · সাপ্লায়ার · দোকানের কর্মচারী (Employee) — সবাই এখানে</p>
+    <div style="margin:12px 0">
+      <input type="search" id="xdCustSearch" placeholder="নাম / মোবাইল / টাইপ খুঁজুন..." value="${escHtml(XD.q||'')}"
+        oninput="XD.q=this.value;clearTimeout(window._xdCustT);window._xdCustT=setTimeout(()=>xdPaint(),200)"
+        style="width:100%;max-width:360px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;box-sizing:border-box">
+    </div>
+    <div class="dlg-scroll"><table class="dlg-table" style="min-width:720px"><thead><tr>
+      <th>#</th><th>নাম</th><th>ধরন</th><th>মোবাইল</th><th>নোট / ঠিকানা</th><th>Combined Bal</th><th>Action</th>
+    </tr></thead><tbody>
+    ${filtered.length?filtered.map((c,i)=>{
+      const bal=xdPartyBal(data,c.id,'combined');
+      const balCol = bal>0?'#DC2626':(bal<0?'#7C3AED':'#16A34A');
+      return `<tr>
+        <td>${i+1}</td>
+        <td><b>${escHtml(c.name)}</b></td>
+        <td>${kindBadge(c.kind)}</td>
+        <td>${escHtml(c.phone||'—')}</td>
+        <td>${escHtml(c.note||'—')}</td>
+        <td class="n" style="font-weight:800;color:${balCol}">${c.kind==='employee'?'—':xdMoney(bal)}</td>
+        <td style="white-space:nowrap">
+          <button type="button" class="btn btn-ghost btn-sm" onclick="xdOpenCustomerForm('${escHtml(c.id)}')">✏️ Edit</button>
+          ${c.kind!=='employee'?`<button type="button" class="btn btn-ghost btn-sm" onclick="XD.tab='ledger';XD.partyId='${escHtml(c.id)}';xdPaint()">📒</button>`:''}
+          <button type="button" class="btn btn-ghost btn-sm" style="color:#dc2626" onclick="xdDeleteCustomer('${escHtml(c.id)}')">🗑️</button>
+        </td>
+      </tr>`;
+    }).join(''):'<tr><td colspan="7" class="dlg-empty">কেউ নেই — অ্যাড করুন</td></tr>'}
+    </tbody></table></div>
+    <p class="hint" style="margin-top:10px">
+      মোট: <b>${list.length}</b>
+      · Customer: <b>${list.filter(x=>x.kind==='customer'||!x.kind).length}</b>
+      · Supplier: <b>${list.filter(x=>x.kind==='supplier').length}</b>
+      · Employee: <b>${list.filter(x=>x.kind==='employee').length}</b>
+      ${q?` · খোঁজে: ${filtered.length}`:''}
+    </p>
+  </div>`;
+}
+function xdOpenCustomerForm(id){
+  const data=xdLoad();
+  const c = id ? (data.parties||[]).find(p=>String(p.id)===String(id)) : null;
+  const isEdit = !!c;
+  const kind = (c && c.kind) ? c.kind : 'customer';
+  openModal(`<h3 style="margin:0 0 12px">${isEdit?'✏️ এডিট':'➕ নতুন অ্যাড'}</h3>
+    <div class="field"><label>ধরন *</label>
+      <select id="xdCKind">
+        <option value="customer" ${kind==='customer'?'selected':''}>Customer (কাস্টমার)</option>
+        <option value="supplier" ${kind==='supplier'?'selected':''}>Supplier (সাপ্লায়ার)</option>
+        <option value="employee" ${kind==='employee'?'selected':''}>Employee (দোকানের কর্মচারী)</option>
+      </select>
+    </div>
+    <div class="field"><label>নাম *</label><input id="xdCName" value="${escHtml(c?c.name:'')}" placeholder="নাম / দোকান / কর্মচারী"></div>
+    <div class="field"><label>মোবাইল</label><input id="xdCPhone" value="${escHtml(c?c.phone:'')}" placeholder="01XXXXXXXXX" inputmode="tel"></div>
+    <div class="field"><label>ঠিকানা / নোট</label><input id="xdCNote" value="${escHtml(c?c.note:'')}" placeholder="ঠিকানা বা নোট"></div>
+    <div id="xdCErr" class="dlg-alert" style="display:none"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">বাতিল</button>
+      <button class="btn btn-primary" onclick="xdSaveCustomerForm('${isEdit?escHtml(c.id):''}')">💾 সেভ</button>
+    </div>`);
+}
+function xdSaveCustomerForm(id){
+  const name=(document.getElementById('xdCName').value||'').trim();
+  const phone=(document.getElementById('xdCPhone').value||'').trim();
+  const note=(document.getElementById('xdCNote').value||'').trim();
+  const kind=(document.getElementById('xdCKind').value||'customer');
+  const err=document.getElementById('xdCErr');
+  if(name.length<2){ if(err){err.style.display='block';err.textContent='নাম অন্তত ২ অক্ষর লিখুন';} else alert('নাম লিখুন'); return; }
+  const data=xdLoad();
+  data.parties=data.parties||[];
+  if(id){
+    const p=data.parties.find(x=>String(x.id)===String(id));
+    if(!p){ alert('রেকর্ড পাওয়া যায়নি'); return; }
+    p.name=name; p.phone=phone; p.note=note; p.kind=kind;
+    xdAudit(data,'PARTY_EDIT', kind+': '+name);
+  } else {
+    data.parties.push({id:'XP'+Date.now(), name, phone, note, kind});
+    xdAudit(data,'PARTY_CREATE', kind+': '+name);
+  }
+  xdSave(data);
+  closeModal();
+  const label = kind==='supplier'?'সাপ্লায়ার':(kind==='employee'?'কর্মচারী':'কাস্টমার');
+  try{ showSavedToast('✅ '+label+' সেভ হয়েছে — '+name); }
+  catch(e){ alert('সেভ হয়েছে — '+name); }
+  XD.tab='customers';
+  xdPaint();
+}
+function xdDeleteCustomer(id){
+  const data=xdLoad();
+  const p=(data.parties||[]).find(x=>String(x.id)===String(id));
+  if(!p){ alert('রেকর্ড পাওয়া যায়নি'); return; }
+  const bal=xdPartyBal(data,id,'combined');
+  const msg = (p.kind!=='employee' && bal!==0)
+    ? `"${p.name}"-এর ব্যালেন্স ${xdMoney(bal)} আছে। তবু ডিলিট করবেন?`
+    : `"${p.name}" ডিলিট করবেন?`;
+  if(!confirm(msg)) return;
+  data.parties = (data.parties||[]).filter(x=>String(x.id)!==String(id));
+  xdAudit(data,'PARTY_DELETE', (p.kind||'')+': '+p.name);
+  xdSave(data);
+  try{ showSavedToast('🗑️ ডিলিট হয়েছে — '+p.name); }catch(e){}
+  XD.tab='customers';
+  xdPaint();
+}
+
+function xdPartiesHTML(data){
+  const list=data.parties||[];
+  return `<div class="card">
+    <div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <button type="button" class="btn btn-ghost btn-sm xd-no-print" onclick="xdGoTab('dashboard')">⬅️ Back</button>
+        <h3 style="margin:0">Customers & Suppliers</h3>
+      </div>
+      <button class="btn btn-primary btn-sm" onclick="xdOpenParty()">➕ New Party</button>
+    </div>
+    <div class="dlg-scroll" style="margin-top:10px"><table class="dlg-table" style="min-width:640px"><thead><tr><th>Name</th><th>Type</th><th>Phone</th><th>Parts Bal</th><th>Const Bal</th><th>Combined</th><th></th></tr></thead><tbody>
+    ${list.length?list.map(p=>`<tr>
+      <td><b>${escHtml(p.name)}</b><div class="hint">${escHtml(p.note||'')}</div></td>
+      <td>${p.kind}</td><td>${escHtml(p.phone||'—')}</td>
+      <td class="n">${xdMoney(xdPartyBal(data,p.id,'parts'))}</td>
+      <td class="n">${xdMoney(xdPartyBal(data,p.id,'construction'))}</td>
+      <td class="n"><b>${xdMoney(xdPartyBal(data,p.id,'combined'))}</b></td>
+      <td><button class="btn btn-ghost btn-sm" onclick="XD.tab='ledger';XD.partyId='${escHtml(p.id)}';xdPaint()">Ledger</button></td>
+    </tr>`).join(''):'<tr><td colspan="7" class="dlg-empty">কোনো পার্টি নেই</td></tr>'}
+    </tbody></table></div>
+  </div>`;
+}
+function xdLedgerHTML(data){
+  const parties=data.parties||[];
+  const pid=XD.partyId||(parties[0]&&parties[0].id)||'';
+  const p=parties.find(x=>String(x.id)===String(pid));
+  let tx=(data.txns||[]).filter(t=>!t.reversed && String(t.partyId)===String(pid));
+  if(XD.line==='parts'||XD.line==='construction') tx=tx.filter(t=>t.businessLine===XD.line);
+  tx=tx.slice().sort((a,b)=>String(a.createdAt).localeCompare(String(b.createdAt)));
+  let run=0;
+  const rows=tx.map(t=>{
+    run+=Number(t.balanceDelta||0);
+    return `<tr><td>${escHtml(t.date)}</td><td><code>${escHtml(t.id)}</code></td><td>${escHtml(xdTypeInfo(t.type).bn.split('–')[0].trim())}</td>
+      <td>${escHtml(t.item||t.remarks||'—')}</td><td class="n">${Number(t.balanceDelta)>0?xdMoney(t.balanceDelta):''}</td>
+      <td class="n">${Number(t.balanceDelta)<0?xdMoney(-t.balanceDelta):''}</td><td class="n"><b>${xdMoney(run)}</b></td></tr>`;
+  }).join('');
+  return `<div class="card">
+    <div class="xd-no-print" style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+      <button type="button" class="btn btn-ghost btn-sm" onclick="xdGoTab('dashboard')">⬅️ Back</button>
+    </div>
+    <div id="xdLedgerPrintRoot">
+      <h3 style="margin:0 0 10px;text-align:center">${escHtml(p?p.name:'—')} · ${XD.line} Ledger</h3>
+      <div class="dlg-scroll"><table class="dlg-table" style="min-width:720px"><thead><tr><th>Date</th><th>Txn</th><th>Type</th><th>Details</th><th>Debit</th><th>Credit</th><th>Balance</th></tr></thead>
+      <tbody>${rows||'<tr><td colspan="7" class="dlg-empty">কোনো লেনদেন নেই</td></tr>'}</tbody></table></div>
+    </div>
+    <div class="xd-no-print" style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-primary btn-sm" onclick="xdPrintArea()">🖨️ Print</button>
+    </div>
+  </div>`;
+}
+
+function xdExpenseStats(data){
+  const tx=(data.txns||[]).filter(t=>!t.reversed && t.type==='expense')
+    .slice().sort((a,b)=>String(b.createdAt||b.date).localeCompare(String(a.createdAt||a.date)));
+  const now=new Date();
+  const y=now.getFullYear(), m=now.getMonth(), d=now.getDate();
+  const startToday=new Date(y,m,d).getTime();
+  const startWeek=startToday - ((now.getDay()||7)-1)*86400000;
+  const startMonth=new Date(y,m,1).getTime();
+  const startYear=new Date(y,0,1).getTime();
+  const sum=arr=>arr.reduce((s,t)=>s+Number(t.totalAmount||0),0);
+  const inRange=(t,from,to)=>{
+    const ts=Date.parse((t.date||'')+'T12:00:00');
+    if(!Number.isFinite(ts)) return false;
+    if(ts<from) return false;
+    if(to!=null && ts>to) return false;
+    return true;
+  };
+  const endToday=startToday+86400000-1;
+  const today=tx.filter(t=>inRange(t,startToday,endToday));
+  const week=tx.filter(t=>inRange(t,startWeek,null));
+  const month=tx.filter(t=>inRange(t,startMonth,null));
+  const year=tx.filter(t=>inRange(t,startYear,null));
+  const byCat={};
+  const byCatList={};
+  tx.forEach(t=>{
+    const k=t.expenseCategoryLabel||t.item||t.expenseCategory||'Other';
+    byCat[k]=(byCat[k]||0)+Number(t.totalAmount||0);
+    (byCatList[k]=byCatList[k]||[]).push(t);
+  });
+  // cache for click details
+  window._xdExpCache = {today, week, month, year, total:tx, byCatList};
+  return {today:sum(today),week:sum(week),month:sum(month),year:sum(year),total:sum(tx),byCat,list:tx};
+}
+function xdOpenExpenseDetail(kind, catName){
+  const cache=window._xdExpCache||{};
+  let rows=[], title='', color='#dc2626';
+  if(kind==='today'){ rows=cache.today||[]; title='Today Expense'; color='#ea580c'; }
+  else if(kind==='week'){ rows=cache.week||[]; title='Weekly Expense'; color='#d97706'; }
+  else if(kind==='month'){ rows=cache.month||[]; title='Monthly Expense'; color='#c2410c'; }
+  else if(kind==='year'){ rows=cache.year||[]; title='Yearly Expense'; color='#9a3412'; }
+  else if(kind==='total'){ rows=cache.total||[]; title='Total Expense'; color='#dc2626'; }
+  else if(kind==='cat'){ rows=(cache.byCatList&&cache.byCatList[catName])||[]; title='Category · '+(catName||''); color='#dc2626'; }
+  else return;
+  const total=rows.reduce((s,t)=>s+Number(t.totalAmount||0),0);
+  const body = rows.length ? `<div class="dlg-scroll"><table class="dlg-table" style="min-width:100%"><thead><tr>
+      <th>Date</th><th>Category</th><th>Paid To</th><th>Method</th><th>Ref</th><th class="n">Amount</th>
+    </tr></thead><tbody>
+    ${rows.map(t=>`<tr>
+      <td>${escHtml(t.date||'')}</td>
+      <td>${escHtml(t.expenseCategoryLabel||t.item||'')}</td>
+      <td>${escHtml(t.partyName||'—')}</td>
+      <td>${escHtml(t.payMethod||'')}</td>
+      <td>${escHtml(t.trxId||'—')}</td>
+      <td class="n" style="font-weight:800;color:${color}">${xdMoney(t.totalAmount)}</td>
+    </tr>`).join('')}
+    </tbody>
+    <tfoot><tr><td colspan="5"><b>Total (${rows.length})</b></td><td class="n" style="font-weight:900;color:${color}">${xdMoney(total)}</td></tr></tfoot>
+    </table></div>` : `<div class="empty" style="padding:18px">এই সময়ে কোনো খরচ নেই</div>`;
+  openModal(`<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;flex-wrap:wrap">
+      <h3 style="margin:0">${escHtml(title)}</h3>
+      <div style="font-size:18px;font-weight:900;color:${color}">${xdMoney(total)}</div>
+    </div>
+    <div style="margin-top:12px">${body}</div>
+    <div class="modal-actions" style="margin-top:14px">
+      <button class="btn btn-ghost" onclick="closeModal()">বন্ধ</button>
+      <button class="btn btn-primary" onclick="closeModal();XD.tab='entry';xdPaint();setTimeout(()=>{const s=document.getElementById('xdType');if(s){s.value='expense';xdToggleTypeFields();}},50)">➕ New Expense</button>
+    </div>`);
+}
+
+function xdReportsHTML(data){
+  const list=xdFilterTxns(data);
+  const ex=xdExpenseStats(data);
+  const catRows=Object.keys(ex.byCat).sort((a,b)=>ex.byCat[b]-ex.byCat[a]);
+  const lineLabel = XD.line==='parts'?'Parts Business':XD.line==='construction'?'Construction Business':'Combined Accounts';
+
+  // Filtered summary (dashboard-style)
+  let sales=0, cashSales=0, creditSales=0, collection=0, purchase=0, expenses=0;
+  list.forEach(t=>{
+    const amt=Number(t.totalAmount||0), paid=Number(t.paidAmount||0);
+    if(t.type==='cash_sale'){ sales+=amt; cashSales+=amt; }
+    else if(t.type==='credit_sale'){ sales+=amt; creditSales+=amt; }
+    else if(t.type==='due_collect'||t.type==='cust_advance'){ collection+=paid||amt; }
+    else if(t.type==='cash_purchase'||t.type==='credit_purchase'){ purchase+=amt; }
+    else if(t.type==='expense'){ expenses+=amt; }
+  });
+  const sDash=xdSummary(data, XD.line);
+
+  return `
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <button type="button" class="btn btn-ghost btn-sm" onclick="xdGoTab('dashboard')">⬅️ Back</button>
+        <h3 style="margin:0">Reports Summary · ${lineLabel}</h3>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button class="btn btn-ghost btn-sm" onclick="xdPrintArea()">🖨️ Print</button>
+        <button class="btn btn-ghost btn-sm" onclick="xdExportPdf()">📄 PDF</button>
+      </div>
+    </div>
+    <div class="dlg-kpis xd-kpi-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px">
+      ${xdKpiCard('Total Sales',sales,'#1d4ed8')}
+      ${xdKpiCard('Cash Sales',cashSales,'#0369a1')}
+      ${xdKpiCard('Credit Sales',creditSales,'#b45309')}
+      ${xdKpiCard('Total Collection',collection,'#15803d')}
+      ${xdKpiCard('Total Purchase',purchase,'#7c3aed')}
+      ${xdKpiCard('Total Expenses',expenses,'#dc2626','expTotal')}
+      ${xdKpiCard('Customer Due',sDash.custDue,'#c2410c','custDue')}
+      ${xdKpiCard('Supplier Payable',sDash.supPay,'#a21caf','supPay')}
+      ${xdKpiCard('Customer Advance',sDash.advance,'#0f766e','advance')}
+      ${xdKpiCard('Net Business Balance',sDash.net,'#0f172a')}
+    </div>
+    <p class="hint" style="margin-top:12px">ফিল্টার অনুযায়ী সারাংশ · Due/Advance লাইভ কার্ড</p>
+  </div>
+
+  <div class="card" style="margin-top:12px">
+    <h3 style="margin:0 0 10px">Filters</h3>
+    <div class="dlg-filters" style="display:flex;flex-wrap:wrap;gap:8px;align-items:center">
+      <label class="hint" style="display:flex;flex-direction:column;gap:4px">From
+        <input type="date" value="${escHtml(XD.from||'')}" onchange="XD.from=this.value;xdPaint()" style="padding:8px;border:1px solid var(--line);border-radius:8px">
+      </label>
+      <label class="hint" style="display:flex;flex-direction:column;gap:4px">To
+        <input type="date" value="${escHtml(XD.to||'')}" onchange="XD.to=this.value;xdPaint()" style="padding:8px;border:1px solid var(--line);border-radius:8px">
+      </label>
+      <select onchange="XD.filterCat=this.value;xdPaint()" style="padding:8px;border:1px solid var(--line);border-radius:8px">
+        <option value="">All Categories</option>
+        ${XD_CATS.map(c=>`<option value="${c.v}" ${XD.filterCat===c.v?'selected':''}>${escHtml(c.bn)}</option>`).join('')}
+      </select>
+      <select onchange="XD.filterType=this.value;xdPaint()" style="padding:8px;border:1px solid var(--line);border-radius:8px">
+        <option value="">All Types</option>
+        ${XD_TYPES.map(t=>`<option value="${t.v}" ${XD.filterType===t.v?'selected':''}>${escHtml(t.bn.split('–')[0].trim())}</option>`).join('')}
+      </select>
+      <input type="search" placeholder="Search..." value="${escHtml(XD.q||'')}" oninput="XD.q=this.value;clearTimeout(window._xdT);window._xdT=setTimeout(()=>xdPaint(),250)" style="min-width:160px;padding:8px;border:1px solid var(--line);border-radius:8px">
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:12px">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap">
+      <h3 style="margin:0">Transaction Report</h3>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span class="hint">${list.length} records</span>
+        <button type="button" class="btn btn-primary btn-sm" onclick="XD.showTxnReport=!XD.showTxnReport;xdPaint()" title="${XD.showTxnReport?'Hide':'Show'}">
+          ${XD.showTxnReport?'−':'＋'}
+        </button>
+      </div>
+    </div>
+    ${XD.showTxnReport?`<div id="xdReportArea" style="margin-top:10px">${xdTxnTableHTML(list)}</div>`
+      :`<div id="xdReportArea" style="display:none"></div>
+        <p class="hint" style="margin:10px 0 0">ট্রানজেকশন লিস্ট লুকানো · দেখতে <b>＋</b> চাপুন</p>`}
+  </div>
+
+  <div class="card" style="margin-top:12px">
+    <h3 style="margin:0 0 10px">Expense Report</h3>
+    <div class="dlg-kpis xd-kpi-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-bottom:12px">
+      ${xdKpiCard('Today Expense',ex.today,'#ea580c','expToday')}
+      ${xdKpiCard('Weekly Expense',ex.week,'#d97706','expWeek')}
+      ${xdKpiCard('Monthly Expense',ex.month,'#c2410c','expMonth')}
+      ${xdKpiCard('Yearly Expense',ex.year,'#9a3412','expYear')}
+      ${xdKpiCard('Total Expense',ex.total,'#dc2626','expTotal')}
+    </div>
+    <h4 style="margin:8px 0 8px">Category Wise</h4>
+    <div class="dlg-scroll"><table class="dlg-table" style="min-width:400px"><thead><tr><th>Category</th><th class="n">Amount</th></tr></thead><tbody>
+      ${catRows.length?catRows.map(k=>`<tr style="cursor:pointer" onclick="xdOpenExpenseDetail('cat', '${String(k).replace(/'/g,"\\'")}')"><td>${escHtml(k)} <span style="opacity:.6">›</span></td><td class="n" style="font-weight:800;color:#dc2626">${xdMoney(ex.byCat[k])}</td></tr>`).join(''):'<tr><td colspan="2" class="dlg-empty">কোনো খরচ নেই</td></tr>'}
+    </tbody></table></div>
+  </div>`;
+}
+function xdAuditHTML(data){
+  const rows=(data.audit||[]).slice(0,100);
+  return `<div class="card"><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px"><button type="button" class="btn btn-ghost btn-sm" onclick="xdGoTab('dashboard')">⬅️ Back</button><h3 style="margin:0">Audit Log</h3></div>
+    <div class="dlg-scroll"><table class="dlg-table" style="min-width:560px"><thead><tr><th>Time</th><th>By</th><th>Action</th><th>Details</th></tr></thead><tbody>
+    ${rows.length?rows.map(a=>`<tr><td>${escHtml(String(a.at||'').replace('T',' ').slice(0,19))}</td><td>${escHtml(a.by||'')}</td><td>${escHtml(a.action||'')}</td><td>${escHtml(a.details||'')}</td></tr>`).join(''):'<tr><td colspan="4" class="dlg-empty">খালি</td></tr>'}
+    </tbody></table></div></div>`;
+}
+function xdReverseTxn(id){
+  if(!confirm('এই লেনদেন Reverse করবেন? (ডিলিট নয় — Correction History থাকবে)')) return;
+  const data=xdLoad();
+  const t=(data.txns||[]).find(x=>x.id===id && !x.reversed);
+  if(!t){ alert('Txn পাওয়া যায়নি'); return; }
+  t.reversed=true;
+  const revId=xdNewTxnId(data);
+  const rev=Object.assign({}, t, {
+    id:revId, createdAt:new Date().toISOString(), reverseOf:t.id, reversed:false,
+    totalAmount:t.totalAmount, paidAmount:t.paidAmount, dueAmount:t.dueAmount,
+    balanceDelta: -Number(t.balanceDelta||0),
+    prevBal: xdPartyBal(data, t.partyId, t.businessLine),
+    remarks:'REVERSAL of '+t.id+(t.remarks?(' · '+t.remarks):''),
+    type:t.type, item:'REVERSAL · '+(t.item||'')
+  });
+  rev.currBal = rev.prevBal + rev.balanceDelta;
+  // mark original after computing - already marked
+  data.txns.push(rev);
+  // flag original
+  const orig=(data.txns||[]).find(x=>x.id===id);
+  if(orig) orig.reversed=true;
+  xdAudit(data,'TXN_REVERSE', t.id+' → '+revId);
+  xdSave(data);
+  xdPaint();
+}
+
+function xdReportCompanyName(){
+  // রিপোর্টে Sabihasoft নয় — Exclusive Dealer অ্যাকাউন্টের নাম (অ্যাডমিন যে নামে ID তৈরি করে)
+  try{
+    const u = DB.session && DB.session.user;
+    if(u){
+      const n = (u.businessName || u.shopName || u.companyName || u.name || '').trim();
+      if(n) return n;
+    }
+  }catch(e){}
+  return 'এম এস যশোর মটরস';
+}
+function xdReportAddress(){
+  try{
+    const u = DB.session && DB.session.user;
+    if(!u) return '';
+    const parts = [];
+    if(u.address) parts.push(String(u.address).trim());
+    if(u.upazila) parts.push(String(u.upazila).trim());
+    if(u.district) parts.push(String(u.district).trim());
+    if(u.phone) parts.push('মোবাইল: '+String(u.phone).trim());
+    return parts.filter(Boolean).join(', ');
+  }catch(e){ return ''; }
+}
+
+function xdPrintArea(){
+  // আগের মতো সুন্দর HTML টেবিল প্রিন্ট
+  let src = document.getElementById('xdLedgerPrintRoot')
+        || document.getElementById('xdReportArea')
+        || document.querySelector('#xdMainWrap .card');
+  if(!src){ alert('Print করার মতো কিছু নেই'); return; }
+
+  let sheetTitle = (document.querySelector('#xdLedgerPrintRoot h3')||{}).textContent || 'Ledger / Report';
+  sheetTitle = String(sheetTitle)
+    .replace(/\bcombined\b/gi,'Combined')
+    .replace(/\bparts\b/gi,'Parts')
+    .replace(/\bconstruction\b/gi,'Construction');
+
+  const company = xdReportCompanyName();
+  const addr = xdReportAddress();
+  const printedAt = (typeof formatAppDateTime==='function')
+    ? formatAppDateTime(new Date())
+    : new Date().toLocaleString();
+
+  const clone = src.cloneNode(true);
+  clone.querySelectorAll('.xd-no-print, button, .btn').forEach(el=>el.remove());
+  clone.querySelectorAll('h3').forEach(h=>h.remove());
+
+  const w = window.open('','_blank');
+  if(!w){ alert('Popup blocked — allow popups for print'); return; }
+  w.document.open();
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title></title>
+    <style>
+      @page{margin:14mm 12mm 16mm 12mm}
+      body{font-family:Arial,"Noto Sans Bengali","Hind Siliguri",sans-serif;padding:8px;color:#111;background:#fff}
+      .xd-print-head{text-align:center;margin:0 0 14px;padding-bottom:10px;border-bottom:2px solid #111}
+      .xd-print-head h2{margin:0 0 6px;font-size:20px;font-weight:800;text-align:center}
+      .xd-print-head .addr{margin:0 0 4px;font-size:12px;color:#333;text-align:center;line-height:1.45}
+      .xd-print-head .sheet{margin:8px 0 0;font-size:14px;font-weight:700;text-align:center}
+      table{border-collapse:collapse;width:100%;margin-top:8px}
+      th,td{border:1px solid #333;padding:6px 8px;font-size:12px;text-align:left}
+      th{background:#f3f4f6;text-align:center;font-weight:700}
+      td.n, th.n{text-align:right}
+      .xd-no-print,button,.btn{display:none!important}
+      .xd-print-foot{margin-top:28px;padding-top:12px;border-top:1px solid #999;text-align:center;font-size:11px;color:#444;line-height:1.5}
+      .xd-print-foot .xd-print-dt{margin-top:4px;font-size:10px;color:#666}
+    </style></head><body>
+    <div class="xd-print-head">
+      <h2>${company}</h2>
+      ${addr?`<div class="addr">${addr}</div>`:''}
+      <div class="sheet">${sheetTitle}</div>
+    </div>
+    ${clone.innerHTML}
+    <div class="xd-print-foot">
+      <div>Design and Support by Sabiha Soft — 01712 86 3183</div>
+      <div class="xd-print-dt">Printed: ${printedAt}</div>
+    </div>
+    </body></html>`);
+  w.document.close();
+  try{ w.document.title = ' '; }catch(e){}
+  setTimeout(()=>{ try{ w.focus(); w.print(); }catch(e){ alert('Print failed'); } }, 250);
+}
+function xdExportPdf(){
+  try{
+    if(!(window.jspdf&&window.jspdf.jsPDF)){ xdPrintArea(); return; }
+    const {jsPDF}=window.jspdf; const doc=new jsPDF();
+    const cn=xdReportCompanyName(); const ad=xdReportAddress();
+    const printedAt = (typeof formatAppDateTime==='function') ? formatAppDateTime(new Date()) : new Date().toLocaleString();
+    doc.setFontSize(14); doc.text(cn, 105, 16, {align:'center'});
+    if(ad){ doc.setFontSize(9); doc.text(ad, 105, 22, {align:'center'}); }
+    doc.setFontSize(11); doc.text('Report', 105, ad?28:22, {align:'center'});
+    doc.setFontSize(9);
+    const data=xdLoad(); const list=xdFilterTxns(data).slice(0,40);
+    let y=ad?34:28;
+    list.forEach(t=>{
+      doc.text(`${t.id} | ${t.date} | ${t.partyName||''} | ${t.totalAmount}`, 14, y);
+      y+=6; if(y>270){ doc.addPage(); y=16; }
+    });
+    // Footer — last page bottom
+    const pageH = doc.internal.pageSize.getHeight();
+    doc.setFontSize(9);
+    doc.text('Design and Support by Sabiha Soft — 01712 86 3183', 105, pageH-16, {align:'center'});
+    doc.setFontSize(8);
+    doc.text('Printed: '+printedAt, 105, pageH-10, {align:'center'});
+    doc.save((xdReportCompanyName()||'report').replace(/[^\w\u0980-\u09FF\- ]+/g,'_')+'_report.pdf');
+  }catch(e){ xdPrintArea(); }
+}
+function exclusiveDealerBodyHTML(){
+  const data=xdLoad();
+  let body='';
+  if(XD.tab==='entry') body=xdEntryFormHTML(data);
+  else if(XD.tab==='customers') body=xdCustomersHTML(data);
+  else if(XD.tab==='parties') body=xdPartiesHTML(data);
+  else if(XD.tab==='ledger') body=xdLedgerHTML(data);
+  else if(XD.tab==='reports') body=xdReportsHTML(data);
+  else if(XD.tab==='audit') body=xdAuditHTML(data);
+  else body=xdDashboardHTML(data);
+  return xdTabsHTML()+`<div class="xd-app-shell">${body}</div>`;
+}
+ROUTES.exclusiveDealerPortal=function(){
+  if(!requireRole(['exclusiveDealer'],'landing')) return;
+  const u=DB.session.user;
+  const app=document.getElementById('app');
+  app.appendChild(el(`<div class="portal-soft-bg">
+    <div class="topbar">
+      <div class="topbar-brand">
+        <div class="brand-logo">🏪</div>
+        <div><div class="brand-name">${escHtml((DB.session.user&&(DB.session.user.businessName||DB.session.user.name))||'এম এস যশোর মটরস')}</div><div class="brand-sub">Exclusive Dealer · Accounting</div></div>
+      </div>
+      <div class="topbar-right">
+        ${themeBtnHTML()}
+        <span class="pill">${escHtml(u?u.name:'')}</span>
+        <button class="btn btn-ghost btn-sm" style="color:#fff;border-color:rgba(255,255,255,.3)" id="xdLogout">লগআউট</button>
+      </div>
+    </div>
+    <div class="wrap has-bottom-nav" id="xdMainWrap">
+      ${exclusiveDealerBodyHTML()}
+    </div>
+    <div class="modal-bg" id="modalBg"><div class="modal" id="modalBody"></div></div>
+  </div>`));
+  document.getElementById('xdLogout').onclick=()=>{DB.session={role:null,user:null};go('landing');};
+  const bg=document.getElementById('modalBg'); if(bg) bg.addEventListener('click',ev=>{if(ev.target.id==='modalBg')closeModal();});
+  // Event delegation — মোবাইলে inline onclick ব্যর্থ হলেও লাইভ কাজ করবে
+  const wrap=document.getElementById('xdMainWrap');
+  if(wrap && !wrap._xdBound){
+    wrap._xdBound=true;
+    wrap.addEventListener('click', function(ev){
+      const tabBtn = ev.target.closest && ev.target.closest('.xd-app-icon');
+      if(tabBtn){
+        const lab=(tabBtn.querySelector('.xd-lab')||{}).textContent||'';
+        const map={Dashboard:'dashboard','New Entry':'entry','Customer Mgmt':'customers',Parties:'parties',Ledger:'ledger',Reports:'reports',Audit:'audit'};
+        if(map[lab]){ ev.preventDefault(); xdGoTab(map[lab]); return; }
+      }
+      const chip = ev.target.closest && ev.target.closest('.xd-line-chips button');
+      if(chip){
+        const t=(chip.textContent||'').trim().toLowerCase();
+        if(t.indexOf('part')>=0) xdSetLine('parts');
+        else if(t.indexOf('const')>=0) xdSetLine('construction');
+        else xdSetLine('combined');
+        ev.preventDefault();
+      }
+    });
+  }
+  xdCloudPull().then(()=>{ /* keep silent */ });
+};
+window.xdRecalcEntry=xdRecalcEntry;
+window.xdOpenKpiDetail=xdOpenKpiDetail;
+window.xdOpenExpenseDetail=xdOpenExpenseDetail;
+window.xdToggleCatDetail=xdToggleCatDetail;
+window.xdRefreshDueSummary=xdRefreshDueSummary;
+window.xdIsCollectType=xdIsCollectType;
+window.xdTogglePayFields=xdTogglePayFields;
+window.xdToggleTypeFields=xdToggleTypeFields;
+window.xdSubmitEntry=xdSubmitEntry;
+window.xdReadExpFile=xdReadExpFile;
+window.xdOpenParty=xdOpenParty;
+window.xdCustomersHTML=xdCustomersHTML;
+window.xdDeleteCustomer=xdDeleteCustomer;
+window.xdSaveCustomerForm=xdSaveCustomerForm;
+window.xdOpenCustomerForm=xdOpenCustomerForm;
+window.xdSaveParty=xdSaveParty;
+window.xdReverseTxn=xdReverseTxn;
+window.xdPrintArea=xdPrintArea;
+window.xdReportCompanyName=xdReportCompanyName;
+window.xdReportAddress=xdReportAddress;
+window.xdExportPdf=xdExportPdf;
+window.xdGoTab=xdGoTab;
+window.xdBackBar=xdBackBar;
+window.xdSetLine=xdSetLine;
+window.xdPaint=xdPaint;
+
 
 window.DLG={
   tabHTML, wire, reload, setView, setDueQ, setDueOnly, setF, setQ, setAuditQ, clearFilters, openLedger, openDueDetail,
