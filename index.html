@@ -44,7 +44,7 @@ document.currentScript.parentNode.insertBefore(manifestLink, document.currentScr
 // প্রতিটি নতুন deployment/update দেওয়ার আগে এই APP_VERSION ভ্যালুটা পরিবর্তন করুন
 // (যেকোনো ইউনিক স্ট্রিং — তারিখ/সময় বা running number)। এই ভ্যালুর ভিত্তিতেই
 // সব ডিভাইস স্বয়ংক্রিয়ভাবে নতুন version detect করে reload হবে।
-window.APP_VERSION = '2026-11-12-xd-bottom-nav.149';
+window.APP_VERSION = '2026-11-12-xd-cloud-sync.150';
 
 (function(){
   // পুরনো/legacy blob-based service worker ও পুরনো Cache Storage সম্পূর্ণ পরিষ্কার করে দেওয়া হয়,
@@ -14401,33 +14401,118 @@ function xdOwnerId(){ return DB.session&&DB.session.user ? String(DB.session.use
 function xdOwnerName(){ return (DB.session&&DB.session.user&&DB.session.user.name)||''; }
 function xdStoreKey(){ return 'xdAcct_'+xdOwnerId(); }
 function xdBlank(){ return {parties:[], txns:[], audit:[], seq:1}; }
+function xdCloudRef(){
+  // appdata/* → auth লিখতে পারে (পুরনো exclusiveLedger রুট রুলসে নেই বলে মোবাইল/পিসি আলাদা হয়ে যেত)
+  if(typeof fbDb==='undefined'||!fbDb||!xdOwnerId()) return null;
+  return fbDb.ref('appdata/exclusiveLedger/'+xdOwnerId());
+}
 function xdLoad(){
   try{
     const d=JSON.parse(localStorage.getItem(xdStoreKey())||'null');
-    if(d && Array.isArray(d.txns)) return Object.assign(xdBlank(), d);
+    if(d && (Array.isArray(d.txns)||Array.isArray(d.parties))) return Object.assign(xdBlank(), d);
   }catch(e){}
   return xdBlank();
 }
-function xdSave(data){
+function xdMergeXd(a,b){
+  const A=Object.assign(xdBlank(), a||{});
+  const B=Object.assign(xdBlank(), b||{});
+  const txnMap={};
+  (A.txns||[]).forEach(t=>{ if(t&&t.id) txnMap[t.id]=t; });
+  (B.txns||[]).forEach(t=>{
+    if(!t||!t.id) return;
+    const prev=txnMap[t.id];
+    if(!prev) txnMap[t.id]=t;
+    else {
+      const ta=Date.parse(prev.createdAt||prev.date||0)||0;
+      const tb=Date.parse(t.createdAt||t.date||0)||0;
+      if(tb>=ta) txnMap[t.id]=Object.assign({},prev,t);
+    }
+  });
+  const partyMap={};
+  (A.parties||[]).forEach(x=>{ if(x&&x.id) partyMap[x.id]=x; });
+  (B.parties||[]).forEach(x=>{
+    if(!x||!x.id) return;
+    partyMap[x.id]=Object.assign({}, partyMap[x.id]||{}, x);
+  });
+  const audit=[].concat(A.audit||[], B.audit||[]);
+  const seen=new Set(); const auditOut=[];
+  audit.sort((x,y)=>String(y.at||'').localeCompare(String(x.at||'')));
+  audit.forEach(x=>{
+    const k=(x.at||'')+'|'+(x.action||'')+'|'+(x.detail||'');
+    if(seen.has(k)) return; seen.add(k); auditOut.push(x);
+  });
+  return {
+    parties:Object.values(partyMap),
+    txns:Object.values(txnMap),
+    audit:auditOut.slice(0,300),
+    seq:Math.max(A.seq||1, B.seq||1, Object.keys(txnMap).length+1),
+    updatedAt:Math.max(Number(A.updatedAt||0), Number(B.updatedAt||0), Date.now())
+  };
+}
+function xdSaveLocalOnly(data){
   try{ localStorage.setItem(xdStoreKey(), JSON.stringify(data)); }catch(e){}
+}
+function xdSave(data){
+  data = data || xdLoad();
+  data.updatedAt = Date.now();
+  data.seq = Math.max(Number(data.seq||1), (data.txns||[]).length+1);
+  xdSaveLocalOnly(data);
   try{
-    if(typeof fbDb!=='undefined' && fbDb && xdOwnerId()){
-      fbDb.ref('exclusiveLedger/'+xdOwnerId()).set(data).catch(()=>{});
+    const ref=xdCloudRef();
+    if(ref){
+      ref.set(JSON.parse(JSON.stringify(data))).catch(function(err){
+        try{ console.warn('XD cloud save failed', err); }catch(e){}
+      });
     }
   }catch(e){}
 }
 async function xdCloudPull(){
   try{
-    if(typeof fbDb==='undefined'||!fbDb||!xdOwnerId()) return;
-    const snap=await fbDb.ref('exclusiveLedger/'+xdOwnerId()).once('value');
-    const v=snap.val();
-    if(v && Array.isArray(v.txns)){
-      const local=xdLoad();
-      // merge by preferring longer audit / higher seq
-      if((v.seq||0)>=(local.seq||0) || (v.txns||[]).length>=(local.txns||[]).length){
-        xdSave(Object.assign(xdBlank(), v));
+    const ref=xdCloudRef();
+    if(!ref) return false;
+    const snap=await ref.once('value');
+    const remote=snap.val();
+    const local=xdLoad();
+    if(remote && (Array.isArray(remote.txns)||Array.isArray(remote.parties))){
+      const merged=xdMergeXd(local, remote);
+      xdSaveLocalOnly(merged);
+      if(Number(merged.updatedAt||0)>Number(remote.updatedAt||0) || (merged.txns||[]).length>(remote.txns||[]).length){
+        try{ await ref.set(JSON.parse(JSON.stringify(merged))); }catch(e){}
       }
+      return true;
+    } else if((local.txns||[]).length || (local.parties||[]).length){
+      try{ await ref.set(JSON.parse(JSON.stringify(local))); }catch(e){}
+      return true;
     }
+  }catch(e){
+    try{ console.warn('XD cloud pull failed', e); }catch(err){}
+  }
+  return false;
+}
+function xdStartCloudSync(){
+  try{
+    const ref=xdCloudRef();
+    if(!ref) return;
+    if(window._xdCloudRef && window._xdCloudHandler){
+      try{ window._xdCloudRef.off('value', window._xdCloudHandler); }catch(e){}
+    }
+    window._xdCloudRef = ref;
+    window._xdCloudHandler = function(snap){
+      const remote=snap.val();
+      if(!remote) return;
+      if(!(Array.isArray(remote.txns)||Array.isArray(remote.parties))) return;
+      const local=xdLoad();
+      if(Number(remote.updatedAt||0)>=Number(local.updatedAt||0) || (remote.txns||[]).length>(local.txns||[]).length){
+        const merged=xdMergeXd(local, remote);
+        const before=(local.txns||[]).length+'|'+(local.parties||[]).length+'|'+local.updatedAt;
+        const after=(merged.txns||[]).length+'|'+(merged.parties||[]).length+'|'+merged.updatedAt;
+        xdSaveLocalOnly(merged);
+        if(before!==after && document.getElementById('xdMainWrap')){
+          try{ xdPaint(); }catch(e){}
+        }
+      }
+    };
+    ref.on('value', window._xdCloudHandler);
   }catch(e){}
 }
 function xdMoney(n){ const x=Number(n||0); return '৳'+x.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); }
@@ -15668,7 +15753,11 @@ ROUTES.exclusiveDealerPortal=function(){
       }
     });
   }
-  xdCloudPull().then(()=>{ /* keep silent */ });
+  // পিসি ↔ মোবাইল সিঙ্ক (শুধু Exclusive Dealer)
+  xdCloudPull().then(function(){
+    try{ xdPaint(); }catch(e){}
+    try{ xdStartCloudSync(); }catch(e){}
+  });
 };
 window.xdRecalcEntry=xdRecalcEntry;
 window.xdOpenKpiDetail=xdOpenKpiDetail;
@@ -15692,6 +15781,8 @@ window.xdReportCompanyName=xdReportCompanyName;
 window.xdReportAddress=xdReportAddress;
 window.xdExportPdf=xdExportPdf;
 window.xdGoTab=xdGoTab;
+window.xdStartCloudSync=xdStartCloudSync;
+window.xdCloudPull=xdCloudPull;
 window.xdBottomNavHTML=xdBottomNavHTML;
 window.xdBackBar=xdBackBar;
 window.xdSetLine=xdSetLine;
