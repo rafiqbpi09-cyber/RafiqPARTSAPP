@@ -44,7 +44,7 @@ document.currentScript.parentNode.insertBefore(manifestLink, document.currentScr
 // প্রতিটি নতুন deployment/update দেওয়ার আগে এই APP_VERSION ভ্যালুটা পরিবর্তন করুন
 // (যেকোনো ইউনিক স্ট্রিং — তারিখ/সময় বা running number)। এই ভ্যালুর ভিত্তিতেই
 // সব ডিভাইস স্বয়ংক্রিয়ভাবে নতুন version detect করে reload হবে।
-window.APP_VERSION = '2026-11-12-xd-bank-dash-mobile.148';
+window.APP_VERSION = '2026-11-12-xd-bottom-nav.149';
 
 (function(){
   // পুরনো/legacy blob-based service worker ও পুরনো Cache Storage সম্পূর্ণ পরিষ্কার করে দেওয়া হয়,
@@ -1589,37 +1589,45 @@ window.APP_VERSION = '2026-11-12-xd-bank-dash-mobile.148';
   .xd-kind-emp{background:#ffedd5;color:#c2410c}
   /* Exclusive Dealer — mobile bank-style dashboard (Pubali-like) */
   .xd-bank-dash{display:none}
+  .xd-bottom-nav{display:none}
   @media (max-width:768px){
     .xd-dash-desktop{display:none !important}
+    /* টপ অ্যাপ আইকন গ্রিড মোবাইলে লুকাও — নিচের বারে যাবে */
+    .xd-app-grid{display:none !important}
     .xd-bank-dash{display:block;margin:0 0 12px}
-    .xd-bank-hero{
-      background:linear-gradient(165deg,#0a7a3e 0%,#0d9b4d 45%,#12b35a 100%);
-      border-radius:0 0 28px 28px;
-      padding:18px 16px 28px;
-      color:#fff;
-      box-shadow:0 10px 28px rgba(10,122,62,.28);
-    }
-    .xd-bank-brand{
-      text-align:center;font-weight:800;font-size:13px;letter-spacing:.04em;
-      opacity:.95;margin-bottom:14px;text-transform:uppercase;
-    }
-    .xd-bank-user{display:flex;align-items:center;gap:12px}
-    .xd-bank-avatar{
-      width:48px;height:48px;border-radius:50%;
-      background:rgba(255,255,255,.22);border:2px solid rgba(255,255,255,.55);
-      display:flex;align-items:center;justify-content:center;
-      font-weight:900;font-size:20px;
-    }
-    .xd-bank-uname{font-weight:800;font-size:16px;line-height:1.2}
-    .xd-bank-uline{font-size:12px;opacity:.9;margin-top:2px}
     .xd-bank-sheet{
       background:var(--card,#fff);
-      margin:-18px 10px 0;
+      margin:0;
       border-radius:22px;
       padding:14px 10px 10px;
       box-shadow:0 8px 24px rgba(15,23,42,.10);
       border:1px solid rgba(15,23,42,.06);
     }
+    .xd-bank-sheet-flat{margin:0}
+    .xd-has-bottom{padding-bottom:78px}
+    .xd-bottom-nav{
+      display:flex;position:fixed;left:0;right:0;bottom:0;z-index:80;
+      background:#fff;border-top:1px solid rgba(15,23,42,.08);
+      box-shadow:0 -6px 20px rgba(15,23,42,.08);
+      padding:6px 4px calc(6px + env(safe-area-inset-bottom,0px));
+      justify-content:space-around;align-items:flex-end;
+    }
+    .xd-bn-item{
+      flex:1;appearance:none;border:0;background:transparent;
+      display:flex;flex-direction:column;align-items:center;gap:2px;
+      padding:6px 2px;color:#64748b;font-weight:700;min-width:0;
+    }
+    .xd-bn-item.active{color:#0d9b4d}
+    .xd-bn-ic{font-size:20px;line-height:1.1}
+    .xd-bn-lab{font-size:10px;line-height:1.1;white-space:nowrap}
+    .xd-bn-item.active .xd-bn-ic{
+      width:44px;height:44px;border-radius:50%;
+      background:linear-gradient(145deg,#12b35a,#0a7a3e);
+      color:#fff;display:flex;align-items:center;justify-content:center;
+      box-shadow:0 6px 16px rgba(10,122,62,.35);
+      margin-top:-16px;border:3px solid #fff;
+    }
+
     .xd-bank-grid{
       display:grid;
       grid-template-columns:repeat(3,minmax(0,1fr));
@@ -14623,6 +14631,23 @@ function xdBackBar(title){
   </div>`;
 }
 
+
+function xdBottomNavHTML(){
+  const items=[
+    ['dashboard','🏠','Home'],
+    ['entry','➕','Entry'],
+    ['customers','👤','Customer'],
+    ['reports','📊','Report'],
+    ['parties','👥','More']
+  ];
+  return `<nav class="xd-bottom-nav" aria-label="Exclusive Dealer bottom">
+    ${items.map(([id,ic,lab])=>`<button type="button" class="xd-bn-item ${XD.tab===id?'active':''}" onclick="xdGoTab('${id}')">
+      <span class="xd-bn-ic">${ic}</span>
+      <span class="xd-bn-lab">${lab}</span>
+    </button>`).join('')}
+  </nav>`;
+}
+
 function xdGoTab(id){ XD.tab=id; xdPaint(); }
 function xdSetLine(v){ XD.line=v; xdPaint(); }
 function xdPaint(){
@@ -14676,19 +14701,9 @@ function xdDashboardHTML(data){
     <p class="hint" style="margin-top:12px">Parts ও Construction হিসাব আলাদা; Combined-এ দুই ব্যবসার সারাংশ।</p>
   </div>
 
-  <!-- Mobile bank-app style (Pubali-like) -->
+  <!-- Mobile summary grid (no green header) -->
   <div class="xd-bank-dash">
-    <div class="xd-bank-hero">
-      <div class="xd-bank-brand">Exclusive Dealer</div>
-      <div class="xd-bank-user">
-        <div class="xd-bank-avatar">${escHtml(String(uName).trim().charAt(0)||'E')}</div>
-        <div>
-          <div class="xd-bank-uname">${escHtml(uName)}</div>
-          <div class="xd-bank-uline">${lineLabel}</div>
-        </div>
-      </div>
-    </div>
-    <div class="xd-bank-sheet">
+    <div class="xd-bank-sheet xd-bank-sheet-flat">
       <div class="xd-bank-grid">${mobileTiles}</div>
     </div>
   </div>
@@ -15607,7 +15622,7 @@ function exclusiveDealerBodyHTML(){
   else if(XD.tab==='reports') body=xdReportsHTML(data);
   else if(XD.tab==='audit') body=xdAuditHTML(data);
   else body=xdDashboardHTML(data);
-  return xdTabsHTML()+`<div class="xd-app-shell">${body}</div>`;
+  return xdTabsHTML()+`<div class="xd-app-shell xd-has-bottom">${body}</div>`+xdBottomNavHTML();
 }
 ROUTES.exclusiveDealerPortal=function(){
   if(!requireRole(['exclusiveDealer'],'landing')) return;
@@ -15677,6 +15692,7 @@ window.xdReportCompanyName=xdReportCompanyName;
 window.xdReportAddress=xdReportAddress;
 window.xdExportPdf=xdExportPdf;
 window.xdGoTab=xdGoTab;
+window.xdBottomNavHTML=xdBottomNavHTML;
 window.xdBackBar=xdBackBar;
 window.xdSetLine=xdSetLine;
 window.xdPaint=xdPaint;
