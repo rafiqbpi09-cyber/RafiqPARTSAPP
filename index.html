@@ -44,7 +44,7 @@ document.currentScript.parentNode.insertBefore(manifestLink, document.currentScr
 // প্রতিটি নতুন deployment/update দেওয়ার আগে এই APP_VERSION ভ্যালুটা পরিবর্তন করুন
 // (যেকোনো ইউনিক স্ট্রিং — তারিখ/সময় বা running number)। এই ভ্যালুর ভিত্তিতেই
 // সব ডিভাইস স্বয়ংক্রিয়ভাবে নতুন version detect করে reload হবে।
-window.APP_VERSION = '2026-11-12-xd-cloud-sync.150';
+window.APP_VERSION = '2026-11-14-wa-status-sent.151';
 
 (function(){
   // পুরনো/legacy blob-based service worker ও পুরনো Cache Storage সম্পূর্ণ পরিষ্কার করে দেওয়া হয়,
@@ -14042,6 +14042,20 @@ function renderMessagePanel(){
 }
 function msgSetLang(l){ if(!MSG_LANGS[l]) return; LG.ui.msgLang=l; if(LG.msgCtx) LG.msgCtx.lang=l; renderMessagePanel(); }
 function msgErr(e){ const b=$('dlgMErr'); if(b){ b.style.display='block'; b.textContent='❌ '+friendlyError(e); } }
+async function autoMarkMsgSent(ch){
+  // শেয়ার/ডাউনলোড/লিংক খোলার পর Pending → Sent (Payment Message History আপডেট)
+  const ctx=LG.msgCtx; if(!ctx||!ctx.voucherNo) return;
+  try{
+    await resolveMessage(ctx.voucherNo, ch, 'Sent');
+    await loadAll().catch(()=>{});
+    try{ renderMessagePanel(); }catch(e){}
+    try{ if(typeof renderMsgResults==='function') renderMsgResults(); }catch(e){}
+    toast(ch==='wa'?'✅ WhatsApp Status: Sent':'✅ SMS Status: Sent');
+  }catch(e){
+    // ইতিমধ্যে Sent / Pending নয় — নীরব
+    try{ await loadAll().catch(()=>{}); renderMessagePanel(); }catch(e2){}
+  }
+}
 async function msgSend(ch, resend, mode){
   // mode: 'image' | 'text' | undefined (SMS বা পুরনো একসাথে)
   // WhatsApp-এ ইমেজ ও টেক্সট আলাদা — একসাথে শেয়ার হয় না
@@ -14049,6 +14063,7 @@ async function msgSend(ch, resend, mode){
   try{
     const r=await sendMessage(ctx.voucherNo, ch, ctx.lang||LG.ui.msgLang||'bn', {resend:!!resend});
     await loadAll().catch(()=>{}); renderMessagePanel();
+    let didSendAction=false;
     if(ch==='wa'){
       // mode: 'image' | 'text' — শুধু সেই অংশ; mode না থাকলে (পুরনো কল) পূর্বের আচরণ
       if(mode === 'image'){
@@ -14066,9 +14081,12 @@ async function msgSend(ch, resend, mode){
               }
             }
           }catch(e){ shared=false; }
-          if(!shared){
+          if(shared){
+            didSendAction=true;
+          } else {
             downloadDataUrl(r.imageDataUrl, (r.kind==='sale'?'order':'payment')+'_'+(ctx.voucherNo||'receipt')+'.png');
             toast('⬇️ রসিদ ইমেজ সেভ হয়েছে — WhatsApp এ অ্যাটাচ করে পাঠান');
+            didSendAction=true;
           }
         } else {
           toast('⚠️ রসিদ ইমেজ তৈরি করা যায়নি');
@@ -14076,6 +14094,7 @@ async function msgSend(ch, resend, mode){
       } else if(mode === 'text'){
         // শুধু টেক্সট মেসেজ — ইমেজ নেই
         extOpen(r.url);
+        didSendAction=true;
       } else {
         // লেগেসি: দুটোই (পুরনো কল থেকে)
         if(r.imageDataUrl){
@@ -14091,17 +14110,26 @@ async function msgSend(ch, resend, mode){
               }
             }
           }catch(e){ shared=false; }
-          if(!shared){
+          if(shared){
+            didSendAction=true;
+          } else {
             downloadDataUrl(r.imageDataUrl, (r.kind==='sale'?'order':'payment')+'_'+(ctx.voucherNo||'receipt')+'.png');
             extOpen(r.url);
             toast('⬇️ রসিদ ইমেজ সেভ হয়েছে — WhatsApp এ অ্যাটাচ করে পাঠান');
+            didSendAction=true;
           }
         } else {
           extOpen(r.url);
+          didSendAction=true;
         }
       }
     } else {
       extOpen(r.url);
+      didSendAction=true;
+    }
+    // শেয়ার/ডাউনলোড/লিংক খোলার পর History-তে Pending না রেখে Sent
+    if(didSendAction){
+      await autoMarkMsgSent(ch);
     }
   }catch(e){
     await loadAll().catch(()=>{}); renderMessagePanel(); msgErr(e);
