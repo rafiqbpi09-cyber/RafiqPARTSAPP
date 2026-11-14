@@ -44,7 +44,7 @@ document.currentScript.parentNode.insertBefore(manifestLink, document.currentScr
 // প্রতিটি নতুন deployment/update দেওয়ার আগে এই APP_VERSION ভ্যালুটা পরিবর্তন করুন
 // (যেকোনো ইউনিক স্ট্রিং — তারিখ/সময় বা running number)। এই ভ্যালুর ভিত্তিতেই
 // সব ডিভাইস স্বয়ংক্রিয়ভাবে নতুন version detect করে reload হবে।
-window.APP_VERSION = '2026-11-14-wa-status-sent.151';
+window.APP_VERSION = '2026-11-14-wa-status-icon.160';
 
 (function(){
   // পুরনো/legacy blob-based service worker ও পুরনো Cache Storage সম্পূর্ণ পরিষ্কার করে দেওয়া হয়,
@@ -2718,6 +2718,59 @@ window.APP_VERSION = '2026-11-14-wa-status-sent.151';
     .dlg-sms-wrap .dlg-sms-body{display:block !important;}
   }
   .dlg-st-sent{background:#d9f2e3;color:#0f5f33;} .dlg-st-failed{background:#fde8e8;color:#9b1c1c;}
+  
+  .xd-wa-actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+  .xd-wa-icon-btn{
+    appearance:none;border:0;cursor:pointer;
+    background:#25D366;color:#fff;
+    width:48px;height:48px;border-radius:50%;
+    display:inline-flex;align-items:center;justify-content:center;
+    box-shadow:0 4px 14px rgba(37,211,102,.4);
+    padding:0;position:relative;
+  }
+  .xd-wa-icon-btn-alt{background:#128C7E;box-shadow:0 4px 14px rgba(18,140,126,.4)}
+  .xd-wa-icon-btn:active{transform:scale(.96)}
+  .xd-wa-svg{display:block;width:26px;height:26px}
+  .xd-wa-lbl{display:none;font-size:11px;font-weight:800;margin-left:6px}
+  /* ট্যাব/ডেস্কটপে ছোট লেবেল দেখাবে */
+  @media (min-width:769px){
+    .xd-wa-icon-btn{width:auto;height:40px;border-radius:999px;padding:0 14px 0 12px}
+    .xd-wa-lbl{display:inline}
+  }
+  .xd-wa-tip-wrap{display:flex;align-items:flex-start;gap:6px;margin-top:6px}
+  .xd-wa-tip-plus{
+    flex:0 0 auto;width:28px;height:28px;border-radius:8px;
+    display:inline-flex;align-items:center;justify-content:center;
+    font-weight:900;line-height:1;padding:0;
+  }
+  .xd-wa-tip-body{display:none;flex:1;min-width:0}
+  .xd-wa-tip-wrap.open .xd-wa-tip-body{display:block}
+
+  .xd-wa-st{display:inline-flex;align-items:center;justify-content:center;position:relative;width:28px;height:28px;vertical-align:middle}
+  .xd-wa-st-ic{display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:8px;background:#25D366;color:#fff}
+  .xd-wa-st-sent .xd-wa-st-ic{background:#25D366;box-shadow:0 2px 8px rgba(37,211,102,.4)}
+  .xd-wa-st-nosent .xd-wa-st-ic{background:#9ca3af;opacity:.95}
+  .xd-wa-st-bang{
+    position:absolute;right:-3px;top:-4px;
+    width:16px;height:16px;border-radius:50%;
+    background:#ef4444;color:#fff;font-size:11px;font-weight:900;
+    line-height:16px;text-align:center;
+    border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.2);
+  }
+  .xd-wa-st-btn{appearance:none;border:0;background:transparent;padding:0;cursor:pointer;border-radius:8px}
+  .xd-wa-st-btn:hover .xd-wa-st-ic{filter:brightness(1.05)}
+
+  .xd-wa-btn{
+    background:#25D366 !important; color:#fff !important; border:none !important;
+    font-weight:800; border-radius:10px; padding:8px 14px;
+    box-shadow:0 4px 12px rgba(37,211,102,.35);
+    display:inline-flex; align-items:center; gap:6px;
+  }
+  .xd-wa-btn:hover{ background:#1da851 !important; color:#fff !important; }
+  .xd-wa-btn-alt{ background:#128C7E !important; box-shadow:0 4px 12px rgba(18,140,126,.35); }
+  .xd-wa-btn-alt:hover{ background:#0e6e63 !important; }
+  .xd-wa-logo{ font-size:16px; line-height:1; }
+
   .dlg-st-pending{background:#fff0d6;color:#8a5200;} .dlg-st-notsent{background:#e5e7eb;color:#374151;}
   .dlg-muted td{opacity:.8;} .dlg-wrap code{font-size:12px;}
   /* ===== দেনা-পাওনা পেজ: পুরো পেজ ফিট হবে, দরকার হলে টেবিলের ভেতরে ডানে-বামে স্ক্রল থাকবে ===== */
@@ -12697,16 +12750,26 @@ function openDueDetail(id){
       <div class="dlg-kpi"><div>পেমেন্ট সংখ্যা</div><b>${pays.length}টি</b></div>
       <div class="dlg-kpi"><div>শেষ জমা</div><b>${esc(g.lastDeposit||'—')}</b></div>
     </div>
-    <h4 style="margin:8px 0 6px">💳 পেমেন্ট / জমার তালিকা (${pays.length})</h4>
-    <div class="dlg-scroll" style="max-height:28vh;margin-bottom:12px"><table class="dlg-table" style="min-width:560px">
-      <thead><tr><th>তারিখ</th><th>Voucher</th><th>ধরন</th><th>মাধ্যম</th><th>পরিমাণ</th><th>বিবরণ</th></tr></thead>
-      <tbody>${payRows}</tbody>
-    </table></div>
-    <h4 style="margin:8px 0 6px">🧾 বিল / অন্যান্য লেনদেন (সর্বশেষ ৩০)</h4>
-    <div class="dlg-scroll" style="max-height:22vh;margin-bottom:12px"><table class="dlg-table" style="min-width:520px">
-      <thead><tr><th>তারিখ</th><th>Voucher</th><th>ধরন</th><th>পরিমাণ</th><th>বিবরণ</th></tr></thead>
-      <tbody>${billRows}</tbody>
-    </table></div>
+    <div style="margin:8px 0 6px;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
+      <h4 style="margin:0">💳 পেমেন্ট / জমার তালিকা (${pays.length})</h4>
+      <button type="button" class="btn btn-ghost btn-sm" id="dlgPayListToggle" onclick="(function(b){var el=document.getElementById('dlgPayListBody');if(!el)return;var on=el.style.display==='none';el.style.display=on?'':'none';b.textContent=on?'−':'＋';})(this)" title="খুলুন/লুকান">＋</button>
+    </div>
+    <div id="dlgPayListBody" style="display:none;margin-bottom:12px">
+      <div class="dlg-scroll" style="max-height:28vh"><table class="dlg-table" style="min-width:560px">
+        <thead><tr><th>তারিখ</th><th>Voucher</th><th>ধরন</th><th>মাধ্যম</th><th>পরিমাণ</th><th>বিবরণ</th></tr></thead>
+        <tbody>${payRows}</tbody>
+      </table></div>
+    </div>
+    <div style="margin:8px 0 6px;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
+      <h4 style="margin:0">🧾 বিল / অন্যান্য লেনদেন (সর্বশেষ ৩০)</h4>
+      <button type="button" class="btn btn-ghost btn-sm" id="dlgBillListToggle" onclick="(function(b){var el=document.getElementById('dlgBillListBody');if(!el)return;var on=el.style.display==='none';el.style.display=on?'':'none';b.textContent=on?'−':'＋';})(this)" title="খুলুন/লুকান">＋</button>
+    </div>
+    <div id="dlgBillListBody" style="display:none;margin-bottom:12px">
+      <div class="dlg-scroll" style="max-height:22vh"><table class="dlg-table" style="min-width:520px">
+        <thead><tr><th>তারিখ</th><th>Voucher</th><th>ধরন</th><th>পরিমাণ</th><th>বিবরণ</th></tr></thead>
+        <tbody>${billRows}</tbody>
+      </table></div>
+    </div>
     <div class="modal-actions" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
       <button class="btn btn-navy" style="flex:1" onclick="DLG.closeModal();DLG.openLedger('${esc(id)}')">📒 পূর্ণ Ledger</button>
       ${allowedTypes().length?`<button class="btn btn-primary" style="flex:1" onclick="DLG.closeModal();DLG.openEntry('${esc(id)}')">➕ নতুন এন্ট্রি</button>`:''}
@@ -13864,6 +13927,10 @@ async function sendMessage(voucherNo, ch, lang, opts){
       if(opts.resend) return Object.assign({},cur,base,{status:'Pending',attempts:(cur.attempts||0)+1,resends:(cur.resends||0)+1,everSent:true});
       blocked='MSG_SENT'; return;
     }
+    // পুরনো Pending আটকে থাকলে নতুন করে চেষ্টা চালু (শেয়ার আবার)
+    if(cur.status==='Pending'){
+      return Object.assign({},cur,base,{status:'Pending',attempts:(cur.attempts||0)+1});
+    }
     blocked='MSG_PENDING'; return;
   }));
   if(!res.committed){
@@ -13906,23 +13973,58 @@ async function resolveMessage(voucherNo, ch, outcome){
   if(outcome!=='Sent' && outcome!=='Failed') throw E('VALIDATION','অবৈধ ফল');
   await refreshPermissionFromServer(a);
   if(!canMessage()) throw E('FORBIDDEN','অনুমতি নেই');
-  let blocked=false, final=outcome; const now=Date.now(), nowIso=new Date().toISOString();
-  const res=await withTimeout(R('messages/'+voucherNo+'/'+ch).transaction(cur=>{
-    if(!cur || cur.status!=='Pending'){ blocked=true; return; }
-    // Resend ব্যর্থ হলে আগের সফল 'Sent' অবস্থা বহাল থাকে
-    final = (outcome==='Failed' && cur.everSent) ? 'Sent' : outcome;
-    return Object.assign({},cur,{status:final, resolvedAt:now, resolvedAtIso:nowIso, resolvedBy:a.name, resolvedById:a.id, lastOutcome:outcome});
-  }));
-  if(!res.committed) throw E('NOT_PENDING','এই চেষ্টা এখন Pending নয়');
+  let final=outcome; const now=Date.now(), nowIso=new Date().toISOString();
+  let committed=false;
+  try{
+    const res=await withTimeout(R('messages/'+voucherNo+'/'+ch).transaction(cur=>{
+      if(!cur || cur.status!=='Pending'){ return; }
+      final = (outcome==='Failed' && cur.everSent) ? 'Sent' : outcome;
+      return Object.assign({},cur,{status:final, resolvedAt:now, resolvedAtIso:nowIso, resolvedBy:a.name, resolvedById:a.id, lastOutcome:outcome});
+    }));
+    committed = !!(res && res.committed);
+  }catch(e){ committed=false; }
+  if(!committed){
+    // Transaction ব্যর্থ/আটকলে সরাসরি update (Pending আটকে যাওয়া রোধ)
+    const cur=(await withTimeout(R('messages/'+voucherNo+'/'+ch).once('value'))).val();
+    if(cur && cur.status==='Pending'){
+      final = (outcome==='Failed' && cur.everSent) ? 'Sent' : outcome;
+      await withTimeout(R('messages/'+voucherNo+'/'+ch).update({
+        status:final, resolvedAt:now, resolvedAtIso:nowIso,
+        resolvedBy:a.name, resolvedById:a.id, lastOutcome:outcome
+      }));
+      committed=true;
+    } else if(cur && cur.status==='Sent'){
+      final='Sent'; committed=true;
+    } else {
+      throw E('NOT_PENDING','এই চেষ্টা এখন Pending নয়');
+    }
+  }
   const m=(await withTimeout(R('messages/'+voucherNo).once('value'))).val()||{};
   await withTimeout(R('messages/'+voucherNo+'/lastAt').set(now));
-  await writeAudit('MSG_STATUS', MSG_CHANNELS[ch]+' → '+outcome+(final!==outcome?' (পূর্বের Sent বহাল)':''),
-    {voucherNo:voucherNo, dealerId:m.dealerId||null, dealerName:m.dealerName||null});
+  // লোকাল ক্যাশ তৎক্ষণাৎ
+  try{
+    if(!LG.messages[voucherNo]) LG.messages[voucherNo]={};
+    LG.messages[voucherNo][ch]=Object.assign({}, (LG.messages[voucherNo][ch]||{}), {status:final, resolvedAt:now, resolvedAtIso:nowIso});
+    LG.messages[voucherNo].lastAt=now; LG.messages[voucherNo].lastAtIso=nowIso;
+  }catch(e){}
+  try{
+    await writeAudit('MSG_STATUS', MSG_CHANNELS[ch]+' → '+outcome+(final!==outcome?' (পূর্বের Sent বহাল)':''),
+      {voucherNo:voucherNo, dealerId:m.dealerId||null, dealerName:m.dealerName||null});
+  }catch(e){}
   return final;
 }
 /* ---------- UI: Message Panel (Payment Save-এর পরে বা Ledger থেকে) ---------- */
 function chStatus(m,ch){ return (m && m[ch] && m[ch].status) ? m[ch].status : 'Not Sent'; }
 function stBadge(s){ return `<span class="dlg-badge dlg-st-${String(s).replace(/\s/g,'').toLowerCase()}">${esc(s)}</span>`; }
+function waStatusIcon(st){
+  // Sent → পরিষ্কার WhatsApp আইকন; অন্যথা → আইকন + বিস্ময়বোধক
+  const sent = String(st||'')==='Sent';
+  const title = esc(st||'Not Sent');
+  if(sent){
+    return `<span class="xd-wa-st xd-wa-st-sent" title="${title}"><span class="xd-wa-st-ic"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.435 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg></span></span>`;
+  }
+  return `<span class="xd-wa-st xd-wa-st-nosent" title="${title}"><span class="xd-wa-st-ic"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.435 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg></span><span class="xd-wa-st-bang">!</span></span>`;
+}
 function extOpen(url){
   try{ const a=document.createElement('a'); a.href=url; if(/^https?:/.test(url)){ a.target='_blank'; a.rel='noopener'; } document.body.appendChild(a); a.click(); a.remove(); }catch(e){}
 }
@@ -13958,8 +14060,8 @@ function chanBlock(ch, v, phone, msg){
     if(ch==='wa'){
       inner=`<button class="btn btn-ghost btn-sm" disabled>✅ ইতিমধ্যে পাঠানো হয়েছে</button>
         ${isAdmin()?`<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">
-          <button class="btn btn-ghost btn-sm" onclick="DLG.msgSend('wa',true,'image')">↻ আবার ইমেজ শেয়ার</button>
-          <button class="btn btn-ghost btn-sm" onclick="DLG.msgSend('wa',true,'text')">↻ আবার টেক্সট শেয়ার</button>
+          <button type="button" class="xd-wa-icon-btn" title="আবার Image" onclick="DLG.msgSend('wa',true,'image')"><svg class="xd-wa-svg" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.435 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg><span class="xd-wa-lbl">Image</span></button>
+          <button type="button" class="xd-wa-icon-btn xd-wa-icon-btn-alt" title="আবার Text" onclick="DLG.msgSend('wa',true,'text')"><svg class="xd-wa-svg" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.435 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg><span class="xd-wa-lbl">Text</span></button>
         </div>`:''}`;
     } else {
       inner=`<button class="btn btn-ghost btn-sm" disabled>✅ ইতিমধ্যে পাঠানো হয়েছে</button>
@@ -13969,11 +14071,14 @@ function chanBlock(ch, v, phone, msg){
   else if(ch==='wa'){
     // আলাদা বাটন: ইমেজ শেয়ার ও টেক্সট শেয়ার — একসাথে যায় না
     const retry = st==='Failed' ? ' (আবার চেষ্টা)' : '';
-    inner=`<div style="display:flex;flex-wrap:wrap;gap:8px">
-      <button class="btn btn-primary btn-sm" style="width:auto" onclick="DLG.msgSend('wa',false,'image')">🖼️ ইমেজ শেয়ার${retry}</button>
-      <button class="btn btn-primary btn-sm" style="width:auto;background:#25D366" onclick="DLG.msgSend('wa',false,'text')">💬 টেক্সট মেসেজ${retry}</button>
+    inner=`<div class="xd-wa-actions">
+      <button type="button" class="xd-wa-icon-btn" title="WhatsApp Image Share${retry}" onclick="DLG.msgSend('wa',false,'image')"><svg class="xd-wa-svg" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.435 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg><span class="xd-wa-lbl">Image</span></button>
+      <button type="button" class="xd-wa-icon-btn xd-wa-icon-btn-alt" title="WhatsApp Text${retry}" onclick="DLG.msgSend('wa',false,'text')"><svg class="xd-wa-svg" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.435 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg><span class="xd-wa-lbl">Text</span></button>
     </div>
-    <div class="dlg-sub" style="margin-top:6px">যেটা দরকার শুধু সেটাই পাঠান — ইমেজ ও টেক্সট একসাথে যাবে না।</div>`;
+    <div class="xd-wa-tip-wrap">
+      <button type="button" class="btn btn-ghost btn-sm xd-wa-tip-plus" onclick="this.parentElement.classList.toggle('open');this.textContent=this.parentElement.classList.contains('open')?'−':'＋'">＋</button>
+      <div class="xd-wa-tip-body dlg-sub">যেটা দরকার শুধু সেটাই পাঠান — ইমেজ ও টেক্সট একসাথে যাবে না।</div>
+    </div>`;
   }
   else inner=`<button class="btn btn-primary btn-sm" style="width:auto" onclick="DLG.msgSend('${ch}',false)">${icon} Send ${label}${st==='Failed'?' (আবার চেষ্টা)':''}</button>`;
   const when = rec.atIso ? ` · ${esc(String(rec.atIso).replace('T',' ').slice(0,16))} · ${esc(rec.by||'')}` : '';
@@ -14032,7 +14137,10 @@ function renderMessagePanel(){
     <div class="dlg-sub" style="margin:4px 0 10px">SMS: ${seg.unicode?'Unicode':'GSM-7'} · ${seg.length} অক্ষর · <b>${seg.segments} segment</b> · WA: ইমেজ ও টেক্সট আলাদা বাটন</div>
     ${(kind==='sale'?['wa','sms']:['sms','wa']).map(c=>chanBlock(c,v,phone,msg)).join('')}
     <div id="dlgMErr" class="dlg-alert" style="display:none"></div>
-    <p class="hint" style="margin-top:8px">ℹ️ WhatsApp-এ <b>ইমেজ শেয়ার</b> ও <b>টেক্সট মেসেজ</b> আলাদা বাটন। যেটা দরকার শুধু সেটা চাপুন — দুটো একসাথে যাবে না। পাঠানোর পর এখানে “পাঠানো হয়েছে” নিশ্চিত করুন।</p>
+    <div class="xd-wa-tip-wrap" style="margin-top:8px">
+      <button type="button" class="btn btn-ghost btn-sm xd-wa-tip-plus" onclick="this.parentElement.classList.toggle('open');this.textContent=this.parentElement.classList.contains('open')?'−':'＋'">＋</button>
+      <div class="xd-wa-tip-body hint">ℹ️ WhatsApp-এ <b>ইমেজ শেয়ার</b> ও <b>টেক্সট মেসেজ</b> আলাদা বাটন। যেটা দরকার শুধু সেটা চাপুন — দুটো একসাথে যাবে না। পাঠানোর পর এখানে “পাঠানো হয়েছে” নিশ্চিত করুন।</div>
+    </div>
     <button class="btn btn-ghost dlg-btn-close" style="width:100%;margin-top:8px" onclick="DLG.closeModal()">বন্ধ করুন</button>`);
   // বড় data-URL HTML attribute-এ না দিয়ে পরে set — ডাউনলোড/প্রিভিউ নির্ভরযোগ্য
   try{
@@ -14042,19 +14150,57 @@ function renderMessagePanel(){
 }
 function msgSetLang(l){ if(!MSG_LANGS[l]) return; LG.ui.msgLang=l; if(LG.msgCtx) LG.msgCtx.lang=l; renderMessagePanel(); }
 function msgErr(e){ const b=$('dlgMErr'); if(b){ b.style.display='block'; b.textContent='❌ '+friendlyError(e); } }
+
+async function forceMsgSent(voucherNo, ch){
+  ch = ch || 'wa';
+  if(!voucherNo) return;
+  LG.msgCtx = LG.msgCtx || {voucherNo:voucherNo, lang:LG.ui.msgLang||'bn'};
+  LG.msgCtx.voucherNo = voucherNo;
+  try{
+    await resolveMessage(voucherNo, ch, 'Sent');
+  }catch(e){
+    try{
+      const a=actor(); const now=Date.now(), nowIso=new Date().toISOString();
+      await withTimeout(R('messages/'+voucherNo+'/'+ch+'/status').set('Sent'));
+      await withTimeout(R('messages/'+voucherNo+'/'+ch).update({
+        resolvedAt:now, resolvedAtIso:nowIso, resolvedBy:(a&&a.name)||'Admin', lastOutcome:'Sent'
+      }));
+    }catch(e2){ toast('Sent করা যায়নি'); return; }
+  }
+  await loadAll().catch(()=>{});
+  try{ renderMsgResults(); }catch(e){}
+  toast('✅ WhatsApp Status: Sent');
+}
+
 async function autoMarkMsgSent(ch){
   // শেয়ার/ডাউনলোড/লিংক খোলার পর Pending → Sent (Payment Message History আপডেট)
   const ctx=LG.msgCtx; if(!ctx||!ctx.voucherNo) return;
+  const voucherNo=ctx.voucherNo;
   try{
-    await resolveMessage(ctx.voucherNo, ch, 'Sent');
-    await loadAll().catch(()=>{});
-    try{ renderMessagePanel(); }catch(e){}
-    try{ if(typeof renderMsgResults==='function') renderMsgResults(); }catch(e){}
-    toast(ch==='wa'?'✅ WhatsApp Status: Sent':'✅ SMS Status: Sent');
-  }catch(e){
-    // ইতিমধ্যে Sent / Pending নয় — নীরব
-    try{ await loadAll().catch(()=>{}); renderMessagePanel(); }catch(e2){}
+    await resolveMessage(voucherNo, ch, 'Sent');
+  }catch(e1){
+    // সর্বশেষ ফলব্যাক: স্ট্যাটাস ফিল্ড সরাসরি Sent
+    try{
+      const a=actor(); const now=Date.now(), nowIso=new Date().toISOString();
+      await withTimeout(R('messages/'+voucherNo+'/'+ch+'/status').set('Sent'));
+      await withTimeout(R('messages/'+voucherNo+'/'+ch).update({
+        resolvedAt:now, resolvedAtIso:nowIso,
+        resolvedBy:(a&&a.name)||'Admin', lastOutcome:'Sent'
+      }));
+      await withTimeout(R('messages/'+voucherNo+'/lastAt').set(now));
+      if(!LG.messages[voucherNo]) LG.messages[voucherNo]={};
+      LG.messages[voucherNo][ch]=Object.assign({}, LG.messages[voucherNo][ch]||{}, {status:'Sent'});
+    }catch(e2){
+      try{ console.warn('autoMarkMsgSent failed', e1, e2); }catch(e3){}
+      toast('⚠️ Status Sent করা যায়নি — Open করে ✅ পাঠানো হয়েছে চাপুন');
+      return;
+    }
   }
+  try{ await loadAll().catch(()=>{}); }catch(e){}
+  try{ renderMessagePanel(); }catch(e){}
+  try{ if(typeof renderMsgResults==='function') renderMsgResults(); }catch(e){}
+  try{ if(LG.ui && LG.ui.view==='msg' && typeof renderDealerLedger==='function') renderDealerLedger(); }catch(e){}
+  toast(ch==='wa'?'✅ WhatsApp Status: Sent':'✅ SMS Status: Sent');
 }
 async function msgSend(ch, resend, mode){
   // mode: 'image' | 'text' | undefined (SMS বা পুরনো একসাথে)
@@ -14127,9 +14273,10 @@ async function msgSend(ch, resend, mode){
       extOpen(r.url);
       didSendAction=true;
     }
-    // শেয়ার/ডাউনলোড/লিংক খোলার পর History-তে Pending না রেখে Sent
+    // শেয়ার/ডাউনলোড/লিংক এর পর Status = Sent + History রিফ্রেশ
     if(didSendAction){
-      await autoMarkMsgSent(ch);
+      try{ await autoMarkMsgSent(ch); }catch(e){}
+      try{ if(typeof renderMsgResults==='function') renderMsgResults(); }catch(e){}
     }
   }catch(e){
     await loadAll().catch(()=>{}); renderMessagePanel(); msgErr(e);
@@ -14171,18 +14318,43 @@ function entryMsgPreview(){
 }
 
 /* ---------- UI: Message History ---------- */
+function historySortKey(m,v){
+  // ডেট/সময় অনুযায়ী নতুন সবার উপরে
+  // 1) ভoucher createdAt  2) মেসেজ lastAt  3) v.date — যেটা সবচেয়ে নতুন
+  const times=[];
+  const push=x=>{
+    if(x==null||x==='') return;
+    if(typeof x==='number' && x>0){ times.push(x); return; }
+    const n=Number(x); if(Number.isFinite(n)&&n>1e11){ times.push(n); return; } // ms epoch
+    if(Number.isFinite(n)&&n>1e9&&n<1e11){ times.push(n*1000); return; } // sec epoch
+    const p=Date.parse(x); if(Number.isFinite(p)) times.push(p);
+  };
+  push(v&&v.createdAt);
+  if(v&&v.date){
+    const d=String(v.date);
+    push(d.length<=10 ? d+'T23:59:59' : d); // same-day without time → end of day bias only if no createdAt
+  }
+  if(m){
+    push(m.lastAt); push(m.lastAtIso);
+    if(m.wa){ push(m.wa.resolvedAt); push(m.wa.at); push(m.wa.atIso); push(m.wa.resolvedAtIso); }
+    if(m.sms){ push(m.sms.resolvedAt); push(m.sms.at); push(m.sms.atIso); }
+  }
+  return times.length ? Math.max.apply(null, times) : 0;
+}
 function historyRows(){
   const vs=visibleVouchers(), rev=reversedSet(LG.vouchers);
   const needleD=String(LG.ui.msgDealer||''), needle=String(LG.ui.msgQ||'').trim().toLowerCase(), stf=LG.ui.msgStatus||'';
   let rows=vs.filter(v=>isMessageableType(v.type)).map(v=>{
     const m=LG.messages[v.voucherNo]||null;
+    // voucher no থেকে সিরিয়াল (DL-000192 → 192) — একই সময়ে নতুন বিল উপরে
+    const serial=parseInt(String(v.voucherNo||'').replace(/\D/g,''),10)||0;
     return {v, m, reversed:rev.has(v.voucherNo), sms:chStatus(m,'sms'), wa:chStatus(m,'wa'),
-            sortKey: (m&&m.lastAt) || Date.parse(v.createdAt)||0};
+            sortKey: historySortKey(m,v), serial};
   });
   if(needleD) rows=rows.filter(r=>String(r.v.dealerId)===needleD);
   if(stf) rows=rows.filter(r=>r.sms===stf||r.wa===stf);
   if(needle) rows=rows.filter(r=>[r.v.dealerName,r.v.dealerId,r.v.voucherNo,r.v.billNo,r.m&&r.m.lastBy].some(x=>String(x==null?'':x).toLowerCase().includes(needle)));
-  return rows.sort((a,b)=>b.sortKey-a.sortKey);
+  return rows.sort((a,b)=> (b.sortKey-a.sortKey) || (b.serial-a.serial));
 }
 function historyHTML(){
   const dealers=ledgerDealers();
@@ -14200,11 +14372,19 @@ function renderMsgResults(){
   box.innerHTML=`<div class="dlg-scroll"><table class="dlg-table" style="min-width:980px"><thead><tr><th>Date</th><th>Time</th><th>Dealer</th><th>Dealer ID</th><th>Bill No</th><th>Paid Amount</th><th>Language</th><th>SMS Status</th><th>WhatsApp Status</th><th>Sent By</th><th>ধরন</th><th></th></tr></thead><tbody>
   ${rows.length?rows.map(r=>{
     const m=r.m, iso=m&&m.lastAtIso, d=iso?new Date(iso):new Date(r.v.createdAt);
-    const ds=isNaN(d)?r.v.date:d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate()), ts=isNaN(d)?'':pad2(d.getHours())+':'+pad2(d.getMinutes());
-    return `<tr class="${m?'':'dlg-muted'}"><td>${esc(ds)}</td><td>${esc(ts)}</td><td>${esc(r.v.dealerName)}</td><td>${esc(r.v.dealerId)}</td>
+    let ds='', ts='';
+    if(!isNaN(d) && d.getTime()){
+      const dd=pad2(d.getDate()), mm=pad2(d.getMonth()+1), yy=String(d.getFullYear()).slice(-2);
+      ds=dd+'-'+mm+'-'+yy; // 14-11-26
+      let h=d.getHours(); const ap=h>=12?'PM':'AM'; h=h%12; if(h===0) h=12;
+      ts=h+':'+pad2(d.getMinutes())+' '+ap; // 9:23 PM
+    } else {
+      ds=r.v.date||''; ts='';
+    }
+    return `<tr class="${m?'':'dlg-muted'}"><td style="white-space:nowrap">${esc(ds)}</td><td style="white-space:nowrap">${esc(ts)}</td><td>${esc(r.v.dealerName)}</td><td>${esc(r.v.dealerId)}</td>
       <td><code>${esc(r.v.billNo||r.v.voucherNo)}</code>${r.v.billNo?`<div class="dlg-sub">${esc(r.v.voucherNo)}</div>`:''}${r.reversed?'<div class="dlg-sub dlg-due">Reversed</div>':''}</td>
       <td class="n">${num(r.v.amountPaisa)}</td><td>${m&&m.lang?esc(MSG_LANGS[m.lang]||m.lang):'—'}</td>
-      <td>${stBadge(r.sms)}</td><td>${stBadge(r.wa)}</td><td>${esc((m&&m.lastBy)||'—')}</td><td>${r.v.type==='SALE'?'🛒 পার্টস':(r.v.type==='DEPOSIT'?'💰 পেমেন্ট':esc((TYPES[r.v.type]&&TYPES[r.v.type].short)||r.v.type))}</td>
+      <td>${stBadge(r.sms)}</td><td style="text-align:center">${r.wa==='Pending'?`<button type="button" class="xd-wa-st-btn" title="Pending — Sent করতে ক্লিক" onclick="DLG.forceMsgSent('${esc(r.v.voucherNo)}','wa')">${waStatusIcon(r.wa)}</button>`:waStatusIcon(r.wa)}</td><td>${esc((m&&m.lastBy)||'—')}</td><td>${r.v.type==='SALE'?'🛒 পার্টস':(r.v.type==='DEPOSIT'?'💰 পেমেন্ট':esc((TYPES[r.v.type]&&TYPES[r.v.type].short)||r.v.type))}</td>
       <td>${(canMessage()&&!r.reversed)?`<button class="btn btn-ghost btn-sm" onclick="DLG.openMessage('${esc(r.v.voucherNo)}')">✉️ খুলুন</button>`:''}</td></tr>`;}).join(''):`<tr><td colspan="12" class="dlg-empty">কোনো লেনদেন পাওয়া যায়নি</td></tr>`}
   </tbody></table></div>`;
 }
@@ -15821,7 +16001,7 @@ window.DLG={
   tabHTML, wire, reload, setView, setDueQ, setDueOnly, setF, setQ, setAuditQ, clearFilters, openLedger, openDueDetail,
   openEntry, entryTypeChanged, entryMethodChanged, syncEntryDateView, entryPreview, submitEntry, openReverse, submitReverse, closeModal,
   printStatement, printDue, exportLedger, exportDue, pdfDue, openAging, exportAging, pdfAging, recalcAll, changePerm, peHook,
-  openParty, submitParty, myReload, myFilter, openMessage, msgSetLang, msgSend, msgResolve, toggleSmsPanel, downloadReceiptImage, entryMsgPreview, setMsgF, setMsgQ, openAdvanceDetails,
+  openParty, submitParty, myReload, myFilter, openMessage, msgSetLang, msgSend, msgResolve, forceMsgSent, toggleSmsPanel, downloadReceiptImage, entryMsgPreview, setMsgF, setMsgQ, openAdvanceDetails,
   selfHook,
   _t:{agingCompute,sendMessage,resolveMessage,preparePayment,buildMessageData,renderMessage,smsInfo,normalizePhone,createParty,loadMyLedger,TEMPLATES,toPaisa,fmt,num,effectOf,aggregate,buildStatement,saveVoucher,applySummary,blankSummary,mismatches,recalcDealer,loadAll,LG,TYPES,catDelta,setPermission,level}
 };
